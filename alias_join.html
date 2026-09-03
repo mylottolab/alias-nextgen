@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>초대 받기 — Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260903a">
+<link rel="stylesheet" href="alias_common.css?v=20260903b">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260903a"></script>
+<script src="alias_common.js?v=20260903b"></script>
 </head>
 <body>
 <div class="wrap">
@@ -63,6 +63,7 @@
 
 let me = null;
 let aliases = [];
+let joining = false;   // 중복 클릭 자물쇠
 
 /* use_invite 가 돌려주는 error 코드를 사람 말로 바꿉니다. */
 const ERR_MAP = {
@@ -71,6 +72,7 @@ const ERR_MAP = {
   revoked:       'errRevoked',
   expired:       'errExpired',
   used_up:       'errUsedUp',
+  already_used:  'errAlreadyUsed',
   own_invite:    'errOwnInvite',
   bad_persona:   'errBadPersona',
 };
@@ -90,10 +92,16 @@ function paintFaces(){
 }
 
 async function join(){
+  // ⚠ 버튼을 빠르게 두 번 누르면 두 번째가 첫 번째의 disabled 보다 먼저
+  //   들어올 수 있습니다. 그러면 링크가 두 개 생깁니다. 자물쇠를 하나 둡니다.
+  //   (서버의 use_invite 에도 같은 검사가 있습니다. 두 겹입니다.)
+  if (joining) return;
+  joining = true;
+
   clearErr();
   const code = document.getElementById('code').value.trim();
-  if (!code) { showErr(AL.t('errJoinCode')); return; }
-  if (!aliases.length) { showErr(AL.t('errNoAlias')); return; }
+  if (!code) { showErr(AL.t('errJoinCode')); joining = false; return; }
+  if (!aliases.length) { showErr(AL.t('errNoAlias')); joining = false; return; }
 
   const btn = document.getElementById('go');
   btn.disabled = true;
@@ -109,7 +117,7 @@ async function join(){
     if (!out.ok) {
       const key = ERR_MAP[out.error];
       showErr(key ? AL.t(key) : AL.t('errGeneric', { msg: out.error || '?' }));
-      btn.disabled = false;
+      btn.disabled = false; joining = false;
       return;
     }
 
@@ -119,7 +127,7 @@ async function join(){
   } catch (e) {
     console.error(e);
     showErr(AL.t('errGeneric', { msg: e.message || String(e) }));
-    btn.disabled = false;
+    btn.disabled = false; joining = false;
   }
 }
 

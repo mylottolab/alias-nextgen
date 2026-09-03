@@ -17,7 +17,7 @@ window.AL = window.AL || {};
    ⚠ 함정 ㉑ — sb_publishable 말고 eyJ 로 시작하는 legacy anon 열쇠입니다.
 ------------------------------------------------------------------ */
 AL.SUPABASE_URL  = 'https://azredlrnvsssfjytaotb.supabase.co';
-AL.SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF6cmVkbHJudnNzc2ZqeXRhb3RiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MDg1MjgsImV4cCI6MjEwMzk4NDUyOH0.2gTxzr54vRSZzFnyhLSd1Imv3OnwRBQs925CYeXdonI';
+AL.SUPABASE_ANON = '여기에_anon_열쇠를_붙여넣으세요';
 
 AL.sb = window.supabase.createClient(AL.SUPABASE_URL, AL.SUPABASE_ANON);
 
@@ -144,6 +144,8 @@ AL.STR = {
   errRevoked:     { kr:'취소된 초대입니다.', en:'This invite was revoked.' },
   errExpired:     { kr:'기한이 지난 초대입니다.', en:'This invite has expired.' },
   errUsedUp:      { kr:'이미 다 쓰인 초대입니다.', en:'This invite has been fully used.' },
+  errAlreadyUsed: { kr:'이 초대로는 이미 연결되어 있습니다.\n연락처에서 확인해보세요.',
+                    en:'You are already connected through this invite.\nCheck your contacts.' },
   errOwnInvite:   { kr:'자기가 만든 초대는 쓸 수 없습니다.', en:'You cannot use your own invite.' },
   errBadPersona:  { kr:'별칭을 고르지 않았습니다.', en:'No alias selected.' },
   errNotLoggedIn: { kr:'로그인이 필요합니다.', en:'You need to sign in.' },
