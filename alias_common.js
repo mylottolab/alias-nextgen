@@ -7,8 +7,10 @@
 
    ⚠ 함정 ⑲ — 이 파일을 고치면 이걸 부르는 화면들의 ?v= 도 함께 올려야 합니다.
      Ctrl+Shift+R 로도 안 바뀝니다. 지금 부르는 화면:
-       alias_auth.html · alias_aliases.html · alias_invite.html
-       alias_join.html · alias_contacts.html
+       alias_auth.html · alias_contacts.html · alias_link.html
+       alias_calls.html · alias_me.html
+       alias_invite.html · alias_join.html
+     일곱 장입니다. 하나라도 빠뜨리면 그 화면만 옛 파일을 씁니다.
    ===================================================================== */
 
 window.AL = window.AL || {};
@@ -17,7 +19,7 @@ window.AL = window.AL || {};
    ⚠ 함정 ㉑ — sb_publishable 말고 eyJ 로 시작하는 legacy anon 열쇠입니다.
 ------------------------------------------------------------------ */
 AL.SUPABASE_URL  = 'https://azredlrnvsssfjytaotb.supabase.co';
-AL.SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF6cmVkbHJudnNzc2ZqeXRhb3RiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MDg1MjgsImV4cCI6MjEwMzk4NDUyOH0.2gTxzr54vRSZzFnyhLSd1Imv3OnwRBQs925CYeXdonI';  // eyJ 로 시작하는 열쇠
+AL.SUPABASE_ANON = 'PASTE_YOUR_ANON_KEY_HERE';  // eyJ 로 시작하는 열쇠
 
 /* ⚠ 열쇠를 안 넣으면 Supabase 가 헤더에 실을 때 터집니다. 한글이 섞이면
      "String contains non ISO-8859-1 code point" 라는 엉뚱한 말이 나와서
@@ -48,11 +50,49 @@ AL.STR = {
   signOut:    { kr:'로그아웃', en:'Sign out' },
   errGeneric: { kr:'문제가 생겼습니다: {msg}', en:'Something went wrong: {msg}' },
 
-  /* 이동 */
-  navAliases:  { kr:'내 별칭', en:'My aliases' },
-  navInvite:   { kr:'초대 보내기', en:'Send invite' },
-  navJoin:     { kr:'초대 받기', en:'Accept invite' },
+  /* 하단 탭 */
   navContacts: { kr:'연락처', en:'Contacts' },
+  navCalls:    { kr:'통화기록', en:'Calls' },
+  navMe:       { kr:'나', en:'You' },
+
+  /* 더하기 시트 */
+  addInvite:   { kr:'초대 보내기', en:'Send an invite' },
+  addInviteSub:{ kr:'코드를 만들어 상대에게 건넵니다', en:'Create a code and hand it over' },
+  addJoin:     { kr:'초대 받기', en:'Accept an invite' },
+  addJoinSub:  { kr:'받은 코드를 넣습니다', en:'Enter a code you received' },
+
+  /* 통화기록 */
+  callsTitle:  { kr:'통화기록', en:'Calls' },
+  callsEmpty:  { kr:'아직 통화가 없습니다.\n통화 기능은 다음 단계에서 붙습니다.',
+                 en:'No calls yet.\nCalling arrives in the next step.' },
+  /* 나 */
+  meTitle:     { kr:'나', en:'You' },
+  meAliases:   { kr:'내 별칭', en:'Your aliases' },
+  meAccount:   { kr:'계정', en:'Account' },
+  meAccountId: { kr:'계정 번호', en:'Account ID' },
+
+  /* 관계 상세 */
+  dtlBack:     { kr:'연락처로', en:'Back to contacts' },
+  dtlNotFound: { kr:'그런 연결이 없습니다.', en:'No such connection.' },
+  dtlCall:     { kr:'통화', en:'Call' },
+  dtlMessage:  { kr:'메시지', en:'Message' },
+  dtlSoon:     { kr:'다음 단계에서 붙습니다.', en:'Coming in the next step.' },
+  dtlPeerAlias:{ kr:'상대가 쓰는 이름', en:'The name they use' },
+  dtlMyFace:   { kr:'내가 보여주는 별칭', en:'The alias they see' },
+  dtlLinkedAt: { kr:'연결한 때', en:'Connected' },
+  dtlMemo:     { kr:'초대 메모', en:'Invite note' },
+  dtlChange:   { kr:'바꾸기', en:'Change' },
+  dtlPinOn:    { kr:'위로 올리기', en:'Pin to top' },
+  dtlPinOff:   { kr:'내리기', en:'Unpin' },
+  dtlMuteOn:   { kr:'알림 끄기', en:'Mute' },
+  dtlMuteOff:  { kr:'알림 켜기', en:'Unmute' },
+  dtlNotify:   { kr:'알림', en:'Notifications' },
+  dtlOrder:    { kr:'목록 위치', en:'List position' },
+  dtlCut:      { kr:'이 연결 끊기', en:'Disconnect' },
+  dtlCutAsk:   { kr:'연결을 끊으면 서로 연락할 수 없게 됩니다.\n다시 이으려면 초대를 새로 주고받아야 합니다.\n끊을까요?',
+                 en:'Disconnecting means neither of you can reach the other.\nReconnecting needs a new invite.\nDisconnect?' },
+  dtlFaceAsk:  { kr:'바꾸면 상대 화면에서 내 이름이 바로 바뀝니다.\n어떤 별칭으로 바꿀까요?',
+                 en:'Their screen updates immediately.\nWhich alias should they see?' },
 
   /* 로그인 (alias_auth.html) */
   tagline:   { kr:'번호가 없는 전화입니다.\n초대를 받은 사람만 연결됩니다.',
@@ -90,8 +130,7 @@ AL.STR = {
   errSaveCode: { kr:'복구 코드를 저장하지 못했습니다. 계속하지 마시고 알려주세요.',
                  en:'Could not save the recovery code. Please stop and report this.' },
 
-  /* 별칭 (alias_aliases.html) */
-  aliasTitle:   { kr:'내 별칭', en:'My aliases' },
+  /* 별칭 (alias_me.html) */
   aliasIntro:   { kr:'상대마다 다른 별칭을 보여줄 수 있습니다.\n거래처에는 하나, 소개팅에는 다른 하나.',
                   en:'You can show a different alias to each person.\nOne for work, another for someone new.' },
   aliasEmpty:   { kr:'아직 별칭이 없습니다.\n하나 만들어야 초대를 보낼 수 있습니다.',
@@ -171,20 +210,11 @@ AL.STR = {
   cntEmpty:   { kr:'아직 연결된 사람이 없습니다.\n초대를 보내거나 받아보세요.',
                 en:'Nobody is connected yet.\nSend or accept an invite.' },
   cntUnnamed: { kr:'(이름 없음)', en:'(no name)' },
-  cntRename:  { kr:'이름 바꾸기', en:'Rename' },
   cntRenameAsk:{ kr:'이 사람을 뭐라고 부를까요?', en:'What will you call them?' },
-  cntPin:     { kr:'위로 올리기', en:'Pin' },
-  cntUnpin:   { kr:'내리기', en:'Unpin' },
-  cntCall:    { kr:'통화', en:'Call' },
-  cntCallSoon:{ kr:'통화는 다음 단계에서 붙습니다.', en:'Calling comes in the next step.' },
-  cntViaMemo: { kr:'초대 메모', en:'Invite note' },
   cntSamePeer:{ kr:'같은 상대와 여러 번 이어졌습니다. 연결한 시각으로 구별하세요.',
                 en:'You are connected to the same person more than once. Tell them apart by the time.' },
   cntCapMine: { kr:'내가 붙인 이름 · 나만 봅니다', en:'Your name for them · only you see this' },
   cntCapTheir:{ kr:'상대가 쓰는 별칭', en:'The alias they use' },
-  cntPeerAlias:{ kr:'상대 별칭', en:'Their alias' },
-  cntMyAlias: { kr:'내 별칭', en:'Your alias' },
-  cntLinkedAt:{ kr:'연결한 때', en:'Connected' },
   cntLegend:  { kr:'이름이 셋인 이유\n· 큰 글씨 — 내가 상대를 부르는 이름. 상대는 못 봅니다.\n· 상대 별칭 — 상대가 나에게 보여주는 이름.\n· 내 별칭 — 내가 상대에게 보여주는 이름.',
                 en:'Why three names\n· Large — what you call them. They never see it.\n· Their alias — the name they show you.\n· Your alias — the name they see for you.' },
   cntLegendOpen:{ kr:'이름이 왜 셋인가요?', en:'Why three names?' },
@@ -307,6 +337,25 @@ AL.fmtDateTime = function(iso){
   var p = function(n){ return String(n).padStart(2, '0'); };
   return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate()) + ' ' +
          p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+};
+
+/* 목록에 쓰는 짧은 시각. 오늘이면 시:분, 어제면 "어제", 그 앞은 날짜. */
+AL.fmtShort = function(iso){
+  if (!iso) return '';
+  var d = new Date(iso), now = new Date();
+  var p = function(n){ return String(n).padStart(2,'0'); };
+  var sameDay = function(a,b){
+    return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
+  };
+  if (sameDay(d, now)) return p(d.getHours()) + ':' + p(d.getMinutes());
+  var y = new Date(now); y.setDate(y.getDate()-1);
+  if (sameDay(d, y)) return AL.lang === 'kr' ? '어제' : 'Yesterday';
+  return (d.getMonth()+1) + '/' + d.getDate();
+};
+
+/* 얼굴 동그라미에 넣을 첫 글자 */
+AL.initial = function(name){
+  return (name || '?').trim().charAt(0) || '?';
 };
 
 AL.copyText = async function(text, btn){

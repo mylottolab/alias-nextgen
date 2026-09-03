@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>통화기록 — Alias</title>
+<link rel="stylesheet" href="alias_common.css?v=20260904b">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="alias_common.js?v=20260904b"></script>
+</head>
+<body class="tabbed">
+<div class="wrap">
+
+  <div class="tophead">
+    <h1 class="h2" data-t="callsTitle"></h1>
+  </div>
+
+  <div id="list"></div>
+  <div id="err" class="err"></div>
+
+</div>
+
+<nav class="tabbar">
+  <a href="alias_contacts.html" data-t="navContacts"></a>
+  <a href="alias_calls.html" class="on" data-t="navCalls"></a>
+  <a href="alias_me.html" data-t="navMe"></a>
+</nav>
+
+<script>
+/* =====================================================================
+   통화기록
+   지금은 calls 표가 비어 있어 빈 목록만 나옵니다. 통화(6단계)가 붙으면
+   여기가 채워집니다. 표와 정책은 이미 서 있어서 화면만 기다리면 됩니다.
+
+   ⚠ 나중에 넣을 것 — 별칭별 묶기, 부재중 배지.
+     같은 그리기 코드를 대화 화면에서도 씁니다(5단계).
+   ===================================================================== */
+
+async function reload(){
+  const box = document.getElementById('list');
+  try {
+    const res = await AL.sb.from('calls')
+      .select('id, link_id, call_type, ended_reason, duration_seconds, created_at')
+      .order('created_at', { ascending: false })
+      .limit(100);
+    if (res.error) throw res.error;
+
+    const rows = res.data || [];
+    if (!rows.length) {
+      box.innerHTML = '<div class="empty">' + AL.esc(AL.t('callsEmpty')) + '</div>';
+      return;
+    }
+    box.innerHTML = rows.map(function(c){
+      return '<div class="crow">' +
+        '<div class="cav">' + AL.esc(AL.initial(c.call_type)) + '</div>' +
+        '<div class="cmid"><div class="cname">' + AL.esc(c.link_id.slice(0,8)) + '</div>' +
+        '<div class="csub">' + AL.esc(c.ended_reason || '') + '</div></div>' +
+        '<div class="ctime">' + AL.esc(AL.fmtShort(c.created_at)) + '</div>' +
+      '</div>';
+    }).join('');
+  } catch (e) {
+    console.error(e);
+    const el = document.getElementById('err');
+    el.textContent = AL.t('errGeneric', { msg: e.message || String(e) });
+    el.classList.add('show');
+  }
+}
+
+(async function(){
+  AL.paintText();
+  if (!await AL.requireLogin()) return;
+  await reload();
+})();
+</script>
+</body>
+</html>

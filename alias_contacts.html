@@ -4,24 +4,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>연락처 — Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260904a">
+<link rel="stylesheet" href="alias_common.css?v=20260904b">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260904a"></script>
+<script src="alias_common.js?v=20260904b"></script>
 </head>
-<body>
+<body class="tabbed">
 <div class="wrap">
 
-  <div class="top">
+  <div class="tophead">
     <h1 class="h2" data-t="cntTitle"></h1>
-    <button class="linkish" id="out" data-t="signOut"></button>
+    <button class="plusbtn" id="plus" aria-label="연락처 늘리기">+</button>
   </div>
-
-  <nav class="nav">
-    <a href="alias_aliases.html" data-t="navAliases"></a>
-    <a href="alias_invite.html" data-t="navInvite"></a>
-    <a href="alias_join.html" data-t="navJoin"></a>
-    <a href="alias_contacts.html" class="on" data-t="navContacts"></a>
-  </nav>
 
   <details class="legend">
     <summary data-t="cntLegendOpen"></summary>
@@ -29,97 +22,85 @@
   </details>
 
   <div id="twin" class="ok" data-t="cntSamePeer"></div>
-  <ul class="list" id="list"></ul>
+  <div id="list"></div>
   <div id="err" class="err"></div>
 
 </div>
 
+<div class="sheet-bg" id="sheetBg"></div>
+<div class="sheet" id="sheet" style="display:none">
+  <div class="grip"></div>
+  <a href="alias_invite.html">
+    <span data-t="addInvite"></span>
+    <small data-t="addInviteSub"></small>
+  </a>
+  <a href="alias_join.html">
+    <span data-t="addJoin"></span>
+    <small data-t="addJoinSub"></small>
+  </a>
+</div>
+
+<nav class="tabbar">
+  <a href="alias_contacts.html" class="on" data-t="navContacts"></a>
+  <a href="alias_calls.html" data-t="navCalls"></a>
+  <a href="alias_me.html" data-t="navMe"></a>
+</nav>
+
 <script>
 /* =====================================================================
-   연락처 — my_contacts() 한 번으로 목록이 나옵니다.
-   ⚠ 여기 보이는 이름 두 가지를 헷갈리지 마세요.
-       peer_display  상대가 나에게 보여주는 별칭
-       peer_label    내가 상대를 부르는 이름 (나만 봅니다)
-       my_face       내가 이 사람에게 보여주고 있는 별칭
-     Aliascall 의 title / client_label 을 이어받은 것입니다.
+   연락처 (홈)
+   ⚠ 목록은 짧게 둡니다. 설명은 관계 상세(alias_link.html)가 합니다.
+     한 줄에 다 담았더니 시끄러워서 아무도 안 읽었습니다.
    ===================================================================== */
 
-let me = null;
 let rows = [];
 
 function showErr(msg){
   const el = document.getElementById('err');
   el.textContent = msg; el.classList.add('show');
 }
-function clearErr(){ document.getElementById('err').classList.remove('show'); }
 
 function paint(){
-  const ul = document.getElementById('list');
+  const box = document.getElementById('list');
   if (!rows.length) {
-    ul.innerHTML = '<li class="empty">' + AL.esc(AL.t('cntEmpty')) + '</li>';
+    box.innerHTML = '<div class="empty">' + AL.esc(AL.t('cntEmpty')) + '</div>';
+    document.getElementById('twin').classList.remove('show');
     return;
   }
 
-  // 같은 별칭이 여러 줄이면 화면에서 구별이 안 됩니다. 안내를 한 줄 띄웁니다.
+  // 같은 상대가 여러 줄이면 안내를 띄웁니다. 버그가 아니라 설계입니다.
   const seen = {};
-  let hasTwin = false;
+  let twin = false;
   rows.forEach(function(r){
     const k = (r.peer_label || '') + '\u0000' + (r.peer_display || '');
-    if (seen[k]) hasTwin = true;
+    if (seen[k]) twin = true;
     seen[k] = 1;
   });
-  document.getElementById('twin').classList.toggle('show', hasTwin);
+  document.getElementById('twin').classList.toggle('show', twin);
 
-  ul.innerHTML = rows.map(function(r){
-    // 큰 글씨는 "내가 부르는 이름". 없으면 상대의 별칭을 대신 씁니다.
-    // ⚠ 어느 쪽인지 반드시 밑에 밝혀야 합니다. 안 밝히면 이름이 그냥 떠 있어서
-    //   설계한 사람도 헷갈립니다(실제로 그랬습니다).
-    const mine = !!r.peer_label;
+  box.innerHTML = rows.map(function(r){
+    // 큰 글씨 = 내가 부르는 이름. 없으면 상대 별칭.
+    // 동그라미 = 내가 이 사람에게 쓰는 얼굴의 첫 글자.
     const shown = r.peer_label || r.peer_display || AL.t('cntUnnamed');
-
-    const facts = [];
-    if (mine && r.peer_display) {
-      facts.push([AL.t('cntPeerAlias'), r.peer_display]);
-    }
-    facts.push([AL.t('cntMyAlias'), r.my_face || '']);
-    if (r.invite_memo) facts.push([AL.t('cntViaMemo'), r.invite_memo]);
-    facts.push([AL.t('cntLinkedAt'), AL.fmtDateTime(r.linked_at)]);
-
-    return '<li class="row">' +
-      '<div class="row-main">' +
-        '<span class="row-name">' + AL.esc(shown) + '</span>' +
-        (r.pinned ? '<span class="badge">' + AL.esc(AL.t('cntPin')) + '</span>' : '') +
+    const sub = r.peer_label ? (r.peer_display || '') : '';
+    return '<div class="crow" data-go="' + AL.esc(r.link_id) + '">' +
+      '<div class="cav">' + AL.esc(AL.initial(r.my_face)) + '</div>' +
+      '<div class="cmid">' +
+        '<div class="cname">' + AL.esc(shown) + '</div>' +
+        (sub ? '<div class="csub">' + AL.esc(sub) + '</div>' : '') +
       '</div>' +
-      '<div class="row-cap">' + AL.esc(mine ? AL.t('cntCapMine') : AL.t('cntCapTheir')) + '</div>' +
-      '<dl class="facts">' +
-        facts.map(function(f){
-          return '<dt>' + AL.esc(f[0]) + '</dt><dd>' + AL.esc(f[1]) + '</dd>';
-        }).join('') +
-      '</dl>' +
-      '<div class="row-acts">' +
-        '<button data-call="' + AL.esc(r.link_id) + '">' + AL.esc(AL.t('cntCall')) + '</button>' +
-        '<button data-ren="' + AL.esc(r.my_side_id) + '">' + AL.esc(AL.t('cntRename')) + '</button>' +
-        '<button data-pin="' + AL.esc(r.my_side_id) + '" data-on="' + (r.pinned ? '1' : '') + '">' +
-          AL.esc(r.pinned ? AL.t('cntUnpin') : AL.t('cntPin')) + '</button>' +
-      '</div>' +
-    '</li>';
+      '<div class="ctime">' + AL.esc(AL.fmtShort(r.last_activity_at)) + '</div>' +
+    '</div>';
   }).join('');
 
-  ul.querySelectorAll('[data-ren]').forEach(function(b){
-    b.addEventListener('click', function(){ rename(b.getAttribute('data-ren')); });
-  });
-  ul.querySelectorAll('[data-pin]').forEach(function(b){
-    b.addEventListener('click', function(){
-      setPin(b.getAttribute('data-pin'), !b.getAttribute('data-on'));
+  box.querySelectorAll('[data-go]').forEach(function(el){
+    el.addEventListener('click', function(){
+      location.href = 'alias_link.html?link=' + encodeURIComponent(el.getAttribute('data-go'));
     });
-  });
-  ul.querySelectorAll('[data-call]').forEach(function(b){
-    b.addEventListener('click', function(){ alert(AL.t('cntCallSoon')); });
   });
 }
 
 async function reload(){
-  clearErr();
   try {
     const res = await AL.sb.rpc('my_contacts');
     if (res.error) throw res.error;
@@ -131,28 +112,16 @@ async function reload(){
   }
 }
 
-async function rename(sideId){
-  const cur = rows.find(function(r){ return r.my_side_id === sideId; });
-  const next = prompt(AL.t('cntRenameAsk'), (cur && cur.peer_label) || '');
-  if (next === null) return;
-  const res = await AL.sb.from('link_sides')
-    .update({ peer_label: next.trim() || null }).eq('id', sideId);
-  if (res.error) { showErr(AL.t('errGeneric', { msg: res.error.message })); return; }
-  await reload();
+function openSheet(on){
+  document.getElementById('sheetBg').classList.toggle('show', on);
+  document.getElementById('sheet').style.display = on ? '' : 'none';
 }
-
-async function setPin(sideId, on){
-  const res = await AL.sb.from('link_sides').update({ pinned: !!on }).eq('id', sideId);
-  if (res.error) { showErr(AL.t('errGeneric', { msg: res.error.message })); return; }
-  await reload();
-}
-
-document.getElementById('out').addEventListener('click', AL.signOut);
+document.getElementById('plus').addEventListener('click', function(){ openSheet(true); });
+document.getElementById('sheetBg').addEventListener('click', function(){ openSheet(false); });
 
 (async function(){
   AL.paintText();
-  me = await AL.requireLogin();
-  if (!me) return;
+  if (!await AL.requireLogin()) return;
   await reload();
 })();
 </script>

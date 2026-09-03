@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>관계 — Alias</title>
+<link rel="stylesheet" href="alias_common.css?v=20260904b">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="alias_common.js?v=20260904b"></script>
+</head>
+<body>
+<div class="wrap">
+
+  <a class="backlink" href="alias_contacts.html" data-t="dtlBack"></a>
+
+  <div id="body" style="display:none">
+    <div class="bighead">
+      <div class="cav" id="av"></div>
+      <h1 id="bigName"></h1>
+      <p id="bigCap"></p>
+    </div>
+
+    <div class="bigacts">
+      <button id="call" data-t="dtlCall"></button>
+      <button class="sec" id="msg" data-t="dtlMessage"></button>
+    </div>
+
+    <div class="dblock" id="facts"></div>
+    <div class="dblock" id="prefs"></div>
+
+    <button class="danger" id="cut" data-t="dtlCut"></button>
+  </div>
+
+  <div id="err" class="err"></div>
+
+</div>
+
+<script>
+/* =====================================================================
+   관계 상세
+   ⚠ 이 화면의 일은 하나입니다 — 이름 세 개가 각각 누구 것이고
+     누가 볼 수 있는지 밝히는 것. 오늘 헷갈린 게 전부 여기서 풀립니다.
+   ===================================================================== */
+
+let me = null;
+let row = null;
+let aliases = [];
+
+const linkId = new URLSearchParams(location.search).get('link');
+
+function showErr(msg){
+  const el = document.getElementById('err');
+  el.textContent = msg; el.classList.add('show');
+}
+
+function paint(){
+  const mine = !!row.peer_label;
+  const shown = row.peer_label || row.peer_display || AL.t('cntUnnamed');
+
+  document.getElementById('av').textContent = AL.initial(row.my_face);
+  document.getElementById('bigName').textContent = shown;
+  document.getElementById('bigCap').textContent = mine ? AL.t('cntCapMine') : AL.t('cntCapTheir');
+
+  // ── 사실들 ──────────────────────────────────────────────
+  const facts = [];
+  if (mine) facts.push([AL.t('dtlPeerAlias'), row.peer_display || '', null]);
+  facts.push([AL.t('dtlMyFace'), row.my_face || '', 'face']);
+  facts.push([AL.t('dtlLinkedAt'), AL.fmtDateTime(row.linked_at), null]);
+  if (row.invite_memo) facts.push([AL.t('dtlMemo'), row.invite_memo, null]);
+
+  document.getElementById('facts').innerHTML = facts.map(function(f){
+    return '<div class="drow">' +
+      '<span class="dlab">' + AL.esc(f[0]) + '</span>' +
+      '<span class="dval">' + AL.esc(f[1]) +
+        (f[2] ? ' <button data-act="' + f[2] + '">' + AL.esc(AL.t('dtlChange')) + '</button>' : '') +
+      '</span>' +
+    '</div>';
+  }).join('');
+
+  // ── 내가 정하는 것들 ─────────────────────────────────────
+  document.getElementById('prefs').innerHTML =
+    '<div class="drow">' +
+      '<span class="dlab">' + AL.esc(AL.t('cntCapMine')) + '</span>' +
+      '<span class="dval">' + AL.esc(row.peer_label || AL.t('cntUnnamed')) +
+        ' <button data-act="label">' + AL.esc(AL.t('dtlChange')) + '</button></span>' +
+    '</div>' +
+    '<div class="drow">' +
+      '<span class="dlab">' + AL.esc(AL.t('dtlOrder')) + '</span>' +
+      '<span class="dval"><button data-act="pin">' +
+        AL.esc(row.pinned ? AL.t('dtlPinOff') : AL.t('dtlPinOn')) + '</button></span>' +
+    '</div>' +
+    '<div class="drow">' +
+      '<span class="dlab">' + AL.esc(AL.t('dtlNotify')) + '</span>' +
+      '<span class="dval"><button data-act="mute">' +
+        AL.esc(row.muted ? AL.t('dtlMuteOff') : AL.t('dtlMuteOn')) + '</button></span>' +
+    '</div>';
+
+  document.querySelectorAll('[data-act]').forEach(function(b){
+    b.addEventListener('click', function(){ act(b.getAttribute('data-act')); });
+  });
+
+  document.getElementById('body').style.display = '';
+}
+
+async function act(kind){
+  try {
+    if (kind === 'label') {
+      const next = prompt(AL.t('cntRenameAsk'), row.peer_label || '');
+      if (next === null) return;
+      await save({ peer_label: next.trim() || null });
+
+    } else if (kind === 'pin') {
+      await save({ pinned: !row.pinned });
+
+    } else if (kind === 'mute') {
+      await save({ muted: !row.muted });
+
+    } else if (kind === 'face') {
+      // ⚠ 이 관계에서만 내 얼굴을 바꿉니다. 다른 관계는 그대로입니다.
+      //   다만 상대 화면에서는 즉시 바뀌므로 반드시 물어봅니다.
+      if (!aliases.length) return;
+      const menu = aliases.map(function(a, i){ return (i+1) + '. ' + a.display_name; }).join('\n');
+      const pick = prompt(AL.t('dtlFaceAsk') + '\n\n' + menu, '');
+      if (pick === null) return;
+      const idx = parseInt(pick, 10) - 1;
+      if (isNaN(idx) || idx < 0 || idx >= aliases.length) return;
+      await save({ persona_id: aliases[idx].id });
+    }
+  } catch (e) {
+    console.error(e);
+    showErr(AL.t('errGeneric', { msg: e.message || String(e) }));
+  }
+}
+
+async function save(patch){
+  const res = await AL.sb.from('link_sides').update(patch).eq('id', row.my_side_id);
+  if (res.error) throw res.error;
+  await load();
+}
+
+async function cut(){
+  if (!confirm(AL.t('dtlCutAsk'))) return;
+  try {
+    const res = await AL.sb.from('links')
+      .update({ status: 'closed', closed_at: new Date().toISOString(), closed_reason: 'user' })
+      .eq('id', linkId);
+    if (res.error) throw res.error;
+    location.href = 'alias_contacts.html';
+  } catch (e) {
+    console.error(e);
+    showErr(AL.t('errGeneric', { msg: e.message || String(e) }));
+  }
+}
+
+async function load(){
+  // my_contacts() 가 이미 필요한 걸 다 돌려줍니다. 새 함수를 만들지 않았습니다.
+  const res = await AL.sb.rpc('my_contacts');
+  if (res.error) throw res.error;
+  row = (res.data || []).filter(function(r){ return r.link_id === linkId; })[0];
+  if (!row) { showErr(AL.t('dtlNotFound')); return; }
+  paint();
+}
+
+document.getElementById('cut').addEventListener('click', cut);
+document.getElementById('call').addEventListener('click', function(){ alert(AL.t('dtlSoon')); });
+document.getElementById('msg').addEventListener('click', function(){ alert(AL.t('dtlSoon')); });
+
+(async function(){
+  AL.paintText();
+  me = await AL.requireLogin();
+  if (!me) return;
+  if (!linkId) { showErr(AL.t('dtlNotFound')); return; }
+  try {
+    aliases = await AL.loadAliases();
+    await load();
+  } catch (e) {
+    console.error(e);
+    showErr(AL.t('errGeneric', { msg: e.message || String(e) }));
+  }
+})();
+</script>
+</body>
+</html>

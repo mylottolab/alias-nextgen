@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>나 — Alias</title>
+<link rel="stylesheet" href="alias_common.css?v=20260904b">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="alias_common.js?v=20260904b"></script>
+</head>
+<body class="tabbed">
+<div class="wrap">
+
+  <div class="tophead">
+    <h1 class="h2" data-t="meTitle"></h1>
+    <button class="linkish" id="out" data-t="signOut"></button>
+  </div>
+
+  <div class="sect" data-t="meAliases"></div>
+  <p class="lede" data-t="aliasIntro"></p>
+  <ul class="list" id="list"></ul>
+
+  <div class="sect" data-t="aliasNew"></div>
+  <div class="field">
+    <label for="name" data-t="aliasNameLbl"></label>
+    <input id="name" type="text" maxlength="20" autocomplete="off">
+    <p class="hint" data-t="aliasNameHint"></p>
+  </div>
+  <button class="btn" id="make" data-t="aliasNew"></button>
+
+  <div id="err" class="err"></div>
+  <div id="ok" class="ok"></div>
+
+  <div class="sect" data-t="meAccount"></div>
+  <div class="dblock">
+    <div class="drow">
+      <span class="dlab" data-t="meAccountId"></span>
+      <span class="dval code small" id="uid"></span>
+    </div>
+  </div>
+
+</div>
+
+<nav class="tabbar">
+  <a href="alias_contacts.html" data-t="navContacts"></a>
+  <a href="alias_calls.html" data-t="navCalls"></a>
+  <a href="alias_me.html" class="on" data-t="navMe"></a>
+</nav>
+
+<script>
+/* =====================================================================
+   나 — 별칭 관리 + 계정
+   ⚠ 여기 있는 별칭은 전부 내가 만든 것입니다. 남이 넣을 수 없습니다.
+     personas 정책이 account_id = auth.uid() 로 막고 있습니다.
+   ===================================================================== */
+
+let me = null;
+let aliases = [];
+
+function showErr(msg){
+  const el = document.getElementById('err');
+  el.textContent = msg; el.classList.add('show');
+  document.getElementById('ok').classList.remove('show');
+}
+function showOk(msg){
+  const el = document.getElementById('ok');
+  el.textContent = msg; el.classList.add('show');
+  document.getElementById('err').classList.remove('show');
+}
+function clearMsg(){
+  document.getElementById('err').classList.remove('show');
+  document.getElementById('ok').classList.remove('show');
+}
+
+function paintList(){
+  const ul = document.getElementById('list');
+  if (!aliases.length) {
+    ul.innerHTML = '<li class="empty">' + AL.esc(AL.t('aliasEmpty')) + '</li>';
+    return;
+  }
+  ul.innerHTML = aliases.map(function(a){
+    return '<li class="row">' +
+      '<div class="row-main">' +
+        '<span class="row-name">' + AL.esc(a.display_name) + '</span>' +
+        (a.is_default ? '<span class="badge">' + AL.esc(AL.t('aliasDefault')) + '</span>' : '') +
+      '</div>' +
+      '<div class="row-acts">' +
+        '<a class="rowlink" href="alias_invite.html?face=' + encodeURIComponent(a.id) + '">' +
+          AL.esc(AL.t('aliasUseForInvite')) + '</a>' +
+        (a.is_default ? '' :
+          '<button data-def="' + AL.esc(a.id) + '">' + AL.esc(AL.t('aliasMakeDef')) + '</button>') +
+      '</div>' +
+    '</li>';
+  }).join('');
+
+  ul.querySelectorAll('[data-def]').forEach(function(b){
+    b.addEventListener('click', function(){ makeDefault(b.getAttribute('data-def')); });
+  });
+}
+
+async function reload(){
+  try {
+    aliases = await AL.loadAliases();
+    paintList();
+  } catch (e) {
+    console.error(e);
+    showErr(AL.t('errGeneric', { msg: e.message || String(e) }));
+  }
+}
+
+async function makeAlias(){
+  clearMsg();
+  const name = document.getElementById('name').value.trim();
+  if (name.length < 1 || name.length > 20) { showErr(AL.t('errAliasName')); return; }
+  if (aliases.some(function(a){ return a.display_name === name; })) {
+    showErr(AL.t('errAliasDup')); return;
+  }
+  const btn = document.getElementById('make');
+  btn.disabled = true;
+  try {
+    const res = await AL.sb.from('personas').insert({
+      account_id: me.id,
+      display_name: name,
+      is_default: aliases.length === 0,
+    });
+    if (res.error) throw res.error;
+    document.getElementById('name').value = '';
+    showOk(AL.t('aliasCreated'));
+    await reload();
+  } catch (e) {
+    console.error(e);
+    showErr(AL.t('errGeneric', { msg: e.message || String(e) }));
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function makeDefault(id){
+  clearMsg();
+  try {
+    // ⚠ "계정당 기본은 하나"라는 부분 유니크 인덱스가 걸려 있습니다.
+    //   먼저 다 내리고 나서 하나를 올려야 합니다. 순서를 바꾸면 충돌합니다.
+    const down = await AL.sb.from('personas')
+      .update({ is_default: false }).eq('account_id', me.id).eq('is_default', true);
+    if (down.error) throw down.error;
+    const up = await AL.sb.from('personas').update({ is_default: true }).eq('id', id);
+    if (up.error) throw up.error;
+    await reload();
+  } catch (e) {
+    console.error(e);
+    showErr(AL.t('errGeneric', { msg: e.message || String(e) }));
+  }
+}
+
+document.getElementById('make').addEventListener('click', makeAlias);
+document.getElementById('name').addEventListener('keydown', function(e){
+  if (e.key === 'Enter') makeAlias();
+});
+document.getElementById('out').addEventListener('click', AL.signOut);
+
+(async function(){
+  AL.paintText();
+  me = await AL.requireLogin();
+  if (!me) return;
+  document.getElementById('uid').textContent = me.id.slice(0, 8);
+  await reload();
+})();
+</script>
+</body>
+</html>
