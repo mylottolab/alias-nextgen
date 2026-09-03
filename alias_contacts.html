@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>연락처 — Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260903b">
+<link rel="stylesheet" href="alias_common.css?v=20260903c">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260903b"></script>
+<script src="alias_common.js?v=20260903c"></script>
 </head>
 <body>
 <div class="wrap">
@@ -23,6 +23,7 @@
     <a href="alias_contacts.html" class="on" data-t="navContacts"></a>
   </nav>
 
+  <div id="twin" class="ok" data-t="cntSamePeer"></div>
   <ul class="list" id="list"></ul>
   <div id="err" class="err"></div>
 
@@ -53,19 +54,34 @@ function paint(){
     ul.innerHTML = '<li class="empty">' + AL.esc(AL.t('cntEmpty')) + '</li>';
     return;
   }
+
+  // 같은 별칭이 여러 줄이면 화면에서 구별이 안 됩니다. 안내를 한 줄 띄웁니다.
+  const seen = {};
+  let hasTwin = false;
+  rows.forEach(function(r){
+    const k = (r.peer_label || '') + '\u0000' + (r.peer_display || '');
+    if (seen[k]) hasTwin = true;
+    seen[k] = 1;
+  });
+  document.getElementById('twin').classList.toggle('show', hasTwin);
+
   ul.innerHTML = rows.map(function(r){
     // 내가 붙인 이름이 있으면 그것을, 없으면 상대의 별칭을 큰 글씨로.
     const shown = r.peer_label || r.peer_display || AL.t('cntUnnamed');
     const alsoKnown = (r.peer_label && r.peer_display) ? r.peer_display : null;
+
+    const sub = [];
+    if (alsoKnown) sub.push(AL.esc(alsoKnown));
+    sub.push(AL.esc(AL.t('cntShowing', { face: r.my_face || '' })));
+    if (r.linked_at)   sub.push(AL.esc(AL.t('cntLinkedOn', { when: AL.fmtDate(r.linked_at) })));
+    if (r.invite_memo) sub.push(AL.esc(AL.t('cntViaMemo',  { memo: r.invite_memo })));
+
     return '<li class="row">' +
       '<div class="row-main">' +
         '<span class="row-name">' + AL.esc(shown) + '</span>' +
         (r.pinned ? '<span class="badge">' + AL.esc(AL.t('cntPin')) + '</span>' : '') +
       '</div>' +
-      '<div class="row-sub">' +
-        (alsoKnown ? AL.esc(alsoKnown) + '<br>' : '') +
-        AL.esc(AL.t('cntShowing', { face: r.my_face || '' })) +
-      '</div>' +
+      '<div class="row-sub">' + sub.join('<br>') + '</div>' +
       '<div class="row-acts">' +
         '<button data-call="' + AL.esc(r.link_id) + '">' + AL.esc(AL.t('cntCall')) + '</button>' +
         '<button data-ren="' + AL.esc(r.my_side_id) + '">' + AL.esc(AL.t('cntRename')) + '</button>' +

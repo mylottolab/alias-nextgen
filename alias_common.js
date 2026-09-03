@@ -17,9 +17,23 @@ window.AL = window.AL || {};
    ⚠ 함정 ㉑ — sb_publishable 말고 eyJ 로 시작하는 legacy anon 열쇠입니다.
 ------------------------------------------------------------------ */
 AL.SUPABASE_URL  = 'https://azredlrnvsssfjytaotb.supabase.co';
-AL.SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF6cmVkbHJudnNzc2ZqeXRhb3RiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MDg1MjgsImV4cCI6MjEwMzk4NDUyOH0.2gTxzr54vRSZzFnyhLSd1Imv3OnwRBQs925CYeXdonI';
+AL.SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF6cmVkbHJudnNzc2ZqeXRhb3RiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MDg1MjgsImV4cCI6MjEwMzk4NDUyOH0.2gTxzr54vRSZzFnyhLSd1Imv3OnwRBQs925CYeXdonI
+';  // eyJ 로 시작하는 열쇠
 
-AL.sb = window.supabase.createClient(AL.SUPABASE_URL, AL.SUPABASE_ANON);
+/* ⚠ 열쇠를 안 넣으면 Supabase 가 헤더에 실을 때 터집니다. 한글이 섞이면
+     "String contains non ISO-8859-1 code point" 라는 엉뚱한 말이 나와서
+     원인을 찾기 어렵습니다. 여기서 미리 잡아 사람 말로 알려줍니다. */
+AL.keyProblem = null;
+if (!AL.SUPABASE_ANON || AL.SUPABASE_ANON.indexOf('PASTE_') === 0) {
+  AL.keyProblem = 'alias_common.js 의 AL.SUPABASE_ANON 이 비어 있습니다.\nSupabase → Settings → API Keys 에서 anon 열쇠를 넣으세요.';
+} else if (!/^[\x20-\x7E]+$/.test(AL.SUPABASE_ANON)) {
+  AL.keyProblem = 'alias_common.js 의 AL.SUPABASE_ANON 에 영문·숫자가 아닌 글자가 있습니다.\neyJ 로 시작하는 열쇠인지 확인하세요.';
+}
+
+AL.sb = window.supabase.createClient(
+  AL.SUPABASE_URL,
+  AL.keyProblem ? 'placeholder' : AL.SUPABASE_ANON
+);
 
 
 /* ── 문구 ─────────────────────────────────────────────────────────
@@ -162,6 +176,10 @@ AL.STR = {
   cntUnpin:   { kr:'내리기', en:'Unpin' },
   cntCall:    { kr:'통화', en:'Call' },
   cntCallSoon:{ kr:'통화는 다음 단계에서 붙습니다.', en:'Calling comes in the next step.' },
+  cntLinkedOn:{ kr:'{when} 연결', en:'connected {when}' },
+  cntViaMemo: { kr:'초대 메모: {memo}', en:'invite note: {memo}' },
+  cntSamePeer:{ kr:'같은 별칭으로 이어진 줄이 여럿입니다. 연결한 날짜로 구별하세요.',
+                en:'Several links share the same alias. Tell them apart by the date.' },
 };
 
 AL.lang = (navigator.language || 'ko').toLowerCase().startsWith('ko') ? 'kr' : 'en';
@@ -208,6 +226,7 @@ AL.nicknameToEmail = function(nick){
 
 /* 로그인했는지 확인. 안 했으면 로그인 화면으로 보냅니다. */
 AL.requireLogin = async function(){
+  if (AL.keyProblem) { alert(AL.keyProblem); return null; }
   var res = await AL.sb.auth.getSession();
   if (!res.data.session) {
     location.href = 'alias_auth.html';
