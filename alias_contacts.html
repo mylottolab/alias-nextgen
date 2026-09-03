@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>연락처 — Alias</title>
+<link rel="stylesheet" href="alias_common.css?v=20260903a">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="alias_common.js?v=20260903a"></script>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <h1 class="h2" data-t="cntTitle"></h1>
+    <button class="linkish" id="out" data-t="signOut"></button>
+  </div>
+
+  <nav class="nav">
+    <a href="alias_aliases.html" data-t="navAliases"></a>
+    <a href="alias_invite.html" data-t="navInvite"></a>
+    <a href="alias_join.html" data-t="navJoin"></a>
+    <a href="alias_contacts.html" class="on" data-t="navContacts"></a>
+  </nav>
+
+  <ul class="list" id="list"></ul>
+  <div id="err" class="err"></div>
+
+</div>
+
+<script>
+/* =====================================================================
+   연락처 — my_contacts() 한 번으로 목록이 나옵니다.
+   ⚠ 여기 보이는 이름 두 가지를 헷갈리지 마세요.
+       peer_display  상대가 나에게 보여주는 별칭
+       peer_label    내가 상대를 부르는 이름 (나만 봅니다)
+       my_face       내가 이 사람에게 보여주고 있는 별칭
+     Aliascall 의 title / client_label 을 이어받은 것입니다.
+   ===================================================================== */
+
+let me = null;
+let rows = [];
+
+function showErr(msg){
+  const el = document.getElementById('err');
+  el.textContent = msg; el.classList.add('show');
+}
+function clearErr(){ document.getElementById('err').classList.remove('show'); }
+
+function paint(){
+  const ul = document.getElementById('list');
+  if (!rows.length) {
+    ul.innerHTML = '<li class="empty">' + AL.esc(AL.t('cntEmpty')) + '</li>';
+    return;
+  }
+  ul.innerHTML = rows.map(function(r){
+    // 내가 붙인 이름이 있으면 그것을, 없으면 상대의 별칭을 큰 글씨로.
+    const shown = r.peer_label || r.peer_display || AL.t('cntUnnamed');
+    const alsoKnown = (r.peer_label && r.peer_display) ? r.peer_display : null;
+    return '<li class="row">' +
+      '<div class="row-main">' +
+        '<span class="row-name">' + AL.esc(shown) + '</span>' +
+        (r.pinned ? '<span class="badge">' + AL.esc(AL.t('cntPin')) + '</span>' : '') +
+      '</div>' +
+      '<div class="row-sub">' +
+        (alsoKnown ? AL.esc(alsoKnown) + '<br>' : '') +
+        AL.esc(AL.t('cntShowing', { face: r.my_face || '' })) +
+      '</div>' +
+      '<div class="row-acts">' +
+        '<button data-call="' + AL.esc(r.link_id) + '">' + AL.esc(AL.t('cntCall')) + '</button>' +
+        '<button data-ren="' + AL.esc(r.my_side_id) + '">' + AL.esc(AL.t('cntRename')) + '</button>' +
+        '<button data-pin="' + AL.esc(r.my_side_id) + '" data-on="' + (r.pinned ? '1' : '') + '">' +
+          AL.esc(r.pinned ? AL.t('cntUnpin') : AL.t('cntPin')) + '</button>' +
+      '</div>' +
+    '</li>';
+  }).join('');
+
+  ul.querySelectorAll('[data-ren]').forEach(function(b){
+    b.addEventListener('click', function(){ rename(b.getAttribute('data-ren')); });
+  });
+  ul.querySelectorAll('[data-pin]').forEach(function(b){
+    b.addEventListener('click', function(){
+      setPin(b.getAttribute('data-pin'), !b.getAttribute('data-on'));
+    });
+  });
+  ul.querySelectorAll('[data-call]').forEach(function(b){
+    b.addEventListener('click', function(){ alert(AL.t('cntCallSoon')); });
+  });
+}
+
+async function reload(){
+  clearErr();
+  try {
+    const res = await AL.sb.rpc('my_contacts');
+    if (res.error) throw res.error;
+    rows = res.data || [];
+    paint();
+  } catch (e) {
+    console.error(e);
+    showErr(AL.t('errGeneric', { msg: e.message || String(e) }));
+  }
+}
+
+async function rename(sideId){
+  const cur = rows.find(function(r){ return r.my_side_id === sideId; });
+  const next = prompt(AL.t('cntRenameAsk'), (cur && cur.peer_label) || '');
+  if (next === null) return;
+  const res = await AL.sb.from('link_sides')
+    .update({ peer_label: next.trim() || null }).eq('id', sideId);
+  if (res.error) { showErr(AL.t('errGeneric', { msg: res.error.message })); return; }
+  await reload();
+}
+
+async function setPin(sideId, on){
+  const res = await AL.sb.from('link_sides').update({ pinned: !!on }).eq('id', sideId);
+  if (res.error) { showErr(AL.t('errGeneric', { msg: res.error.message })); return; }
+  await reload();
+}
+
+document.getElementById('out').addEventListener('click', AL.signOut);
+
+(async function(){
+  AL.paintText();
+  me = await AL.requireLogin();
+  if (!me) return;
+  await reload();
+})();
+</script>
+</body>
+</html>

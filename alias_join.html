@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>초대 받기 — Alias</title>
+<link rel="stylesheet" href="alias_common.css?v=20260903a">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="alias_common.js?v=20260903a"></script>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <h1 class="h2" data-t="joinTitle"></h1>
+    <button class="linkish" id="out" data-t="signOut"></button>
+  </div>
+  <p class="lede" data-t="joinIntro"></p>
+
+  <nav class="nav">
+    <a href="alias_aliases.html" data-t="navAliases"></a>
+    <a href="alias_invite.html" data-t="navInvite"></a>
+    <a href="alias_join.html" class="on" data-t="navJoin"></a>
+    <a href="alias_contacts.html" data-t="navContacts"></a>
+  </nav>
+
+  <div id="formPart">
+    <div class="field">
+      <label for="code" data-t="joinCodeLbl"></label>
+      <input id="code" type="text" autocomplete="off" autocapitalize="off" spellcheck="false">
+    </div>
+
+    <div class="field">
+      <label for="face" data-t="joinFaceLbl"></label>
+      <select id="face"></select>
+    </div>
+
+    <div class="field">
+      <label for="label" data-t="joinLabelLbl"></label>
+      <input id="label" type="text" maxlength="40" autocomplete="off">
+      <p class="hint" data-t="joinLabelHint"></p>
+    </div>
+
+    <button class="btn" id="go" data-t="joinBtn"></button>
+    <div id="err" class="err"></div>
+  </div>
+
+  <div id="donePart" class="step">
+    <h2 class="h2" data-t="joinOkTtl"></h2>
+    <p class="lede" data-t="joinOkSub"></p>
+    <a class="btn" href="alias_contacts.html" style="display:block;text-align:center;text-decoration:none;line-height:1.2;" data-t="joinGoList"></a>
+  </div>
+
+</div>
+
+<script>
+/* =====================================================================
+   초대 받기 — use_invite() 를 부릅니다.
+   ⚠ 링크 한 개와 양쪽 두 줄이 한 번에 만들어집니다.
+     화면에서 links/link_sides 에 직접 넣을 수 없습니다(정책이 막습니다).
+     아직 링크가 없는 사이라 RLS로는 풀 수 없어서, 함수가 대신 합니다.
+   ===================================================================== */
+
+let me = null;
+let aliases = [];
+
+/* use_invite 가 돌려주는 error 코드를 사람 말로 바꿉니다. */
+const ERR_MAP = {
+  not_logged_in: 'errNotLoggedIn',
+  not_found:     'errNotFound',
+  revoked:       'errRevoked',
+  expired:       'errExpired',
+  used_up:       'errUsedUp',
+  own_invite:    'errOwnInvite',
+  bad_persona:   'errBadPersona',
+};
+
+function showErr(msg){
+  const el = document.getElementById('err');
+  el.textContent = msg; el.classList.add('show');
+}
+function clearErr(){ document.getElementById('err').classList.remove('show'); }
+
+function paintFaces(){
+  const sel = document.getElementById('face');
+  sel.innerHTML = aliases.map(function(a){
+    return '<option value="' + AL.esc(a.id) + '"' + (a.is_default ? ' selected' : '') + '>' +
+           AL.esc(a.display_name) + '</option>';
+  }).join('');
+}
+
+async function join(){
+  clearErr();
+  const code = document.getElementById('code').value.trim();
+  if (!code) { showErr(AL.t('errJoinCode')); return; }
+  if (!aliases.length) { showErr(AL.t('errNoAlias')); return; }
+
+  const btn = document.getElementById('go');
+  btn.disabled = true;
+  try {
+    const res = await AL.sb.rpc('use_invite', {
+      p_code: code,
+      p_my_persona_id: document.getElementById('face').value,
+      p_peer_label: document.getElementById('label').value.trim() || null,
+    });
+    if (res.error) throw res.error;
+
+    const out = res.data || {};
+    if (!out.ok) {
+      const key = ERR_MAP[out.error];
+      showErr(key ? AL.t(key) : AL.t('errGeneric', { msg: out.error || '?' }));
+      btn.disabled = false;
+      return;
+    }
+
+    document.getElementById('formPart').style.display = 'none';
+    document.getElementById('donePart').classList.add('on');
+
+  } catch (e) {
+    console.error(e);
+    showErr(AL.t('errGeneric', { msg: e.message || String(e) }));
+    btn.disabled = false;
+  }
+}
+
+document.getElementById('go').addEventListener('click', join);
+document.getElementById('label').addEventListener('keydown', function(e){
+  if (e.key === 'Enter') join();
+});
+document.getElementById('out').addEventListener('click', AL.signOut);
+
+(async function(){
+  AL.paintText();
+  me = await AL.requireLogin();
+  if (!me) return;
+
+  // 초대 주소로 들어오면 코드가 미리 채워집니다: alias_join.html?c=XXXX
+  const fromUrl = new URLSearchParams(location.search).get('c');
+  if (fromUrl) document.getElementById('code').value = fromUrl;
+
+  try {
+    aliases = await AL.loadAliases();
+  } catch (e) { console.error(e); }
+
+  if (!aliases.length) {
+    showErr(AL.t('errNoAlias'));
+    document.getElementById('go').disabled = true;
+  }
+  paintFaces();
+})();
+</script>
+</body>
+</html>

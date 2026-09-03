@@ -1,0 +1,157 @@
+/* =====================================================================
+   Alias Next-Gen — 공용 모양
+   2026-09-03
+   ⚠ 함정 ⑲ — 이 파일을 고치면 부르는 화면들의 ?v= 도 함께 올리세요.
+   ===================================================================== */
+
+:root{
+  --ink:#0E1621;
+  --raise:#182231;
+  --raise2:#1E2A3B;
+  --line:#27344A;
+  --text:#DDE5F0;
+  --dim:#7E8FA6;
+  --faint:#586A82;
+  --steel:#5B8FC7;
+  --paper:#F2E9D6;
+  --paper-ink:#2A2418;
+  --bad:#D96A6A;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:var(--ink);}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;
+  color:var(--text);
+  -webkit-font-smoothing:antialiased;
+  min-height:100dvh;
+  padding:24px 20px 60px;
+}
+body.center{display:flex;align-items:center;justify-content:center;padding-bottom:24px;}
+.wrap{width:100%;max-width:400px;margin:0 auto;}
+
+/* ── 머리 ──────────────────────────────────────────────────────── */
+.top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;}
+.mark{font-size:31px;font-weight:600;letter-spacing:-0.02em;margin:0;}
+.h2{font-size:21px;font-weight:600;margin:0 0 8px;}
+.lede{font-size:13.5px;color:var(--dim);margin:0 0 26px;line-height:1.65;white-space:pre-line;}
+.linkish{
+  background:none;border:none;padding:0;cursor:pointer;font-family:inherit;
+  font-size:13px;color:var(--dim);text-decoration:underline;text-underline-offset:3px;
+}
+.linkish:hover{color:var(--text);}
+
+/* ── 이동 ──────────────────────────────────────────────────────── */
+.nav{display:flex;gap:6px;margin:0 0 26px;flex-wrap:wrap;}
+.nav a{
+  padding:8px 13px;font-size:13px;text-decoration:none;
+  color:var(--dim);background:var(--raise);
+  border:1px solid var(--line);border-radius:8px;
+}
+.nav a.on{color:var(--text);border-color:var(--steel);}
+.nav a:hover{color:var(--text);}
+
+/* ── 입력 ──────────────────────────────────────────────────────── */
+.field{margin-bottom:16px;}
+.field label{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px;}
+.field input,.field select,.field textarea{
+  width:100%;padding:14px 15px;font-size:16px;
+  background:var(--raise);color:var(--text);
+  border:1px solid var(--line);border-radius:10px;font-family:inherit;
+}
+.field textarea{min-height:74px;resize:vertical;line-height:1.5;}
+.field input:focus,.field select:focus,.field textarea:focus{
+  outline:2px solid var(--steel);outline-offset:1px;border-color:transparent;
+}
+.field input::placeholder,.field textarea::placeholder{color:#4E5D73;}
+.hint{font-size:12px;color:var(--dim);margin-top:7px;line-height:1.55;white-space:pre-line;}
+
+.btn{
+  width:100%;padding:15px;margin-top:10px;
+  font-size:15.5px;font-weight:600;font-family:inherit;
+  background:var(--steel);color:#08101B;
+  border:none;border-radius:10px;cursor:pointer;
+}
+.btn:disabled{opacity:.5;cursor:default;}
+.btn:focus-visible{outline:2px solid var(--paper);outline-offset:2px;}
+.btn.ghost{background:transparent;color:var(--text);border:1px solid var(--line);}
+.btn.small{width:auto;padding:9px 15px;font-size:13.5px;margin-top:0;}
+
+.note{font-size:12.5px;color:var(--dim);margin-top:18px;line-height:1.65;text-align:center;white-space:pre-line;}
+.err{
+  display:none;margin-top:14px;padding:12px 14px;
+  background:rgba(217,106,106,.1);border:1px solid rgba(217,106,106,.35);
+  border-radius:9px;font-size:13px;color:#EFAAAA;line-height:1.55;white-space:pre-line;
+}
+.err.show{display:block;}
+.ok{
+  display:none;margin-top:14px;padding:12px 14px;
+  background:rgba(91,143,199,.12);border:1px solid rgba(91,143,199,.4);
+  border-radius:9px;font-size:13px;color:#A9C8E8;line-height:1.55;white-space:pre-line;
+}
+.ok.show{display:block;}
+
+/* ── 종이: 손으로 옮겨 적는 것만 여기 담습니다 ──────────────────── */
+.paper{
+  background:var(--paper);color:var(--paper-ink);
+  border-radius:12px;padding:26px 22px 22px;
+  box-shadow:0 14px 40px rgba(0,0,0,.45);
+}
+.paper .cap{font-size:12px;color:#7A6E56;margin-bottom:14px;}
+.code{
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:24px;font-weight:600;letter-spacing:.12em;
+  line-height:1.55;word-break:break-all;
+}
+.code.small{font-size:17px;letter-spacing:.08em;}
+.paper .warns{margin-top:18px;padding-top:16px;border-top:1px solid rgba(42,36,24,.18);}
+.paper .warns p{margin:0 0 7px;font-size:12.5px;line-height:1.6;color:#4A4030;}
+.paper .warns p:last-child{margin-bottom:0;}
+
+.copybar{display:flex;gap:9px;margin-top:16px;}
+.copybar button{
+  flex:1;padding:12px;font-size:13.5px;font-family:inherit;
+  background:transparent;color:var(--text);
+  border:1px solid var(--line);border-radius:9px;cursor:pointer;
+}
+.ack{
+  display:flex;gap:11px;align-items:flex-start;
+  margin-top:22px;padding:14px;
+  border:1px solid var(--line);border-radius:10px;cursor:pointer;
+}
+.ack input{margin:2px 0 0;width:17px;height:17px;flex-shrink:0;accent-color:var(--steel);}
+.ack span{font-size:13.5px;line-height:1.55;}
+
+/* ── 목록 ──────────────────────────────────────────────────────── */
+.list{margin:0;padding:0;list-style:none;}
+.row{
+  padding:15px 16px;margin-bottom:9px;
+  background:var(--raise);border:1px solid var(--line);border-radius:11px;
+}
+.row.dim{opacity:.5;}
+.row-main{display:flex;align-items:baseline;justify-content:space-between;gap:12px;}
+.row-name{font-size:15.5px;font-weight:600;}
+.row-sub{font-size:12.5px;color:var(--dim);margin-top:5px;line-height:1.55;}
+.row-acts{display:flex;gap:7px;margin-top:12px;flex-wrap:wrap;}
+.row-acts button{
+  padding:7px 12px;font-size:12.5px;font-family:inherit;
+  background:transparent;color:var(--dim);
+  border:1px solid var(--line);border-radius:7px;cursor:pointer;
+}
+.row-acts button:hover{color:var(--text);}
+.badge{
+  font-size:11px;padding:3px 8px;border-radius:20px;
+  border:1px solid var(--steel);color:var(--steel);white-space:nowrap;
+}
+.empty{
+  padding:34px 20px;text-align:center;
+  font-size:13.5px;color:var(--dim);line-height:1.7;white-space:pre-line;
+  border:1px dashed var(--line);border-radius:11px;
+}
+.sect{font-size:12.5px;color:var(--faint);margin:30px 0 11px;}
+
+.step{display:none;}
+.step.on{display:block;}
+
+@media (prefers-reduced-motion: reduce){
+  *{animation:none !important;transition:none !important;}
+}

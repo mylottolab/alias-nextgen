@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>초대 보내기 — Alias</title>
+<link rel="stylesheet" href="alias_common.css?v=20260903a">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="alias_common.js?v=20260903a"></script>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <h1 class="h2" data-t="invTitle"></h1>
+    <button class="linkish" id="out" data-t="signOut"></button>
+  </div>
+  <p class="lede" data-t="invIntro"></p>
+
+  <nav class="nav">
+    <a href="alias_aliases.html" data-t="navAliases"></a>
+    <a href="alias_invite.html" class="on" data-t="navInvite"></a>
+    <a href="alias_join.html" data-t="navJoin"></a>
+    <a href="alias_contacts.html" data-t="navContacts"></a>
+  </nav>
+
+  <!-- 만들기 -->
+  <div id="formPart">
+    <div class="field">
+      <label for="face" data-t="invFaceLbl"></label>
+      <select id="face"></select>
+    </div>
+
+    <div class="field">
+      <label for="memo" data-t="invMemoLbl"></label>
+      <input id="memo" type="text" maxlength="60" autocomplete="off">
+      <p class="hint" data-t="invMemoHint"></p>
+    </div>
+
+    <div class="field">
+      <label for="uses" data-t="invUsesLbl"></label>
+      <select id="uses">
+        <option value="1" data-t="invUses1"></option>
+        <option value="10" data-t="invUses10"></option>
+        <option value="50" data-t="invUses50"></option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="exp" data-t="invExpLbl"></label>
+      <select id="exp">
+        <option value="7" data-t="invExp7d"></option>
+        <option value="1" data-t="invExp1d"></option>
+        <option value="30" data-t="invExp30d"></option>
+        <option value="0" data-t="invExpNever"></option>
+      </select>
+    </div>
+
+    <button class="btn" id="make" data-t="invMake"></button>
+    <div id="err" class="err"></div>
+  </div>
+
+  <!-- 만든 뒤 -->
+  <div id="madePart" class="step">
+    <h2 class="h2" data-t="invMadeTtl"></h2>
+    <div class="paper">
+      <div class="cap" data-t="invCodeCap"></div>
+      <div class="code small" id="codeOut"></div>
+    </div>
+    <div class="copybar">
+      <button id="copyCode" data-t="copy"></button>
+      <button id="copyLink" data-t="invCopyLink"></button>
+    </div>
+    <p class="note" data-t="invLinkCap"></p>
+    <button class="btn ghost" id="again" data-t="invMake"></button>
+  </div>
+
+  <!-- 내가 만든 초대 -->
+  <div class="sect" data-t="invMineTtl"></div>
+  <ul class="list" id="mine"></ul>
+
+</div>
+
+<script>
+/* =====================================================================
+   초대 보내기 — invites 표
+   ⚠ 초대는 소모품입니다. max_uses 만큼 쓰이면 더는 안 됩니다.
+     전화번호처럼 영구히 떠다니는 주소가 아닙니다.
+   ===================================================================== */
+
+let me = null;
+let aliases = [];
+let lastCode = null;
+
+function showErr(msg){
+  const el = document.getElementById('err');
+  el.textContent = msg; el.classList.add('show');
+}
+function clearErr(){ document.getElementById('err').classList.remove('show'); }
+
+/* ── 별칭 고르는 칸 ─────────────────────────────────────────────── */
+function paintFaces(){
+  const sel = document.getElementById('face');
+  sel.innerHTML = aliases.map(function(a){
+    return '<option value="' + AL.esc(a.id) + '"' + (a.is_default ? ' selected' : '') + '>' +
+           AL.esc(a.display_name) + '</option>';
+  }).join('');
+}
+
+/* ── 내가 만든 초대 목록 ────────────────────────────────────────── */
+async function reloadMine(){
+  const ul = document.getElementById('mine');
+  try {
+    // 초대와, 그 초대로 실제로 생긴 링크 수를 함께 읽습니다.
+    // links.via_invite_id 를 세는 것이 곧 "몇 명이 썼나" 입니다.
+    const res = await AL.sb.from('invites')
+      .select('id, code, memo, max_uses, expires_at, revoked_at, created_at, persona:personas!invites_issuer_persona_id_fkey(display_name)')
+      .order('created_at', { ascending: false });
+    if (res.error) throw res.error;
+
+    const invites = res.data || [];
+    if (!invites.length) {
+      ul.innerHTML = '<li class="empty">' + AL.esc(AL.t('invMineNone')) + '</li>';
+      return;
+    }
+
+    // 쓰인 횟수를 한 번에 세어옵니다.
+    const ids = invites.map(function(i){ return i.id; });
+    const linkRes = await AL.sb.from('links').select('via_invite_id').in('via_invite_id', ids);
+    const used = {};
+    (linkRes.data || []).forEach(function(l){
+      used[l.via_invite_id] = (used[l.via_invite_id] || 0) + 1;
+    });
+
+    ul.innerHTML = invites.map(function(i){
+      const n = used[i.id] || 0;
+      const dead = !!i.revoked_at || (i.expires_at && new Date(i.expires_at) <= new Date()) || n >= i.max_uses;
+      const when = i.expires_at ? AL.t('invExpiredAt', { when: AL.fmtDate(i.expires_at) }) : AL.t('invNoExpiry');
+      return '<li class="row' + (dead ? ' dim' : '') + '">' +
+        '<div class="row-main">' +
+          '<span class="row-name code small">' + AL.esc(i.code) + '</span>' +
+          (i.revoked_at ? '<span class="badge">' + AL.esc(AL.t('invRevoked')) + '</span>' : '') +
+        '</div>' +
+        '<div class="row-sub">' +
+          (i.memo ? AL.esc(i.memo) + '<br>' : '') +
+          AL.esc(i.persona ? i.persona.display_name : '') + ' · ' +
+          AL.esc(AL.t('invUsedOf', { used: n, max: i.max_uses })) + ' · ' + AL.esc(when) +
+        '</div>' +
+        (dead ? '' :
+          '<div class="row-acts">' +
+            '<button data-rev="' + AL.esc(i.id) + '">' + AL.esc(AL.t('invRevoke')) + '</button>' +
+            '<button data-cp="' + AL.esc(i.code) + '">' + AL.esc(AL.t('copy')) + '</button>' +
+          '</div>') +
+      '</li>';
+    }).join('');
+
+    ul.querySelectorAll('[data-rev]').forEach(function(b){
+      b.addEventListener('click', function(){ revoke(b.getAttribute('data-rev')); });
+    });
+    ul.querySelectorAll('[data-cp]').forEach(function(b){
+      b.addEventListener('click', function(){ AL.copyText(b.getAttribute('data-cp'), b); });
+    });
+
+  } catch (e) {
+    console.error(e);
+    ul.innerHTML = '<li class="empty">' + AL.esc(AL.t('errGeneric', { msg: e.message || String(e) })) + '</li>';
+  }
+}
+
+async function revoke(id){
+  if (!confirm(AL.t('invRevokeAsk'))) return;
+  const res = await AL.sb.from('invites').update({ revoked_at: new Date().toISOString() }).eq('id', id);
+  if (res.error) { showErr(AL.t('errGeneric', { msg: res.error.message })); return; }
+  await reloadMine();
+}
+
+/* ── 만들기 ─────────────────────────────────────────────────────── */
+async function makeInvite(){
+  clearErr();
+  if (!aliases.length) { showErr(AL.t('errNoAlias')); return; }
+
+  const personaId = document.getElementById('face').value;
+  const memo = document.getElementById('memo').value.trim();
+  const maxUses = parseInt(document.getElementById('uses').value, 10);
+  const days = parseInt(document.getElementById('exp').value, 10);
+
+  let expiresAt = null;
+  if (days > 0) {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    expiresAt = d.toISOString();
+  }
+
+  const btn = document.getElementById('make');
+  btn.disabled = true;
+  try {
+    // code 는 표의 default 가 만들어줍니다. 돌려받아야 화면에 보여줄 수 있습니다.
+    const res = await AL.sb.from('invites').insert({
+      issuer_account_id: me.id,
+      issuer_persona_id: personaId,
+      memo: memo || null,
+      max_uses: maxUses,
+      expires_at: expiresAt,
+    }).select('code').single();
+    if (res.error) throw res.error;
+
+    lastCode = res.data.code;
+    document.getElementById('codeOut').textContent = lastCode;
+    document.getElementById('formPart').style.display = 'none';
+    document.getElementById('madePart').classList.add('on');
+    document.getElementById('memo').value = '';
+    await reloadMine();
+
+  } catch (e) {
+    console.error(e);
+    showErr(AL.t('errGeneric', { msg: e.message || String(e) }));
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+document.getElementById('make').addEventListener('click', makeInvite);
+document.getElementById('copyCode').addEventListener('click', function(){
+  AL.copyText(lastCode || '', this);
+});
+document.getElementById('copyLink').addEventListener('click', function(){
+  AL.copyText(AL.inviteUrl(lastCode || ''), this);
+});
+document.getElementById('again').addEventListener('click', function(){
+  document.getElementById('madePart').classList.remove('on');
+  document.getElementById('formPart').style.display = '';
+});
+document.getElementById('out').addEventListener('click', AL.signOut);
+
+(async function(){
+  AL.paintText();
+  me = await AL.requireLogin();
+  if (!me) return;
+  try {
+    aliases = await AL.loadAliases();
+  } catch (e) { console.error(e); }
+  if (!aliases.length) {
+    showErr(AL.t('errNoAlias'));
+    document.getElementById('make').disabled = true;
+  }
+  paintFaces();
+  await reloadMine();
+})();
+</script>
+</body>
+</html>
