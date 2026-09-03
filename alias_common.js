@@ -17,8 +17,7 @@ window.AL = window.AL || {};
    ⚠ 함정 ㉑ — sb_publishable 말고 eyJ 로 시작하는 legacy anon 열쇠입니다.
 ------------------------------------------------------------------ */
 AL.SUPABASE_URL  = 'https://azredlrnvsssfjytaotb.supabase.co';
-AL.SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF6cmVkbHJudnNzc2ZqeXRhb3RiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MDg1MjgsImV4cCI6MjEwMzk4NDUyOH0.2gTxzr54vRSZzFnyhLSd1Imv3OnwRBQs925CYeXdonI';
-
+AL.SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF6cmVkbHJudnNzc2ZqeXRhb3RiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MDg1MjgsImV4cCI6MjEwMzk4NDUyOH0.2gTxzr54vRSZzFnyhLSd1Imv3OnwRBQs925CYeXdonI';  // eyJ 로 시작하는 열쇠
 
 /* ⚠ 열쇠를 안 넣으면 Supabase 가 헤더에 실을 때 터집니다. 한글이 섞이면
      "String contains non ISO-8859-1 code point" 라는 엉뚱한 말이 나와서
@@ -102,6 +101,7 @@ AL.STR = {
   aliasNameHint:{ kr:'1~20자. 아무 글자나 됩니다.', en:'1-20 characters. Any characters.' },
   aliasDefault: { kr:'기본 별칭', en:'Default' },
   aliasMakeDef: { kr:'기본으로 지정', en:'Make default' },
+  aliasUseForInvite:{ kr:'이 별칭으로 초대 만들기', en:'Invite someone as this' },
   aliasCreated: { kr:'별칭을 만들었습니다.', en:'Alias created.' },
   errAliasName: { kr:'이름을 1~20자로 넣어주세요.', en:'Enter a name of 1-20 characters.' },
   errAliasDup:  { kr:'같은 이름의 별칭이 이미 있습니다.', en:'You already have an alias with that name.' },
@@ -124,6 +124,8 @@ AL.STR = {
   invExp30d:   { kr:'한 달', en:'One month' },
   invExpNever: { kr:'기한 없음', en:'No expiry' },
   invMake:     { kr:'초대 만들기', en:'Create invite' },
+  invWillSee:  { kr:'이 초대를 쓰면 상대는 나를 "{face}" 로 봅니다.',
+                 en:'Whoever uses this invite will see you as "{face}".' },
   invMadeTtl:  { kr:'초대를 만들었습니다', en:'Invite created' },
   invCodeCap:  { kr:'초대 코드', en:'Invite code' },
   invLinkCap:  { kr:'또는 이 주소를 보내세요', en:'Or send this link' },
@@ -169,17 +171,23 @@ AL.STR = {
   cntEmpty:   { kr:'아직 연결된 사람이 없습니다.\n초대를 보내거나 받아보세요.',
                 en:'Nobody is connected yet.\nSend or accept an invite.' },
   cntUnnamed: { kr:'(이름 없음)', en:'(no name)' },
-  cntShowing: { kr:'내 별칭: {face}', en:'You appear as {face}' },
   cntRename:  { kr:'이름 바꾸기', en:'Rename' },
   cntRenameAsk:{ kr:'이 사람을 뭐라고 부를까요?', en:'What will you call them?' },
   cntPin:     { kr:'위로 올리기', en:'Pin' },
   cntUnpin:   { kr:'내리기', en:'Unpin' },
   cntCall:    { kr:'통화', en:'Call' },
   cntCallSoon:{ kr:'통화는 다음 단계에서 붙습니다.', en:'Calling comes in the next step.' },
-  cntLinkedOn:{ kr:'{when} 연결', en:'connected {when}' },
-  cntViaMemo: { kr:'초대 메모: {memo}', en:'invite note: {memo}' },
-  cntSamePeer:{ kr:'같은 별칭으로 이어진 줄이 여럿입니다. 연결한 날짜로 구별하세요.',
-                en:'Several links share the same alias. Tell them apart by the date.' },
+  cntViaMemo: { kr:'초대 메모', en:'Invite note' },
+  cntSamePeer:{ kr:'같은 상대와 여러 번 이어졌습니다. 연결한 시각으로 구별하세요.',
+                en:'You are connected to the same person more than once. Tell them apart by the time.' },
+  cntCapMine: { kr:'내가 붙인 이름 · 나만 봅니다', en:'Your name for them · only you see this' },
+  cntCapTheir:{ kr:'상대가 쓰는 별칭', en:'The alias they use' },
+  cntPeerAlias:{ kr:'상대 별칭', en:'Their alias' },
+  cntMyAlias: { kr:'내 별칭', en:'Your alias' },
+  cntLinkedAt:{ kr:'연결한 때', en:'Connected' },
+  cntLegend:  { kr:'이름이 셋인 이유\n· 큰 글씨 — 내가 상대를 부르는 이름. 상대는 못 봅니다.\n· 상대 별칭 — 상대가 나에게 보여주는 이름.\n· 내 별칭 — 내가 상대에게 보여주는 이름.',
+                en:'Why three names\n· Large — what you call them. They never see it.\n· Their alias — the name they show you.\n· Your alias — the name they see for you.' },
+  cntLegendOpen:{ kr:'이름이 왜 셋인가요?', en:'Why three names?' },
 };
 
 AL.lang = (navigator.language || 'ko').toLowerCase().startsWith('ko') ? 'kr' : 'en';
@@ -289,6 +297,16 @@ AL.fmtDate = function(iso){
   var d = new Date(iso);
   return d.toLocaleDateString(AL.lang === 'kr' ? 'ko-KR' : 'en-US',
     { year:'numeric', month:'numeric', day:'numeric' });
+};
+
+/* 연결 시각은 초까지 보여줘야 합니다. 같은 사람과 여러 번 이어지면
+   날짜만으로는 세 줄이 똑같아 보입니다. */
+AL.fmtDateTime = function(iso){
+  if (!iso) return '';
+  var d = new Date(iso);
+  var p = function(n){ return String(n).padStart(2, '0'); };
+  return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate()) + ' ' +
+         p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
 };
 
 AL.copyText = async function(text, btn){

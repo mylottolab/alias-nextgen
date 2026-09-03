@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>내 별칭 — Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260903c">
+<link rel="stylesheet" href="alias_common.css?v=20260904a">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260903c"></script>
+<script src="alias_common.js?v=20260904a"></script>
 </head>
 <body>
 <div class="wrap">
@@ -76,10 +76,15 @@ function paintList(){
         '<span class="row-name">' + AL.esc(a.display_name) + '</span>' +
         (a.is_default ? '<span class="badge">' + AL.esc(AL.t('aliasDefault')) + '</span>' : '') +
       '</div>' +
-      (a.is_default ? '' :
-        '<div class="row-acts">' +
-          '<button data-def="' + AL.esc(a.id) + '">' + AL.esc(AL.t('aliasMakeDef')) + '</button>' +
-        '</div>') +
+      '<div class="row-acts">' +
+        // 별칭을 만든 직후 바로 그 별칭으로 초대를 만들 수 있게 잇습니다.
+        // 이게 없으면 초대 화면에서 드롭다운을 다시 골라야 하는데,
+        // 기본 별칭이 미리 골라져 있어서 그냥 지나치기 쉽습니다.
+        '<a class="rowlink" href="alias_invite.html?face=' + encodeURIComponent(a.id) + '">' +
+          AL.esc(AL.t('aliasUseForInvite')) + '</a>' +
+        (a.is_default ? '' :
+          '<button data-def="' + AL.esc(a.id) + '">' + AL.esc(AL.t('aliasMakeDef')) + '</button>') +
+      '</div>' +
     '</li>';
   }).join('');
 

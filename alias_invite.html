@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>초대 보내기 — Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260903c">
+<link rel="stylesheet" href="alias_common.css?v=20260904a">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260903c"></script>
+<script src="alias_common.js?v=20260904a"></script>
 </head>
 <body>
 <div class="wrap">
@@ -29,6 +29,7 @@
     <div class="field">
       <label for="face" data-t="invFaceLbl"></label>
       <select id="face"></select>
+      <p class="hint" id="facePreview"></p>
     </div>
 
     <div class="field">
@@ -63,6 +64,9 @@
   <!-- 만든 뒤 -->
   <div id="madePart" class="step">
     <h2 class="h2" data-t="invMadeTtl"></h2>
+    <!-- ⚠ 이 제품에서 가장 중요한 정보입니다. 이 초대를 쓰면 상대가 나를
+         누구로 보는가. 안 보여주면 어떤 얼굴로 나갔는지 아무도 모릅니다. -->
+    <div class="ok show" id="whoWill"></div>
     <div class="paper">
       <div class="cap" data-t="invCodeCap"></div>
       <div class="code small" id="codeOut"></div>
@@ -206,6 +210,11 @@ async function makeInvite(){
 
     lastCode = res.data.code;
     document.getElementById('codeOut').textContent = lastCode;
+
+    // 어떤 얼굴로 나가는지 반드시 보여줍니다. 고른 것과 다르면 여기서 알아챕니다.
+    var chosen = aliases.filter(function(a){ return a.id === personaId; })[0];
+    document.getElementById('whoWill').textContent =
+      AL.t('invWillSee', { face: chosen ? chosen.display_name : '?' });
     document.getElementById('formPart').style.display = 'none';
     document.getElementById('madePart').classList.add('on');
     document.getElementById('memo').value = '';
@@ -219,6 +228,13 @@ async function makeInvite(){
   }
 }
 
+function paintPreview(){
+  var id = document.getElementById('face').value;
+  var a = aliases.filter(function(x){ return x.id === id; })[0];
+  document.getElementById('facePreview').textContent =
+    a ? AL.t('invWillSee', { face: a.display_name }) : '';
+}
+document.getElementById('face').addEventListener('change', paintPreview);
 document.getElementById('make').addEventListener('click', makeInvite);
 document.getElementById('copyCode').addEventListener('click', function(){
   AL.copyText(lastCode || '', this);
@@ -243,7 +259,13 @@ document.getElementById('out').addEventListener('click', AL.signOut);
     showErr(AL.t('errNoAlias'));
     document.getElementById('make').disabled = true;
   }
+  // 별칭 화면에서 "이 별칭으로 초대 만들기"로 넘어오면 그 별칭이 골라집니다.
   paintFaces();
+  var wanted = new URLSearchParams(location.search).get('face');
+  if (wanted && aliases.some(function(a){ return a.id === wanted; })) {
+    document.getElementById('face').value = wanted;
+  }
+  paintPreview();
   await reloadMine();
 })();
 </script>

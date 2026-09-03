@@ -131,6 +131,23 @@ body.center{display:flex;align-items:center;justify-content:center;padding-botto
 .row-main{display:flex;align-items:baseline;justify-content:space-between;gap:12px;}
 .row-name{font-size:15.5px;font-weight:600;}
 .row-sub{font-size:12.5px;color:var(--dim);margin-top:5px;line-height:1.55;}
+
+/* 이름마다 그것이 누구 것인지 밝히는 줄 */
+.row-cap{font-size:11.5px;color:var(--faint);margin-top:4px;}
+.facts{margin:12px 0 0;padding:11px 0 0;border-top:1px solid var(--line);
+       display:grid;grid-template-columns:auto 1fr;gap:5px 14px;font-size:12.5px;}
+.facts dt{color:var(--faint);white-space:nowrap;}
+.facts dd{margin:0;color:var(--text);}
+
+.legend{margin:0 0 16px;border:1px solid var(--line);border-radius:10px;background:var(--raise);}
+.legend summary{padding:12px 15px;font-size:13px;color:var(--dim);cursor:pointer;list-style:none;}
+.legend summary::-webkit-details-marker{display:none;}
+.legend summary::before{content:'?';display:inline-block;width:16px;height:16px;
+  margin-right:8px;border:1px solid var(--line);border-radius:50%;
+  text-align:center;line-height:15px;font-size:11px;}
+.legend summary:hover{color:var(--text);}
+.legend p{margin:0;padding:0 15px 14px;font-size:12.5px;color:var(--dim);
+  line-height:1.75;white-space:pre-line;}
 .row-acts{display:flex;gap:7px;margin-top:12px;flex-wrap:wrap;}
 .row-acts button{
   padding:7px 12px;font-size:12.5px;font-family:inherit;
@@ -138,6 +155,11 @@ body.center{display:flex;align-items:center;justify-content:center;padding-botto
   border:1px solid var(--line);border-radius:7px;cursor:pointer;
 }
 .row-acts button:hover{color:var(--text);}
+.row-acts .rowlink{
+  padding:7px 12px;font-size:12.5px;text-decoration:none;
+  color:var(--steel);border:1px solid var(--steel);border-radius:7px;
+}
+.row-acts .rowlink:hover{background:rgba(91,143,199,.12);}
 .badge{
   font-size:11px;padding:3px 8px;border-radius:20px;
   border:1px solid var(--steel);color:var(--steel);white-space:nowrap;

@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>연락처 — Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260903c">
+<link rel="stylesheet" href="alias_common.css?v=20260904a">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260903c"></script>
+<script src="alias_common.js?v=20260904a"></script>
 </head>
 <body>
 <div class="wrap">
@@ -22,6 +22,11 @@
     <a href="alias_join.html" data-t="navJoin"></a>
     <a href="alias_contacts.html" class="on" data-t="navContacts"></a>
   </nav>
+
+  <details class="legend">
+    <summary data-t="cntLegendOpen"></summary>
+    <p data-t="cntLegend"></p>
+  </details>
 
   <div id="twin" class="ok" data-t="cntSamePeer"></div>
   <ul class="list" id="list"></ul>
@@ -66,22 +71,31 @@ function paint(){
   document.getElementById('twin').classList.toggle('show', hasTwin);
 
   ul.innerHTML = rows.map(function(r){
-    // 내가 붙인 이름이 있으면 그것을, 없으면 상대의 별칭을 큰 글씨로.
+    // 큰 글씨는 "내가 부르는 이름". 없으면 상대의 별칭을 대신 씁니다.
+    // ⚠ 어느 쪽인지 반드시 밑에 밝혀야 합니다. 안 밝히면 이름이 그냥 떠 있어서
+    //   설계한 사람도 헷갈립니다(실제로 그랬습니다).
+    const mine = !!r.peer_label;
     const shown = r.peer_label || r.peer_display || AL.t('cntUnnamed');
-    const alsoKnown = (r.peer_label && r.peer_display) ? r.peer_display : null;
 
-    const sub = [];
-    if (alsoKnown) sub.push(AL.esc(alsoKnown));
-    sub.push(AL.esc(AL.t('cntShowing', { face: r.my_face || '' })));
-    if (r.linked_at)   sub.push(AL.esc(AL.t('cntLinkedOn', { when: AL.fmtDate(r.linked_at) })));
-    if (r.invite_memo) sub.push(AL.esc(AL.t('cntViaMemo',  { memo: r.invite_memo })));
+    const facts = [];
+    if (mine && r.peer_display) {
+      facts.push([AL.t('cntPeerAlias'), r.peer_display]);
+    }
+    facts.push([AL.t('cntMyAlias'), r.my_face || '']);
+    if (r.invite_memo) facts.push([AL.t('cntViaMemo'), r.invite_memo]);
+    facts.push([AL.t('cntLinkedAt'), AL.fmtDateTime(r.linked_at)]);
 
     return '<li class="row">' +
       '<div class="row-main">' +
         '<span class="row-name">' + AL.esc(shown) + '</span>' +
         (r.pinned ? '<span class="badge">' + AL.esc(AL.t('cntPin')) + '</span>' : '') +
       '</div>' +
-      '<div class="row-sub">' + sub.join('<br>') + '</div>' +
+      '<div class="row-cap">' + AL.esc(mine ? AL.t('cntCapMine') : AL.t('cntCapTheir')) + '</div>' +
+      '<dl class="facts">' +
+        facts.map(function(f){
+          return '<dt>' + AL.esc(f[0]) + '</dt><dd>' + AL.esc(f[1]) + '</dd>';
+        }).join('') +
+      '</dl>' +
       '<div class="row-acts">' +
         '<button data-call="' + AL.esc(r.link_id) + '">' + AL.esc(AL.t('cntCall')) + '</button>' +
         '<button data-ren="' + AL.esc(r.my_side_id) + '">' + AL.esc(AL.t('cntRename')) + '</button>' +
