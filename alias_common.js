@@ -45,6 +45,7 @@ AL.sb = window.supabase.createClient(
 AL.STR = {
   /* 공통 */
   appName:    { kr:'Alias', en:'Alias' },
+  save:       { kr:'저장', en:'Save' },
   copy:       { kr:'복사', en:'Copy' },
   copied:     { kr:'복사했습니다', en:'Copied' },
   signOut:    { kr:'로그아웃', en:'Sign out' },
@@ -72,6 +73,41 @@ AL.STR = {
   meAliases:   { kr:'내 별칭', en:'Your aliases' },
   meAccount:   { kr:'계정', en:'Account' },
   meAccountId: { kr:'계정 번호', en:'Account ID' },
+
+  /* 모양 */
+  thTitle:     { kr:'모양', en:'Appearance' },
+  thMode:      { kr:'밝기', en:'Brightness' },
+  thDark:      { kr:'야간', en:'Dark' },
+  thLight:     { kr:'주간', en:'Light' },
+  thAuto:      { kr:'기기 설정', en:'System' },
+  thColor:     { kr:'색', en:'Colour' },
+  thMidnight:  { kr:'밤바다', en:'Midnight' },
+  thPaper:     { kr:'종이', en:'Paper' },
+  thForest:    { kr:'숲', en:'Forest' },
+  thDusk:      { kr:'노을', en:'Dusk' },
+  thInk:       { kr:'먹', en:'Ink' },
+  thBubble:    { kr:'말풍선', en:'Bubbles' },
+  thRound:     { kr:'둥근', en:'Round' },
+  thSquare:    { kr:'각진', en:'Square' },
+  thTail:      { kr:'꼬리', en:'Tailed' },
+  thOutline:   { kr:'테두리만', en:'Outline' },
+  thScene:     { kr:'배경', en:'Scene' },
+  thNone:      { kr:'없음', en:'None' },
+  thSnow:      { kr:'눈', en:'Snow' },
+  thRain:      { kr:'비', en:'Rain' },
+  thPetals:    { kr:'벚꽃', en:'Petals' },
+  thStars:     { kr:'별', en:'Stars' },
+  thSceneNote: { kr:'움직이는 배경은 배터리를 조금 더 씁니다.',
+                 en:'Moving scenes use a little more battery.' },
+  thSample1:   { kr:'이렇게 보입니다', en:'This is how it looks' },
+  thSample2:   { kr:'네, 좋네요', en:'Nice' },
+  thThisChat:  { kr:'이 대화방 모양', en:'This conversation' },
+  thFollowMine:{ kr:'내 기본 따르기', en:'Use my default' },
+  thPickHere:  { kr:'이 방만 다르게', en:'Set for this one' },
+  thUsingMine: { kr:'내 기본을 따릅니다', en:'Following your default' },
+  thPerChatNote:{ kr:'거래처 방은 차분하게, 가까운 사이는 화사하게.\n비워두면 내 기본을 따릅니다.',
+                  en:'Calm for work, warm for close friends.\nLeave blank to follow your default.' },
+  thSaved:     { kr:'바꿨습니다.', en:'Saved.' },
 
   /* 알림 */
   prefTitle:   { kr:'알림', en:'Notifications' },
@@ -669,6 +705,229 @@ AL.watchMessages = function(onInsert){
   });
 
   return { stop: function(){ if (ch) { try { AL.sb.removeChannel(ch); } catch (e) {} } } };
+};
+
+/* ── 모양(테마) ─────────────────────────────────────────────────────
+   <html> 에 표를 붙이면 alias_theme.css 가 알아서 색을 갈아끼웁니다.
+
+   ⚠ 계정에 저장합니다. 폰과 PC에서 같은 모양이 나와야 하니까요.
+     (소리·진동은 기기마다 다른 게 맞아서 localStorage 에 둡니다)
+   ⚠ 서버 응답을 기다리면 화면이 잠깐 기본색으로 번쩍입니다.
+     그래서 기기에도 한 벌 남겨두고, 그것으로 먼저 칠합니다.
+------------------------------------------------------------------ */
+AL.THEME_KEY = 'alias_theme_v1';
+AL.THEME_DEFAULT = { mode:'dark', color:'midnight', bubble:'round', scene:'none' };
+
+AL.readThemeCache = function(){
+  try {
+    var raw = localStorage.getItem(AL.THEME_KEY);
+    return raw ? Object.assign({}, AL.THEME_DEFAULT, JSON.parse(raw)) : Object.assign({}, AL.THEME_DEFAULT);
+  } catch (e) { return Object.assign({}, AL.THEME_DEFAULT); }
+};
+
+/* 표를 붙입니다. mode 가 auto 면 기기 설정을 따릅니다. */
+AL.applyTheme = function(t){
+  t = Object.assign({}, AL.THEME_DEFAULT, t || {});
+  var mode = t.mode;
+  if (mode === 'auto') {
+    mode = (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches)
+      ? 'light' : 'dark';
+  }
+  var el = document.documentElement;
+  el.setAttribute('data-mode', mode);
+  el.setAttribute('data-color', t.color);
+  el.setAttribute('data-bubble', t.bubble);
+  AL.paintScene(t.scene);
+  return t;
+};
+
+/* 눈·비·벚꽃·별. 조각을 몇 개 뿌리고 CSS 가 움직입니다. */
+AL.paintScene = function(kind){
+  var old = document.querySelector('.scene');
+  if (old) old.remove();
+  if (!kind || kind === 'none') return;
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  var counts = { snow:34, rain:46, petals:20, stars:60 };
+  var n = counts[kind] || 0;
+  if (!n) return;
+
+  var box = document.createElement('div');
+  box.className = 'scene ' + kind;
+  var html = '';
+  for (var i = 0; i < n; i++) {
+    var left = Math.random() * 100;
+    if (kind === 'stars') {
+      html += '<i style="left:' + left.toFixed(2) + '%;top:' + (Math.random()*100).toFixed(2) +
+              '%;animation-duration:' + (1.6 + Math.random()*2.6).toFixed(2) +
+              's;animation-delay:' + (Math.random()*3).toFixed(2) + 's"></i>';
+    } else {
+      var dur = kind === 'rain' ? (0.7 + Math.random()*0.7) : (7 + Math.random()*9);
+      html += '<i style="left:' + left.toFixed(2) + '%;animation-duration:' + dur.toFixed(2) +
+              's;animation-delay:-' + (Math.random()*dur).toFixed(2) +
+              's;transform:scale(' + (0.6 + Math.random()*0.8).toFixed(2) + ')"></i>';
+    }
+  }
+  box.innerHTML = html;
+  document.body.appendChild(box);
+};
+
+/* 화면이 뜨자마자 부릅니다. 서버를 안 기다립니다. */
+AL.bootTheme = function(){
+  return AL.applyTheme(AL.readThemeCache());
+};
+
+/* 서버에서 읽어와 다시 칠합니다. */
+AL.loadTheme = async function(){
+  try {
+    var res = await AL.sb.from('account_settings')
+      .select('theme_mode, theme_color, bubble_style, scene').maybeSingle();
+    if (res.error || !res.data) return AL.readThemeCache();
+    var t = {
+      mode: res.data.theme_mode, color: res.data.theme_color,
+      bubble: res.data.bubble_style, scene: res.data.scene,
+    };
+    try { localStorage.setItem(AL.THEME_KEY, JSON.stringify(t)); } catch (e) {}
+    return AL.applyTheme(t);
+  } catch (e) { return AL.readThemeCache(); }
+};
+
+AL.saveTheme = async function(t){
+  AL.applyTheme(t);
+  try { localStorage.setItem(AL.THEME_KEY, JSON.stringify(t)); } catch (e) {}
+  var sess = await AL.sb.auth.getSession();
+  var uid = sess.data.session ? sess.data.session.user.id : null;
+  if (!uid) return;
+  var res = await AL.sb.from('account_settings').upsert({
+    account_id: uid,
+    theme_mode: t.mode, theme_color: t.color,
+    bubble_style: t.bubble, scene: t.scene,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'account_id' });
+  if (res.error) throw res.error;
+};
+
+/* 대화방이 자기 것을 갖고 있으면 그것으로 덮어씁니다. 비어 있으면 계정 기본. */
+AL.applyLinkTheme = function(v){
+  var base = AL.readThemeCache();
+  AL.applyTheme({
+    mode:   v.theme_mode   || base.mode,
+    color:  v.theme_color  || base.color,
+    bubble: v.bubble_style || base.bubble,
+    scene:  v.scene        || base.scene,
+  });
+};
+
+/* ── 방별 모양 고르개 ───────────────────────────────────────────────
+   나 화면의 것과 같은 모양인데, 맨 위에 "내 기본 따르기"가 하나 더 있습니다.
+
+     var picked = await AL.pickLinkTheme(current);
+     picked === null            닫음
+     picked === 'reset'         내 기본을 따르기로 함
+     picked === {mode,color,…}  이 방만 이렇게
+
+   ⚠ 고르는 즉시 화면이 바뀝니다. 미리보기를 따로 안 봐도 됩니다.
+------------------------------------------------------------------ */
+AL.THEME_OPTS = {
+  mode:   [['dark','thDark'], ['light','thLight'], ['auto','thAuto']],
+  color:  [['midnight','thMidnight'], ['paper','thPaper'], ['forest','thForest'],
+           ['dusk','thDusk'], ['ink','thInk']],
+  bubble: [['round','thRound'], ['square','thSquare'], ['tail','thTail'], ['outline','thOutline']],
+  scene:  [['none','thNone'], ['snow','thSnow'], ['rain','thRain'],
+           ['petals','thPetals'], ['stars','thStars']],
+};
+
+AL.pickLinkTheme = function(current){
+  return new Promise(function(resolve){
+    var base = AL.readThemeCache();
+    var cur = {
+      mode:   (current && current.mode)   || base.mode,
+      color:  (current && current.color)  || base.color,
+      bubble: (current && current.bubble) || base.bubble,
+      scene:  (current && current.scene)  || base.scene,
+    };
+    var custom = !!(current && (current.mode || current.color || current.bubble || current.scene));
+
+    var bg = document.createElement('div'); bg.className = 'pk-bg';
+    var sheet = document.createElement('div'); sheet.className = 'pk';
+    document.body.appendChild(bg); document.body.appendChild(sheet);
+
+    var done = false;
+    function close(val){
+      if (done) return;
+      done = true;
+      document.removeEventListener('keydown', onKey);
+      bg.remove(); sheet.remove();
+      // 닫기만 했으면 원래대로 되돌립니다.
+      if (val === null) AL.applyLinkTheme(current ? {
+        theme_mode: current.mode, theme_color: current.color,
+        bubble_style: current.bubble, scene: current.scene,
+      } : {});
+      resolve(val);
+    }
+    function onKey(e){ if (e.key === 'Escape') close(null); }
+    document.addEventListener('keydown', onKey);
+    bg.addEventListener('click', function(){ close(null); });
+
+    function draw(){
+      sheet.innerHTML = '';
+      var grip = document.createElement('div'); grip.className = 'grip';
+      sheet.appendChild(grip);
+
+      var h = document.createElement('p'); h.className = 'pk-title';
+      h.textContent = AL.t('thThisChat'); sheet.appendChild(h);
+      var note = document.createElement('p'); note.className = 'pk-note';
+      note.textContent = AL.t('thPerChatNote'); sheet.appendChild(note);
+
+      var reset = document.createElement('button');
+      reset.className = 'pk-opt' + (custom ? '' : ' cur');
+      reset.textContent = AL.t('thFollowMine');
+      reset.addEventListener('click', function(){ close('reset'); });
+      sheet.appendChild(reset);
+
+      var sep = document.createElement('div'); sep.className = 'pk-sep';
+      sheet.appendChild(sep);
+
+      Object.keys(AL.THEME_OPTS).forEach(function(kind){
+        var lab = document.createElement('p');
+        lab.className = 'pk-note';
+        lab.style.margin = '0 0 7px';
+        lab.textContent = AL.t({ mode:'thMode', color:'thColor',
+                                 bubble:'thBubble', scene:'thScene' }[kind]);
+        sheet.appendChild(lab);
+
+        var row = document.createElement('div');
+        row.className = 'swatches';
+        row.style.marginBottom = '16px';
+        AL.THEME_OPTS[kind].forEach(function(o){
+          var b = document.createElement('button');
+          b.className = 'sw sw-' + o[0] + (cur[kind] === o[0] ? ' on' : '');
+          if (kind === 'color') {
+            var d = document.createElement('span'); d.className = 'dot'; b.appendChild(d);
+          }
+          b.appendChild(document.createTextNode(AL.t(o[1])));
+          b.addEventListener('click', function(){
+            cur[kind] = o[0];
+            custom = true;
+            AL.applyTheme(cur);     // 고르는 즉시 보입니다
+            draw();
+          });
+          row.appendChild(b);
+        });
+        sheet.appendChild(row);
+      });
+
+      var go = document.createElement('button');
+      go.className = 'pk-go';
+      go.style.width = '100%';
+      go.textContent = AL.t('save') || '저장';
+      go.addEventListener('click', function(){ close(cur); });
+      sheet.appendChild(go);
+    }
+
+    AL.applyTheme(cur);
+    draw();
+  });
 };
 
 /* ── 앱 전체 알림 ───────────────────────────────────────────────────

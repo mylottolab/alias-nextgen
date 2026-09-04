@@ -4,9 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>대화 — Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260905a">
+<link rel="stylesheet" href="alias_common.css?v=20260905c">
+<link rel="stylesheet" href="alias_theme.css?v=20260905c">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260905a"></script>
+<script src="alias_common.js?v=20260905c"></script>
+<script>document.addEventListener("DOMContentLoaded",function(){AL.bootTheme();});</script>
 </head>
 <body class="chat">
 <div class="chat-wrap">
@@ -141,6 +143,12 @@ async function open_(){
   msgs = out.messages || [];
   closed = out.link.status !== 'active';
 
+  // 이 방만의 모양이 있으면 그것으로, 없으면 내 기본으로 칠합니다.
+  AL.applyLinkTheme({
+    theme_mode: out.link.themeMode, theme_color: out.link.themeColor,
+    bubble_style: out.link.bubbleStyle, scene: out.link.scene,
+  });
+
   // 내가 마지막으로 읽은 시각보다 나중에 온 상대 메시지 중 첫 번째.
   // 서버가 열면서 읽음을 갱신하므로, 갱신 전 값을 쓰려면 여기서 미리 찾습니다.
   const myRead = out.me.lastReadAt ? new Date(out.me.lastReadAt).getTime() : 0;
@@ -247,6 +255,12 @@ async function refresh(){
     });
     peer = out.peer;
     closed = out.link.status !== 'active';
+
+  // 이 방만의 모양이 있으면 그것으로, 없으면 내 기본으로 칠합니다.
+  AL.applyLinkTheme({
+    theme_mode: out.link.themeMode, theme_color: out.link.themeColor,
+    bubble_style: out.link.bubbleStyle, scene: out.link.scene,
+  });
 
     const server = out.messages || [];
     const have = {};

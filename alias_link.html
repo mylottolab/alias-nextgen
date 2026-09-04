@@ -4,9 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>관계 — Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260905a">
+<link rel="stylesheet" href="alias_common.css?v=20260905c">
+<link rel="stylesheet" href="alias_theme.css?v=20260905c">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260905a"></script>
+<script src="alias_common.js?v=20260905c"></script>
+<script>document.addEventListener("DOMContentLoaded",function(){AL.bootTheme();});</script>
 </head>
 <body>
 <div class="wrap">
@@ -47,6 +49,11 @@
 let me = null;
 let row = null;
 let aliases = [];
+let linkTheme = {};
+
+function themeIsCustom(){
+  return !!(linkTheme.mode || linkTheme.color || linkTheme.bubble || linkTheme.scene);
+}
 
 const linkId = new URLSearchParams(location.search).get('link');
 
@@ -87,6 +94,12 @@ function paint(){
         ' <button data-act="label">' + AL.esc(AL.t('dtlChange')) + '</button></span>' +
     '</div>' +
     '<div class="drow">' +
+      '<span class="dlab">' + AL.esc(AL.t('thThisChat')) + '</span>' +
+      '<span class="dval">' +
+        AL.esc(themeIsCustom() ? AL.t('thPickHere') : AL.t('thUsingMine')) +
+        ' <button data-act="theme">' + AL.esc(AL.t('dtlChange')) + '</button></span>' +
+    '</div>' +
+    '<div class="drow">' +
       '<span class="dlab">' + AL.esc(AL.t('dtlNotify')) + '</span>' +
       '<span class="dval"><button data-act="mute">' +
         AL.esc(row.muted ? AL.t('dtlMuteOff') : AL.t('dtlMuteOn')) + '</button></span>' +
@@ -111,6 +124,16 @@ async function act(kind){
 
     } else if (kind === 'mute') {
       await save({ muted: !row.muted });
+
+    } else if (kind === 'theme') {
+      const picked = await AL.pickLinkTheme(linkTheme);
+      if (picked === null) return;
+      const patch = (picked === 'reset')
+        ? { theme_mode:null, theme_color:null, bubble_style:null, scene:null }
+        : { theme_mode:picked.mode, theme_color:picked.color,
+            bubble_style:picked.bubble, scene:picked.scene };
+      await save(patch);
+      showOk(AL.t('thSaved'));
 
     } else if (kind === 'face') {
       // ⚠ 이 관계에서만 내 얼굴을 바꿉니다. 다른 관계는 그대로입니다.
@@ -167,6 +190,20 @@ async function load(){
   if (res.error) throw res.error;
   row = (res.data || []).filter(function(r){ return r.link_id === linkId; })[0];
   if (!row) { showErr(AL.t('dtlNotFound')); return; }
+
+  // 이 방만의 모양이 있으면 그것으로 칠합니다. my_contacts 는 테마를 안 주므로
+  // link_sides 에서 내 줄만 따로 읽습니다(내 줄은 읽을 수 있습니다 — 블록 19).
+  const th = await AL.sb.from('link_sides')
+    .select('theme_mode, theme_color, bubble_style, scene').eq('id', row.my_side_id).maybeSingle();
+  linkTheme = th.data ? {
+    mode: th.data.theme_mode, color: th.data.theme_color,
+    bubble: th.data.bubble_style, scene: th.data.scene,
+  } : {};
+  AL.applyLinkTheme({
+    theme_mode: linkTheme.mode, theme_color: linkTheme.color,
+    bubble_style: linkTheme.bubble, scene: linkTheme.scene,
+  });
+
   paint();
 }
 

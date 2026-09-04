@@ -4,9 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>나 — Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260905a">
+<link rel="stylesheet" href="alias_common.css?v=20260905c">
+<link rel="stylesheet" href="alias_theme.css?v=20260905c">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260905a"></script>
+<script src="alias_common.js?v=20260905c"></script>
+<script>document.addEventListener("DOMContentLoaded",function(){AL.bootTheme();});</script>
 </head>
 <body class="tabbed">
 <div class="wrap">
@@ -30,6 +32,31 @@
 
   <div id="err" class="err"></div>
   <div id="ok" class="ok"></div>
+
+  <div class="sect" data-t="thTitle"></div>
+
+  <div class="field">
+    <label data-t="thMode"></label>
+    <div class="swatches" id="swMode"></div>
+  </div>
+  <div class="field">
+    <label data-t="thColor"></label>
+    <div class="swatches" id="swColor"></div>
+  </div>
+  <div class="field">
+    <label data-t="thBubble"></label>
+    <div class="swatches" id="swBubble"></div>
+  </div>
+  <div class="field">
+    <label data-t="thScene"></label>
+    <div class="swatches" id="swScene"></div>
+    <p class="hint" data-t="thSceneNote"></p>
+  </div>
+
+  <div class="preview">
+    <div class="msg in"><div class="bub" data-t="thSample1"></div></div>
+    <div class="msg out"><div class="bub" data-t="thSample2"></div></div>
+  </div>
 
   <div class="sect" data-t="prefTitle"></div>
   <p class="lede" data-t="prefNote"></p>
@@ -162,6 +189,39 @@ document.getElementById('make').addEventListener('click', makeAlias);
 document.getElementById('name').addEventListener('keydown', function(e){
   if (e.key === 'Enter') makeAlias();
 });
+/* ── 모양 고르기 ───────────────────────────────────────────────
+   고르는 즉시 화면이 바뀝니다. 미리보기를 따로 안 봐도 됩니다. */
+const TH = {
+  mode:   [['dark','thDark'], ['light','thLight'], ['auto','thAuto']],
+  color:  [['midnight','thMidnight'], ['paper','thPaper'], ['forest','thForest'],
+           ['dusk','thDusk'], ['ink','thInk']],
+  bubble: [['round','thRound'], ['square','thSquare'], ['tail','thTail'], ['outline','thOutline']],
+  scene:  [['none','thNone'], ['snow','thSnow'], ['rain','thRain'],
+           ['petals','thPetals'], ['stars','thStars']],
+};
+let theme = AL.readThemeCache();
+
+function paintTheme(){
+  Object.keys(TH).forEach(function(kind){
+    const box = document.getElementById('sw' + kind.charAt(0).toUpperCase() + kind.slice(1));
+    box.innerHTML = TH[kind].map(function(o){
+      const on = theme[kind] === o[0];
+      const dot = kind === 'color' ? '<span class="dot"></span>' : '';
+      return '<button class="sw sw-' + AL.esc(o[0]) + (on ? ' on' : '') +
+             '" data-k="' + kind + '" data-v="' + AL.esc(o[0]) + '">' +
+             dot + AL.esc(AL.t(o[1])) + '</button>';
+    }).join('');
+    box.querySelectorAll('[data-k]').forEach(function(b){
+      b.addEventListener('click', async function(){
+        theme[b.getAttribute('data-k')] = b.getAttribute('data-v');
+        paintTheme();
+        try { await AL.saveTheme(theme); showOk(AL.t('thSaved')); }
+        catch (e) { console.error(e); showErr(AL.t('errGeneric', { msg: e.message || String(e) })); }
+      });
+    });
+  });
+}
+
 /* ── 알림 설정 ─────────────────────────────────────────────── */
 function paintPrefs(){
   const p = AL.prefs();
@@ -191,6 +251,8 @@ document.getElementById('out').addEventListener('click', AL.signOut);
   if (!me) return;
   document.getElementById('uid').textContent = me.id.slice(0, 8);
   paintPrefs();
+  theme = await AL.loadTheme();
+  paintTheme();
   await reload();
   AL.startAlerts();      // 어느 화면에 있든 새 메시지를 알려줍니다
 })();

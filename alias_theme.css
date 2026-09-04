@@ -1,0 +1,204 @@
+/* =====================================================================
+   Alias Next-Gen — 테마
+   2026-09-05
+
+   갈아끼우는 방법: <html> 에 붙는 세 가지 표를 바꾸면 끝입니다.
+     data-mode    dark · light
+     data-color   midnight · paper · forest · dusk · ink
+     data-bubble  round · square · tail · outline
+
+   ⚠ alias_common.css 의 :root 변수를 여기서 덮어씁니다.
+     그래서 이 파일이 alias_common.css 보다 뒤에 와야 합니다.
+
+   ⚠ 색을 새로 만들 때는 아래 아홉 개를 다 채우세요. 하나라도 빠지면
+     앞 테마의 색이 남아서 이상한 조합이 됩니다.
+       --ink --raise --raise2 --line --text --dim --faint --steel --paper
+   ===================================================================== */
+
+/* ── 밤바다 (기본) ──────────────────────────────────────────────── */
+html[data-color="midnight"][data-mode="dark"]{
+  --ink:#0E1621; --raise:#182231; --raise2:#1E2A3B; --line:#27344A;
+  --text:#DDE5F0; --dim:#7E8FA6; --faint:#586A82;
+  --steel:#5B8FC7; --paper:#F2E9D6; --paper-ink:#2A2418; --bad:#D96A6A;
+}
+html[data-color="midnight"][data-mode="light"]{
+  --ink:#EEF2F7; --raise:#FFFFFF; --raise2:#F5F8FC; --line:#D5DEE9;
+  --text:#1A2331; --dim:#5A6B80; --faint:#8093A8;
+  --steel:#2C6BA8; --paper:#2A3442; --paper-ink:#F2E9D6; --bad:#B9483A;
+}
+
+/* ── 종이 — 오래 읽어도 눈이 편합니다 ───────────────────────────── */
+html[data-color="paper"][data-mode="light"]{
+  --ink:#F4F0E6; --raise:#FBF8F1; --raise2:#F0EADC; --line:#DDD4C2;
+  --text:#2B2620; --dim:#6B6154; --faint:#928777;
+  --steel:#96633A; --paper:#2B2620; --paper-ink:#FBF8F1; --bad:#A8503F;
+}
+html[data-color="paper"][data-mode="dark"]{
+  --ink:#1A1712; --raise:#241F18; --raise2:#2E2820; --line:#3D3428;
+  --text:#EDE4D3; --dim:#9A8D77; --faint:#6E6354;
+  --steel:#C79A5E; --paper:#EDE4D3; --paper-ink:#241F18; --bad:#CC7A66;
+}
+
+/* ── 숲 ─────────────────────────────────────────────────────────── */
+html[data-color="forest"][data-mode="dark"]{
+  --ink:#101A15; --raise:#182620; --raise2:#1F3129; --line:#2A3F35;
+  --text:#DCE9E1; --dim:#7D998A; --faint:#587265;
+  --steel:#63B08A; --paper:#E9E2CE; --paper-ink:#1B2620; --bad:#CC7A6E;
+}
+html[data-color="forest"][data-mode="light"]{
+  --ink:#EDF3EF; --raise:#FFFFFF; --raise2:#E6EFE9; --line:#CBDBD2;
+  --text:#17251E; --dim:#4F6A5C; --faint:#7B9689;
+  --steel:#2E7D57; --paper:#1B2620; --paper-ink:#E9E2CE; --bad:#A85045;
+}
+
+/* ── 노을 ───────────────────────────────────────────────────────── */
+html[data-color="dusk"][data-mode="dark"]{
+  --ink:#1A1220; --raise:#251A2E; --raise2:#30223B; --line:#3E2C4B;
+  --text:#EDE0F0; --dim:#A38BAE; --faint:#7A6484;
+  --steel:#D98A6A; --paper:#F5E7DA; --paper-ink:#2A1F26; --bad:#D96A85;
+}
+html[data-color="dusk"][data-mode="light"]{
+  --ink:#F7F0F3; --raise:#FFFFFF; --raise2:#F2E8EE; --line:#E0CFD9;
+  --text:#2A1C26; --dim:#6E5566; --faint:#96808E;
+  --steel:#B85C38; --paper:#2A1F26; --paper-ink:#F5E7DA; --bad:#B33E5C;
+}
+
+/* ── 먹 — 검정과 흰색만 씁니다 ──────────────────────────────────── */
+html[data-color="ink"][data-mode="dark"]{
+  --ink:#121212; --raise:#1C1C1C; --raise2:#262626; --line:#333333;
+  --text:#E8E8E8; --dim:#909090; --faint:#666666;
+  --steel:#BFBFBF; --paper:#E8E8E8; --paper-ink:#1C1C1C; --bad:#C97070;
+}
+html[data-color="ink"][data-mode="light"]{
+  --ink:#F2F2F2; --raise:#FFFFFF; --raise2:#EAEAEA; --line:#D4D4D4;
+  --text:#1A1A1A; --dim:#5E5E5E; --faint:#8A8A8A;
+  --steel:#3D3D3D; --paper:#1A1A1A; --paper-ink:#F2F2F2; --bad:#A33F3F;
+}
+
+/* 밝은 테마에서는 파란 단추 위 글자가 어두워야 합니다 */
+html[data-mode="light"] .btn,
+html[data-mode="light"] .plusbtn,
+html[data-mode="light"] .chat-foot .send,
+html[data-mode="light"] .bigacts button,
+html[data-mode="light"] .msg.out .bub,
+html[data-mode="light"] .pk-form .pk-go,
+html[data-mode="light"] .tb-badge,
+html[data-mode="light"] .unread{ color:#FFFFFF; }
+html[data-mode="light"] .btn.ghost,
+html[data-mode="light"] .bigacts button.sec{ color:var(--text); }
+
+
+/* =====================================================================
+   말풍선 모양
+   ===================================================================== */
+html[data-bubble="square"] .bub{ border-radius:5px; }
+
+html[data-bubble="outline"] .msg.out .bub{
+  background:transparent; color:var(--text);
+  border:1px solid var(--steel);
+}
+html[data-bubble="outline"] .msg.in .bub{ background:transparent; }
+
+html[data-bubble="tail"] .bub{ position:relative; border-radius:14px; }
+html[data-bubble="tail"] .msg.out .bub::after,
+html[data-bubble="tail"] .msg.in .bub::after{
+  content:''; position:absolute; bottom:6px;
+  width:0; height:0; border:7px solid transparent;
+}
+html[data-bubble="tail"] .msg.out .bub::after{
+  right:-11px; border-left-color:var(--steel); border-right:0;
+}
+html[data-bubble="tail"] .msg.in .bub::after{
+  left:-11px; border-right-color:var(--raise); border-left:0;
+}
+
+
+/* =====================================================================
+   날씨 배경
+   ⚠ 움직이는 배경은 배터리를 먹습니다. 대화창은 오래 켜두는 화면이라
+     기본은 none 입니다. 켜고 싶은 사람만 켭니다.
+   ⚠ 손님이 "동작 줄이기"를 켜두었으면 아예 안 움직입니다(맨 아래).
+   ===================================================================== */
+.scene{
+  position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden;
+}
+.scene i{
+  position:absolute; top:-10%; display:block;
+  will-change:transform;
+}
+
+/* 눈 */
+.scene.snow i{
+  width:6px; height:6px; border-radius:50%;
+  background:var(--text); opacity:.28;
+  animation:fall linear infinite;
+}
+/* 비 */
+.scene.rain i{
+  width:1px; height:16px;
+  background:linear-gradient(transparent, var(--steel));
+  opacity:.35;
+  animation:fall linear infinite;
+}
+/* 벚꽃 */
+.scene.petals i{
+  width:9px; height:7px; border-radius:60% 20% 60% 20%;
+  background:var(--steel); opacity:.3;
+  animation:sway linear infinite;
+}
+/* 별 — 유일하게 안 떨어집니다 */
+.scene.stars i{
+  top:auto; width:2px; height:2px; border-radius:50%;
+  background:var(--text); opacity:.4;
+  animation:twinkle ease-in-out infinite alternate;
+}
+
+@keyframes fall{
+  from{ transform:translateY(0) translateX(0); }
+  to{ transform:translateY(112vh) translateX(24px); }
+}
+@keyframes sway{
+  from{ transform:translateY(0) translateX(0) rotate(0deg); }
+  to{ transform:translateY(112vh) translateX(-70px) rotate(340deg); }
+}
+@keyframes twinkle{
+  from{ opacity:.12; }
+  to{ opacity:.55; }
+}
+
+/* 배경 위에 내용이 오게 */
+body > .wrap, body > .chat-wrap, body > .tabbar,
+body > .sheet, body > .sheet-bg{ position:relative; z-index:1; }
+
+@media (prefers-reduced-motion: reduce){
+  .scene{ display:none; }
+}
+
+
+/* =====================================================================
+   테마 고르는 화면
+   ===================================================================== */
+.swatches{ display:flex; flex-wrap:wrap; gap:9px; margin-top:4px; }
+.sw{
+  display:flex; align-items:center; gap:8px;
+  padding:9px 13px; font-size:13px; font-family:inherit;
+  background:var(--raise2); color:var(--text);
+  border:1px solid var(--line); border-radius:20px; cursor:pointer;
+}
+.sw.on{ border-color:var(--steel); color:var(--steel); }
+.sw .dot{
+  width:14px; height:14px; border-radius:50%;
+  border:1px solid rgba(128,128,128,.35); flex-shrink:0;
+}
+.sw-midnight .dot{ background:#182231; }
+.sw-paper    .dot{ background:#E4DAC6; }
+.sw-forest   .dot{ background:#1F3129; }
+.sw-dusk     .dot{ background:#30223B; }
+.sw-ink      .dot{ background:#5E5E5E; }
+
+.preview{
+  margin-top:14px; padding:15px;
+  background:var(--ink); border:1px solid var(--line); border-radius:12px;
+}
+.preview .msg{ margin-bottom:8px; }
+.preview .bub{ font-size:13px; padding:8px 11px; }
