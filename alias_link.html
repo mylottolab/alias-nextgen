@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>관계 — Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260904l">
+<link rel="stylesheet" href="alias_common.css?v=20260905a">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260904l"></script>
+<script src="alias_common.js?v=20260905a"></script>
 </head>
 <body>
 <div class="wrap">
@@ -184,6 +184,7 @@ document.getElementById('msg').addEventListener('click', function(){
   try {
     aliases = await AL.loadAliases();
     await load();
+    AL.startAlerts();      // 어느 화면에 있든 새 메시지를 알려줍니다
   } catch (e) {
     console.error(e);
     showErr(AL.t('errGeneric', { msg: e.message || String(e) }));

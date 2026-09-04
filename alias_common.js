@@ -671,6 +671,56 @@ AL.watchMessages = function(onInsert){
   return { stop: function(){ if (ch) { try { AL.sb.removeChannel(ch); } catch (e) {} } } };
 };
 
+/* ── 앱 전체 알림 ───────────────────────────────────────────────────
+   어느 화면에 있든 새 메시지가 오면 소리·진동이 납니다.
+   화면마다 따로 붙이면 화면을 하나 더 만들 때마다 잊습니다. 여기 한 번만 둡니다.
+
+   쓰는 법 — 화면에서 AL.startAlerts() 한 줄이면 됩니다.
+     연락처·대화처럼 자기가 직접 처리하는 화면은 onMessage 를 넘겨 가로챕니다.
+
+   ⚠ 브라우저를 떠나면(다른 앱을 쓰면) 이건 못 돕니다.
+     그건 웹푸시(2단계)와 FCM(3단계)의 일입니다.
+------------------------------------------------------------------ */
+AL._alertWatcher = null;
+AL._mySideIds = [];
+AL._lastSeenTotal = null;
+
+AL.startAlerts = function(opts){
+  opts = opts || {};
+  if (AL._alertWatcher) return;   // 한 화면에 두 번 붙지 않게
+
+  // 내 side id 를 알아둬야 "내가 보낸 것"을 걸러낼 수 있습니다.
+  AL.sb.rpc('my_contacts').then(function(res){
+    var rows = (res && res.data) || [];
+    AL._mySideIds = rows.map(function(r){ return r.my_side_id; });
+    AL._lastSeenTotal = rows.reduce(function(a, r){ return a + (r.unread || 0); }, 0);
+  }).catch(function(){});
+
+  AL._alertWatcher = AL.watchMessages(function(m){
+    if (AL._mySideIds.indexOf(m.sender_side_id) >= 0) return;   // 내가 보낸 것
+    if (opts.onMessage && opts.onMessage(m) === true) return;    // 화면이 직접 처리함
+    AL.alertNew();
+  });
+
+  // ⚠ 실시간이 끊겨도 알아채게, 개수를 견주는 길을 하나 더 둡니다.
+  //   함정 ㉚ — 실시간만 믿으면 조용히 못 받는 시간이 생깁니다.
+  if (opts.poll !== false) {
+    setInterval(function(){
+      if (document.visibilityState !== 'visible') return;
+      AL.sb.rpc('my_contacts').then(function(res){
+        var rows = (res && res.data) || [];
+        AL._mySideIds = rows.map(function(r){ return r.my_side_id; });
+        var total = rows.reduce(function(a, r){ return a + (r.unread || 0); }, 0);
+        if (AL._lastSeenTotal !== null && total > AL._lastSeenTotal) {
+          if (!opts.onCount || opts.onCount(total) !== true) AL.alertNew();
+        }
+        AL._lastSeenTotal = total;
+        if (opts.onPoll) opts.onPoll(rows);
+      }).catch(function(){});
+    }, opts.pollMs || 20000);
+  }
+};
+
 /* 날짜 구분선에 쓰는 표기 */
 AL.fmtDaySep = function(iso){
   var d = new Date(iso), now = new Date();

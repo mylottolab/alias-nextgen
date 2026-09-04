@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>대화 — Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260904l">
+<link rel="stylesheet" href="alias_common.css?v=20260905a">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260904l"></script>
+<script src="alias_common.js?v=20260905a"></script>
 </head>
 <body class="chat">
 <div class="chat-wrap">
@@ -57,7 +57,6 @@ let closed = false;
 let typingTimer = null;
 let lastTypingSent = 0;
 let firstUnreadId = null;   // "여기부터 새 메시지" 구분선을 그릴 자리
-let watcher = null;
 
 function showErr(msg){
   const el = document.getElementById('err');
@@ -401,22 +400,21 @@ setInterval(function(){
   if (document.visibilityState === 'visible') refresh();
 }, 20000);
 
-// 다른 링크로 온 메시지 — 이 화면에 없는 대화라도 알려줍니다.
+// 다른 링크로 온 메시지는 공용 알림이 맡습니다.
+// 이 방 것은 아래에서 가로채 직접 처리합니다.
 function watchOthers(){
-  watcher = AL.watchMessages(function(m){
-    if (m.sender_side_id === me.sideId) return;  // 내가 다른 기기에서 보낸 것
-    if (m.link_id === linkId) {
-      // 이 방 것인데 broadcast 를 놓친 경우입니다. 메워 넣습니다.
+  AL.startAlerts({
+    onMessage: function(m){
+      if (m.link_id !== linkId) return false;      // 다른 방 — 공용이 소리를 냅니다
       if (!msgs.some(function(x){ return x.id === m.id; })) refresh();
-      return;
-    }
-    AL.alertNew();
+      return true;                                  // 이 방 것은 내가 처리했습니다
+    },
   });
 }
 
 window.addEventListener('beforeunload', function(){
   if (channel) { try { AL.sb.removeChannel(channel); } catch (e) {} }
-  if (watcher && watcher.stop) watcher.stop();
+  if (AL._alertWatcher && AL._alertWatcher.stop) AL._alertWatcher.stop();
 });
 </script>
 </body>

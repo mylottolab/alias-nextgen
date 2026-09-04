@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>연락처 — Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260904l">
+<link rel="stylesheet" href="alias_common.css?v=20260905a">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260904l"></script>
+<script src="alias_common.js?v=20260905a"></script>
 </head>
 <body class="tabbed">
 <div class="wrap">
@@ -224,19 +224,11 @@ document.getElementById('mOpen').addEventListener('click', function(){
 document.getElementById('rowBg').addEventListener('click', function(){ showRowSheet(false); });
 
 /* ── 읽어오기 ───────────────────────────────────────────────── */
-let lastTotal = null;
-
 async function reload(){
   try {
     const res = await AL.sb.rpc('my_contacts');
     if (res.error) throw res.error;
     rows = res.data || [];
-
-    // ⚠ 실시간이 끊겨도 개수가 늘면 알아챌 수 있게, 여기서도 견줍니다.
-    //   실시간만 믿으면 조용히 못 받는 시간이 생깁니다.
-    const total = rows.reduce(function(a, r){ return a + (r.unread || 0); }, 0);
-    if (lastTotal !== null && total > lastTotal) AL.alertNew();
-    lastTotal = total;
 
     paint();
   } catch (e) {
@@ -260,31 +252,19 @@ function showAdd(on){
 document.getElementById('plus').addEventListener('click', function(){ showAdd(true); });
 document.getElementById('addBg').addEventListener('click', function(){ showAdd(false); });
 
-/* ── 새 메시지 엿듣기 ──────────────────────────────────────────
-   messages 표의 변화를 직접 듣습니다(블록 20). 링크가 몇 개든 채널 하나입니다.
-   ⚠ 3단계에서 진짜 푸시가 붙으면, 이건 "앱이 켜져 있을 때"용으로 남습니다. */
-let mySideIds = [];
-
-function startWatch(){
-  AL.watchMessages(function(m){
-    if (mySideIds.indexOf(m.sender_side_id) >= 0) return;  // 내가 보낸 것
-    AL.alertNew();
-    reload();
-  });
-}
+/* 알림은 공용(AL.startAlerts)이 냅니다. 여기서는 목록만 다시 그립니다. */
 
 (async function(){
   AL.paintText();
   document.getElementById('q').placeholder = AL.t('cntSearch');
   if (!await AL.requireLogin()) return;
   await reload();
-  mySideIds = rows.map(function(r){ return r.my_side_id; });
-  startWatch();
 
-  // 실시간이 막히는 환경도 있어 30초에 한 번 조용히 다시 읽습니다.
-  setInterval(function(){
-    if (document.visibilityState === 'visible') reload();
-  }, 15000);
+  AL.startAlerts({
+    onMessage: function(){ reload(); return false; },  // 소리는 공용이 냅니다
+    onPoll: function(){ reload(); },
+    pollMs: 15000,
+  });
 
   document.addEventListener('visibilitychange', function(){
     if (document.visibilityState === 'visible') reload();
