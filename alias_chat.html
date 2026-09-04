@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>대화 — Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260904i">
+<link rel="stylesheet" href="alias_common.css?v=20260904j">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260904i"></script>
+<script src="alias_common.js?v=20260904j"></script>
 </head>
 <body class="chat">
 <div class="chat-wrap">
@@ -150,8 +150,13 @@ async function open_(){
 
 /* ── 실시간 ─────────────────────────────────────────────────────
    서버가 link-{id} 채널로 방송합니다. 입력 중 표시도 같은 채널을 씁니다. */
-function listen(){
-  channel = AL.sb.channel('link-' + linkId, { config: { broadcast: { self: false } } });
+let listenTries = 0;
+
+async function listen(){
+  await AL.syncRealtimeAuth();
+  if (channel) { try { AL.sb.removeChannel(channel); } catch (e) {} }
+  channel = AL.sb.channel('link-' + linkId + '-' + Date.now(),
+                          { config: { broadcast: { self: false } } });
 
   channel.on('broadcast', { event: 'new-message' }, function(e){
     const m = e.payload;
@@ -193,7 +198,57 @@ function listen(){
     typingTimer = setTimeout(function(){ t.textContent = ''; }, 2500);
   });
 
-  channel.subscribe();
+  channel.subscribe(function(status){
+    if (status === 'SUBSCRIBED') {
+      listenTries = 0;
+      refresh();               // 붙는 순간 그 사이 놓친 것을 메웁니다
+      return;
+    }
+    if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+      listenTries++;
+      setTimeout(listen, Math.min(30000, 2000 * listenTries));
+    }
+  });
+}
+
+/* ── 🔴 놓친 것 메우기 ──────────────────────────────────────────
+   실시간은 빠르라고 있는 것이지, 그것만 믿으면 안 됩니다.
+   토큰이 만료되거나 폰이 잠들면 조용히 끊깁니다. 그때 겉으로는
+   "내가 보낸 것만 보이는" 멀쩡한 화면이 됩니다.
+   그래서 주기적으로, 그리고 화면에 돌아올 때마다 다시 맞춥니다. */
+let refreshing = false;
+
+async function refresh(){
+  if (refreshing || !me) return;
+  refreshing = true;
+  try {
+    const out = await AL.callFn('alias-thread-open', {
+      linkId: linkId,
+      markRead: document.visibilityState === 'visible',
+    });
+    peer = out.peer;
+    closed = out.link.status !== 'active';
+
+    const server = out.messages || [];
+    const have = {};
+    server.forEach(function(m){ have[m.id] = 1; });
+
+    // 아직 응답을 못 받은 임시 말풍선은 살려둡니다.
+    const temps = msgs.filter(function(m){
+      return String(m.id).indexOf('tmp-') === 0 &&
+             !server.some(function(x){
+               return x.sender_side_id === me.sideId && x.content === m.content;
+             });
+    });
+
+    const before = msgs.length;
+    msgs = server.concat(temps);
+    paint(msgs.length === before);   // 새 게 있으면 아래로 붙습니다
+  } catch (e) {
+    console.warn('[refresh]', e);
+  } finally {
+    refreshing = false;
+  }
 }
 
 function sendTyping(){
@@ -299,21 +354,33 @@ document.getElementById('call').addEventListener('click', function(){
 
 // 다른 탭에 갔다가 돌아오면 그때 읽음 처리합니다.
 document.addEventListener('visibilitychange', function(){
-  if (document.visibilityState === 'visible' && me) markRead();
+  if (document.visibilityState !== 'visible' || !me) return;
+  listen();      // 그 사이 끊겼을 수 있습니다
+  refresh();     // 놓친 메시지를 메웁니다
+  markRead();
 });
+
+// 실시간이 막히는 환경도 있어 20초에 한 번 조용히 맞춥니다.
+setInterval(function(){
+  if (document.visibilityState === 'visible') refresh();
+}, 20000);
 
 // 다른 링크로 온 메시지 — 이 화면에 없는 대화라도 알려줍니다.
 function watchOthers(){
   watcher = AL.watchMessages(function(m){
-    if (m.link_id === linkId) return;            // 이 방 것은 위에서 처리합니다
     if (m.sender_side_id === me.sideId) return;  // 내가 다른 기기에서 보낸 것
+    if (m.link_id === linkId) {
+      // 이 방 것인데 broadcast 를 놓친 경우입니다. 메워 넣습니다.
+      if (!msgs.some(function(x){ return x.id === m.id; })) refresh();
+      return;
+    }
     AL.alertNew();
   });
 }
 
 window.addEventListener('beforeunload', function(){
   if (channel) { try { AL.sb.removeChannel(channel); } catch (e) {} }
-  if (watcher) { try { AL.sb.removeChannel(watcher); } catch (e) {} }
+  if (watcher && watcher.stop) watcher.stop();
 });
 </script>
 </body>
