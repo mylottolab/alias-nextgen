@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>대화 — Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260904g">
+<link rel="stylesheet" href="alias_common.css?v=20260904h">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260904g"></script>
+<script src="alias_common.js?v=20260904h"></script>
 </head>
 <body class="chat">
 <div class="chat-wrap">
@@ -141,6 +141,17 @@ function listen(){
     const m = e.payload;
     if (!m || m.link_id !== linkId) return;
     if (msgs.some(function(x){ return x.id === m.id; })) return;  // 이미 있음
+
+    // ⚠ 내가 보낸 것도 방송으로 돌아옵니다. 그런데 응답보다 방송이 먼저 올 수
+    //   있어서, 그때는 임시 말풍선(tmp-…)이 아직 진짜 id 로 안 바뀐 상태입니다.
+    //   id 로만 견주면 같은 글이 두 번 찍힙니다. 내용으로 찾아 갈아끼웁니다.
+    if (m.sender_side_id === me.sideId) {
+      const t = msgs.findIndex(function(x){
+        return String(x.id).indexOf('tmp-') === 0 && x.content === m.content;
+      });
+      if (t >= 0) { msgs[t] = m; paint(); return; }
+    }
+
     msgs.push(m);
     // 상대가 보낸 것을 받았다는 건 내가 이 화면을 보고 있다는 뜻입니다.
     if (m.sender_side_id !== me.sideId) markRead();
@@ -196,7 +207,12 @@ async function send(){
   try {
     const out = await AL.callFn('alias-message-send', { linkId: linkId, text: text });
     const i = msgs.findIndex(function(m){ return m.id === tempId; });
-    if (i >= 0) { msgs[i].id = out.messageId; msgs[i].sent_at = out.sentAt; }
+    if (i >= 0) {
+      // 방송이 먼저 와서 이미 갈아끼워졌으면 여기 안 들어옵니다.
+      if (msgs.some(function(m){ return m.id === out.messageId; })) msgs.splice(i, 1);
+      else { msgs[i].id = out.messageId; msgs[i].sent_at = out.sentAt; }
+      paint();
+    }
   } catch (e) {
     console.error(e);
     msgs = msgs.filter(function(m){ return m.id !== tempId; });
