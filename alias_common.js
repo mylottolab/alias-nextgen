@@ -143,6 +143,11 @@ AL.STR = {
   aliasNameHint:{ kr:'1~20자. 아무 글자나 됩니다.', en:'1-20 characters. Any characters.' },
   aliasDefault: { kr:'기본 별칭', en:'Default' },
   aliasMakeDef: { kr:'기본으로 지정', en:'Make default' },
+  pkTitle:     { kr:'별칭 고르기', en:'Choose an alias' },
+  pkNew:       { kr:'+ 새 별칭 만들기', en:'+ Create a new alias' },
+  pkNewLabel:  { kr:'상대에게 보일 이름', en:'Name they will see' },
+  pkNewGo:     { kr:'만들고 고르기', en:'Create and use' },
+  pkCurrent:   { kr:'지금 쓰는 것', en:'in use' },
   aliasUseForInvite:{ kr:'이 별칭으로 초대 만들기', en:'Invite someone as this' },
   aliasCreated: { kr:'별칭을 만들었습니다.', en:'Alias created.' },
   errAliasName: { kr:'이름을 1~20자로 넣어주세요.', en:'Enter a name of 1-20 characters.' },
@@ -313,6 +318,25 @@ AL.hashRecoveryCode = async function(code){
 
 
 /* ── 별칭 ────────────────────────────────────────────────────────── */
+/* 별칭 하나 만들기. 첫 별칭은 자동으로 기본이 됩니다.
+   ⚠ 나 화면과 고르개 두 곳에서 씁니다. 규칙이 갈리면 안 되니 여기 한 번만 둡니다. */
+AL.createAlias = async function(name, existing){
+  var n = (name || '').trim();
+  if (n.length < 1 || n.length > 20) throw new Error(AL.t('errAliasName'));
+  var have = existing || await AL.loadAliases();
+  if (have.some(function(a){ return a.display_name === n; })) throw new Error(AL.t('errAliasDup'));
+
+  var sess = await AL.sb.auth.getSession();
+  var uid = sess.data.session ? sess.data.session.user.id : null;
+  if (!uid) throw new Error(AL.t('errNotLoggedIn'));
+
+  var res = await AL.sb.from('personas')
+    .insert({ account_id: uid, display_name: n, is_default: have.length === 0 })
+    .select('id, display_name, is_default').single();
+  if (res.error) throw res.error;
+  return res.data;
+};
+
 AL.loadAliases = async function(){
   var res = await AL.sb.from('personas')
     .select('id, display_name, is_default, created_at')
@@ -376,6 +400,137 @@ AL.copyText = async function(text, btn){
     }
     return true;
   } catch (e) { return false; }
+};
+
+/* ── 공용 별칭 고르개 ────────────────────────────────────────────────
+   어디서나 같은 모양으로 뜹니다. 목록에 없으면 그 자리에서 만들 수 있어
+   화면을 떠날 일이 없습니다.
+
+   쓰는 법:
+     var picked = await AL.pickAlias({ currentId, currentName, note });
+     if (!picked) return;            // 닫음
+     picked.id / picked.display_name
+
+   ⚠ 관계 상세 · 초대 보내기 · 초대 받기 · (나중에) 통화 화면이 다 이걸 씁니다.
+     여기를 고치면 그 전부가 같이 바뀝니다.
+------------------------------------------------------------------- */
+AL.pickAlias = function(opts){
+  opts = opts || {};
+  return new Promise(function(resolve){
+    var bg = document.createElement('div');
+    bg.className = 'pk-bg';
+    var sheet = document.createElement('div');
+    sheet.className = 'pk';
+    document.body.appendChild(bg);
+    document.body.appendChild(sheet);
+
+    var aliases = [];
+    var done = false;
+
+    function close(val){
+      if (done) return;
+      done = true;
+      document.removeEventListener('keydown', onKey);
+      bg.remove(); sheet.remove();
+      resolve(val || null);
+    }
+    function onKey(e){ if (e.key === 'Escape') close(null); }
+    document.addEventListener('keydown', onKey);
+    bg.addEventListener('click', function(){ close(null); });
+
+    function paintList(){
+      sheet.innerHTML = '';
+      var grip = document.createElement('div'); grip.className = 'grip';
+      sheet.appendChild(grip);
+
+      var h = document.createElement('p'); h.className = 'pk-title';
+      h.textContent = AL.t('pkTitle'); sheet.appendChild(h);
+
+      if (opts.note) {
+        var n = document.createElement('p'); n.className = 'pk-note';
+        n.textContent = opts.note; sheet.appendChild(n);
+      }
+
+      aliases.forEach(function(a){
+        var cur = (opts.currentId && a.id === opts.currentId) ||
+                  (!opts.currentId && opts.currentName && a.display_name === opts.currentName);
+        var b = document.createElement('button');
+        b.className = 'pk-opt' + (cur ? ' cur' : '');
+        var nameSpan = document.createElement('span');
+        nameSpan.textContent = a.display_name;
+        b.appendChild(nameSpan);
+        if (cur) {
+          var tick = document.createElement('span');
+          tick.className = 'pk-tick';
+          tick.textContent = AL.t('pkCurrent');
+          b.appendChild(tick);
+        }
+        b.addEventListener('click', function(){ close(a); });
+        sheet.appendChild(b);
+      });
+
+      var sep = document.createElement('div'); sep.className = 'pk-sep';
+      sheet.appendChild(sep);
+
+      var mk = document.createElement('button');
+      mk.className = 'pk-new';
+      mk.textContent = AL.t('pkNew');
+      mk.addEventListener('click', paintForm);
+      sheet.appendChild(mk);
+    }
+
+    function paintForm(){
+      sheet.innerHTML = '';
+      var grip = document.createElement('div'); grip.className = 'grip';
+      sheet.appendChild(grip);
+
+      var box = document.createElement('div'); box.className = 'pk-form';
+      var lab = document.createElement('p'); lab.className = 'pk-title';
+      lab.textContent = AL.t('pkNewLabel'); box.appendChild(lab);
+
+      var inp = document.createElement('input');
+      inp.type = 'text'; inp.maxLength = 20; inp.autocomplete = 'off';
+      box.appendChild(inp);
+
+      var hint = document.createElement('p'); hint.className = 'hint';
+      hint.textContent = AL.t('aliasNameHint'); box.appendChild(hint);
+
+      var go = document.createElement('button');
+      go.className = 'pk-go'; go.textContent = AL.t('pkNewGo');
+      box.appendChild(go);
+
+      var err = null;
+      function fail(msg){
+        if (!err) { err = document.createElement('div'); err.className = 'pk-err'; box.appendChild(err); }
+        err.textContent = msg;
+      }
+      async function submit(){
+        go.disabled = true;
+        try {
+          var made = await AL.createAlias(inp.value, aliases);
+          close(made);
+        } catch (e) {
+          console.error(e);
+          fail(e.message || String(e));
+          go.disabled = false;
+        }
+      }
+      go.addEventListener('click', submit);
+      inp.addEventListener('keydown', function(e){ if (e.key === 'Enter') submit(); });
+
+      sheet.appendChild(box);
+      inp.focus();
+    }
+
+    AL.loadAliases().then(function(list){
+      aliases = list;
+      if (!aliases.length) paintForm();   // 하나도 없으면 바로 만들기부터
+      else paintList();
+    }).catch(function(e){
+      console.error(e);
+      close(null);
+    });
+  });
 };
 
 /* 초대 주소. 화면 파일들이 같은 폴더에 있다고 봅니다. */

@@ -337,3 +337,54 @@ body.tabbed{padding-bottom:96px;}
   padding:26px 20px;text-align:center;
   font-size:13.5px;color:var(--dim);
 }
+
+/* =====================================================================
+   공용 별칭 고르개 — AL.pickAlias()   (2026-09-04)
+   앱 어디서나 같은 모양으로 뜹니다. 관계 상세 · 초대 보내기 · 초대 받기 ·
+   (나중에) 통화 화면까지 이 하나를 씁니다.
+   ===================================================================== */
+
+.pk-bg{position:fixed;inset:0;z-index:60;background:rgba(4,8,14,.72);}
+.pk{
+  position:fixed;left:0;right:0;bottom:0;z-index:61;
+  background:var(--raise);border-top:1px solid var(--line);
+  border-radius:16px 16px 0 0;padding:10px 18px 26px;
+  padding-bottom:calc(26px + env(safe-area-inset-bottom));
+  max-height:80vh;overflow-y:auto;
+}
+.pk .grip{width:38px;height:4px;background:var(--line);border-radius:2px;margin:0 auto 16px;}
+.pk-title{font-size:14px;margin:0 0 4px;}
+.pk-note{font-size:12.5px;color:var(--dim);margin:0 0 16px;line-height:1.6;white-space:pre-line;}
+.pk-opt{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  width:100%;margin-bottom:9px;padding:15px;
+  font-size:15px;font-family:inherit;text-align:left;
+  background:var(--raise2);color:var(--text);
+  border:1px solid var(--line);border-radius:10px;cursor:pointer;
+}
+.pk-opt.cur{border-color:var(--steel);}
+.pk-opt .pk-tick{color:var(--steel);font-size:13px;}
+.pk-sep{height:1px;background:var(--line);margin:16px 0;}
+.pk-new{
+  width:100%;padding:15px;font-size:15px;font-family:inherit;text-align:left;
+  background:transparent;color:var(--steel);
+  border:1px dashed var(--line);border-radius:10px;cursor:pointer;
+}
+.pk-form input{
+  width:100%;padding:14px 15px;font-size:16px;font-family:inherit;
+  background:var(--raise2);color:var(--text);
+  border:1px solid var(--line);border-radius:10px;
+}
+.pk-form input:focus{outline:2px solid var(--steel);outline-offset:1px;border-color:transparent;}
+.pk-form .hint{margin-top:8px;}
+.pk-form .pk-go{
+  width:100%;margin-top:12px;padding:14px;
+  font-size:15px;font-weight:600;font-family:inherit;
+  background:var(--steel);color:#08101B;border:none;border-radius:10px;cursor:pointer;
+}
+.pk-form .pk-go:disabled{opacity:.5;cursor:default;}
+.pk-err{
+  margin-top:12px;padding:11px 13px;
+  background:rgba(217,106,106,.1);border:1px solid rgba(217,106,106,.35);
+  border-radius:9px;font-size:12.5px;color:#EFAAAA;line-height:1.5;white-space:pre-line;
+}

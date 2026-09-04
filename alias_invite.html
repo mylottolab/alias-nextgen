@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>초대 보내기 — Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260904d">
+<link rel="stylesheet" href="alias_common.css?v=20260904e">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260904d"></script>
+<script src="alias_common.js?v=20260904e"></script>
 </head>
 <body>
 <div class="wrap">
@@ -22,7 +22,8 @@
   <div id="formPart">
     <div class="field">
       <label for="face" data-t="invFaceLbl"></label>
-      <select id="face"></select>
+      <button type="button" class="btn ghost" id="face" style="margin-top:0;text-align:left"></button>
+      <input type="hidden" id="faceId">
       <p class="hint" id="facePreview"></p>
     </div>
 
@@ -97,12 +98,15 @@ function showErr(msg){
 function clearErr(){ document.getElementById('err').classList.remove('show'); }
 
 /* ── 별칭 고르는 칸 ─────────────────────────────────────────────── */
+/* 고른 별칭을 화면에 씁니다. 고르개는 공용(AL.pickAlias)을 씁니다 —
+   목록에 없으면 그 자리에서 만들 수 있어 화면을 떠날 일이 없습니다. */
+let chosen = null;
+
 function paintFaces(){
-  const sel = document.getElementById('face');
-  sel.innerHTML = aliases.map(function(a){
-    return '<option value="' + AL.esc(a.id) + '"' + (a.is_default ? ' selected' : '') + '>' +
-           AL.esc(a.display_name) + '</option>';
-  }).join('');
+  if (!chosen) chosen = aliases.filter(function(a){ return a.is_default; })[0] || aliases[0] || null;
+  document.getElementById('face').textContent = chosen ? chosen.display_name : AL.t('pkNew');
+  document.getElementById('faceId').value = chosen ? chosen.id : '';
+  paintPreview();
 }
 
 /* ── 내가 만든 초대 목록 ────────────────────────────────────────── */
@@ -177,7 +181,7 @@ async function makeInvite(){
   clearErr();
   if (!aliases.length) { showErr(AL.t('errNoAlias')); return; }
 
-  const personaId = document.getElementById('face').value;
+  const personaId = document.getElementById('faceId').value;
   const memo = document.getElementById('memo').value.trim();
   const maxUses = parseInt(document.getElementById('uses').value, 10);
   const days = parseInt(document.getElementById('exp').value, 10);
@@ -206,7 +210,6 @@ async function makeInvite(){
     document.getElementById('codeOut').textContent = lastCode;
 
     // 어떤 얼굴로 나가는지 반드시 보여줍니다. 고른 것과 다르면 여기서 알아챕니다.
-    var chosen = aliases.filter(function(a){ return a.id === personaId; })[0];
     document.getElementById('whoWill').textContent =
       AL.t('invWillSee', { face: chosen ? chosen.display_name : '?' });
     document.getElementById('formPart').style.display = 'none';
@@ -223,12 +226,18 @@ async function makeInvite(){
 }
 
 function paintPreview(){
-  var id = document.getElementById('face').value;
-  var a = aliases.filter(function(x){ return x.id === id; })[0];
   document.getElementById('facePreview').textContent =
-    a ? AL.t('invWillSee', { face: a.display_name }) : '';
+    chosen ? AL.t('invWillSee', { face: chosen.display_name }) : '';
 }
-document.getElementById('face').addEventListener('change', paintPreview);
+document.getElementById('face').addEventListener('click', async function(){
+  const picked = await AL.pickAlias({ currentId: chosen ? chosen.id : null });
+  if (!picked) return;
+  chosen = picked;
+  if (!aliases.some(function(a){ return a.id === picked.id; })) aliases.push(picked);
+  document.getElementById('make').disabled = false;
+  clearErr();
+  paintFaces();
+});
 document.getElementById('make').addEventListener('click', makeInvite);
 document.getElementById('copyCode').addEventListener('click', function(){
   AL.copyText(lastCode || '', this);
@@ -256,10 +265,8 @@ document.getElementById('out').addEventListener('click', AL.signOut);
   // 별칭 화면에서 "이 별칭으로 초대 만들기"로 넘어오면 그 별칭이 골라집니다.
   paintFaces();
   var wanted = new URLSearchParams(location.search).get('face');
-  if (wanted && aliases.some(function(a){ return a.id === wanted; })) {
-    document.getElementById('face').value = wanted;
-  }
-  paintPreview();
+  if (wanted) chosen = aliases.filter(function(a){ return a.id === wanted; })[0] || null;
+  paintFaces();
   await reloadMine();
 })();
 </script>
