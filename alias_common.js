@@ -557,6 +557,29 @@ AL.pickAlias = function(opts){
   });
 };
 
+/* ── 🔴 실시간 채널에 새 토큰 물려주기 ─────────────────────────────
+   함정 ⑥ — 토큰은 한 시간쯤이면 만료됩니다.
+   보내기(callFn)는 매번 getSession() 으로 새 토큰을 읽어서 괜찮은데,
+   실시간 채널은 처음 붙을 때의 토큰을 그대로 쥐고 있습니다.
+   만료되면 조용히 끊기고 다시 안 붙습니다.
+
+   실제로 여섯 시간짜리 대화에서 양쪽 다 상대 메시지를 못 받았습니다.
+   자기가 보낸 것만 보여서 겉으로는 멀쩡해 보입니다.
+------------------------------------------------------------------ */
+AL.sb.auth.onAuthStateChange(function(_event, session){
+  if (session && session.access_token) {
+    try { AL.sb.realtime.setAuth(session.access_token); } catch (e) {}
+  }
+});
+
+/* 지금 토큰을 실시간에 한 번 물려줍니다(첫 진입용) */
+AL.syncRealtimeAuth = async function(){
+  try {
+    var sess = await AL.sb.auth.getSession();
+    if (sess.data.session) AL.sb.realtime.setAuth(sess.data.session.access_token);
+  } catch (e) {}
+};
+
 /* ── 알림 설정 ──────────────────────────────────────────────────────
    소리·진동을 켜고 끕니다. 이 기기에만 저장됩니다.
 ------------------------------------------------------------------ */
@@ -618,12 +641,33 @@ AL.alertNew = function(){ AL.ding(); AL.buzz(); };
    ⚠ 3단계에서 진짜 푸시가 붙으면 이 자리는 "앱이 켜져 있을 때"용으로 남습니다.
 ------------------------------------------------------------------ */
 AL.watchMessages = function(onInsert){
-  var ch = AL.sb.channel('my-messages')
-    .on('postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages' },
-        function(e){ if (e && e.new) onInsert(e.new); })
-    .subscribe();
-  return ch;
+  var ch = null;
+  var tries = 0;
+
+  function connect(){
+    if (ch) { try { AL.sb.removeChannel(ch); } catch (e) {} }
+    ch = AL.sb.channel('my-messages-' + Date.now())
+      .on('postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'messages' },
+          function(e){ if (e && e.new) onInsert(e.new); })
+      .subscribe(function(status){
+        if (status === 'SUBSCRIBED') { tries = 0; return; }
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          // 끊기면 다시 붙습니다. 점점 뜸하게 시도해서 서버를 두드리지 않습니다.
+          tries++;
+          setTimeout(connect, Math.min(30000, 2000 * tries));
+        }
+      });
+  }
+
+  AL.syncRealtimeAuth().then(connect);
+
+  // 다른 탭에 갔다 오면 그 사이 끊겼을 수 있어 한 번 더 붙입니다.
+  document.addEventListener('visibilitychange', function(){
+    if (document.visibilityState === 'visible') AL.syncRealtimeAuth().then(connect);
+  });
+
+  return { stop: function(){ if (ch) { try { AL.sb.removeChannel(ch); } catch (e) {} } } };
 };
 
 /* 날짜 구분선에 쓰는 표기 */
