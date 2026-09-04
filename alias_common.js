@@ -73,6 +73,16 @@ AL.STR = {
   meAccount:   { kr:'계정', en:'Account' },
   meAccountId: { kr:'계정 번호', en:'Account ID' },
 
+  /* 알림 */
+  prefTitle:   { kr:'알림', en:'Notifications' },
+  prefSound:   { kr:'소리', en:'Sound' },
+  prefVibrate: { kr:'진동', en:'Vibration' },
+  prefOn:      { kr:'켬', en:'On' },
+  prefOff:     { kr:'끔', en:'Off' },
+  prefNote:    { kr:'다른 화면을 보고 있을 때 새 메시지를 알려줍니다.\n소리는 화면을 한 번 누른 뒤부터 납니다(브라우저 규칙).',
+                 en:'Alerts you to new messages while you are on another screen.\nSound starts working after your first tap (browser rule).' },
+  newHere:     { kr:'여기부터 새 메시지', en:'New messages' },
+
   /* 대화 */
   chatPlace:   { kr:'메시지 입력', en:'Message' },
   chatMyFace:  { kr:'나는 {face}', en:'You are {face}' },
@@ -545,6 +555,75 @@ AL.pickAlias = function(opts){
       close(null);
     });
   });
+};
+
+/* ── 알림 설정 ──────────────────────────────────────────────────────
+   소리·진동을 켜고 끕니다. 이 기기에만 저장됩니다.
+------------------------------------------------------------------ */
+AL.PREF_KEY = 'alias_prefs_v1';
+
+AL.prefs = function(){
+  try {
+    var raw = localStorage.getItem(AL.PREF_KEY);
+    var p = raw ? JSON.parse(raw) : {};
+    return { sound: p.sound !== false, vibrate: p.vibrate !== false };
+  } catch (e) { return { sound: true, vibrate: true }; }
+};
+
+AL.setPref = function(key, on){
+  var p = AL.prefs();
+  p[key] = !!on;
+  try { localStorage.setItem(AL.PREF_KEY, JSON.stringify(p)); } catch (e) {}
+  return p;
+};
+
+/* 딩동. 소리 파일 없이 브라우저가 직접 냅니다.
+   ⚠ 브라우저 규칙상 손님이 화면을 한 번 누르기 전에는 소리가 안 납니다.
+     막을 방법이 없어 설정 화면에 그렇게 적어뒀습니다. */
+AL.ding = function(){
+  if (!AL.prefs().sound) return;
+  try {
+    var Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    var ctx = new Ctx();
+    var t0 = ctx.currentTime;
+    [880, 1244].forEach(function(freq, i){
+      var at = t0 + i * 0.13;
+      var osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, at);
+      gain.gain.exponentialRampToValueAtTime(0.16, at + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.32);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(at); osc.stop(at + 0.35);
+    });
+    setTimeout(function(){ try { ctx.close(); } catch (e) {} }, 900);
+  } catch (e) { /* 소리가 안 나도 대화에는 지장 없습니다 */ }
+};
+
+/* 진동. ⚠ iOS 사파리는 지원하지 않습니다. */
+AL.buzz = function(){
+  if (!AL.prefs().vibrate) return;
+  try { if (navigator.vibrate) navigator.vibrate([55, 45, 55]); } catch (e) {}
+};
+
+AL.alertNew = function(){ AL.ding(); AL.buzz(); };
+
+/* ── 새 메시지 엿듣기 ───────────────────────────────────────────────
+   messages 표의 변화를 직접 듣습니다(블록 20). 채널 하나로 모든 링크를
+   덮습니다. RLS가 걸러주므로 내 링크의 것만 옵니다.
+
+   ⚠ 대화창의 broadcast 와는 별개입니다. 그쪽은 그 방 안에서만 씁니다.
+   ⚠ 3단계에서 진짜 푸시가 붙으면 이 자리는 "앱이 켜져 있을 때"용으로 남습니다.
+------------------------------------------------------------------ */
+AL.watchMessages = function(onInsert){
+  var ch = AL.sb.channel('my-messages')
+    .on('postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages' },
+        function(e){ if (e && e.new) onInsert(e.new); })
+    .subscribe();
+  return ch;
 };
 
 /* 날짜 구분선에 쓰는 표기 */
