@@ -466,3 +466,40 @@ body.chat{padding:0;height:100dvh;overflow:hidden;display:flex;flex-direction:co
   background:rgba(217,106,106,.1);border:1px solid rgba(217,106,106,.35);
   border-radius:9px;font-size:12.5px;color:#EFAAAA;line-height:1.5;white-space:pre-line;
 }
+
+/* ── 새 메시지 표시 (2026-09-04) ─────────────────────────────────── */
+.newline{
+  display:flex;align-items:center;gap:10px;
+  margin:16px 0 12px;font-size:11.5px;color:var(--steel);
+}
+.newline::before,.newline::after{
+  content:'';flex:1;height:1px;background:var(--steel);opacity:.45;
+}
+@keyframes freshglow{
+  from{background:rgba(91,143,199,.22);}
+  to{background:var(--raise);}
+}
+.msg.fresh .bub{animation:freshglow 2.4s ease-out;}
+
+/* ── 안 읽은 개수 ────────────────────────────────────────────────── */
+.unread{
+  flex-shrink:0;min-width:20px;padding:2px 7px;margin-left:7px;
+  background:var(--steel);color:#08101B;border-radius:10px;
+  font-size:11px;font-weight:700;text-align:center;
+}
+.crow.hasnew .cname{color:var(--text);}
+.crow.hasnew{border-color:var(--steel);}
+
+/* ── 설정 줄 ─────────────────────────────────────────────────────── */
+.prefrow{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:14px 0;border-bottom:1px solid var(--line);
+}
+.prefrow:last-child{border-bottom:none;}
+.prefrow .pl{font-size:14px;}
+.prefrow button{
+  padding:7px 15px;font-size:12.5px;font-family:inherit;
+  background:transparent;color:var(--dim);
+  border:1px solid var(--line);border-radius:16px;cursor:pointer;min-width:56px;
+}
+.prefrow button.on{color:var(--steel);border-color:var(--steel);}

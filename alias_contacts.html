@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>연락처 — Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260904h">
+<link rel="stylesheet" href="alias_common.css?v=20260904i">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260904h"></script>
+<script src="alias_common.js?v=20260904i"></script>
 </head>
 <body class="tabbed">
 <div class="wrap">
@@ -57,7 +57,7 @@
 </div>
 
 <nav class="tabbar">
-  <a href="alias_contacts.html" class="on" data-t="navContacts"></a>
+  <a href="alias_contacts.html" class="on" id="tabContacts"></a>
   <a href="alias_calls.html" data-t="navCalls"></a>
   <a href="alias_me.html" data-t="navMe"></a>
 </nav>
@@ -95,10 +95,13 @@ function visible(){
 function rowHtml(r){
   const shown = r.peer_label || r.peer_display || AL.t('cntUnnamed');
   const sub = r.peer_label ? (r.peer_display || '') : '';
-  return '<div class="crow">' +
+  const n = r.unread || 0;
+  return '<div class="crow' + (n ? ' hasnew' : '') + '">' +
     '<div class="cav" data-go="' + AL.esc(r.link_id) + '">' + AL.esc(AL.initial(r.my_face)) + '</div>' +
     '<div class="cmid" data-go="' + AL.esc(r.link_id) + '">' +
-      '<div class="cname">' + (r.pinned ? '▲ ' : '') + AL.esc(shown) + '</div>' +
+      '<div class="cname">' + (r.pinned ? '▲ ' : '') + AL.esc(shown) +
+        (n ? '<span class="unread">' + AL.esc(n > 99 ? '99+' : n) + '</span>' : '') +
+      '</div>' +
       (sub ? '<div class="csub">' + AL.esc(sub) + '</div>' : '') +
     '</div>' +
     '<div class="ctime">' + AL.esc(AL.fmtShort(r.last_activity_at)) + '</div>' +
@@ -124,6 +127,12 @@ function paint(){
     seen[k] = 1;
   });
   document.getElementById('twin').classList.toggle('show', twin);
+
+  // 하단 탭에도 총합을 띄웁니다. 다른 탭에 있어도 눈에 띄게.
+  const total = rows.reduce(function(a, r){ return a + (r.unread || 0); }, 0);
+  const tab = document.getElementById('tabContacts');
+  tab.innerHTML = AL.esc(AL.t('navContacts')) +
+    (total ? '<span class="tb-badge">' + AL.esc(total > 99 ? '99+' : total) + '</span>' : '');
 
   if (!list.length) {
     box.innerHTML = '<div class="nores">' + AL.esc(AL.t('cntNoMatch')) + '</div>';
@@ -242,11 +251,31 @@ function showAdd(on){
 document.getElementById('plus').addEventListener('click', function(){ showAdd(true); });
 document.getElementById('addBg').addEventListener('click', function(){ showAdd(false); });
 
+/* ── 새 메시지 엿듣기 ──────────────────────────────────────────
+   messages 표의 변화를 직접 듣습니다(블록 20). 링크가 몇 개든 채널 하나입니다.
+   ⚠ 3단계에서 진짜 푸시가 붙으면, 이건 "앱이 켜져 있을 때"용으로 남습니다. */
+let mySideIds = [];
+
+function startWatch(){
+  AL.watchMessages(function(m){
+    if (mySideIds.indexOf(m.sender_side_id) >= 0) return;  // 내가 보낸 것
+    AL.alertNew();
+    reload();
+  });
+}
+
 (async function(){
   AL.paintText();
   document.getElementById('q').placeholder = AL.t('cntSearch');
   if (!await AL.requireLogin()) return;
   await reload();
+  mySideIds = rows.map(function(r){ return r.my_side_id; });
+  startWatch();
+
+  // 실시간이 막히는 환경도 있어 30초에 한 번 조용히 다시 읽습니다.
+  setInterval(function(){
+    if (document.visibilityState === 'visible') reload();
+  }, 30000);
 })();
 </script>
 </body>

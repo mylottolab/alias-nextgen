@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>대화 — Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260904h">
+<link rel="stylesheet" href="alias_common.css?v=20260904i">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260904h"></script>
+<script src="alias_common.js?v=20260904i"></script>
 </head>
 <body class="chat">
 <div class="chat-wrap">
@@ -56,6 +56,8 @@ let channel = null;
 let closed = false;
 let typingTimer = null;
 let lastTypingSent = 0;
+let firstUnreadId = null;   // "여기부터 새 메시지" 구분선을 그릴 자리
+let watcher = null;
 
 function showErr(msg){
   const el = document.getElementById('err');
@@ -97,7 +99,12 @@ function paint(keepPos){
     const gone = !!m.deleted_at;
     const read = out && readMs && new Date(when).getTime() <= readMs;
 
-    html += '<div class="msg ' + (out ? 'out' : 'in') + '">' +
+    if (firstUnreadId && m.id === firstUnreadId) {
+      html += '<div class="newline"><span>' + AL.esc(AL.t('newHere')) + '</span></div>';
+    }
+
+    html += '<div class="msg ' + (out ? 'out' : 'in') +
+      (m._fresh ? ' fresh' : '') + '">' +
       '<div class="bub' + (gone ? ' gone' : '') + '">' +
         AL.esc(gone ? AL.t('chatDeleted') : (m.content || '')) +
       '</div>' +
@@ -118,6 +125,15 @@ async function open_(){
   peer = out.peer;
   msgs = out.messages || [];
   closed = out.link.status !== 'active';
+
+  // 내가 마지막으로 읽은 시각보다 나중에 온 상대 메시지 중 첫 번째.
+  // 서버가 열면서 읽음을 갱신하므로, 갱신 전 값을 쓰려면 여기서 미리 찾습니다.
+  const myRead = out.me.lastReadAt ? new Date(out.me.lastReadAt).getTime() : 0;
+  const firstNew = msgs.filter(function(m){
+    return m.sender_side_id !== out.me.sideId && m.sent_at &&
+           (!myRead || new Date(m.sent_at).getTime() > myRead);
+  })[0];
+  firstUnreadId = firstNew ? firstNew.id : null;
 
   document.getElementById('whoName').textContent =
     me.peerLabel || (peer && peer.display) || AL.t('cntUnnamed');
@@ -152,10 +168,21 @@ function listen(){
       if (t >= 0) { msgs[t] = m; paint(); return; }
     }
 
+    if (m.sender_side_id !== me.sideId) {
+      m._fresh = true;                 // 잠깐 배경을 밝혀 눈에 띄게
+      setTimeout(function(){ delete m._fresh; paint(true); }, 2600);
+      if (document.visibilityState === 'visible') markRead();
+      else AL.alertNew();              // 다른 탭에 있으면 소리·진동
+    }
     msgs.push(m);
-    // 상대가 보낸 것을 받았다는 건 내가 이 화면을 보고 있다는 뜻입니다.
-    if (m.sender_side_id !== me.sideId) markRead();
     paint();
+  });
+
+  channel.on('broadcast', { event: 'read' }, function(e){
+    if (!e.payload || e.payload.sideId === me.sideId) return;
+    if (!peer) return;
+    peer.lastReadAt = e.payload.at;
+    paint(true);
   });
 
   channel.on('broadcast', { event: 'typing' }, function(e){
@@ -177,10 +204,16 @@ function sendTyping(){
   if (channel) channel.send({ type: 'broadcast', event: 'typing', payload: { sideId: me.sideId } });
 }
 
+/* ⚠ 화면을 실제로 보고 있을 때만 읽음 처리합니다.
+   다른 탭에 가 있는데 읽었다고 하면 상대를 속이는 셈입니다. */
 async function markRead(){
+  if (document.visibilityState !== 'visible') return;
+  const at = new Date().toISOString();
   try {
-    await AL.sb.from('link_sides')
-      .update({ last_read_at: new Date().toISOString() }).eq('id', me.sideId);
+    await AL.sb.from('link_sides').update({ last_read_at: at }).eq('id', me.sideId);
+    // 🔴 방송해야 보낸 쪽이 압니다. 전에는 이게 없어서 새로고침해야 "읽음"이 떴습니다.
+    if (channel) channel.send({ type: 'broadcast', event: 'read',
+                                payload: { sideId: me.sideId, at: at } });
   } catch (e) { /* 읽음 표시가 늦어도 대화에는 지장 없습니다 */ }
 }
 
@@ -257,14 +290,30 @@ document.getElementById('call').addEventListener('click', function(){
   try {
     await open_();
     listen();
+    watchOthers();
   } catch (e) {
     console.error(e);
     showErr(AL.t('errGeneric', { msg: e.message || String(e) }));
   }
 })();
 
+// 다른 탭에 갔다가 돌아오면 그때 읽음 처리합니다.
+document.addEventListener('visibilitychange', function(){
+  if (document.visibilityState === 'visible' && me) markRead();
+});
+
+// 다른 링크로 온 메시지 — 이 화면에 없는 대화라도 알려줍니다.
+function watchOthers(){
+  watcher = AL.watchMessages(function(m){
+    if (m.link_id === linkId) return;            // 이 방 것은 위에서 처리합니다
+    if (m.sender_side_id === me.sideId) return;  // 내가 다른 기기에서 보낸 것
+    AL.alertNew();
+  });
+}
+
 window.addEventListener('beforeunload', function(){
   if (channel) { try { AL.sb.removeChannel(channel); } catch (e) {} }
+  if (watcher) { try { AL.sb.removeChannel(watcher); } catch (e) {} }
 });
 </script>
 </body>
