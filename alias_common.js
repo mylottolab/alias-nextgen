@@ -73,6 +73,20 @@ AL.STR = {
   meAccount:   { kr:'계정', en:'Account' },
   meAccountId: { kr:'계정 번호', en:'Account ID' },
 
+  /* 대화 */
+  chatPlace:   { kr:'메시지 입력', en:'Message' },
+  chatMyFace:  { kr:'나는 {face}', en:'You are {face}' },
+  chatEmpty:   { kr:'첫 메시지를 보내보세요.', en:'Send the first message.' },
+  chatRead:    { kr:'읽음', en:'Read' },
+  chatTyping:  { kr:'입력 중…', en:'Typing…' },
+  chatToday:   { kr:'오늘', en:'Today' },
+  chatYesterday:{ kr:'어제', en:'Yesterday' },
+  chatDeleted: { kr:'삭제된 메시지', en:'Message deleted' },
+  chatClosed:  { kr:'끊긴 연결입니다. 메시지를 보낼 수 없습니다.',
+                 en:'This connection was ended. You cannot send messages.' },
+  chatFailed:  { kr:'보내지 못했습니다: {msg}', en:'Could not send: {msg}' },
+  chatCallSoon:{ kr:'통화는 다음 단계에서 붙습니다.', en:'Calling comes in the next step.' },
+
   /* 관계 상세 */
   dtlBack:     { kr:'연락처로', en:'Back to contacts' },
   dtlNotFound: { kr:'그런 연결이 없습니다.', en:'No such connection.' },
@@ -531,6 +545,51 @@ AL.pickAlias = function(opts){
       close(null);
     });
   });
+};
+
+/* 날짜 구분선에 쓰는 표기 */
+AL.fmtDaySep = function(iso){
+  var d = new Date(iso), now = new Date();
+  var same = function(a,b){
+    return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
+  };
+  if (same(d, now)) return AL.t('chatToday');
+  var y = new Date(now); y.setDate(y.getDate()-1);
+  if (same(d, y)) return AL.t('chatYesterday');
+  return d.toLocaleDateString(AL.lang === 'kr' ? 'ko-KR' : 'en-US',
+    { year:'numeric', month:'long', day:'numeric', weekday:'short' });
+};
+
+/* 말풍선 옆 시각 */
+AL.fmtClock = function(iso){
+  var d = new Date(iso), p = function(n){ return String(n).padStart(2,'0'); };
+  return p(d.getHours()) + ':' + p(d.getMinutes());
+};
+
+AL.sameDay = function(a, b){
+  var x = new Date(a), y = new Date(b);
+  return x.getFullYear()===y.getFullYear() && x.getMonth()===y.getMonth() && x.getDate()===y.getDate();
+};
+
+/* Edge Function 부르기 — 토큰을 실어 보냅니다.
+   ⚠ 함정 ⑤ · ⑥ — 함수끼리 부를 때도 Authorization 이 필요하고, 토큰은 한 시간쯤이면
+     만료됩니다. getSession() 이 알아서 갱신해 주므로 매번 새로 읽습니다. */
+AL.callFn = async function(name, body){
+  var sess = await AL.sb.auth.getSession();
+  var token = sess.data.session ? sess.data.session.access_token : null;
+  if (!token) throw new Error(AL.t('errNotLoggedIn'));
+  var res = await fetch(AL.SUPABASE_URL + '/functions/v1/' + name, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token,
+      'apikey': AL.SUPABASE_ANON,
+    },
+    body: JSON.stringify(body || {}),
+  });
+  var out = await res.json().catch(function(){ return {}; });
+  if (!res.ok || out.error) throw new Error(out.error || ('HTTP ' + res.status));
+  return out;
 };
 
 /* 초대 주소. 화면 파일들이 같은 폴더에 있다고 봅니다. */

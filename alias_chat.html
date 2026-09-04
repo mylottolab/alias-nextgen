@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>대화 — Alias</title>
+<link rel="stylesheet" href="alias_common.css?v=20260904f">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="alias_common.js?v=20260904f"></script>
+</head>
+<body class="chat">
+<div class="chat-wrap">
+
+  <div class="chat-top">
+    <button class="back" id="back" aria-label="뒤로">‹</button>
+    <div class="chat-who" id="who">
+      <div class="n" id="whoName"></div>
+      <div class="f" id="whoFace"></div>
+    </div>
+    <button class="icon" id="call" aria-label="통화">☏</button>
+  </div>
+
+  <div class="chat-body" id="body"></div>
+  <div class="typing" id="typing"></div>
+  <div class="chat-err" id="err" style="display:none"></div>
+
+  <div class="chat-foot">
+    <textarea id="input" rows="1"></textarea>
+    <button class="send" id="send" aria-label="보내기" disabled>↑</button>
+  </div>
+
+</div>
+
+<script>
+/* =====================================================================
+   대화 화면 (4-1)
+   글자 · 실시간 · 읽음 · 입력 중 까지입니다.
+   사진·이모지·음성메시지·답장은 4-2, 4-3에서 붙입니다.
+
+   ⚠ 보내기와 열기는 Edge Function이 합니다.
+       alias-message-send · alias-thread-open
+     3단계에서 푸시를, 8단계에서 AI 부재중 비서를 그 안에 붙일 자리입니다.
+
+   ⚠ 이름 셋을 여기서도 헷갈리면 안 됩니다.
+       머리 큰 글씨  = 내가 상대를 부르는 이름(없으면 상대 별칭)
+       머리 작은 글씨 = 내가 이 사람에게 보여주는 별칭
+     상대의 peer_label 은 서버가 아예 안 내려줍니다.
+   ===================================================================== */
+
+const linkId = new URLSearchParams(location.search).get('link');
+
+let me = null;          // { sideId, myFace, peerLabel }
+let peer = null;        // { sideId, display, lastReadAt }
+let msgs = [];
+let channel = null;
+let closed = false;
+let typingTimer = null;
+let lastTypingSent = 0;
+
+function showErr(msg){
+  const el = document.getElementById('err');
+  el.textContent = msg; el.style.display = '';
+}
+function clearErr(){ document.getElementById('err').style.display = 'none'; }
+
+/* ── 그리기 ─────────────────────────────────────────────────────── */
+function atBottom(){
+  const b = document.getElementById('body');
+  return b.scrollHeight - b.scrollTop - b.clientHeight < 60;
+}
+function toBottom(){
+  const b = document.getElementById('body');
+  b.scrollTop = b.scrollHeight;
+}
+
+function paint(keepPos){
+  const b = document.getElementById('body');
+  const stick = keepPos ? false : atBottom();
+
+  if (!msgs.length) {
+    b.innerHTML = '<div class="sysline">' + AL.esc(AL.t('chatEmpty')) + '</div>';
+    return;
+  }
+
+  // 상대가 마지막으로 읽은 시각. 그보다 앞선 내 메시지에 "읽음"을 붙입니다.
+  const readMs = peer && peer.lastReadAt ? new Date(peer.lastReadAt).getTime() : 0;
+
+  let html = '';
+  let prevDay = null;
+  msgs.forEach(function(m){
+    const when = m.sent_at || m.created_at;
+    if (!prevDay || !AL.sameDay(prevDay, when)) {
+      html += '<div class="daysep">' + AL.esc(AL.fmtDaySep(when)) + '</div>';
+      prevDay = when;
+    }
+    const out = m.sender_side_id === me.sideId;
+    const gone = !!m.deleted_at;
+    const read = out && readMs && new Date(when).getTime() <= readMs;
+
+    html += '<div class="msg ' + (out ? 'out' : 'in') + '">' +
+      '<div class="bub' + (gone ? ' gone' : '') + '">' +
+        AL.esc(gone ? AL.t('chatDeleted') : (m.content || '')) +
+      '</div>' +
+      '<div class="meta">' +
+        (read ? '<span class="rd">' + AL.esc(AL.t('chatRead')) + '</span>' : '') +
+        AL.esc(AL.fmtClock(when)) +
+      '</div>' +
+    '</div>';
+  });
+  b.innerHTML = html;
+  if (stick || keepPos === false) toBottom();
+}
+
+/* ── 열기 ───────────────────────────────────────────────────────── */
+async function open_(){
+  const out = await AL.callFn('alias-thread-open', { linkId: linkId });
+  me = out.me;
+  peer = out.peer;
+  msgs = out.messages || [];
+  closed = out.link.status !== 'active';
+
+  document.getElementById('whoName').textContent =
+    me.peerLabel || (peer && peer.display) || AL.t('cntUnnamed');
+  document.getElementById('whoFace').textContent =
+    AL.t('chatMyFace', { face: me.myFace || '' });
+
+  if (closed) {
+    showErr(AL.t('chatClosed'));
+    document.getElementById('input').disabled = true;
+    document.getElementById('send').disabled = true;
+  }
+  paint(false);
+}
+
+/* ── 실시간 ─────────────────────────────────────────────────────
+   서버가 link-{id} 채널로 방송합니다. 입력 중 표시도 같은 채널을 씁니다. */
+function listen(){
+  channel = AL.sb.channel('link-' + linkId, { config: { broadcast: { self: false } } });
+
+  channel.on('broadcast', { event: 'new-message' }, function(e){
+    const m = e.payload;
+    if (!m || m.link_id !== linkId) return;
+    if (msgs.some(function(x){ return x.id === m.id; })) return;  // 이미 있음
+    msgs.push(m);
+    // 상대가 보낸 것을 받았다는 건 내가 이 화면을 보고 있다는 뜻입니다.
+    if (m.sender_side_id !== me.sideId) markRead();
+    paint();
+  });
+
+  channel.on('broadcast', { event: 'typing' }, function(e){
+    if (!e.payload || e.payload.sideId === me.sideId) return;
+    const t = document.getElementById('typing');
+    t.textContent = AL.t('chatTyping');
+    clearTimeout(typingTimer);
+    typingTimer = setTimeout(function(){ t.textContent = ''; }, 2500);
+  });
+
+  channel.subscribe();
+}
+
+function sendTyping(){
+  // 2초에 한 번만 보냅니다. 글자마다 보내면 채널이 시끄러워집니다.
+  const now = Date.now();
+  if (now - lastTypingSent < 2000) return;
+  lastTypingSent = now;
+  if (channel) channel.send({ type: 'broadcast', event: 'typing', payload: { sideId: me.sideId } });
+}
+
+async function markRead(){
+  try {
+    await AL.sb.from('link_sides')
+      .update({ last_read_at: new Date().toISOString() }).eq('id', me.sideId);
+  } catch (e) { /* 읽음 표시가 늦어도 대화에는 지장 없습니다 */ }
+}
+
+/* ── 보내기 ─────────────────────────────────────────────────────── */
+async function send(){
+  const box = document.getElementById('input');
+  const text = box.value.trim();
+  if (!text || closed) return;
+
+  const btn = document.getElementById('send');
+  btn.disabled = true;
+  clearErr();
+
+  // 화면에 먼저 띄웁니다. 실패하면 지웁니다.
+  const tempId = 'tmp-' + Date.now();
+  msgs.push({
+    id: tempId, sender_side_id: me.sideId, message_type: 'text',
+    content: text, sent_at: new Date().toISOString(), created_at: new Date().toISOString(),
+  });
+  box.value = '';
+  box.style.height = 'auto';
+  paint(false);
+
+  try {
+    const out = await AL.callFn('alias-message-send', { linkId: linkId, text: text });
+    const i = msgs.findIndex(function(m){ return m.id === tempId; });
+    if (i >= 0) { msgs[i].id = out.messageId; msgs[i].sent_at = out.sentAt; }
+  } catch (e) {
+    console.error(e);
+    msgs = msgs.filter(function(m){ return m.id !== tempId; });
+    box.value = text;                       // 쓴 글을 잃지 않게 되돌립니다
+    showErr(AL.t('chatFailed', { msg: e.message || String(e) }));
+    paint(false);
+  } finally {
+    btn.disabled = !document.getElementById('input').value.trim();
+  }
+}
+
+/* ── 붙이기 ─────────────────────────────────────────────────────── */
+const input = document.getElementById('input');
+input.addEventListener('input', function(){
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+  document.getElementById('send').disabled = !this.value.trim() || closed;
+  if (this.value.trim()) sendTyping();
+});
+input.addEventListener('keydown', function(e){
+  // Enter 는 보내기, Shift+Enter 는 줄바꿈. 모바일에서는 항상 줄바꿈입니다.
+  const mobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+  if (e.key === 'Enter' && !e.shiftKey && !mobile) { e.preventDefault(); send(); }
+});
+document.getElementById('send').addEventListener('click', send);
+document.getElementById('back').addEventListener('click', function(){
+  location.href = 'alias_contacts.html';
+});
+document.getElementById('who').addEventListener('click', function(){
+  location.href = 'alias_link.html?link=' + encodeURIComponent(linkId);
+});
+document.getElementById('call').addEventListener('click', function(){
+  alert(AL.t('chatCallSoon'));
+});
+
+/* ── 시작 ───────────────────────────────────────────────────────── */
+(async function(){
+  AL.paintText();
+  input.placeholder = AL.t('chatPlace');
+  if (!await AL.requireLogin()) return;
+  if (!linkId) { showErr(AL.t('dtlNotFound')); return; }
+  try {
+    await open_();
+    listen();
+  } catch (e) {
+    console.error(e);
+    showErr(AL.t('errGeneric', { msg: e.message || String(e) }));
+  }
+})();
+
+window.addEventListener('beforeunload', function(){
+  if (channel) { try { AL.sb.removeChannel(channel); } catch (e) {} }
+});
+</script>
+</body>
+</html>

@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>관계 — Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260904e">
+<link rel="stylesheet" href="alias_common.css?v=20260904f">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260904e"></script>
+<script src="alias_common.js?v=20260904f"></script>
 </head>
 <body>
 <div class="wrap">
@@ -172,7 +172,9 @@ async function load(){
 
 document.getElementById('cut').addEventListener('click', cut);
 document.getElementById('call').addEventListener('click', function(){ alert(AL.t('dtlSoon')); });
-document.getElementById('msg').addEventListener('click', function(){ alert(AL.t('dtlSoon')); });
+document.getElementById('msg').addEventListener('click', function(){
+  location.href = 'alias_chat.html?link=' + encodeURIComponent(linkId);
+});
 
 (async function(){
   AL.paintText();
