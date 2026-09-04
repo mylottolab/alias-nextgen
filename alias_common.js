@@ -588,7 +588,16 @@ AL.callFn = async function(name, body){
     body: JSON.stringify(body || {}),
   });
   var out = await res.json().catch(function(){ return {}; });
-  if (!res.ok || out.error) throw new Error(out.error || ('HTTP ' + res.status));
+  if (!res.ok || out.error) {
+    // 서버가 함께 보낸 단서를 그대로 보여줍니다. 안 그러면 화면에
+    // "not_your_link" 한 마디만 남아서 원인을 못 찾습니다.
+    var extra = [];
+    ['detail','sidesFound','uidHead','sideHeads'].forEach(function(k){
+      if (out[k] !== undefined) extra.push(k + '=' + JSON.stringify(out[k]));
+    });
+    throw new Error((out.error || ('HTTP ' + res.status)) +
+                    (extra.length ? ' (' + extra.join(' · ') + ')' : ''));
+  }
   return out;
 };
 
