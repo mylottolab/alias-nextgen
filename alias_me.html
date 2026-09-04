@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>나 — Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260905c">
-<link rel="stylesheet" href="alias_theme.css?v=20260905c">
+<title>Alias</title>
+<link rel="stylesheet" href="alias_common.css?v=20260905d">
+<link rel="stylesheet" href="alias_theme.css?v=20260905d">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260905c"></script>
+<script src="alias_common.js?v=20260905d"></script>
 <script>document.addEventListener("DOMContentLoaded",function(){AL.bootTheme();});</script>
 </head>
-<body class="tabbed">
+<body class="tabbed" data-t-title="ttMe">
 <div class="wrap">
 
   <div class="tophead">
@@ -32,6 +32,10 @@
 
   <div id="err" class="err"></div>
   <div id="ok" class="ok"></div>
+
+  <div class="sect" data-t="lgTitle"></div>
+  <div class="swatches" id="swLang"></div>
+  <p class="hint" data-t="lgNote"></p>
 
   <div class="sect" data-t="thTitle"></div>
 
@@ -189,6 +193,30 @@ document.getElementById('make').addEventListener('click', makeAlias);
 document.getElementById('name').addEventListener('keydown', function(e){
   if (e.key === 'Enter') makeAlias();
 });
+/* ── 언어 고르기 ─────────────────────────────────────────────── */
+const LANGS = [['auto','lgAuto'], ['kr','lgKr'], ['en','lgEn']];
+
+function paintLang(){
+  const box = document.getElementById('swLang');
+  box.innerHTML = LANGS.map(function(o){
+    return '<button class="sw' + (AL.langPref === o[0] ? ' on' : '') +
+           '" data-lang="' + AL.esc(o[0]) + '">' + AL.esc(AL.t(o[1])) + '</button>';
+  }).join('');
+  box.querySelectorAll('[data-lang]').forEach(function(b){
+    b.addEventListener('click', async function(){
+      try {
+        await AL.setLang(b.getAttribute('data-lang'));
+        // 화면 전체가 바뀌었으니 여기서 만든 것들도 다시 그립니다.
+        paintLang(); paintTheme(); paintPrefs(); paintList();
+        showOk(AL.t('thSaved'));
+      } catch (e) {
+        console.error(e);
+        showErr(AL.t('errGeneric', { msg: e.message || String(e) }));
+      }
+    });
+  });
+}
+
 /* ── 모양 고르기 ───────────────────────────────────────────────
    고르는 즉시 화면이 바뀝니다. 미리보기를 따로 안 봐도 됩니다. */
 const TH = {
@@ -250,8 +278,10 @@ document.getElementById('out').addEventListener('click', AL.signOut);
   me = await AL.requireLogin();
   if (!me) return;
   document.getElementById('uid').textContent = me.id.slice(0, 8);
+  paintLang();
   paintPrefs();
   theme = await AL.loadTheme();
+  paintLang();          // 서버 값이 달랐으면 여기서 맞춰집니다
   paintTheme();
   await reload();
   AL.startAlerts();      // 어느 화면에 있든 새 메시지를 알려줍니다

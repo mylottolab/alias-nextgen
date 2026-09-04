@@ -3,23 +3,23 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>연락처 — Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260905c">
-<link rel="stylesheet" href="alias_theme.css?v=20260905c">
+<title>Alias</title>
+<link rel="stylesheet" href="alias_common.css?v=20260905d">
+<link rel="stylesheet" href="alias_theme.css?v=20260905d">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260905c"></script>
+<script src="alias_common.js?v=20260905d"></script>
 <script>document.addEventListener("DOMContentLoaded",function(){AL.bootTheme();});</script>
 </head>
-<body class="tabbed">
+<body class="tabbed" data-t-title="ttContacts">
 <div class="wrap">
 
   <div class="tophead">
     <h1 class="h2" data-t="cntTitle"></h1>
-    <button class="plusbtn" id="plus" aria-label="연락처 늘리기">+</button>
+    <button class="plusbtn" id="plus" data-t-aria="ariaAdd">+</button>
   </div>
 
   <div class="tools">
-    <input id="q" type="search" autocomplete="off">
+    <input id="q" type="search" autocomplete="off" data-t-ph="cntSearch">
     <button class="toggle" id="grpBtn" data-t="cntGroup"></button>
   </div>
 
@@ -107,7 +107,7 @@ function rowHtml(r){
       (sub ? '<div class="csub">' + AL.esc(sub) + '</div>' : '') +
     '</div>' +
     '<div class="ctime">' + AL.esc(AL.fmtShort(r.last_activity_at)) + '</div>' +
-    '<button class="cdots" data-menu="' + AL.esc(r.link_id) + '" aria-label="더보기">⋯</button>' +
+    '<button class="cdots" data-menu="' + AL.esc(r.link_id) + '" aria-label="' + AL.esc(AL.t('ariaMore')) + '">⋯</button>' +
   '</div>';
 }
 
@@ -258,7 +258,6 @@ document.getElementById('addBg').addEventListener('click', function(){ showAdd(f
 
 (async function(){
   AL.paintText();
-  document.getElementById('q').placeholder = AL.t('cntSearch');
   if (!await AL.requireLogin()) return;
   await reload();
 

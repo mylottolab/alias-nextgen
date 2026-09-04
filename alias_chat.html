@@ -3,23 +3,23 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>대화 — Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260905c">
-<link rel="stylesheet" href="alias_theme.css?v=20260905c">
+<title>Alias</title>
+<link rel="stylesheet" href="alias_common.css?v=20260905d">
+<link rel="stylesheet" href="alias_theme.css?v=20260905d">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260905c"></script>
+<script src="alias_common.js?v=20260905d"></script>
 <script>document.addEventListener("DOMContentLoaded",function(){AL.bootTheme();});</script>
 </head>
-<body class="chat">
+<body class="chat" data-t-title="ttChat">
 <div class="chat-wrap">
 
   <div class="chat-top">
-    <button class="back" id="back" aria-label="뒤로">‹</button>
+    <button class="back" id="back" data-t-aria="ariaBack">‹</button>
     <div class="chat-who" id="who">
       <div class="n" id="whoName"></div>
       <div class="f" id="whoFace"></div>
     </div>
-    <button class="icon" id="call" aria-label="통화">☏</button>
+    <button class="icon" id="call" data-t-aria="ariaCall">☏</button>
   </div>
 
   <div class="chat-body" id="body"></div>
@@ -27,8 +27,8 @@
   <div class="chat-err" id="err" style="display:none"></div>
 
   <div class="chat-foot">
-    <textarea id="input" rows="1"></textarea>
-    <button class="send" id="send" aria-label="보내기" disabled>↑</button>
+    <textarea id="input" rows="1" data-t-ph="chatPlace"></textarea>
+    <button class="send" id="send" data-t-aria="ariaSend" disabled>↑</button>
   </div>
 
 </div>
@@ -388,7 +388,6 @@ document.getElementById('call').addEventListener('click', function(){
 /* ── 시작 ───────────────────────────────────────────────────────── */
 (async function(){
   AL.paintText();
-  input.placeholder = AL.t('chatPlace');
   if (!await AL.requireLogin()) return;
   if (!linkId) { showErr(AL.t('dtlNotFound')); return; }
   try {

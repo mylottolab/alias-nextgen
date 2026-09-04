@@ -74,6 +74,28 @@ AL.STR = {
   meAccount:   { kr:'계정', en:'Account' },
   meAccountId: { kr:'계정 번호', en:'Account ID' },
 
+  /* 언어 */
+  lgTitle:     { kr:'언어', en:'Language' },
+  lgAuto:      { kr:'기기 설정', en:'System' },
+  lgKr:        { kr:'한국어', en:'Korean' },
+  lgEn:        { kr:'English', en:'English' },
+  lgNote:      { kr:'폰과 PC에서 같은 언어로 보입니다.', en:'Applies on every device you sign in to.' },
+
+  /* 화면 제목 · 손이 닿는 곳 이름 */
+  ttAuth:      { kr:'Alias', en:'Alias' },
+  ttContacts:  { kr:'연락처 — Alias', en:'Contacts — Alias' },
+  ttCalls:     { kr:'통화기록 — Alias', en:'Calls — Alias' },
+  ttMe:        { kr:'나 — Alias', en:'You — Alias' },
+  ttChat:      { kr:'대화 — Alias', en:'Chat — Alias' },
+  ttLink:      { kr:'관계 — Alias', en:'Relationship — Alias' },
+  ttInvite:    { kr:'초대 보내기 — Alias', en:'Send invite — Alias' },
+  ttJoin:      { kr:'초대 받기 — Alias', en:'Accept invite — Alias' },
+  ariaBack:    { kr:'뒤로', en:'Back' },
+  ariaCall:    { kr:'통화', en:'Call' },
+  ariaSend:    { kr:'보내기', en:'Send' },
+  ariaAdd:     { kr:'연락처 늘리기', en:'Add a contact' },
+  ariaMore:    { kr:'더보기', en:'More' },
+
   /* 모양 */
   thTitle:     { kr:'모양', en:'Appearance' },
   thMode:      { kr:'밝기', en:'Brightness' },
@@ -294,7 +316,43 @@ AL.STR = {
   cntLegendOpen:{ kr:'이름이 왜 셋인가요?', en:'Why three names?' },
 };
 
-AL.lang = (navigator.language || 'ko').toLowerCase().startsWith('ko') ? 'kr' : 'en';
+/* ── 언어 ───────────────────────────────────────────────────────────
+   저장해둔 것이 있으면 그것을, 없으면 기기 설정을 따릅니다.
+   ⚠ 서버를 기다리면 화면이 잠깐 다른 언어로 번쩍입니다.
+     그래서 기기에도 한 벌 남겨두고 그것으로 먼저 그립니다.
+------------------------------------------------------------------ */
+AL.LANG_KEY = 'alias_lang_v1';
+
+AL.deviceLang = function(){
+  return (navigator.language || 'ko').toLowerCase().indexOf('ko') === 0 ? 'kr' : 'en';
+};
+
+AL.resolveLang = function(pref){
+  if (pref === 'kr' || pref === 'en') return pref;
+  return AL.deviceLang();
+};
+
+AL.langPref = (function(){
+  try { return localStorage.getItem(AL.LANG_KEY) || 'auto'; } catch (e) { return 'auto'; }
+})();
+
+AL.lang = AL.resolveLang(AL.langPref);
+
+AL.setLang = async function(pref){
+  AL.langPref = pref;
+  AL.lang = AL.resolveLang(pref);
+  try { localStorage.setItem(AL.LANG_KEY, pref); } catch (e) {}
+  document.documentElement.setAttribute('lang', AL.lang === 'kr' ? 'ko' : 'en');
+  AL.paintText();
+
+  var sess = await AL.sb.auth.getSession();
+  var uid = sess.data.session ? sess.data.session.user.id : null;
+  if (!uid) return;
+  var res = await AL.sb.from('account_settings')
+    .upsert({ account_id: uid, lang: pref, updated_at: new Date().toISOString() },
+            { onConflict: 'account_id' });
+  if (res.error) throw res.error;
+};
 
 AL.t = function(key, vars){
   var row = AL.STR[key];
@@ -305,9 +363,22 @@ AL.t = function(key, vars){
 };
 
 AL.paintText = function(root){
-  (root || document).querySelectorAll('[data-t]').forEach(function(el){
+  var scope = root || document;
+  scope.querySelectorAll('[data-t]').forEach(function(el){
     el.textContent = AL.t(el.getAttribute('data-t'));
   });
+  // 눈에 안 보이는 글자들 — 화면 읽어주는 기능이 이것을 읽습니다.
+  scope.querySelectorAll('[data-t-aria]').forEach(function(el){
+    el.setAttribute('aria-label', AL.t(el.getAttribute('data-t-aria')));
+  });
+  scope.querySelectorAll('[data-t-ph]').forEach(function(el){
+    el.placeholder = AL.t(el.getAttribute('data-t-ph'));
+  });
+  if (!root) {
+    var t = document.body.getAttribute('data-t-title');
+    if (t) document.title = AL.t(t);
+    document.documentElement.setAttribute('lang', AL.lang === 'kr' ? 'ko' : 'en');
+  }
 };
 
 
@@ -781,8 +852,16 @@ AL.bootTheme = function(){
 AL.loadTheme = async function(){
   try {
     var res = await AL.sb.from('account_settings')
-      .select('theme_mode, theme_color, bubble_style, scene').maybeSingle();
+      .select('theme_mode, theme_color, bubble_style, scene, lang').maybeSingle();
     if (res.error || !res.data) return AL.readThemeCache();
+
+    // 언어도 함께 맞춥니다. 다른 기기에서 바꿨을 수 있습니다.
+    if (res.data.lang && res.data.lang !== AL.langPref) {
+      AL.langPref = res.data.lang;
+      AL.lang = AL.resolveLang(res.data.lang);
+      try { localStorage.setItem(AL.LANG_KEY, res.data.lang); } catch (e) {}
+      AL.paintText();
+    }
     var t = {
       mode: res.data.theme_mode, color: res.data.theme_color,
       bubble: res.data.bubble_style, scene: res.data.scene,
