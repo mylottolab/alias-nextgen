@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>대화 — Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260904j">
+<link rel="stylesheet" href="alias_common.css?v=20260904k">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260904j"></script>
+<script src="alias_common.js?v=20260904k"></script>
 </head>
 <body class="chat">
 <div class="chat-wrap">
@@ -155,7 +155,10 @@ let listenTries = 0;
 async function listen(){
   await AL.syncRealtimeAuth();
   if (channel) { try { AL.sb.removeChannel(channel); } catch (e) {} }
-  channel = AL.sb.channel('link-' + linkId + '-' + Date.now(),
+  // ⚠ 이름이 서버와 정확히 같아야 합니다. Edge Function 이 'link-{id}' 로
+  //   방송합니다. 재접속하려고 뒤에 시각을 붙였다가 방송이 통째로 사라졌습니다.
+  //   새로 붙는 것은 위에서 removeChannel 로 해결합니다.
+  channel = AL.sb.channel('link-' + linkId,
                           { config: { broadcast: { self: false } } });
 
   channel.on('broadcast', { event: 'new-message' }, function(e){
@@ -217,6 +220,7 @@ async function listen(){
    "내가 보낸 것만 보이는" 멀쩡한 화면이 됩니다.
    그래서 주기적으로, 그리고 화면에 돌아올 때마다 다시 맞춥니다. */
 let refreshing = false;
+let refreshFails = 0;
 
 async function refresh(){
   if (refreshing || !me) return;
@@ -241,11 +245,16 @@ async function refresh(){
              });
     });
 
+    refreshFails = 0;
+    clearErr();
     const before = msgs.length;
     msgs = server.concat(temps);
     paint(msgs.length === before);   // 새 게 있으면 아래로 붙습니다
   } catch (e) {
-    console.warn('[refresh]', e);
+    // 조용히 지나가면 "왜 안 오는지" 를 영영 못 찾습니다.
+    console.warn('[refresh] 실패', e);
+    refreshFails++;
+    if (refreshFails >= 3) showErr(AL.t('chatFailed', { msg: e.message || String(e) }));
   } finally {
     refreshing = false;
   }
