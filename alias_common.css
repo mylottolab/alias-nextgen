@@ -503,3 +503,13 @@ body.chat{padding:0;height:100dvh;overflow:hidden;display:flex;flex-direction:co
   border:1px solid var(--line);border-radius:16px;cursor:pointer;min-width:56px;
 }
 .prefrow button.on{color:var(--steel);border-color:var(--steel);}
+
+/* 보내지 못한 말풍선 — 소리 없이 사라지지 않게 */
+.msg.failed .bub{opacity:.55;border:1px dashed var(--bad);background:transparent;color:var(--text);}
+.msg.failed .meta{color:var(--bad);}
+.msg .retry{
+  display:block;margin-bottom:2px;padding:2px 8px;
+  background:transparent;color:var(--bad);
+  border:1px solid var(--bad);border-radius:6px;
+  font-size:10.5px;font-family:inherit;cursor:pointer;
+}

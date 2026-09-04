@@ -94,6 +94,7 @@ AL.STR = {
   chatDeleted: { kr:'삭제된 메시지', en:'Message deleted' },
   chatClosed:  { kr:'끊긴 연결입니다. 메시지를 보낼 수 없습니다.',
                  en:'This connection was ended. You cannot send messages.' },
+  chatRetry:   { kr:'다시', en:'Retry' },
   chatFailed:  { kr:'보내지 못했습니다: {msg}', en:'Could not send: {msg}' },
   chatCallSoon:{ kr:'통화는 다음 단계에서 붙습니다.', en:'Calling comes in the next step.' },
 

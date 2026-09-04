@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>대화 — Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260904k">
+<link rel="stylesheet" href="alias_common.css?v=20260904l">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260904k"></script>
+<script src="alias_common.js?v=20260904l"></script>
 </head>
 <body class="chat">
 <div class="chat-wrap">
@@ -104,17 +104,33 @@ function paint(keepPos){
     }
 
     html += '<div class="msg ' + (out ? 'out' : 'in') +
-      (m._fresh ? ' fresh' : '') + '">' +
+      (m._fresh ? ' fresh' : '') + (m._failed ? ' failed' : '') + '">' +
       '<div class="bub' + (gone ? ' gone' : '') + '">' +
         AL.esc(gone ? AL.t('chatDeleted') : (m.content || '')) +
       '</div>' +
       '<div class="meta">' +
-        (read ? '<span class="rd">' + AL.esc(AL.t('chatRead')) + '</span>' : '') +
+        (m._failed
+          ? '<button class="retry" data-retry="' + AL.esc(m.id) + '">' +
+              AL.esc(AL.t('chatRetry')) + '</button>'
+          : (read ? '<span class="rd">' + AL.esc(AL.t('chatRead')) + '</span>' : '')) +
         AL.esc(AL.fmtClock(when)) +
       '</div>' +
     '</div>';
   });
   b.innerHTML = html;
+
+  b.querySelectorAll('[data-retry]').forEach(function(el){
+    el.addEventListener('click', function(){
+      const id = el.getAttribute('data-retry');
+      const i = msgs.findIndex(function(m){ return m.id === id; });
+      if (i < 0) return;
+      const text = msgs[i]._text || msgs[i].content;
+      msgs.splice(i, 1);
+      document.getElementById('input').value = text;
+      send();
+    });
+  });
+
   if (stick || keepPos === false) toBottom();
 }
 
@@ -238,11 +254,20 @@ async function refresh(){
     server.forEach(function(m){ have[m.id] = 1; });
 
     // 아직 응답을 못 받은 임시 말풍선은 살려둡니다.
+    // ⚠ 서버가 모르는 내 글은 살려둡니다. 지우면 무슨 일이 있었는지 못 봅니다.
     const temps = msgs.filter(function(m){
-      return String(m.id).indexOf('tmp-') === 0 &&
-             !server.some(function(x){
-               return x.sender_side_id === me.sideId && x.content === m.content;
-             });
+      if (!m._failed && String(m.id).indexOf('tmp-') !== 0) {
+        // 보냈다고 응답까지 받았는데 서버 목록에 없는 것 — 이상한 상황입니다.
+        if (m.sender_side_id === me.sideId && !have[m.id]) {
+          m._failed = true;
+          console.warn('[refresh] 보냈는데 서버에 없습니다', m.id, m.content);
+          return true;
+        }
+        return false;
+      }
+      return !server.some(function(x){
+        return x.sender_side_id === me.sideId && x.content === m.content;
+      });
     });
 
     refreshFails = 0;
@@ -311,9 +336,11 @@ async function send(){
       paint();
     }
   } catch (e) {
-    console.error(e);
-    msgs = msgs.filter(function(m){ return m.id !== tempId; });
-    box.value = text;                       // 쓴 글을 잃지 않게 되돌립니다
+    console.error('[send] 실패', e);
+    // ⚠ 지우면 안 됩니다. 소리 없이 사라지면 무슨 일이 있었는지 아무도 모릅니다.
+    //   실패 표시를 달아 남겨두고, 눌러서 다시 보낼 수 있게 합니다.
+    const i = msgs.findIndex(function(m){ return m.id === tempId; });
+    if (i >= 0) { msgs[i]._failed = true; msgs[i]._text = text; }
     showErr(AL.t('chatFailed', { msg: e.message || String(e) }));
     paint(false);
   } finally {
