@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>관계 — Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260904b">
+<link rel="stylesheet" href="alias_common.css?v=20260904d">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260904b"></script>
+<script src="alias_common.js?v=20260904d"></script>
 </head>
 <body>
 <div class="wrap">
@@ -32,7 +32,15 @@
   </div>
 
   <div id="err" class="err"></div>
+  <div id="ok" class="ok"></div>
 
+</div>
+
+<div class="sheet-bg" id="pickBg"></div>
+<div class="sheet" id="pick" style="display:none">
+  <div class="grip"></div>
+  <p class="hint" style="margin:0 0 14px" data-t="dtlFaceAsk"></p>
+  <div id="pickList"></div>
 </div>
 
 <script>
@@ -85,11 +93,6 @@ function paint(){
         ' <button data-act="label">' + AL.esc(AL.t('dtlChange')) + '</button></span>' +
     '</div>' +
     '<div class="drow">' +
-      '<span class="dlab">' + AL.esc(AL.t('dtlOrder')) + '</span>' +
-      '<span class="dval"><button data-act="pin">' +
-        AL.esc(row.pinned ? AL.t('dtlPinOff') : AL.t('dtlPinOn')) + '</button></span>' +
-    '</div>' +
-    '<div class="drow">' +
       '<span class="dlab">' + AL.esc(AL.t('dtlNotify')) + '</span>' +
       '<span class="dval"><button data-act="mute">' +
         AL.esc(row.muted ? AL.t('dtlMuteOff') : AL.t('dtlMuteOn')) + '</button></span>' +
@@ -117,14 +120,9 @@ async function act(kind){
 
     } else if (kind === 'face') {
       // ⚠ 이 관계에서만 내 얼굴을 바꿉니다. 다른 관계는 그대로입니다.
-      //   다만 상대 화면에서는 즉시 바뀌므로 반드시 물어봅니다.
-      if (!aliases.length) return;
-      const menu = aliases.map(function(a, i){ return (i+1) + '. ' + a.display_name; }).join('\n');
-      const pick = prompt(AL.t('dtlFaceAsk') + '\n\n' + menu, '');
-      if (pick === null) return;
-      const idx = parseInt(pick, 10) - 1;
-      if (isNaN(idx) || idx < 0 || idx >= aliases.length) return;
-      await save({ persona_id: aliases[idx].id });
+      //   전에는 prompt()에 번호를 치게 했는데, 이름을 치면 조용히 아무 일도
+      //   일어나지 않았습니다. 눌러서 고르게 바꿨습니다.
+      openPick(true);
     }
   } catch (e) {
     console.error(e);
@@ -132,9 +130,44 @@ async function act(kind){
   }
 }
 
+function openPick(on){
+  document.getElementById('pickBg').classList.toggle('show', on);
+  document.getElementById('pick').style.display = on ? '' : 'none';
+  if (!on) return;
+
+  const box = document.getElementById('pickList');
+  box.innerHTML = aliases.map(function(a){
+    const now = (a.display_name === row.my_face) ? ' ✓' : '';
+    return '<button data-pick="' + AL.esc(a.id) + '">' + AL.esc(a.display_name) + AL.esc(now) + '</button>';
+  }).join('');
+
+  box.querySelectorAll('[data-pick]').forEach(function(b){
+    b.addEventListener('click', async function(){
+      openPick(false);
+      try {
+        await save({ persona_id: b.getAttribute('data-pick') });
+        showOk(AL.t('dtlFaceDone'));
+      } catch (e) {
+        console.error(e);
+        showErr(AL.t('errGeneric', { msg: e.message || String(e) }));
+      }
+    });
+  });
+}
+document.getElementById('pickBg').addEventListener('click', function(){ openPick(false); });
+
+function showOk(msg){
+  const el = document.getElementById('ok');
+  el.textContent = msg; el.classList.add('show');
+  document.getElementById('err').classList.remove('show');
+}
+
 async function save(patch){
-  const res = await AL.sb.from('link_sides').update(patch).eq('id', row.my_side_id);
+  // ⚠ RLS가 막으면 오류 없이 0줄이 바뀝니다(함정 ⑦).
+  //   select()를 붙여 정말 바뀌었는지 확인합니다.
+  const res = await AL.sb.from('link_sides').update(patch).eq('id', row.my_side_id).select('id');
   if (res.error) throw res.error;
+  if (!res.data || !res.data.length) throw new Error(AL.t('errNoRows'));
   await load();
 }
 

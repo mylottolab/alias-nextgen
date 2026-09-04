@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>연락처 — Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260904b">
+<link rel="stylesheet" href="alias_common.css?v=20260904d">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260904b"></script>
+<script src="alias_common.js?v=20260904d"></script>
 </head>
 <body class="tabbed">
 <div class="wrap">
@@ -14,6 +14,11 @@
   <div class="tophead">
     <h1 class="h2" data-t="cntTitle"></h1>
     <button class="plusbtn" id="plus" aria-label="연락처 늘리기">+</button>
+  </div>
+
+  <div class="tools">
+    <input id="q" type="search" autocomplete="off">
+    <button class="toggle" id="grpBtn" data-t="cntGroup"></button>
   </div>
 
   <details class="legend">
@@ -27,8 +32,9 @@
 
 </div>
 
-<div class="sheet-bg" id="sheetBg"></div>
-<div class="sheet" id="sheet" style="display:none">
+<!-- 연락처 늘리기 -->
+<div class="sheet-bg" id="addBg"></div>
+<div class="sheet" id="addSheet" style="display:none">
   <div class="grip"></div>
   <a href="alias_invite.html">
     <span data-t="addInvite"></span>
@@ -40,6 +46,16 @@
   </a>
 </div>
 
+<!-- 줄 메뉴 -->
+<div class="sheet-bg" id="rowBg"></div>
+<div class="sheet" id="rowSheet" style="display:none">
+  <div class="grip"></div>
+  <p class="hint" id="rowWho" style="margin:0 0 14px"></p>
+  <button id="mPin"></button>
+  <button id="mMute"></button>
+  <button id="mOpen" data-t="cntOpenDetail"></button>
+</div>
+
 <nav class="tabbar">
   <a href="alias_contacts.html" class="on" data-t="navContacts"></a>
   <a href="alias_calls.html" data-t="navCalls"></a>
@@ -49,28 +65,59 @@
 <script>
 /* =====================================================================
    연락처 (홈)
-   ⚠ 목록은 짧게 둡니다. 설명은 관계 상세(alias_link.html)가 합니다.
-     한 줄에 다 담았더니 시끄러워서 아무도 안 읽었습니다.
+   ⚠ 목록은 짧게. 설명은 관계 상세가 합니다.
+   ⚠ 위로 올리기·알림은 목록의 ⋯ 안에 둡니다. 상세 화면 안에서는
+     "위로 올린다"가 어디로 가는 건지 알 수가 없습니다(옆줄이 안 보이니까요).
    ===================================================================== */
 
 let rows = [];
+let grouped = false;   // 별칭별로 묶어 볼지
+let closedGroups = {}; // 접힌 묶음
+let menuRow = null;    // ⋯ 를 누른 줄
 
 function showErr(msg){
   const el = document.getElementById('err');
   el.textContent = msg; el.classList.add('show');
 }
 
+/* ── 걸러내기 ────────────────────────────────────────────────────
+   내가 부른 이름, 상대 별칭, 내 별칭 셋 다에서 찾습니다.
+   "업무용으로 만난 사람"을 찾을 수 있어야 하니까요. */
+function visible(){
+  const q = document.getElementById('q').value.trim().toLowerCase();
+  if (!q) return rows;
+  return rows.filter(function(r){
+    return [r.peer_label, r.peer_display, r.my_face]
+      .some(function(v){ return v && v.toLowerCase().indexOf(q) >= 0; });
+  });
+}
+
+function rowHtml(r){
+  const shown = r.peer_label || r.peer_display || AL.t('cntUnnamed');
+  const sub = r.peer_label ? (r.peer_display || '') : '';
+  return '<div class="crow">' +
+    '<div class="cav" data-go="' + AL.esc(r.link_id) + '">' + AL.esc(AL.initial(r.my_face)) + '</div>' +
+    '<div class="cmid" data-go="' + AL.esc(r.link_id) + '">' +
+      '<div class="cname">' + (r.pinned ? '▲ ' : '') + AL.esc(shown) + '</div>' +
+      (sub ? '<div class="csub">' + AL.esc(sub) + '</div>' : '') +
+    '</div>' +
+    '<div class="ctime">' + AL.esc(AL.fmtShort(r.last_activity_at)) + '</div>' +
+    '<button class="cdots" data-menu="' + AL.esc(r.link_id) + '" aria-label="더보기">⋯</button>' +
+  '</div>';
+}
+
 function paint(){
   const box = document.getElementById('list');
+  const list = visible();
+
   if (!rows.length) {
     box.innerHTML = '<div class="empty">' + AL.esc(AL.t('cntEmpty')) + '</div>';
     document.getElementById('twin').classList.remove('show');
     return;
   }
 
-  // 같은 상대가 여러 줄이면 안내를 띄웁니다. 버그가 아니라 설계입니다.
-  const seen = {};
-  let twin = false;
+  // 같은 상대가 여러 줄이면 안내. 버그가 아니라 설계입니다.
+  const seen = {}; let twin = false;
   rows.forEach(function(r){
     const k = (r.peer_label || '') + '\u0000' + (r.peer_display || '');
     if (seen[k]) twin = true;
@@ -78,28 +125,96 @@ function paint(){
   });
   document.getElementById('twin').classList.toggle('show', twin);
 
-  box.innerHTML = rows.map(function(r){
-    // 큰 글씨 = 내가 부르는 이름. 없으면 상대 별칭.
-    // 동그라미 = 내가 이 사람에게 쓰는 얼굴의 첫 글자.
-    const shown = r.peer_label || r.peer_display || AL.t('cntUnnamed');
-    const sub = r.peer_label ? (r.peer_display || '') : '';
-    return '<div class="crow" data-go="' + AL.esc(r.link_id) + '">' +
-      '<div class="cav">' + AL.esc(AL.initial(r.my_face)) + '</div>' +
-      '<div class="cmid">' +
-        '<div class="cname">' + AL.esc(shown) + '</div>' +
-        (sub ? '<div class="csub">' + AL.esc(sub) + '</div>' : '') +
-      '</div>' +
-      '<div class="ctime">' + AL.esc(AL.fmtShort(r.last_activity_at)) + '</div>' +
-    '</div>';
-  }).join('');
+  if (!list.length) {
+    box.innerHTML = '<div class="nores">' + AL.esc(AL.t('cntNoMatch')) + '</div>';
+    return;
+  }
+
+  if (!grouped) {
+    box.innerHTML = list.map(rowHtml).join('');
+  } else {
+    // 내가 쓰는 별칭으로 묶습니다. "업무용으로 만난 사람들"이 한 덩어리가 됩니다.
+    const order = [];
+    const bag = {};
+    list.forEach(function(r){
+      const k = r.my_face || '';
+      if (!bag[k]) { bag[k] = []; order.push(k); }
+      bag[k].push(r);
+    });
+    box.innerHTML = order.map(function(k){
+      const closed = !!closedGroups[k];
+      return '<div class="grp' + (closed ? ' closed' : '') + '" data-grp="' + AL.esc(k) + '">' +
+          '<span class="gav">' + AL.esc(AL.initial(k)) + '</span>' +
+          '<span class="gname">' + AL.esc(k) + '</span>' +
+          '<span class="gcount">' + AL.esc(AL.t('cntCount', { n: bag[k].length })) + '</span>' +
+          '<span class="gcaret">▼</span>' +
+        '</div>' +
+        (closed ? '' : bag[k].map(rowHtml).join(''));
+    }).join('');
+  }
 
   box.querySelectorAll('[data-go]').forEach(function(el){
     el.addEventListener('click', function(){
       location.href = 'alias_link.html?link=' + encodeURIComponent(el.getAttribute('data-go'));
     });
   });
+  box.querySelectorAll('[data-menu]').forEach(function(el){
+    el.addEventListener('click', function(e){
+      e.stopPropagation();
+      openRowMenu(el.getAttribute('data-menu'));
+    });
+  });
+  box.querySelectorAll('[data-grp]').forEach(function(el){
+    el.addEventListener('click', function(){
+      const k = el.getAttribute('data-grp');
+      closedGroups[k] = !closedGroups[k];
+      paint();
+    });
+  });
 }
 
+/* ── 줄 메뉴 ─────────────────────────────────────────────────── */
+function openRowMenu(linkId){
+  menuRow = rows.filter(function(r){ return r.link_id === linkId; })[0];
+  if (!menuRow) return;
+  document.getElementById('rowWho').textContent =
+    menuRow.peer_label || menuRow.peer_display || AL.t('cntUnnamed');
+  document.getElementById('mPin').textContent =
+    menuRow.pinned ? AL.t('dtlPinOff') : AL.t('dtlPinOn');
+  document.getElementById('mMute').textContent =
+    menuRow.muted ? AL.t('dtlMuteOff') : AL.t('dtlMuteOn');
+  showRowSheet(true);
+}
+function showRowSheet(on){
+  document.getElementById('rowBg').classList.toggle('show', on);
+  document.getElementById('rowSheet').style.display = on ? '' : 'none';
+}
+
+async function patchSide(patch){
+  // ⚠ RLS가 막으면 오류 없이 0줄이 바뀝니다(함정 ⑦). select 로 확인합니다.
+  const res = await AL.sb.from('link_sides')
+    .update(patch).eq('id', menuRow.my_side_id).select('id');
+  if (res.error) throw res.error;
+  if (!res.data || !res.data.length) throw new Error(AL.t('errNoRows'));
+  await reload();
+}
+
+document.getElementById('mPin').addEventListener('click', async function(){
+  showRowSheet(false);
+  try { await patchSide({ pinned: !menuRow.pinned }); }
+  catch (e) { console.error(e); showErr(AL.t('errGeneric', { msg: e.message || String(e) })); }
+});
+document.getElementById('mMute').addEventListener('click', async function(){
+  showRowSheet(false);
+  try { await patchSide({ muted: !menuRow.muted }); }
+  catch (e) { console.error(e); showErr(AL.t('errGeneric', { msg: e.message || String(e) })); }
+});
+document.getElementById('mOpen').addEventListener('click', function(){
+  location.href = 'alias_link.html?link=' + encodeURIComponent(menuRow.link_id);
+});
+document.getElementById('rowBg').addEventListener('click', function(){ showRowSheet(false); });
+
+/* ── 읽어오기 ───────────────────────────────────────────────── */
 async function reload(){
   try {
     const res = await AL.sb.rpc('my_contacts');
@@ -112,15 +227,24 @@ async function reload(){
   }
 }
 
-function openSheet(on){
-  document.getElementById('sheetBg').classList.toggle('show', on);
-  document.getElementById('sheet').style.display = on ? '' : 'none';
+/* ── 도구 ───────────────────────────────────────────────────── */
+document.getElementById('q').addEventListener('input', paint);
+document.getElementById('grpBtn').addEventListener('click', function(){
+  grouped = !grouped;
+  this.classList.toggle('on', grouped);
+  paint();
+});
+
+function showAdd(on){
+  document.getElementById('addBg').classList.toggle('show', on);
+  document.getElementById('addSheet').style.display = on ? '' : 'none';
 }
-document.getElementById('plus').addEventListener('click', function(){ openSheet(true); });
-document.getElementById('sheetBg').addEventListener('click', function(){ openSheet(false); });
+document.getElementById('plus').addEventListener('click', function(){ showAdd(true); });
+document.getElementById('addBg').addEventListener('click', function(){ showAdd(false); });
 
 (async function(){
   AL.paintText();
+  document.getElementById('q').placeholder = AL.t('cntSearch');
   if (!await AL.requireLogin()) return;
   await reload();
 })();

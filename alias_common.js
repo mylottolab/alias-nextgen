@@ -19,7 +19,7 @@ window.AL = window.AL || {};
    ⚠ 함정 ㉑ — sb_publishable 말고 eyJ 로 시작하는 legacy anon 열쇠입니다.
 ------------------------------------------------------------------ */
 AL.SUPABASE_URL  = 'https://azredlrnvsssfjytaotb.supabase.co';
-AL.SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF6cmVkbHJudnNzc2ZqeXRhb3RiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MDg1MjgsImV4cCI6MjEwMzk4NDUyOH0.2gTxzr54vRSZzFnyhLSd1Imv3OnwRBQs925CYeXdonI';  // eyJ 로 시작하는 열쇠
+AL.SUPABASE_ANON = 'PASTE_YOUR_ANON_KEY_HERE';  // eyJ 로 시작하는 열쇠
 
 /* ⚠ 열쇠를 안 넣으면 Supabase 가 헤더에 실을 때 터집니다. 한글이 섞이면
      "String contains non ISO-8859-1 code point" 라는 엉뚱한 말이 나와서
@@ -49,6 +49,8 @@ AL.STR = {
   copied:     { kr:'복사했습니다', en:'Copied' },
   signOut:    { kr:'로그아웃', en:'Sign out' },
   errGeneric: { kr:'문제가 생겼습니다: {msg}', en:'Something went wrong: {msg}' },
+  errNoRows:  { kr:'저장이 반영되지 않았습니다. 권한 문제일 수 있습니다.',
+                en:'Nothing was saved. This may be a permissions problem.' },
 
   /* 하단 탭 */
   navContacts: { kr:'연락처', en:'Contacts' },
@@ -87,10 +89,11 @@ AL.STR = {
   dtlMuteOn:   { kr:'알림 끄기', en:'Mute' },
   dtlMuteOff:  { kr:'알림 켜기', en:'Unmute' },
   dtlNotify:   { kr:'알림', en:'Notifications' },
-  dtlOrder:    { kr:'목록 위치', en:'List position' },
   dtlCut:      { kr:'이 연결 끊기', en:'Disconnect' },
   dtlCutAsk:   { kr:'연결을 끊으면 서로 연락할 수 없게 됩니다.\n다시 이으려면 초대를 새로 주고받아야 합니다.\n끊을까요?',
                  en:'Disconnecting means neither of you can reach the other.\nReconnecting needs a new invite.\nDisconnect?' },
+  dtlFaceDone: { kr:'바꿨습니다. 상대 화면에도 반영됩니다.',
+                 en:'Changed. Their screen is updated too.' },
   dtlFaceAsk:  { kr:'바꾸면 상대 화면에서 내 이름이 바로 바뀝니다.\n어떤 별칭으로 바꿀까요?',
                  en:'Their screen updates immediately.\nWhich alias should they see?' },
 
@@ -211,6 +214,11 @@ AL.STR = {
                 en:'Nobody is connected yet.\nSend or accept an invite.' },
   cntUnnamed: { kr:'(이름 없음)', en:'(no name)' },
   cntRenameAsk:{ kr:'이 사람을 뭐라고 부를까요?', en:'What will you call them?' },
+  cntSearch:   { kr:'이름으로 찾기', en:'Search by name' },
+  cntGroup:    { kr:'별칭별', en:'By alias' },
+  cntNoMatch:  { kr:'찾는 이름이 없습니다.', en:'No matching name.' },
+  cntCount:    { kr:'{n}명', en:'{n}' },
+  cntOpenDetail:{ kr:'관계 상세', en:'Relationship details' },
   cntSamePeer:{ kr:'같은 상대와 여러 번 이어졌습니다. 연결한 시각으로 구별하세요.',
                 en:'You are connected to the same person more than once. Tell them apart by the time.' },
   cntCapMine: { kr:'내가 붙인 이름 · 나만 봅니다', en:'Your name for them · only you see this' },

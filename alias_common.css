@@ -288,3 +288,52 @@ body.tabbed{padding-bottom:96px;}
   background:transparent;color:var(--bad);
   border:1px solid rgba(217,106,106,.4);border-radius:10px;cursor:pointer;
 }
+
+/* =====================================================================
+   연락처 도구 — 검색 · 묶기 · 줄 메뉴   (2026-09-04)
+   ===================================================================== */
+
+.tools{display:flex;gap:8px;margin-bottom:14px;}
+.tools input{
+  flex:1;min-width:0;padding:11px 13px;font-size:15px;
+  background:var(--raise);color:var(--text);
+  border:1px solid var(--line);border-radius:10px;font-family:inherit;
+}
+.tools input:focus{outline:2px solid var(--steel);outline-offset:1px;border-color:transparent;}
+.tools input::placeholder{color:#4E5D73;}
+.toggle{
+  flex-shrink:0;padding:11px 14px;font-size:12.5px;font-family:inherit;
+  background:var(--raise);color:var(--dim);
+  border:1px solid var(--line);border-radius:10px;cursor:pointer;white-space:nowrap;
+}
+.toggle.on{color:var(--steel);border-color:var(--steel);}
+
+/* 얼굴별 묶음 머리 */
+.grp{
+  display:flex;align-items:center;gap:9px;
+  margin:22px 0 9px;cursor:pointer;user-select:none;
+}
+.grp:first-child{margin-top:6px;}
+.grp .gav{
+  width:24px;height:24px;flex-shrink:0;border-radius:50%;
+  background:var(--raise2);border:1px solid var(--line);
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:600;color:var(--steel);
+}
+.grp .gname{font-size:13px;color:var(--dim);}
+.grp .gcount{font-size:11.5px;color:var(--faint);}
+.grp .gcaret{margin-left:auto;font-size:11px;color:var(--faint);}
+.grp.closed .gcaret{transform:rotate(-90deg);}
+
+/* 줄 오른쪽 ⋯ */
+.cdots{
+  flex-shrink:0;width:30px;height:30px;padding:0;
+  background:transparent;color:var(--faint);
+  border:none;border-radius:8px;font-size:17px;font-family:inherit;cursor:pointer;
+}
+.cdots:hover{color:var(--text);background:var(--raise2);}
+
+.nores{
+  padding:26px 20px;text-align:center;
+  font-size:13.5px;color:var(--dim);
+}
