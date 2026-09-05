@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260905o">
-<link rel="stylesheet" href="alias_theme.css?v=20260905o">
+<link rel="stylesheet" href="alias_common.css?v=20260905q">
+<link rel="stylesheet" href="alias_theme.css?v=20260905q">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260905o"></script>
-<script src="alias_call.js?v=20260905o"></script>
+<script src="alias_common.js?v=20260905q"></script>
+<script src="alias_call.js?v=20260905q"></script>
 <script>document.addEventListener("DOMContentLoaded",function(){AL.bootTheme();});</script>
 </head>
 <body class="callscreen" data-t-title="clVoice">
@@ -53,7 +53,38 @@ const linkId   = P.get('link');
 const callId   = P.get('call');       // 있으면 받는 쪽
 const token    = P.get('token');
 const callType = P.get('type') || 'voice';
+const once     = P.get('once');       // 이 통화의 표. 한 번만 씁니다
 const incoming = !!callId;
+
+/* 🔴 뒤로 가기로 이 화면에 다시 오면 전화를 또 걸면 안 됩니다.
+   브라우저는 그냥 주소를 다시 열 뿐이라, 주소만 보고 "걸어라" 하면
+   뒤로 갈 때마다 전화가 걸립니다. 앞 화면을 볼 수가 없어집니다.
+
+   그래서 통화를 걸 때 한 번만 쓰는 표를 주소에 담고, 여기서 태웁니다.
+   이미 쓴 표면 걸지 않고 그냥 나갑니다. */
+const USED_KEY = 'alias_used_call_tickets';
+
+function ticketUsed(t){
+  try {
+    var raw = sessionStorage.getItem(USED_KEY);
+    return raw ? JSON.parse(raw).indexOf(t) >= 0 : false;
+  } catch (e) { return false; }
+}
+function burnTicket(t){
+  try {
+    var raw = sessionStorage.getItem(USED_KEY);
+    var list = raw ? JSON.parse(raw) : [];
+    list.push(t);
+    if (list.length > 30) list = list.slice(-30);
+    sessionStorage.setItem(USED_KEY, JSON.stringify(list));
+  } catch (e) {}
+}
+
+/* 통화 화면을 떠날 때는 뒤로 가기 기록에 안 남깁니다.
+   그래야 뒤로 눌렀을 때 통화 화면이 아니라 그 앞 화면이 나옵니다. */
+function leaveTo(url){
+  location.replace(url);
+}
 
 let me = null, view = null;
 let muted = false;
@@ -140,7 +171,7 @@ function bye(){
   el('acts').innerHTML = '';
   // 잠깐 보여준 뒤 대화로 돌아갑니다.
   setTimeout(function(){
-    location.href = 'alias_chat.html?link=' + encodeURIComponent(linkId);
+    leaveTo('alias_chat.html?link=' + encodeURIComponent(linkId));
   }, 1600);
 }
 
@@ -160,7 +191,7 @@ async function answer(){
 
 async function decline(){
   await AL.declineCall(callId);
-  location.href = 'alias_chat.html?link=' + encodeURIComponent(linkId);
+  leaveTo('alias_chat.html?link=' + encodeURIComponent(linkId));
 }
 
 (async function(){
@@ -176,9 +207,23 @@ async function decline(){
   paintActs();
 
   if (incoming) {
+    // 받는 쪽 — 이미 처리한 전화면 다시 안 띄웁니다.
+    if (once && ticketUsed(once)) {
+      leaveTo('alias_chat.html?link=' + encodeURIComponent(linkId));
+      return;
+    }
+    if (once) burnTicket(once);
     setStatus(AL.t('clRinging'));
     AL.alertNew();                     // 벨 대신 딩동
+
   } else {
+    // 거는 쪽 — 표가 없거나 이미 쓴 표면 걸지 않습니다.
+    // 뒤로 가기로 돌아온 경우입니다.
+    if (!once || ticketUsed(once)) {
+      leaveTo('alias_chat.html?link=' + encodeURIComponent(linkId));
+      return;
+    }
+    burnTicket(once);
     try {
       await AL.startCall({
         linkId: linkId, sideId: view.my_side_id,

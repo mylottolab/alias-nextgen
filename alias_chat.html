@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260905o">
-<link rel="stylesheet" href="alias_theme.css?v=20260905o">
+<link rel="stylesheet" href="alias_common.css?v=20260905q">
+<link rel="stylesheet" href="alias_theme.css?v=20260905q">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260905o"></script>
-<script src="alias_media.js?v=20260905o"></script>
-<script src="alias_extras.js?v=20260905o"></script>
-<script src="alias_room.js?v=20260905o"></script>
-<script src="alias_call.js?v=20260905o"></script>
+<script src="alias_common.js?v=20260905q"></script>
+<script src="alias_media.js?v=20260905q"></script>
+<script src="alias_extras.js?v=20260905q"></script>
+<script src="alias_room.js?v=20260905q"></script>
+<script src="alias_call.js?v=20260905q"></script>
 <script>document.addEventListener("DOMContentLoaded",function(){AL.bootTheme();});</script>
 </head>
 <body class="chat" data-t-title="ttChat">
@@ -131,6 +131,33 @@ function toBottom(){
 function tempTag(m){
   return '<span class="temp-tag">⏱ ' +
     AL.esc(AL.t('exWillGo', { when: AL.fmtClock(m.expires_at) })) + '</span>';
+}
+
+/* 대화창에 남는 통화 한 줄 */
+function callLineHtml(c){
+  const out = c.caller_side_id === me.sideId;
+  const missed = (c.ended_reason === 'no_answer' || c.ended_reason === 'declined');
+  const failed = (c.ended_reason === 'failed');
+
+  let label;
+  if (missed && !out) label = AL.t('clLogMissed');
+  else if (missed && out) label = AL.t('clLogDeclined');
+  else if (failed) label = AL.t('clLogFailed');
+  else {
+    const s = c.duration_seconds || 0;
+    const dur = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+    label = AL.t(out ? 'clLogOut' : 'clLogIn', { dur: dur });
+  }
+
+  const icon = c.call_type === 'video' ? '🎥' : (out ? '↗' : '↙');
+
+  return '<div class="callline' + (missed ? ' missed' : '') +
+      '" data-call="' + AL.esc(c.id) + '">' +
+    '<span class="ci">' + icon + '</span>' +
+    '<span class="cx"><b>' + AL.esc(label) + '</b>' +
+      '<span>' + AL.esc(AL.t('clLogAs', { face: me.myFace || '' })) + '</span></span>' +
+    '<span class="ct">' + AL.esc(AL.fmtClock(c.created_at)) + '</span>' +
+  '</div>';
 }
 
 function quoteHtml(m){
@@ -291,14 +318,31 @@ function paint(keepPos){
     return;
   }
 
+  // 메시지와 통화를 시각순으로 합칩니다.
+  // ⚠ 검색 중이거나 즐겨찾기만 볼 때는 통화를 빼야 결과가 깔끔합니다.
+  let feed = show;
+  if (!findQ && !starOnly && calls.length) {
+    feed = show.concat(calls.map(function(c){
+      return { _call: c, created_at: c.created_at, sent_at: c.created_at };
+    })).sort(function(a, b){
+      return new Date(a.sent_at || a.created_at) - new Date(b.sent_at || b.created_at);
+    });
+  }
+
   let html = '';
   let prevDay = null;
-  show.forEach(function(m){
+  feed.forEach(function(m){
     const when = m.sent_at || m.created_at;
     if (!prevDay || !AL.sameDay(prevDay, when)) {
       html += '<div class="daysep">' + AL.esc(AL.fmtDaySep(when)) + '</div>';
       prevDay = when;
     }
+    // 통화 기록 줄
+    if (m._call) {
+      html += callLineHtml(m._call);
+      return;
+    }
+
     // 알림줄은 말풍선이 아니라 가운데 한 줄로 그립니다.
     if (m.message_type === 'system') {
       html += '<div class="sysline notice">' +
@@ -342,6 +386,15 @@ function paint(keepPos){
   b.innerHTML = html;
 
   fillMedia();
+
+  b.querySelectorAll('[data-call]').forEach(function(el){
+    el.addEventListener('click', function(){
+      if (confirm(AL.t('clCallBack'))) {
+        location.href = 'alias_call.html?link=' + encodeURIComponent(linkId) +
+    '&type=voice&once=' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+      }
+    });
+  });
 
   b.querySelectorAll('.bub[data-id]').forEach(function(el){
     el.addEventListener('click', function(e){
@@ -432,6 +485,7 @@ async function open_(){
   roomHours = out.link.autoDeleteHours || null;
   linkInfo = out.link;
 
+  await loadCalls();
   paint(false);
   loadPreviews();
   loadRoom();
@@ -531,6 +585,7 @@ let goals = [];           // 기념일
 let away = null;          // 내 자리비움
 let music = null;         // 같이 듣기
 let linkInfo = null;      // preset · features — 메뉴판
+let calls = [];           // 이 방의 통화 기록
 
 async function refresh(){
   if (refreshing || !me) return;
@@ -576,6 +631,7 @@ async function refresh(){
     clearErr();
     const before = msgs.length;
     msgs = server.concat(temps);
+    await loadCalls();              // 통화 기록도 함께 맞춥니다
     paint(msgs.length === before);   // 새 게 있으면 아래로 붙습니다
     loadPreviews();
   } catch (e) {
@@ -898,6 +954,21 @@ function chip(icon, label, onClick){
   return b;
 }
 
+/* 이 방의 통화 기록. 대화에 섞어 그립니다.
+   ⚠ 카카오톡이 보이스톡 기록을 대화창에 남기는 것과 같습니다.
+     다만 우리는 "어떤 얼굴로 한 통화였나" 도 함께 남깁니다.
+     나중에 되짚을 때 "내가 그때 누구였더라" 가 안 풀리면 곤란합니다. */
+async function loadCalls(){
+  try {
+    const res = await AL.sb.from('calls')
+      .select('id, caller_side_id, call_type, ended_reason, duration_seconds, created_at, answered_at')
+      .eq('link_id', linkId)
+      .order('created_at', { ascending: true })
+      .limit(200);
+    calls = res.data || [];
+  } catch (e) { calls = []; }
+}
+
 /* 방에 딸린 것들을 읽어옵니다. */
 async function loadRoom(){
   try {
@@ -923,7 +994,8 @@ function watchCalls(){
     location.href = 'alias_call.html?call=' + encodeURIComponent(c.call_id) +
       '&token=' + encodeURIComponent(c.session_token) +
       '&link=' + encodeURIComponent(c.link_id) +
-      '&type=' + encodeURIComponent(c.call_type);
+      '&type=' + encodeURIComponent(c.call_type) +
+      '&once=' + encodeURIComponent(c.call_id);
   });
 }
 
@@ -1063,7 +1135,8 @@ document.getElementById('who').addEventListener('click', function(){
   location.href = 'alias_link.html?link=' + encodeURIComponent(linkId);
 });
 document.getElementById('call').addEventListener('click', function(){
-  location.href = 'alias_call.html?link=' + encodeURIComponent(linkId) + '&type=voice';
+  location.href = 'alias_call.html?link=' + encodeURIComponent(linkId) +
+    '&type=voice&once=' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 });
 
 /* ── 시작 ───────────────────────────────────────────────────────── */

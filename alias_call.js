@@ -136,6 +136,12 @@ async function addIce(candidate){
 
 /* ── 걸기 ────────────────────────────────────────────────────────── */
 AL.startCall = async function(opts){
+  // 🔴 앞 통화의 찌꺼기를 먼저 치웁니다.
+  //   안 치우면 두 번째 통화가 첫 통화 위에 올라타서, 화면은 "통화 중"인데
+  //   소리가 안 옵니다. 옛 채널·옛 PeerConnection 이 살아 있기 때문입니다.
+  cleanup();
+  await new Promise(function(r){ setTimeout(r, 250); });   // 채널이 닫힐 짬
+
   var linkId = opts.linkId, sideId = opts.sideId;
   var type = opts.type || 'voice';
 
@@ -151,8 +157,15 @@ AL.startCall = async function(opts){
 
   // 1) 마이크·카메라
   try {
+    // ⚠ 에코 제거를 켜야 합니다. 안 켜면 두 기기가 가까울 때 하울링이 납니다.
+    //   자동 이득 조절과 잡음 억제도 함께 켭니다. 음질이 눈에 띄게 나아집니다.
     AL.call.local = await navigator.mediaDevices.getUserMedia({
-      audio: true, video: type === 'video',
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+      video: type === 'video',
     });
   } catch (e) {
     say('no-media', { error: e });
@@ -200,6 +213,9 @@ AL.startCall = async function(opts){
 
 /* ── 받기 ────────────────────────────────────────────────────────── */
 AL.answerCall = async function(opts){
+  cleanup();
+  await new Promise(function(r){ setTimeout(r, 250); });
+
   AL.call.linkId = opts.linkId;
   AL.call.mySideId = opts.sideId;
   AL.call.callId = opts.callId;
@@ -214,7 +230,12 @@ AL.answerCall = async function(opts){
 
   try {
     AL.call.local = await navigator.mediaDevices.getUserMedia({
-      audio: true, video: AL.call.type === 'video',
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+      video: AL.call.type === 'video',
     });
   } catch (e) {
     say('no-media', { error: e });
@@ -316,14 +337,25 @@ function cleanup(){
   if (AL.call.resendTimer) { clearInterval(AL.call.resendTimer); AL.call.resendTimer = null; }
   if (AL.call.noAnswerTimer) { clearTimeout(AL.call.noAnswerTimer); AL.call.noAnswerTimer = null; }
   if (AL.call.local) {
-    AL.call.local.getTracks().forEach(function(t){ t.stop(); });
+    AL.call.local.getTracks().forEach(function(t){ try { t.stop(); } catch (e) {} });
     AL.call.local = null;
   }
-  if (AL.call.pc) { try { AL.call.pc.close(); } catch (e) {} AL.call.pc = null; }
+  if (AL.call.pc) {
+    // 보내던 것부터 끊고 닫습니다. 그냥 close 만 하면 마이크가 살아 있을 수 있습니다.
+    try { AL.call.pc.getSenders().forEach(function(sn){
+      if (sn.track) { try { sn.track.stop(); } catch (e) {} }
+    }); } catch (e) {}
+    try { AL.call.pc.onicecandidate = null; AL.call.pc.ontrack = null;
+          AL.call.pc.onconnectionstatechange = null; } catch (e) {}
+    try { AL.call.pc.close(); } catch (e) {}
+    AL.call.pc = null;
+  }
   if (AL.call.channel) { try { AL.sb.removeChannel(AL.call.channel); } catch (e) {} AL.call.channel = null; }
   AL.call.remote = null;
   AL.call.token = null;
   AL.call.callId = null;
+  AL.call.answered = false;
+  AL.call.onState = null;
   AL.call.pending = [];
 }
 
@@ -340,15 +372,37 @@ AL.toggleMute = function(){
 /* ── 걸려온 전화 살피기 ──────────────────────────────────────────────
    앱이 켜져 있을 때만 됩니다. 잠금화면 수신은 3단계(FCM)의 일입니다.
 ------------------------------------------------------------------- */
+/* 이미 본 통화는 다시 안 띄웁니다.
+   ⚠ 화면을 옮겨도 기억이 남아야 합니다. 안 그러면 뒤로 갈 때마다
+     같은 전화가 또 뜹니다. localStorage 에 담습니다. */
+AL.SEEN_KEY = 'alias_seen_calls_v1';
+
+AL.seenCall = function(id){
+  try {
+    var raw = localStorage.getItem(AL.SEEN_KEY);
+    var list = raw ? JSON.parse(raw) : [];
+    return list.indexOf(id) >= 0;
+  } catch (e) { return false; }
+};
+
+AL.markSeenCall = function(id){
+  try {
+    var raw = localStorage.getItem(AL.SEEN_KEY);
+    var list = raw ? JSON.parse(raw) : [];
+    list.push(id);
+    if (list.length > 50) list = list.slice(-50);
+    localStorage.setItem(AL.SEEN_KEY, JSON.stringify(list));
+  } catch (e) {}
+};
+
 AL.watchIncoming = function(onCall){
-  var seen = {};
   var timer = setInterval(async function(){
     if (document.visibilityState !== 'visible') return;
     if (AL.call.pc) return;                    // 이미 통화 중
     try {
       var res = await AL.sb.rpc('incoming_call');
       var r = (res.data || [])[0];
-      if (r && !seen[r.call_id]) { seen[r.call_id] = 1; onCall(r); }
+      if (r && !AL.seenCall(r.call_id)) { AL.markSeenCall(r.call_id); onCall(r); }
     } catch (e) { /* 조용히 넘어갑니다 */ }
   }, 3000);
   return { stop: function(){ clearInterval(timer); } };
