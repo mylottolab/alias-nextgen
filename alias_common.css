@@ -1039,3 +1039,17 @@ body.callscreen{
   font-size:12px; color:var(--dim); line-height:1.6;
   text-align:center; white-space:pre-line; margin:0 0 4px;
 }
+
+/* ── 이모지 판 닫기 (2026-09-05) ─────────────────────────────────── */
+.em-close{
+  flex-shrink:0; display:flex; justify-content:flex-end;
+  padding:6px 9px 0;
+}
+.em-close button{
+  padding:5px 13px; font-size:12px; font-family:inherit;
+  background:transparent; color:var(--dim);
+  border:1px solid var(--line); border-radius:14px; cursor:pointer;
+}
+.em-close button:hover{ color:var(--text); }
+.em-body{ flex:1; display:flex; flex-direction:column; min-height:0; }
+.chat-foot .clip.open{ color:var(--steel); border-color:var(--steel); }

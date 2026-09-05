@@ -115,6 +115,10 @@ AL.STR = {
   thForest:    { kr:'숲', en:'Forest' },
   thDusk:      { kr:'노을', en:'Dusk' },
   thInk:       { kr:'먹', en:'Ink' },
+  thPitch:     { kr:'칠흑', en:'Pitch' },
+  thAbyss:     { kr:'심해', en:'Abyss' },
+  thMidnite:   { kr:'자정', en:'Midnight' },
+  thCharcoal:  { kr:'숯', en:'Charcoal' },
   thBubble:    { kr:'말풍선', en:'Bubbles' },
   thRound:     { kr:'둥근', en:'Round' },
   thSquare:    { kr:'각진', en:'Square' },
@@ -1341,7 +1345,67 @@ AL.applyTheme = function(t){
   return t;
 };
 
-/* 눈·비·벚꽃·별. 조각을 몇 개 뿌리고 CSS 가 움직입니다. */
+/* 계절 그림 — 떨어지는 것만으로는 밋밋합니다.
+   ⚠ 그림 파일을 안 씁니다. 도형으로 그려서 테마 색을 따르게 합니다.
+     파일을 받아오면 느리고, 색이 테마와 안 맞습니다. */
+AL.SCENE_PROPS = {
+  snow: [
+    /* 눈사람 */
+    { w: 70, h: 96, x: 8, svg:
+      '<circle cx="35" cy="70" r="24" fill="currentColor"/>' +
+      '<circle cx="35" cy="38" r="17" fill="currentColor"/>' +
+      '<circle cx="35" cy="16" r="12" fill="currentColor"/>' +
+      '<rect x="20" y="4" width="30" height="4" fill="currentColor"/>' +
+      '<rect x="26" y="-6" width="18" height="12" fill="currentColor"/>' +
+      '<path d="M18 36 L2 24 M52 36 L68 24" stroke="currentColor" stroke-width="3" fill="none"/>' },
+    /* 썰매 */
+    { w: 84, h: 44, x: 74, svg:
+      '<path d="M6 34 h64 a8 8 0 0 1 8 8 h-8 M6 34 v-6 h58 v6" fill="none" stroke="currentColor" stroke-width="3"/>' +
+      '<path d="M2 40 h74" stroke="currentColor" stroke-width="3"/>' +
+      '<path d="M16 34 v6 M40 34 v6 M62 34 v6" stroke="currentColor" stroke-width="2"/>' },
+    /* 침엽수 */
+    { w: 56, h: 92, x: 88, svg:
+      '<path d="M28 2 L46 34 H10 Z M28 24 L52 60 H4 Z M28 46 L58 84 H-2 Z" fill="currentColor"/>' +
+      '<rect x="24" y="82" width="8" height="10" fill="currentColor"/>' },
+  ],
+  rain: [
+    /* 우산 */
+    { w: 78, h: 92, x: 10, svg:
+      '<path d="M4 40 a35 35 0 0 1 70 0 Z" fill="currentColor"/>' +
+      '<path d="M39 40 v40 a10 10 0 0 0 20 0" fill="none" stroke="currentColor" stroke-width="4"/>' },
+    /* 웅덩이 */
+    { w: 120, h: 18, x: 62, svg:
+      '<ellipse cx="60" cy="12" rx="58" ry="7" fill="currentColor"/>' },
+    /* 장화 */
+    { w: 44, h: 52, x: 88, svg:
+      '<path d="M10 2 h18 v30 h12 a6 6 0 0 1 6 6 v10 H10 Z" fill="currentColor"/>' },
+  ],
+  petals: [
+    /* 벚나무 가지 */
+    { w: 150, h: 78, x: 0, svg:
+      '<path d="M0 6 q40 12 66 34 M22 12 q12 20 8 34 M52 26 q22 4 34 22 M86 44 q20 2 34 16" ' +
+        'fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>' +
+      '<circle cx="30" cy="46" r="6" fill="currentColor"/>' +
+      '<circle cx="62" cy="36" r="5" fill="currentColor"/>' +
+      '<circle cx="94" cy="56" r="6" fill="currentColor"/>' +
+      '<circle cx="120" cy="62" r="4" fill="currentColor"/>' },
+    /* 꽃잎 무더기 */
+    { w: 100, h: 16, x: 70, svg:
+      '<ellipse cx="20" cy="10" rx="18" ry="5" fill="currentColor"/>' +
+      '<ellipse cx="56" cy="12" rx="22" ry="4" fill="currentColor"/>' +
+      '<ellipse cx="86" cy="9" rx="13" ry="5" fill="currentColor"/>' },
+  ],
+  stars: [
+    /* 능선 */
+    { w: 260, h: 84, x: 0, svg:
+      '<path d="M0 84 L46 26 L78 56 L120 8 L168 60 L206 32 L260 84 Z" fill="currentColor"/>' },
+    /* 달 */
+    { w: 58, h: 58, x: 78, y: 'top', svg:
+      '<path d="M40 4 a26 26 0 1 0 14 46 a20 20 0 1 1 -14 -46 Z" fill="currentColor"/>' },
+  ],
+};
+
+/* 눈·비·벚꽃·별. 조각을 뿌리고 그림을 놓습니다. CSS 가 움직입니다. */
 AL.paintScene = function(kind){
   var old = document.querySelector('.scene');
   if (old) old.remove();
@@ -1354,11 +1418,12 @@ AL.paintScene = function(kind){
 
   var box = document.createElement('div');
   box.className = 'scene ' + kind;
+
   var html = '';
   for (var i = 0; i < n; i++) {
     var left = Math.random() * 100;
     if (kind === 'stars') {
-      html += '<i style="left:' + left.toFixed(2) + '%;top:' + (Math.random()*100).toFixed(2) +
+      html += '<i style="left:' + left.toFixed(2) + '%;top:' + (Math.random()*55).toFixed(2) +
               '%;animation-duration:' + (1.6 + Math.random()*2.6).toFixed(2) +
               's;animation-delay:' + (Math.random()*3).toFixed(2) + 's"></i>';
     } else {
@@ -1368,6 +1433,22 @@ AL.paintScene = function(kind){
               's;transform:scale(' + (0.6 + Math.random()*0.8).toFixed(2) + ')"></i>';
     }
   }
+
+  // 바닥에 쌓인 것
+  if (kind === 'snow' || kind === 'rain' || kind === 'petals') {
+    html += '<div class="ground"></div>';
+  }
+
+  // 계절 그림
+  (AL.SCENE_PROPS[kind] || []).forEach(function(p){
+    var pos = (p.y === 'top')
+      ? 'top:6%;right:' + (100 - p.x - 12) + '%;bottom:auto'
+      : 'left:' + p.x + '%';
+    html += '<span class="prop" style="' + pos + '">' +
+      '<svg width="' + p.w + '" height="' + p.h + '" viewBox="0 0 ' + p.w + ' ' + p.h + '" ' +
+      'xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' + p.svg + '</svg></span>';
+  });
+
   box.innerHTML = html;
   document.body.appendChild(box);
 };
@@ -1439,7 +1520,9 @@ AL.applyLinkTheme = function(v){
 AL.THEME_OPTS = {
   mode:   [['dark','thDark'], ['light','thLight'], ['auto','thAuto']],
   color:  [['midnight','thMidnight'], ['paper','thPaper'], ['forest','thForest'],
-           ['dusk','thDusk'], ['ink','thInk']],
+           ['dusk','thDusk'], ['ink','thInk'],
+           ['pitch','thPitch'], ['abyss','thAbyss'],
+           ['midnite','thMidnite'], ['charcoal','thCharcoal']],
   bubble: [['round','thRound'], ['square','thSquare'], ['tail','thTail'], ['outline','thOutline']],
   scene:  [['none','thNone'], ['snow','thSnow'], ['rain','thRain'],
            ['petals','thPetals'], ['stars','thStars']],

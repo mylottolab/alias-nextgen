@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260905s">
-<link rel="stylesheet" href="alias_theme.css?v=20260905s">
+<link rel="stylesheet" href="alias_common.css?v=20260905t">
+<link rel="stylesheet" href="alias_theme.css?v=20260905t">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260905s"></script>
-<script src="alias_media.js?v=20260905s"></script>
-<script src="alias_extras.js?v=20260905s"></script>
-<script src="alias_room.js?v=20260905s"></script>
-<script src="alias_call.js?v=20260905s"></script>
+<script src="alias_common.js?v=20260905t"></script>
+<script src="alias_media.js?v=20260905t"></script>
+<script src="alias_extras.js?v=20260905t"></script>
+<script src="alias_room.js?v=20260905t"></script>
+<script src="alias_call.js?v=20260905t"></script>
 <script>document.addEventListener("DOMContentLoaded",function(){AL.bootTheme();});</script>
 </head>
 <body class="chat" data-t-title="ttChat">
@@ -68,7 +68,10 @@
     <button class="send" id="send" data-t-aria="ariaSend" disabled>↑</button>
   </div>
 
-  <div class="empanel" id="empanel"></div>
+  <div class="empanel" id="empanel">
+    <div class="em-close"><button id="emClose" data-t="close"></button></div>
+    <div class="em-body" id="emBody"></div>
+  </div>
 
 </div>
 
@@ -873,7 +876,7 @@ function toggleEmoji(){
   const on = !box.classList.contains('on');
   box.classList.toggle('on', on);
   if (on && !emReady) {
-    AL.paintEmojiPanel(box, function(ch){
+    AL.paintEmojiPanel(document.getElementById('emBody'), function(ch){
       const inp = document.getElementById('input');
       inp.value += ch;
       inp.dispatchEvent(new Event('input'));
@@ -881,7 +884,19 @@ function toggleEmoji(){
     });
     emReady = true;
   }
+  paintClip();
 }
+
+document.getElementById('emClose').addEventListener('click', function(){
+  document.getElementById('empanel').classList.remove('on');
+  paintClip();
+});
+
+// 글을 쓰기 시작하면 이모지 판을 닫습니다. 화면이 좁아 답답합니다.
+document.getElementById('input').addEventListener('focus', function(){
+  const box = document.getElementById('empanel');
+  if (box.classList.contains('on')) { box.classList.remove('on'); paintClip(); }
+});
 
 /* ── 검색 ────────────────────────────────────────────────────── */
 function toggleFind(){
@@ -1093,7 +1108,21 @@ async function sendFiles(files, durationMs){
   setUpBar('');
 }
 
-document.getElementById('clip').addEventListener('click', function(){ showAttach(true); });
+document.getElementById('clip').addEventListener('click', function(){
+  // ⚠ 이모지가 열려 있으면 ＋ 가 곧 닫기입니다.
+  //   메뉴로 다시 들어가서 끄게 하면 번거롭습니다.
+  const box = document.getElementById('empanel');
+  if (box.classList.contains('on')) { box.classList.remove('on'); paintClip(); return; }
+  showAttach(true);
+});
+
+/* ＋ 단추의 모양을 상태에 맞춥니다. 열려 있으면 ✕ 로 보입니다. */
+function paintClip(){
+  const open = document.getElementById('empanel').classList.contains('on');
+  const b = document.getElementById('clip');
+  b.textContent = open ? '✕' : '＋';
+  b.classList.toggle('open', open);
+}
 document.getElementById('atBg').addEventListener('click', function(){ showAttach(false); });
 document.getElementById('atPhoto').addEventListener('click', function(){
   showAttach(false); document.getElementById('pick').click();
