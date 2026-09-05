@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Alias</title>
+<link rel="stylesheet" href="alias_common.css?v=20260905o">
+<link rel="stylesheet" href="alias_theme.css?v=20260905o">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="alias_common.js?v=20260905o"></script>
+<script src="alias_call.js?v=20260905o"></script>
+<script>document.addEventListener("DOMContentLoaded",function(){AL.bootTheme();});</script>
+</head>
+<body class="callscreen" data-t-title="clVoice">
+
+<div class="callvid" id="vid">
+  <video id="remoteV" autoplay playsinline></video>
+  <div class="mini"><video id="localV" autoplay playsinline muted></video></div>
+</div>
+
+<div class="callbox">
+  <div class="who">
+    <div class="av" id="av"></div>
+    <div class="nm" id="nm"></div>
+    <div class="al" id="al"></div>
+    <div class="st" id="st"></div>
+    <div class="tm" id="tm"></div>
+  </div>
+
+  <!-- 🔴 이 제품의 서명 — 어떤 나로 통화하는지 -->
+  <div class="iam" id="iam"></div>
+
+  <div class="callacts" id="acts"></div>
+</div>
+
+<audio id="remoteA" autoplay></audio>
+
+<script>
+/* =====================================================================
+   통화 화면
+   걸기 · 받기 둘 다 이 화면입니다. 주소로 갈립니다.
+
+     alias_call.html?link=...&type=voice          걸기
+     alias_call.html?call=...&token=...&link=...  받기
+
+   🔴 화면 아래에 "나는 지금 개인용입니다" 가 늘 떠 있습니다.
+     받기 전에 어떤 나로 받는지 알 수 있어야, 거래처 얼굴로 받아야 할 전화를
+     개인 얼굴로 받는 사고가 안 납니다. 어떤 전화기도 이 줄을 못 씁니다.
+   ===================================================================== */
+
+const P = new URLSearchParams(location.search);
+const linkId   = P.get('link');
+const callId   = P.get('call');       // 있으면 받는 쪽
+const token    = P.get('token');
+const callType = P.get('type') || 'voice';
+const incoming = !!callId;
+
+let me = null, view = null;
+let muted = false;
+let tick = null, t0 = null;
+
+function el(id){ return document.getElementById(id); }
+
+function setStatus(text){ el('st').textContent = text || ''; }
+
+function paintWho(){
+  const shown = view.peer_label || view.peer_display || AL.t('cntUnnamed');
+  el('av').textContent = AL.initial(view.my_face);
+  el('nm').textContent = shown;
+  el('al').textContent = (view.peer_label && view.peer_display) ? view.peer_display : '';
+
+  // 걸 때와 받을 때 문구가 다릅니다.
+  const box = el('iam');
+  box.innerHTML = '';
+  const t = document.createElement('span');
+  t.textContent = AL.t(incoming ? 'clAnswerAs' : 'clIAm', { face: view.my_face || '' });
+  box.appendChild(t);
+  box.classList.toggle('warn', incoming);
+}
+
+function paintActs(){
+  const box = el('acts');
+  box.innerHTML = '';
+
+  if (incoming && !AL.call.pc) {
+    box.appendChild(btn('rbtn hang', '✕', AL.t('clDecline'), decline));
+    box.appendChild(btn('rbtn take', '☏', AL.t('clAnswer'), answer));
+    return;
+  }
+
+  const m = btn('rbtn plain' + (muted ? ' on' : ''), muted ? '🔇' : '🎙',
+    AL.t(muted ? 'clUnmute' : 'clMute'), function(){
+      muted = AL.toggleMute(); paintActs();
+    });
+  box.appendChild(m);
+  box.appendChild(btn('rbtn hang', '✕', AL.t('clHangup'), function(){ AL.endCall('completed'); }));
+}
+
+function btn(cls, icon, label, onClick){
+  const b = document.createElement('button');
+  b.className = cls;
+  b.textContent = icon;
+  b.setAttribute('aria-label', label);
+  b.addEventListener('click', onClick);
+  return b;
+}
+
+function startTimer(){
+  if (tick) return;
+  t0 = Date.now();
+  tick = setInterval(function(){
+    const s = Math.round((Date.now() - t0) / 1000);
+    el('tm').textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  }, 500);
+}
+
+function onState(state, extra){
+  if (state === 'preparing')      setStatus(AL.t('clCalling'));
+  else if (state === 'ringing')   setStatus(AL.t('clCalling'));
+  else if (state === 'answering') setStatus(AL.t('clConnected'));
+  else if (state === 'connected') { setStatus(AL.t('clConnected')); startTimer(); paintActs(); }
+  else if (state === 'no-media')  setStatus(AL.t('clNoMedia'));
+  else if (state === 'failed')    { setStatus(AL.t('clFailed')); bye(); }
+  else if (state === 'declined')  { setStatus(AL.t('clDeclined')); bye(); }
+  else if (state === 'peer-hangup') { setStatus(AL.t('clEnded')); bye(); }
+  else if (state === 'ended')     { setStatus(AL.t('clEnded')); bye(); }
+
+  if (state === 'local-stream' && callType === 'video') {
+    el('vid').classList.add('on');
+    el('localV').srcObject = extra.stream;
+  }
+  if (state === 'remote-stream') {
+    if (callType === 'video') el('remoteV').srcObject = extra.stream;
+    else el('remoteA').srcObject = extra.stream;
+  }
+}
+
+function bye(){
+  if (tick) { clearInterval(tick); tick = null; }
+  el('acts').innerHTML = '';
+  // 잠깐 보여준 뒤 대화로 돌아갑니다.
+  setTimeout(function(){
+    location.href = 'alias_chat.html?link=' + encodeURIComponent(linkId);
+  }, 1600);
+}
+
+async function answer(){
+  try {
+    await AL.answerCall({
+      linkId: linkId, sideId: view.my_side_id,
+      callId: callId, token: token, type: callType,
+      onState: onState,
+    });
+    paintActs();
+  } catch (e) {
+    console.error(e);
+    setStatus(AL.t('clNoMedia'));
+  }
+}
+
+async function decline(){
+  await AL.declineCall(callId);
+  location.href = 'alias_chat.html?link=' + encodeURIComponent(linkId);
+}
+
+(async function(){
+  AL.paintText();
+  if (!await AL.requireLogin()) return;
+  if (!linkId) { setStatus(AL.t('dtlNotFound')); return; }
+
+  const res = await AL.sb.rpc('link_view', { p_link_id: linkId });
+  view = (res.data || [])[0];
+  if (!view) { setStatus(AL.t('dtlNotFound')); return; }
+
+  paintWho();
+  paintActs();
+
+  if (incoming) {
+    setStatus(AL.t('clRinging'));
+    AL.alertNew();                     // 벨 대신 딩동
+  } else {
+    try {
+      await AL.startCall({
+        linkId: linkId, sideId: view.my_side_id,
+        type: callType, onState: onState,
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  }
+})();
+
+window.addEventListener('beforeunload', function(){
+  if (AL.call.pc) AL.endCall('canceled');
+  else AL.callCleanup();
+});
+</script>
+</body>
+</html>

@@ -4,13 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260905l">
-<link rel="stylesheet" href="alias_theme.css?v=20260905l">
+<link rel="stylesheet" href="alias_common.css?v=20260905o">
+<link rel="stylesheet" href="alias_theme.css?v=20260905o">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260905l"></script>
-<script src="alias_media.js?v=20260905l"></script>
-<script src="alias_extras.js?v=20260905l"></script>
-<script src="alias_room.js?v=20260905l"></script>
+<script src="alias_common.js?v=20260905o"></script>
+<script src="alias_media.js?v=20260905o"></script>
+<script src="alias_extras.js?v=20260905o"></script>
+<script src="alias_room.js?v=20260905o"></script>
+<script src="alias_call.js?v=20260905o"></script>
 <script>document.addEventListener("DOMContentLoaded",function(){AL.bootTheme();});</script>
 </head>
 <body class="chat" data-t-title="ttChat">
@@ -907,10 +908,23 @@ async function loadRoom(){
       .select('away_on, away_message').eq('id', me.sideId).maybeSingle();
     away = r.data ? { on: r.data.away_on, message: r.data.away_message } : null;
     const m = await AL.sb.from('links')
-      .select('music_youtube_id').eq('id', linkId).maybeSingle();
-    music = m.data ? m.data.music_youtube_id : null;
+      .select('music_youtube_id, track_id').eq('id', linkId).maybeSingle();
+    music = m.data ? (m.data.music_youtube_id || m.data.track_id) : null;
   } catch (e) { /* 없어도 대화는 됩니다 */ }
   paintStrip();
+}
+
+/* ── 걸려온 전화 ────────────────────────────────────────────────
+   ⚠ 앱이 켜져 있을 때만 됩니다. 잠금화면 수신은 3단계(FCM)의 일입니다.
+------------------------------------------------------------------- */
+function watchCalls(){
+  AL.watchIncoming(function(c){
+    AL.alertNew();
+    location.href = 'alias_call.html?call=' + encodeURIComponent(c.call_id) +
+      '&token=' + encodeURIComponent(c.session_token) +
+      '&link=' + encodeURIComponent(c.link_id) +
+      '&type=' + encodeURIComponent(c.call_type);
+  });
 }
 
 /* ── 사라지는 메시지 ────────────────────────────────────────────
@@ -1049,7 +1063,7 @@ document.getElementById('who').addEventListener('click', function(){
   location.href = 'alias_link.html?link=' + encodeURIComponent(linkId);
 });
 document.getElementById('call').addEventListener('click', function(){
-  alert(AL.t('chatCallSoon'));
+  location.href = 'alias_call.html?link=' + encodeURIComponent(linkId) + '&type=voice';
 });
 
 /* ── 시작 ───────────────────────────────────────────────────────── */
@@ -1062,6 +1076,7 @@ document.getElementById('call').addEventListener('click', function(){
     await loadStars();
     listen();
     watchOthers();
+    watchCalls();
   } catch (e) {
     console.error(e);
     showErr(AL.t('errGeneric', { msg: e.message || String(e) }));

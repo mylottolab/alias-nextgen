@@ -4,20 +4,23 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260905l">
-<link rel="stylesheet" href="alias_theme.css?v=20260905l">
+<link rel="stylesheet" href="alias_common.css?v=20260905o">
+<link rel="stylesheet" href="alias_theme.css?v=20260905o">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260905l"></script>
+<script src="alias_common.js?v=20260905o"></script>
+<script src="alias_call.js?v=20260905o"></script>
 <script>document.addEventListener("DOMContentLoaded",function(){AL.bootTheme();});</script>
 </head>
-<body class="tabbed" data-t-title="ttCalls">
+<body class="tabbed" data-t-title="clHistory">
 <div class="wrap">
 
   <div class="tophead">
-    <h1 class="h2" data-t="callsTitle"></h1>
+    <h1 class="h2" data-t="clHistory"></h1>
+    <button class="toggle" id="grpBtn" data-t="clByFace"></button>
   </div>
 
   <div id="list"></div>
+  <p class="note" data-t="clSoonNote"></p>
   <div id="err" class="err"></div>
 
 </div>
@@ -31,48 +34,109 @@
 <script>
 /* =====================================================================
    통화기록
-   지금은 calls 표가 비어 있어 빈 목록만 나옵니다. 통화(6단계)가 붙으면
-   여기가 채워집니다. 표와 정책은 이미 서 있어서 화면만 기다리면 됩니다.
-
-   ⚠ 나중에 넣을 것 — 별칭별 묶기, 부재중 배지.
-     같은 그리기 코드를 대화 화면에서도 씁니다(5단계).
+   ⚠ 어떤 얼굴로 한 통화였는지가 함께 남습니다.
+     나중에 기록을 되짚을 때 "무슨 얘길 했더라" 보다
+     "내가 그때 누구였더라" 가 안 풀리면 곤란합니다.
+   ⚠ 별칭별로 묶으면 일과 사생활이 목록에서 갈립니다.
+     다른 전화기가 못 하는 정리입니다.
    ===================================================================== */
 
-async function reload(){
-  const box = document.getElementById('list');
-  try {
-    const res = await AL.sb.from('calls')
-      .select('id, link_id, call_type, ended_reason, duration_seconds, created_at')
-      .order('created_at', { ascending: false })
-      .limit(100);
-    if (res.error) throw res.error;
+let rows = [];
+let grouped = false;
 
-    const rows = res.data || [];
-    if (!rows.length) {
-      box.innerHTML = '<div class="empty">' + AL.esc(AL.t('callsEmpty')) + '</div>';
-      return;
-    }
-    box.innerHTML = rows.map(function(c){
-      return '<div class="crow">' +
-        '<div class="cav">' + AL.esc(AL.initial(c.call_type)) + '</div>' +
-        '<div class="cmid"><div class="cname">' + AL.esc(c.link_id.slice(0,8)) + '</div>' +
-        '<div class="csub">' + AL.esc(c.ended_reason || '') + '</div></div>' +
-        '<div class="ctime">' + AL.esc(AL.fmtShort(c.created_at)) + '</div>' +
-      '</div>';
+function showErr(msg){
+  const el = document.getElementById('err');
+  el.textContent = msg; el.classList.add('show');
+}
+
+function dirLabel(r){
+  if (r.ended_reason === 'no_answer' || r.ended_reason === 'declined') return AL.t('clMissed');
+  return AL.t(r.outgoing ? 'clOut' : 'clIn');
+}
+
+function rowHtml(r){
+  const shown = r.peer_label || r.peer_display || AL.t('cntUnnamed');
+  const missed = (r.ended_reason === 'no_answer' || r.ended_reason === 'declined');
+  const dur = r.duration_seconds
+    ? Math.floor(r.duration_seconds / 60) + ':' + String(r.duration_seconds % 60).padStart(2, '0')
+    : '';
+  return '<div class="crow callrow" data-go="' + AL.esc(r.link_id) + '">' +
+    '<div class="cav">' + AL.esc(AL.initial(r.my_face)) + '</div>' +
+    '<div class="cmid">' +
+      '<div class="cname">' + AL.esc(shown) + '</div>' +
+      '<div class="csub"><span class="dir' + (missed ? ' missed' : '') + '">' +
+        AL.esc(dirLabel(r)) + '</span>' +
+        (dur ? ' · ' + AL.esc(dur) : '') +
+        ' · ' + AL.esc(r.my_face || '') + '</div>' +
+    '</div>' +
+    '<div class="ctime">' + AL.esc(AL.fmtShort(r.created_at)) + '</div>' +
+  '</div>';
+}
+
+function paint(){
+  const box = document.getElementById('list');
+  if (!rows.length) {
+    box.innerHTML = '<div class="empty">' + AL.esc(AL.t('callsEmpty')) + '</div>';
+    return;
+  }
+
+  if (!grouped) {
+    box.innerHTML = rows.map(rowHtml).join('');
+  } else {
+    const order = [], bag = {};
+    rows.forEach(function(r){
+      const k = r.my_face || '';
+      if (!bag[k]) { bag[k] = []; order.push(k); }
+      bag[k].push(r);
+    });
+    box.innerHTML = order.map(function(k){
+      return '<div class="grp">' +
+          '<span class="gav">' + AL.esc(AL.initial(k)) + '</span>' +
+          '<span class="gname">' + AL.esc(k) + '</span>' +
+          '<span class="gcount">' + AL.esc(AL.t('cntCount', { n: bag[k].length })) + '</span>' +
+        '</div>' + bag[k].map(rowHtml).join('');
     }).join('');
+  }
+
+  box.querySelectorAll('[data-go]').forEach(function(el){
+    el.addEventListener('click', function(){
+      location.href = 'alias_chat.html?link=' + encodeURIComponent(el.getAttribute('data-go'));
+    });
+  });
+}
+
+async function reload(){
+  try {
+    const res = await AL.sb.rpc('my_calls', { p_limit: 100 });
+    if (res.error) throw res.error;
+    rows = res.data || [];
+    paint();
   } catch (e) {
     console.error(e);
-    const el = document.getElementById('err');
-    el.textContent = AL.t('errGeneric', { msg: e.message || String(e) });
-    el.classList.add('show');
+    showErr(AL.t('errGeneric', { msg: e.message || String(e) }));
   }
 }
+
+document.getElementById('grpBtn').addEventListener('click', function(){
+  grouped = !grouped;
+  this.classList.toggle('on', grouped);
+  paint();
+});
 
 (async function(){
   AL.paintText();
   if (!await AL.requireLogin()) return;
   await reload();
-  AL.startAlerts();      // 어느 화면에 있든 새 메시지를 알려줍니다
+  AL.startAlerts();
+
+  // 여기서도 걸려온 전화를 받습니다.
+  AL.watchIncoming(function(c){
+    AL.alertNew();
+    location.href = 'alias_call.html?call=' + encodeURIComponent(c.call_id) +
+      '&token=' + encodeURIComponent(c.session_token) +
+      '&link=' + encodeURIComponent(c.link_id) +
+      '&type=' + encodeURIComponent(c.call_type);
+  });
 })();
 </script>
 </body>

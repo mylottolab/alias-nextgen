@@ -17,6 +17,8 @@ window.AL = window.AL || {};
 /* ── 얼마까지 받나 ────────────────────────────────────────────────── */
 AL.MEDIA_MAX_BYTES = 50 * 1024 * 1024;   // 50MB — 버킷 설정과 같아야 합니다
 AL.MEDIA_BUCKET = 'alias-media';
+/* 음악은 따로 제한합니다. 5분짜리 하나가 5MB쯤 되고, 사진 두 장 값입니다. */
+AL.MUSIC_MAX_BYTES = 20 * 1024 * 1024;   // 20MB
 
 AL.mediaKind = function(file){
   var t = (file.type || '').toLowerCase();

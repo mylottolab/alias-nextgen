@@ -4,10 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260905l">
-<link rel="stylesheet" href="alias_theme.css?v=20260905l">
+<link rel="stylesheet" href="alias_common.css?v=20260905o">
+<link rel="stylesheet" href="alias_theme.css?v=20260905o">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260905l"></script>
+<script src="alias_common.js?v=20260905o"></script>
+<script src="alias_call.js?v=20260905o"></script>
 <script>document.addEventListener("DOMContentLoaded",function(){AL.bootTheme();});</script>
 </head>
 <body class="tabbed" data-t-title="ttContacts">
@@ -269,6 +270,16 @@ document.getElementById('addBg').addEventListener('click', function(){ showAdd(f
 
   document.addEventListener('visibilitychange', function(){
     if (document.visibilityState === 'visible') reload();
+  });
+
+  // 어느 화면에 있든 걸려온 전화를 받습니다.
+  // ⚠ 앱이 켜져 있을 때만 됩니다. 잠금화면은 3단계(FCM)의 일입니다.
+  AL.watchIncoming(function(c){
+    AL.alertNew();
+    location.href = 'alias_call.html?call=' + encodeURIComponent(c.call_id) +
+      '&token=' + encodeURIComponent(c.session_token) +
+      '&link=' + encodeURIComponent(c.link_id) +
+      '&type=' + encodeURIComponent(c.call_type);
   });
 })();
 </script>

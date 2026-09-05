@@ -883,3 +883,105 @@ html[data-bubble="outline"] .msg.out .temp-tag{
   border:1px solid var(--line); border-radius:16px; cursor:pointer;
 }
 .fn-tg.on{ color:var(--steel); border-color:var(--steel); }
+
+/* =====================================================================
+   통화 화면   (2026-09-05)
+   ===================================================================== */
+body.callscreen{
+  padding:0; height:100dvh; overflow:hidden;
+  display:flex; align-items:center; justify-content:center;
+}
+.callbox{
+  width:100%; max-width:420px; height:100dvh;
+  display:flex; flex-direction:column; align-items:center;
+  padding:34px 24px calc(30px + env(safe-area-inset-bottom));
+}
+.callbox .who{ text-align:center; padding-top:38px; flex:1; }
+.callbox .av{
+  width:82px; height:82px; margin:0 auto 18px; border-radius:50%;
+  background:var(--raise2); border:1px solid var(--line);
+  display:flex; align-items:center; justify-content:center;
+  font-size:28px; font-weight:600; color:var(--steel);
+}
+.callbox .nm{ font-size:25px; font-weight:600; margin-bottom:5px; }
+.callbox .al{ font-size:13.5px; color:var(--dim); margin-bottom:26px; }
+.callbox .st{ font-size:14.5px; color:var(--dim); }
+.callbox .tm{ font-size:15px; color:var(--text); font-variant-numeric:tabular-nums; }
+
+/* 🔴 이 제품의 서명 — 내가 지금 누구인지 */
+.iam{
+  width:100%; padding:11px 15px; margin-bottom:22px;
+  background:rgba(91,143,199,.14); border:1px solid rgba(91,143,199,.35);
+  border-radius:11px; text-align:center;
+  font-size:13.5px; color:var(--steel);
+}
+.iam.warn{
+  background:rgba(217,142,90,.14); border-color:rgba(217,142,90,.4);
+  color:var(--warn, #D98E5A);
+}
+.iam b{ font-weight:700; }
+
+.callacts{ display:flex; gap:16px; justify-content:center; width:100%; }
+.rbtn{
+  width:62px; height:62px; flex-shrink:0; padding:0;
+  border:none; border-radius:50%; cursor:pointer;
+  font-size:23px; font-family:inherit;
+  display:flex; align-items:center; justify-content:center;
+}
+.rbtn.hang{ background:var(--bad); color:#12181F; }
+.rbtn.take{ background:#4CAF7D; color:#08130D; }
+.rbtn.plain{
+  width:52px; height:52px; font-size:19px;
+  background:transparent; color:var(--dim); border:1px solid var(--line);
+}
+.rbtn.plain.on{ color:var(--steel); border-color:var(--steel); }
+
+.callvid{
+  position:fixed; inset:0; z-index:-1;
+  display:none; background:#000;
+}
+.callvid.on{ display:block; }
+.callvid video{ width:100%; height:100%; object-fit:cover; }
+.callvid .mini{
+  position:absolute; right:14px; top:14px;
+  width:104px; height:150px; border-radius:11px; overflow:hidden;
+  border:1px solid rgba(255,255,255,.3);
+}
+.callvid .mini video{ object-fit:cover; }
+
+/* 통화기록 */
+.callrow .dir{ font-size:11.5px; }
+.callrow .dir.missed{ color:var(--bad); }
+
+/* ── 재생목록 (2026-09-05) ───────────────────────────────────────── */
+.trk{
+  display:flex; align-items:center; gap:10px;
+  padding:11px 13px; margin-bottom:7px;
+  background:var(--raise2); border:1px solid var(--line); border-radius:10px;
+}
+.trk.now{ border-color:var(--steel); }
+.trk .tn{ flex:1; min-width:0; }
+.trk .tn b{
+  display:block; font-size:13.5px; font-weight:600;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.trk .tn span{ font-size:11px; color:var(--faint); }
+.trk .tb{
+  flex-shrink:0; width:28px; height:28px; padding:0;
+  background:transparent; color:var(--dim);
+  border:1px solid var(--line); border-radius:7px;
+  font-size:12px; font-family:inherit; cursor:pointer;
+}
+.trk .tb:hover{ color:var(--text); }
+.trk .tb.play{ color:var(--steel); border-color:var(--steel); }
+.usage{
+  display:flex; align-items:center; gap:9px;
+  padding:9px 12px; margin:12px 0;
+  background:var(--raise2); border:1px solid var(--line); border-radius:9px;
+  font-size:11.5px; color:var(--dim);
+}
+.usage .bar{
+  flex:1; height:5px; background:var(--line); border-radius:3px; overflow:hidden;
+}
+.usage .bar i{ display:block; height:100%; background:var(--steel); }
+.usage .bar i.hot{ background:var(--warn, #D98E5A); }

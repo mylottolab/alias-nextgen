@@ -249,6 +249,8 @@ AL.youtubeId = function(url){
   return m ? m[1] : null;
 };
 
+AL.MUSIC_TOTAL_MAX = 100 * 1024 * 1024;   // 방 하나에 100MB — 음원 대여섯 곡
+
 AL.openMusic = function(linkId, sideId){
   return new Promise(function(resolve){
     var bg = document.createElement('div'); bg.className = 'pk-bg';
@@ -267,43 +269,197 @@ AL.openMusic = function(linkId, sideId){
     document.addEventListener('keydown', onKey);
     bg.addEventListener('click', close);
 
+    function title(text){
+      var p = document.createElement('p'); p.className = 'pk-title';
+      p.textContent = text; sheet.appendChild(p); return p;
+    }
+    function note(text){
+      var p = document.createElement('p'); p.className = 'pk-note';
+      p.textContent = text; sheet.appendChild(p); return p;
+    }
+    function err(text){
+      var d = document.createElement('div'); d.className = 'pk-err';
+      d.textContent = text; sheet.appendChild(d); return d;
+    }
+
     async function draw(){
       sheet.innerHTML = '<div class="grip"></div>';
-      var h = document.createElement('p'); h.className = 'pk-title';
-      h.textContent = AL.t('muTitle'); sheet.appendChild(h);
-      var n = document.createElement('p'); n.className = 'pk-note';
-      n.textContent = AL.t('muNote'); sheet.appendChild(n);
+      title(AL.t('muTitle'));
+      note(AL.t('muNote'));
 
-      var cur = await AL.sb.from('links')
-        .select('music_youtube_id, music_playing').eq('id', linkId).maybeSingle();
-      var vid = cur.data ? cur.data.music_youtube_id : null;
+      var link = await AL.sb.from('links')
+        .select('music_youtube_id, track_id').eq('id', linkId).maybeSingle();
+      var vid = link.data ? link.data.music_youtube_id : null;
+      var nowId = link.data ? link.data.track_id : null;
 
-      if (vid) {
+      var tr = await AL.sb.from('tracks')
+        .select('id, title, media_path, media_bytes, ord, created_at')
+        .eq('link_id', linkId).order('ord').order('created_at');
+      var tracks = tr.data || [];
+
+      // ── 지금 트는 것 ────────────────────────────────────────────
+      var now = tracks.filter(function(t){ return t.id === nowId; })[0];
+      if (now) {
+        note(AL.t('muPlaying') + ' · ' + now.title);
+        var au = document.createElement('audio');
+        au.controls = true; au.autoplay = true; au.style.width = '100%';
+        try { au.src = await AL.mediaUrl(now.media_path); } catch (e) {}
+        // 끝나면 다음 곡으로 넘어갑니다.
+        au.addEventListener('ended', async function(){
+          var i = tracks.findIndex(function(t){ return t.id === now.id; });
+          var next = tracks[i + 1];
+          await AL.sb.from('links').update({
+            track_id: next ? next.id : null,
+            music_playing: !!next,
+            music_updated_at: new Date().toISOString(),
+          }).eq('id', linkId);
+          draw();
+        });
+        sheet.appendChild(au);
+      } else if (vid) {
         var pl = document.createElement('div'); pl.className = 'player';
         var fr = document.createElement('iframe');
         fr.src = 'https://www.youtube.com/embed/' + vid;
         fr.allow = 'accelerometer; autoplay; encrypted-media; picture-in-picture';
         fr.allowFullscreen = true;
         pl.appendChild(fr); sheet.appendChild(pl);
-
-        var stop = document.createElement('button');
-        stop.className = 'pk-opt'; stop.style.marginTop = '12px';
-        stop.textContent = AL.t('muStop');
-        stop.addEventListener('click', async function(){
+        var st = document.createElement('button');
+        st.className = 'pk-opt'; st.style.marginTop = '12px';
+        st.textContent = AL.t('muStop');
+        st.addEventListener('click', async function(){
           await AL.sb.from('links').update({
             music_youtube_id: null, music_playing: false,
             music_updated_at: new Date().toISOString(),
           }).eq('id', linkId);
           draw();
         });
-        sheet.appendChild(stop);
+        sheet.appendChild(st);
       } else {
-        var e0 = document.createElement('p'); e0.className = 'pk-note';
-        e0.textContent = AL.t('muNone'); sheet.appendChild(e0);
+        note(AL.t('muNone'));
       }
 
+      var sep0 = document.createElement('div'); sep0.className = 'pk-sep';
+      sheet.appendChild(sep0);
+
+      // ── 재생목록 ────────────────────────────────────────────────
+      title(AL.t('muList'));
+
+      var used = tracks.reduce(function(a, t){ return a + (t.media_bytes || 0); }, 0);
+      var box = document.createElement('div'); box.className = 'usage';
+      var lab = document.createElement('span');
+      lab.textContent = AL.t('muUsed', {
+        n: tracks.length, used: AL.fmtBytes(used),
+        max: AL.fmtBytes(AL.MUSIC_TOTAL_MAX),
+      });
+      box.appendChild(lab);
+      var bar = document.createElement('span'); bar.className = 'bar';
+      var fill = document.createElement('i');
+      var pct = Math.min(100, Math.round(used / AL.MUSIC_TOTAL_MAX * 100));
+      fill.style.width = pct + '%';
+      if (pct >= 75) fill.className = 'hot';
+      bar.appendChild(fill); box.appendChild(bar);
+      sheet.appendChild(box);
+
+      if (!tracks.length) note(AL.t('muListNone'));
+
+      tracks.forEach(function(t, i){
+        var row = document.createElement('div');
+        row.className = 'trk' + (t.id === nowId ? ' now' : '');
+
+        var tn = document.createElement('span'); tn.className = 'tn';
+        var b = document.createElement('b'); b.textContent = t.title; tn.appendChild(b);
+        var sz = document.createElement('span');
+        sz.textContent = AL.fmtBytes(t.media_bytes); tn.appendChild(sz);
+        row.appendChild(tn);
+
+        row.appendChild(tbtn('▶', 'play', AL.t('muPlayThis'), async function(){
+          await AL.sb.from('links').update({
+            track_id: t.id, music_youtube_id: null, music_playing: true,
+            music_set_by: sideId, music_updated_at: new Date().toISOString(),
+          }).eq('id', linkId);
+          draw();
+        }));
+
+        if (i > 0) row.appendChild(tbtn('↑', '', AL.t('muUp'), function(){ move(tracks, i, -1); }));
+        if (i < tracks.length - 1) row.appendChild(tbtn('↓', '', AL.t('muDown'), function(){ move(tracks, i, 1); }));
+
+        row.appendChild(tbtn('✕', '', AL.t('muRemove'), async function(){
+          await AL.sb.from('tracks').delete().eq('id', t.id);
+          try { await AL.deleteMedia(t.media_path); } catch (e) {}
+          if (t.id === nowId) {
+            await AL.sb.from('links').update({ track_id: null, music_playing: false }).eq('id', linkId);
+          }
+          draw();
+        }));
+
+        sheet.appendChild(row);
+      });
+
+      // ── 올리기 ─────────────────────────────────────────────────
+      var sep1 = document.createElement('div'); sep1.className = 'pk-sep';
+      sheet.appendChild(sep1);
+
+      title(AL.t('muUpload'));
+      // ⚠ 비용을 미리 알립니다. 모르고 쌓이면 나중에 곤란합니다.
+      note(AL.t('muCostNote'));
+      note(AL.t('muOwnNote', { max: AL.fmtBytes(AL.MUSIC_MAX_BYTES) }));
+
+      var pick = document.createElement('input');
+      pick.type = 'file'; pick.accept = 'audio/*'; pick.multiple = true;
+      pick.style.display = 'none';
+      sheet.appendChild(pick);
+
+      var pb = document.createElement('button');
+      pb.className = 'pk-opt';
+      pb.textContent = AL.t('muPick');
+      pb.addEventListener('click', function(){ pick.click(); });
+      sheet.appendChild(pb);
+
+      pick.addEventListener('change', async function(){
+        var files = Array.prototype.slice.call(this.files || []);
+        this.value = '';
+        if (!files.length) return;
+
+        pb.disabled = true;
+        var room = AL.MUSIC_TOTAL_MAX - used;
+        for (var i = 0; i < files.length; i++) {
+          var f = files[i];
+          if (f.size > AL.MUSIC_MAX_BYTES) {
+            err(AL.t('mdTooBig', { max: AL.fmtBytes(AL.MUSIC_MAX_BYTES) }));
+            break;
+          }
+          if (f.size > room) {
+            err(AL.t('muFull', { max: AL.fmtBytes(AL.MUSIC_TOTAL_MAX) }));
+            break;
+          }
+          pb.textContent = AL.t('mdUploading') +
+            (files.length > 1 ? ' (' + (i + 1) + '/' + files.length + ')' : '');
+          try {
+            var media = await AL.uploadMedia(linkId, sideId, f);
+            var r = await AL.sb.from('tracks').insert({
+              link_id: linkId, added_by: sideId,
+              title: f.name.replace(/\.[^.]+$/, ''),
+              media_path: media.path, media_bytes: media.bytes,
+              ord: tracks.length + i,
+            });
+            if (r.error) throw r.error;
+            room -= f.size;
+          } catch (e) {
+            console.error(e);
+            err(AL.t('mdFailed', { msg: e.message || String(e) }));
+            break;
+          }
+        }
+        draw();
+      });
+
+      // ── 유튜브 ─────────────────────────────────────────────────
+      var sep2 = document.createElement('div'); sep2.className = 'pk-sep';
+      sheet.appendChild(sep2);
+      title(AL.t('muYoutube'));
+      note(AL.t('muYtNote'));
+
       var form = document.createElement('div'); form.className = 'pk-form';
-      form.style.marginTop = '14px';
       var inp = document.createElement('input');
       inp.type = 'url'; inp.placeholder = AL.t('muPlace');
       form.appendChild(inp);
@@ -311,14 +467,11 @@ AL.openMusic = function(linkId, sideId){
       go.className = 'pk-go'; go.textContent = AL.t('muSet');
       go.addEventListener('click', async function(){
         var id = AL.youtubeId(inp.value);
-        if (!id) {
-          var err = document.createElement('div'); err.className = 'pk-err';
-          err.textContent = AL.t('muBad'); form.appendChild(err);
-          return;
-        }
+        if (!id) { err(AL.t('muBad')); return; }
         go.disabled = true;
+        // ⚠ 유튜브와 올린 음원은 서로를 밀어냅니다. 둘이 동시에 나면 시끄럽습니다.
         await AL.sb.from('links').update({
-          music_youtube_id: id, music_playing: true,
+          music_youtube_id: id, track_id: null, music_playing: true,
           music_set_by: sideId, music_updated_at: new Date().toISOString(),
         }).eq('id', linkId);
         draw();
@@ -326,6 +479,25 @@ AL.openMusic = function(linkId, sideId){
       form.appendChild(go);
       sheet.appendChild(form);
     }
+
+    function tbtn(icon, cls, label, onClick){
+      var b = document.createElement('button');
+      b.className = 'tb ' + cls;
+      b.textContent = icon;
+      b.setAttribute('aria-label', label);
+      b.addEventListener('click', onClick);
+      return b;
+    }
+
+    /* 순서 바꾸기 — 두 곡의 ord 를 맞바꿉니다. */
+    async function move(tracks, i, dir){
+      var a = tracks[i], b = tracks[i + dir];
+      if (!a || !b) return;
+      await AL.sb.from('tracks').update({ ord: i + dir }).eq('id', a.id);
+      await AL.sb.from('tracks').update({ ord: i }).eq('id', b.id);
+      draw();
+    }
+
     draw();
   });
 };
