@@ -158,6 +158,90 @@ AL.STR = {
   mdVideo:     { kr:'영상', en:'Video' },
   mdGone:      { kr:'파일을 찾을 수 없습니다', en:'File not found' },
 
+  /* 메뉴판 — 이 관계에서 무엇을 쓸지 */
+  mnTitle:    { kr:'이 대화방에서 쓸 것', en:'Features here' },
+  mnNote:     { kr:'관계마다 쓰는 것이 다릅니다.\n거래처 방에 기념일이 뜨면 어색하니까요.\n끈 기능은 화면에서 사라질 뿐, 지난 기록은 남습니다.',
+                en:'Different relationships need different things.\nMilestones look odd in a work chat.\nTurning one off only hides it; past records stay.' },
+  mnPreset:   { kr:'한 번에 고르기', en:'Quick set' },
+  mnPersonal: { kr:'가까운 사이', en:'Personal' },
+  mnWork:     { kr:'업무', en:'Work' },
+  mnPro:      { kr:'전문 상담', en:'Professional' },
+  mnCustom:   { kr:'직접 고름', en:'Custom' },
+  mnEach:     { kr:'하나씩 고르기', en:'Choose one by one' },
+  mnOn:       { kr:'켬', en:'On' },
+  mnOff:      { kr:'끔', en:'Off' },
+
+  /* 기능 이름과 설명 — 많으면 아는 게 문제입니다. 설명이 강점이 됩니다. */
+  fnGoals:      { kr:'기념일', en:'Milestones' },
+  fnGoalsD:     { kr:'D-DAY · D+DAY 를 함께 셉니다. 결혼식까지, 만난 지 며칠.',
+                  en:'Count down or count up together — days until, days since.' },
+  fnQuestion:   { kr:'오늘의 질문', en:'Question of the day' },
+  fnQuestionD:  { kr:'하루에 하나씩 같은 질문을 받습니다. 내가 답해야 상대 답이 보입니다.',
+                  en:'One shared question a day. You must answer to see theirs.' },
+  fnMusic:      { kr:'같이 듣기', en:'Listen together' },
+  fnMusicD:     { kr:'유튜브 주소를 넣으면 양쪽이 같은 것을 봅니다.',
+                  en:'Paste a YouTube link and both of you watch the same thing.' },
+  fnAway:       { kr:'자리비움', en:'Away' },
+  fnAwayD:      { kr:'자리를 비운 동안 상대가 말을 걸면 안내가 한 번 나갑니다.',
+                  en:'While away, they get your note once when they message you.' },
+  fnExpiry:     { kr:'사라지는 메시지', en:'Disappearing messages' },
+  fnExpiryD:    { kr:'정한 시간이 지나면 양쪽에서 사라집니다. 매 건마다 표시됩니다.',
+                  en:'Gone from both sides after a set time. Marked on every one.' },
+  fnPreview:    { kr:'링크 미리보기', en:'Link previews' },
+  fnPreviewD:   { kr:'주소를 보내면 제목과 그림이 함께 보입니다.',
+                  en:'Links show a title and picture.' },
+  fnVoice:      { kr:'음성메시지', en:'Voice messages' },
+  fnVoiceD:     { kr:'눌러서 녹음하고 바로 보냅니다.', en:'Record and send in one go.' },
+  fnEmoji:      { kr:'이모지', en:'Emoji' },
+  fnEmojiD:     { kr:'하나만 보내면 큰 스티커로 보입니다.',
+                  en:'Send just one and it becomes a big sticker.' },
+  fnSearch:     { kr:'대화 검색', en:'Search' },
+  fnSearchD:    { kr:'주고받은 말을 찾습니다. 즐겨찾기만 모아 볼 수도 있습니다.',
+                  en:'Find what you said. Or see only what you saved.' },
+
+  /* 목표 · 오늘의 질문 · 같이 듣기 · 자리비움 */
+  glTitle:    { kr:'기념일', en:'Milestones' },
+  glNone:     { kr:'아직 기념일이 없습니다.', en:'No milestones yet.' },
+  glAdd:      { kr:'기념일 더하기', en:'Add a milestone' },
+  glName:     { kr:'무슨 날인가요', en:'What is it' },
+  glDate:     { kr:'날짜', en:'Date' },
+  glSave:     { kr:'담기', en:'Add' },
+  glDelete:   { kr:'지우기', en:'Remove' },
+  glDminus:   { kr:'{n}일 남음', en:'{n} days to go' },
+  glDplus:    { kr:'{n}일째', en:'day {n}' },
+  glToday:    { kr:'오늘입니다', en:'Today' },
+  glShared:   { kr:'양쪽이 함께 봅니다.', en:'Both of you see this.' },
+
+  qTitle:     { kr:'오늘의 질문', en:'Question of the day' },
+  qPlace:     { kr:'내 답', en:'Your answer' },
+  qSend:      { kr:'답하기', en:'Answer' },
+  qWaiting:   { kr:'상대가 아직 답하지 않았습니다.', en:'They have not answered yet.' },
+  qHidden:    { kr:'내가 답해야 상대 답이 보입니다.',
+                en:'Answer first to see theirs.' },
+  qMine:      { kr:'내 답', en:'Yours' },
+  qTheirs:    { kr:'상대 답', en:'Theirs' },
+  qDone:      { kr:'오늘은 답했습니다.', en:'Answered for today.' },
+
+  muTitle:    { kr:'같이 듣기', en:'Listen together' },
+  muPlace:    { kr:'유튜브 주소', en:'YouTube link' },
+  muSet:      { kr:'틀기', en:'Play' },
+  muStop:     { kr:'멈추기', en:'Stop' },
+  muNone:     { kr:'지금 트는 것이 없습니다.', en:'Nothing playing.' },
+  muBad:      { kr:'유튜브 주소가 아닌 것 같습니다.', en:'That does not look like a YouTube link.' },
+  muNote:     { kr:'한쪽이 틀면 양쪽이 같은 자리에서 듣습니다.',
+                en:'When one of you plays it, both hear it from the same spot.' },
+
+  awTitle:    { kr:'자리비움', en:'Away' },
+  awOn:       { kr:'자리비움 켜기', en:'Set away' },
+  awOff:      { kr:'자리비움 끄기', en:'Turn off' },
+  awMsg:      { kr:'남길 말', en:'Away message' },
+  awPlace:    { kr:'지금 자리에 없습니다. 나중에 답하겠습니다.',
+                en:'I am away right now. I will get back to you.' },
+  awNote:     { kr:'자리를 비운 동안 상대가 말을 걸면 이 말이 한 번 나갑니다.',
+                en:'If they message you while away, this is sent once.' },
+  awNow:      { kr:'자리비움 중', en:'Away' },
+  sysAway:    { kr:'[자리비움] {msg}', en:'[Away] {msg}' },
+
   /* 자동삭제 */
   exTitle:    { kr:'사라지는 메시지', en:'Disappearing messages' },
   exMsgOnce:  { kr:'이 메시지만', en:'Just this message' },
@@ -649,6 +733,149 @@ AL.copyText = async function(text, btn){
     }
     return true;
   } catch (e) { return false; }
+};
+
+/* ── 메뉴판 ─────────────────────────────────────────────────────────
+   관계마다 쓰는 기능이 다릅니다. 업무용 방에 기념일이 뜨면 어색합니다.
+
+   ⚠ 끄는 것은 화면에서 감추는 것뿐입니다. 지난 기록은 지워지지 않습니다.
+     기념일을 껐다가 다시 켜면 그대로 있습니다.
+
+   ⚠ features 가 비어 있으면 preset 이 정한 기본을 씁니다.
+     그래야 "아무것도 안 정한 방" 도 자연스럽게 동작합니다.
+------------------------------------------------------------------ */
+AL.FEATURES = [
+  ['goals',   'fnGoals',    'fnGoalsD'],
+  ['question','fnQuestion', 'fnQuestionD'],
+  ['music',   'fnMusic',    'fnMusicD'],
+  ['away',    'fnAway',     'fnAwayD'],
+  ['expiry',  'fnExpiry',   'fnExpiryD'],
+  ['preview', 'fnPreview',  'fnPreviewD'],
+  ['voice',   'fnVoice',    'fnVoiceD'],
+  ['emoji',   'fnEmoji',    'fnEmojiD'],
+  ['search',  'fnSearch',   'fnSearchD'],
+];
+
+AL.PRESETS = {
+  personal: { goals:1, question:1, music:1, away:1, expiry:1, preview:1, voice:1, emoji:1, search:1 },
+  work:     { goals:0, question:0, music:0, away:1, expiry:1, preview:1, voice:1, emoji:1, search:1 },
+  pro:      { goals:0, question:0, music:0, away:1, expiry:0, preview:1, voice:0, emoji:0, search:1 },
+};
+
+/* 이 방에서 그 기능을 쓰나. features 가 비었으면 preset 을 따릅니다. */
+AL.featureOn = function(link, key){
+  var f = link && link.features;
+  if (f && Object.prototype.hasOwnProperty.call(f, key)) return !!f[key];
+  var p = AL.PRESETS[(link && link.preset) || 'personal'] || AL.PRESETS.personal;
+  return !!p[key];
+};
+
+AL.openMenu = function(sideId, link){
+  return new Promise(function(resolve){
+    var preset = (link && link.preset) || 'personal';
+    var feats = Object.assign({}, (link && link.features) || {});
+
+    var bg = document.createElement('div'); bg.className = 'pk-bg';
+    var sheet = document.createElement('div'); sheet.className = 'pk';
+    document.body.appendChild(bg); document.body.appendChild(sheet);
+
+    var done = false;
+    function close(v){
+      if (done) return;
+      done = true;
+      document.removeEventListener('keydown', onKey);
+      bg.remove(); sheet.remove();
+      resolve(v);
+    }
+    function onKey(e){ if (e.key === 'Escape') close(null); }
+    document.addEventListener('keydown', onKey);
+    bg.addEventListener('click', function(){ close(null); });
+
+    function isOn(key){
+      if (Object.prototype.hasOwnProperty.call(feats, key)) return !!feats[key];
+      var p = AL.PRESETS[preset] || AL.PRESETS.personal;
+      return !!p[key];
+    }
+
+    function draw(){
+      sheet.innerHTML = '<div class="grip"></div>';
+      var h = document.createElement('p'); h.className = 'pk-title';
+      h.textContent = AL.t('mnTitle'); sheet.appendChild(h);
+      var n = document.createElement('p'); n.className = 'pk-note';
+      n.textContent = AL.t('mnNote'); sheet.appendChild(n);
+
+      var pl = document.createElement('p'); pl.className = 'pk-note';
+      pl.style.margin = '0 0 7px'; pl.textContent = AL.t('mnPreset');
+      sheet.appendChild(pl);
+
+      var row = document.createElement('div');
+      row.className = 'swatches'; row.style.marginBottom = '18px';
+      [['personal','mnPersonal'], ['work','mnWork'], ['pro','mnPro']].forEach(function(o){
+        var b = document.createElement('button');
+        b.className = 'sw' + (preset === o[0] && !Object.keys(feats).length ? ' on' : '');
+        b.textContent = AL.t(o[1]);
+        b.addEventListener('click', function(){
+          preset = o[0];
+          feats = {};                 // 한 번에 고르면 하나씩 정한 것은 지웁니다
+          draw();
+        });
+        row.appendChild(b);
+      });
+      sheet.appendChild(row);
+
+      var el = document.createElement('p'); el.className = 'pk-note';
+      el.style.margin = '0 0 7px'; el.textContent = AL.t('mnEach');
+      sheet.appendChild(el);
+
+      AL.FEATURES.forEach(function(f){
+        var on = isOn(f[0]);
+        var item = document.createElement('div');
+        item.className = 'fn-row' + (on ? ' on' : '');
+
+        var mid = document.createElement('div'); mid.className = 'fn-mid';
+        var b = document.createElement('b'); b.textContent = AL.t(f[1]); mid.appendChild(b);
+        var d = document.createElement('span'); d.textContent = AL.t(f[2]); mid.appendChild(d);
+        item.appendChild(mid);
+
+        var tg = document.createElement('button');
+        tg.className = 'fn-tg' + (on ? ' on' : '');
+        tg.textContent = AL.t(on ? 'mnOn' : 'mnOff');
+        tg.addEventListener('click', function(){
+          feats[f[0]] = !on;
+          draw();
+        });
+        item.appendChild(tg);
+        sheet.appendChild(item);
+      });
+
+      var go = document.createElement('button');
+      go.className = 'pk-go'; go.style.width = '100%'; go.style.marginTop = '16px';
+      go.textContent = AL.t('save');
+      go.addEventListener('click', async function(){
+        go.disabled = true;
+        try {
+          // preset 은 방에, 하나씩 고른 것은 내 쪽에 담습니다.
+          // 그래야 상대가 자기 취향대로 또 끌 수 있습니다.
+          var a = await AL.sb.from('links').update({ preset: preset })
+            .eq('id', (link && link.id)).select('id');
+          if (a.error) throw a.error;
+          var b2 = await AL.sb.from('link_sides')
+            .update({ features: Object.keys(feats).length ? feats : null })
+            .eq('id', sideId).select('id');
+          if (b2.error) throw b2.error;
+          close({ preset: preset, features: Object.keys(feats).length ? feats : null });
+        } catch (e) {
+          console.error(e);
+          var err = document.createElement('div'); err.className = 'pk-err';
+          err.textContent = e.message || String(e);
+          sheet.appendChild(err);
+          go.disabled = false;
+        }
+      });
+      sheet.appendChild(go);
+    }
+    draw();
+  });
 };
 
 /* ── 사라지는 시간 고르개 ───────────────────────────────────────────
