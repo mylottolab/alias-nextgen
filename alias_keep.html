@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Alias</title>
+<link rel="stylesheet" href="alias_common.css?v=20260905g">
+<link rel="stylesheet" href="alias_theme.css?v=20260905g">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="alias_common.js?v=20260905g"></script>
+<script>document.addEventListener("DOMContentLoaded",function(){AL.bootTheme();});</script>
+</head>
+<body class="tabbed" data-t-title="kpTitle">
+<div class="wrap">
+
+  <a class="backlink" href="alias_me.html" data-t="navMe"></a>
+
+  <div class="tophead">
+    <h1 class="h2" data-t="kpTitle"></h1>
+  </div>
+  <p class="lede" data-t="kpNote"></p>
+
+  <div class="field">
+    <textarea id="note" rows="3" data-t-ph="kpPlace"></textarea>
+  </div>
+  <button class="btn" id="add" data-t="kpAdd"></button>
+
+  <div id="list" style="margin-top:22px"></div>
+  <div id="err" class="err"></div>
+
+</div>
+
+<nav class="tabbar">
+  <a href="alias_contacts.html" data-t="navContacts"></a>
+  <a href="alias_calls.html" data-t="navCalls"></a>
+  <a href="alias_me.html" class="on" data-t="navMe"></a>
+</nav>
+
+<script>
+/* =====================================================================
+   내 메모함 (Keep)
+   나만 보는 곳입니다. 링크에 딸리지 않습니다.
+   대화에서 [메모함에 담기] 로 옮겨온 것도 여기 모입니다.
+   ===================================================================== */
+
+let rows = [];
+
+function showErr(msg){
+  const el = document.getElementById('err');
+  el.textContent = msg; el.classList.add('show');
+}
+
+function paint(){
+  const box = document.getElementById('list');
+  if (!rows.length) {
+    box.innerHTML = '<div class="empty">' + AL.esc(AL.t('kpEmpty')) + '</div>';
+    return;
+  }
+  box.innerHTML = rows.map(function(r){
+    return '<div class="keep-row">' +
+      '<div class="kt">' + AL.esc(r.content || '') + '</div>' +
+      '<div class="kd">' +
+        '<span>' + AL.esc(AL.fmtDateTime(r.created_at)) + '</span>' +
+        '<button data-del="' + AL.esc(r.id) + '">' + AL.esc(AL.t('kpDelete')) + '</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  box.querySelectorAll('[data-del]').forEach(function(b){
+    b.addEventListener('click', function(){ del(b.getAttribute('data-del')); });
+  });
+}
+
+async function reload(){
+  try {
+    const res = await AL.sb.from('keeps')
+      .select('id, content, media_path, media_name, created_at')
+      .order('created_at', { ascending: false }).limit(300);
+    if (res.error) throw res.error;
+    rows = res.data || [];
+    paint();
+  } catch (e) {
+    console.error(e);
+    showErr(AL.t('errGeneric', { msg: e.message || String(e) }));
+  }
+}
+
+async function add(){
+  const t = document.getElementById('note').value.trim();
+  if (!t) return;
+  const btn = document.getElementById('add');
+  btn.disabled = true;
+  try {
+    const sess = await AL.sb.auth.getSession();
+    const res = await AL.sb.from('keeps')
+      .insert({ account_id: sess.data.session.user.id, content: t });
+    if (res.error) throw res.error;
+    document.getElementById('note').value = '';
+    await reload();
+  } catch (e) {
+    console.error(e);
+    showErr(AL.t('errGeneric', { msg: e.message || String(e) }));
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function del(id){
+  try {
+    const res = await AL.sb.from('keeps').delete().eq('id', id);
+    if (res.error) throw res.error;
+    await reload();
+  } catch (e) {
+    console.error(e);
+    showErr(AL.t('errGeneric', { msg: e.message || String(e) }));
+  }
+}
+
+document.getElementById('add').addEventListener('click', add);
+
+(async function(){
+  AL.paintText();
+  if (!await AL.requireLogin()) return;
+  await reload();
+  AL.startAlerts();
+})();
+</script>
+</body>
+</html>

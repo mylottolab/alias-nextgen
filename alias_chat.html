@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260905f">
-<link rel="stylesheet" href="alias_theme.css?v=20260905f">
+<link rel="stylesheet" href="alias_common.css?v=20260905g">
+<link rel="stylesheet" href="alias_theme.css?v=20260905g">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260905f"></script>
-<script src="alias_media.js?v=20260905f"></script>
-<script src="alias_extras.js?v=20260905f"></script>
+<script src="alias_common.js?v=20260905g"></script>
+<script src="alias_media.js?v=20260905g"></script>
+<script src="alias_extras.js?v=20260905g"></script>
 <script>document.addEventListener("DOMContentLoaded",function(){AL.bootTheme();});</script>
 </head>
 <body class="chat" data-t-title="ttChat">
@@ -69,6 +69,7 @@
   <button id="atFile" data-t="mdFile"></button>
   <button id="atVoice" data-t="vcRecord"></button>
   <button id="atEmoji" data-t="emPopular"></button>
+  <button id="atTimer" data-t="exSetTimer"></button>
 </div>
 
 <script>
@@ -180,7 +181,43 @@ function bubbleHtml(m, gone){
     '</div>';
   }
 
-  return '<div class="bub" data-id="' + AL.esc(m.id) + '">' + q + hilite(m.content || '') + '</div>';
+  // 주소가 들어 있으면 미리보기를 붙입니다.
+  const u = AL.firstUrl(m.content);
+  let lp = '';
+  if (u && previews[u] && !previews[u].failed) {
+    const p = previews[u];
+    lp = '<a class="lp" href="' + AL.esc(u) + '" target="_blank" rel="noopener noreferrer">' +
+      (p.image_url ? '<img src="' + AL.esc(p.image_url) + '" alt="" loading="lazy">' : '') +
+      (p.title ? '<div class="lp-t">' + AL.esc(p.title) + '</div>' : '') +
+      (p.description ? '<div class="lp-d">' + AL.esc(p.description) + '</div>' : '') +
+      '<div class="lp-s">' + AL.esc(p.site_name || new URL(u).hostname) + '</div>' +
+    '</a>';
+  }
+
+  return '<div class="bub" data-id="' + AL.esc(m.id) + '">' + q +
+         hilite(m.content || '') + lp + '</div>';
+}
+
+/* 주소가 든 메시지의 미리보기를 가져옵니다. 한 번 가져온 것은 다시 안 갑니다. */
+async function loadPreviews(){
+  const urls = [];
+  msgs.forEach(function(m){
+    if (m.deleted_at || m.media_path) return;
+    const u = AL.firstUrl(m.content);
+    if (u && !previews[u]) urls.push(u);
+  });
+  if (!urls.length) return;
+  urls.forEach(function(u){ previews[u] = { pending: true }; });
+
+  for (const u of urls.slice(0, 8)) {          // 한 번에 여덟 개까지
+    try {
+      const out = await AL.callFn('alias-link-preview', { url: u });
+      previews[u] = out.preview || { failed: true };
+    } catch (e) {
+      previews[u] = { failed: true };
+    }
+  }
+  paint(true);
 }
 
 /* 검색어를 노랗게 칠합니다. 나머지는 그대로 안전하게 씁니다. */
@@ -243,6 +280,13 @@ function paint(keepPos){
       html += '<div class="daysep">' + AL.esc(AL.fmtDaySep(when)) + '</div>';
       prevDay = when;
     }
+    // 알림줄은 말풍선이 아니라 가운데 한 줄로 그립니다.
+    if (m.message_type === 'system') {
+      html += '<div class="sysline notice">' +
+        AL.esc(AL.systemText(m.content)) + '</div>';
+      return;
+    }
+
     const out = m.sender_side_id === me.sideId;
     const gone = !!m.deleted_at;
     const read = out && readMs && new Date(when).getTime() <= readMs;
@@ -262,6 +306,9 @@ function paint(keepPos){
         (stars[m.id] ? '<span class="star">★</span> ' : '') +
         AL.esc(AL.fmtClock(when)) +
         (m.edited_at ? '<br>' + AL.esc(AL.t('msgEdited')) : '') +
+        (m.expires_at && !m.deleted_at
+          ? '<span class="gone-in">' +
+            AL.esc(AL.t('exWillGo', { when: AL.fmtClock(m.expires_at) })) + '</span>' : '') +
       '</div>' +
     '</div>';
   });
@@ -353,7 +400,10 @@ async function open_(){
     document.getElementById('input').disabled = true;
     document.getElementById('send').disabled = true;
   }
+  roomHours = out.link.autoDeleteHours || null;
+
   paint(false);
+  loadPreviews();
 }
 
 /* ── 실시간 ─────────────────────────────────────────────────────
@@ -443,6 +493,9 @@ let replyTo = null;      // 답장 대상
 let stars = {};          // 즐겨찾기한 메시지 id
 let findQ = '';          // 검색어
 let starOnly = false;
+let msgExpiry = 0;        // 다음에 보낼 메시지가 사라지는 시간(시간 단위)
+let roomHours = null;     // 이 방 전체 자동삭제
+let previews = {};        // 주소 → 미리보기
 
 async function refresh(){
   if (refreshing || !me) return;
@@ -461,6 +514,7 @@ async function refresh(){
     bubble_style: out.link.bubbleStyle, scene: out.link.scene,
   });
 
+    roomHours = out.link.autoDeleteHours || null;
     const server = out.messages || [];
     const have = {};
     server.forEach(function(m){ have[m.id] = 1; });
@@ -487,6 +541,7 @@ async function refresh(){
     const before = msgs.length;
     msgs = server.concat(temps);
     paint(msgs.length === before);   // 새 게 있으면 아래로 붙습니다
+    loadPreviews();
   } catch (e) {
     // 조용히 지나가면 "왜 안 오는지" 를 영영 못 찾습니다.
     console.warn('[refresh] 실패', e);
@@ -544,6 +599,7 @@ async function send(){
     const out = await AL.callFn('alias-message-send', {
       linkId: linkId, text: text,
       replyTo: replyTo ? replyTo.id : null,
+      expiresInHours: msgExpiry || null,
     });
     const i = msgs.findIndex(function(m){ return m.id === tempId; });
     if (i >= 0) {
@@ -585,6 +641,7 @@ function openMsgMenu(id){
   items.push(['msgReply', function(){ setReply(m); }]);
   if (m.content) items.push(['msgCopy', function(){ AL.copyText(m.content); }]);
   items.push([stars[m.id] ? 'msgUnstar' : 'msgStar', function(){ toggleStar(m); }]);
+  if (m.content) items.push(['kpSave', function(){ toKeep(m); }]);
   if (mine && !m.media_path) items.push(['msgEdit', function(){ editMsg(m); }]);
   if (mine) items.push(['msgDelete', function(){ delMsg(m); }]);
   if (!mine) items.push(['msgReport', function(){ reportMsg(m); }]);
@@ -669,6 +726,23 @@ async function loadStars(){
   } catch (e) { /* 즐겨찾기가 없어도 대화는 됩니다 */ }
 }
 
+/* ── 메모함에 담기 ────────────────────────────────────────────── */
+async function toKeep(m){
+  try {
+    const sess = await AL.sb.auth.getSession();
+    const res = await AL.sb.from('keeps').insert({
+      account_id: sess.data.session.user.id,
+      content: m.content,
+      from_link_id: linkId,
+    });
+    if (res.error) throw res.error;
+    alert(AL.t('kpSaved'));
+  } catch (e) {
+    console.error(e);
+    showErr(AL.t('errGeneric', { msg: e.message || String(e) }));
+  }
+}
+
 /* ── 신고 ────────────────────────────────────────────────────── */
 async function reportMsg(m){
   const out = await AL.openReport({ sideId: me.sideId, linkId: linkId, messageId: m.id });
@@ -736,6 +810,19 @@ document.getElementById('qStar').addEventListener('click', function(){
   paint(true);
 });
 
+/* ── 사라지는 메시지 ────────────────────────────────────────────
+   보내는 사람이 정합니다. 정하면 다음에 보내는 것부터 적용됩니다.
+------------------------------------------------------------------- */
+document.getElementById('atTimer').addEventListener('click', async function(){
+  showAttach(false);
+  const h = await AL.pickExpiry(msgExpiry, false);
+  if (h === null) return;
+  msgExpiry = h;
+  // 입력칸에 지금 상태를 알려줍니다. 모르고 보내면 곤란합니다.
+  const inp = document.getElementById('input');
+  inp.placeholder = h ? AL.t('exWillGo', { when: AL.expiryLabel(h) }) : AL.t('chatPlace');
+});
+
 /* ── 파일 보내기 ──────────────────────────────────────────────────
    ① 화면이 Storage 에 먼저 올립니다 (경로가 곧 권한 — 블록 23)
    ② 그 경로만 Edge Function 에 넘깁니다
@@ -776,6 +863,7 @@ async function sendFiles(files, durationMs){
         text: (i === 0 && caption) ? caption : null,
         media: media,
         replyTo: (i === 0 && replyTo) ? replyTo.id : null,
+        expiresInHours: msgExpiry || null,
       });
 
       msgs.push({

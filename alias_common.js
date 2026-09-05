@@ -158,6 +158,41 @@ AL.STR = {
   mdVideo:     { kr:'영상', en:'Video' },
   mdGone:      { kr:'파일을 찾을 수 없습니다', en:'File not found' },
 
+  /* 자동삭제 */
+  exTitle:    { kr:'사라지는 메시지', en:'Disappearing messages' },
+  exMsgOnce:  { kr:'이 메시지만', en:'Just this message' },
+  exOff:      { kr:'안 사라짐', en:'Off' },
+  ex5m:       { kr:'5분 뒤', en:'After 5 minutes' },
+  ex1h:       { kr:'1시간 뒤', en:'After 1 hour' },
+  ex1d:       { kr:'1일 뒤', en:'After 1 day' },
+  ex7d:       { kr:'7일 뒤', en:'After 7 days' },
+  ex30d:      { kr:'30일 뒤', en:'After 30 days' },
+  exRoom:     { kr:'이 대화방 전체', en:'This whole conversation' },
+  exRoomNote: { kr:'정한 시간이 지난 메시지가 양쪽에서 사라집니다.\n바꾸면 상대에게도 알려집니다. 몰래 바꿀 수 없습니다.',
+                en:'Messages older than this disappear for both of you.\nChanging it tells the other person. You cannot do it quietly.' },
+  exWillGo:   { kr:'{when} 사라짐', en:'gone {when}' },
+  exSetTimer: { kr:'사라지는 시간', en:'Disappear after' },
+
+  /* 알림줄 — 대화 흐름에 남는 말 */
+  sysAutoDelOn:  { kr:'{who} 님이 이 대화방을 {label} 자동삭제로 바꿨습니다.',
+                   en:'{who} set this conversation to auto-delete {label}.' },
+  sysAutoDelOff: { kr:'{who} 님이 자동삭제를 껐습니다.',
+                   en:'{who} turned auto-delete off.' },
+  sysYou:        { kr:'나', en:'You' },
+
+  /* 링크 미리보기 */
+  lpOpen:     { kr:'열기', en:'Open' },
+
+  /* 메모함 */
+  kpTitle:    { kr:'내 메모함', en:'Your notes' },
+  kpNote:     { kr:'나만 봅니다. 상대는 모릅니다.', en:'Only you can see this. Nobody else.' },
+  kpEmpty:    { kr:'아직 저장한 것이 없습니다.', en:'Nothing saved yet.' },
+  kpSave:     { kr:'메모함에 담기', en:'Save to notes' },
+  kpSaved:    { kr:'메모함에 담았습니다.', en:'Saved to your notes.' },
+  kpDelete:   { kr:'메모함에서 빼기', en:'Remove' },
+  kpPlace:    { kr:'메모 적기', en:'Write a note' },
+  kpAdd:      { kr:'담기', en:'Add' },
+
   /* 이모지 */
   emPopular:  { kr:'인기', en:'Popular' },
   emFaces:    { kr:'표정', en:'Faces' },
@@ -612,6 +647,84 @@ AL.copyText = async function(text, btn){
     }
     return true;
   } catch (e) { return false; }
+};
+
+/* ── 사라지는 시간 고르개 ───────────────────────────────────────────
+   메시지 하나에도, 대화방 전체에도 씁니다.
+     var h = await AL.pickExpiry(현재값, '방인가');
+     null      닫음
+     0         안 사라짐
+     숫자      그만큼 지나면 사라짐 (시간 단위, 메시지는 분 단위)
+------------------------------------------------------------------ */
+AL.EXPIRY_MSG  = [[0,'exOff'], [5/60,'ex5m'], [1,'ex1h'], [24,'ex1d'], [24*7,'ex7d']];
+AL.EXPIRY_ROOM = [[0,'exOff'], [24,'ex1d'], [24*7,'ex7d'], [24*30,'ex30d']];
+
+AL.expiryLabel = function(hours){
+  var all = AL.EXPIRY_MSG.concat(AL.EXPIRY_ROOM);
+  for (var i = 0; i < all.length; i++) {
+    if (Math.abs(all[i][0] - hours) < 0.001) return AL.t(all[i][1]);
+  }
+  return String(hours) + 'h';
+};
+
+AL.pickExpiry = function(current, forRoom){
+  return new Promise(function(resolve){
+    var bg = document.createElement('div'); bg.className = 'pk-bg';
+    var sheet = document.createElement('div'); sheet.className = 'pk';
+    document.body.appendChild(bg); document.body.appendChild(sheet);
+
+    var done = false;
+    function close(v){
+      if (done) return;
+      done = true;
+      document.removeEventListener('keydown', onKey);
+      bg.remove(); sheet.remove();
+      resolve(v);
+    }
+    function onKey(e){ if (e.key === 'Escape') close(null); }
+    document.addEventListener('keydown', onKey);
+    bg.addEventListener('click', function(){ close(null); });
+
+    sheet.innerHTML = '<div class="grip"></div>';
+    var h = document.createElement('p'); h.className = 'pk-title';
+    h.textContent = AL.t(forRoom ? 'exRoom' : 'exMsgOnce');
+    sheet.appendChild(h);
+
+    if (forRoom) {
+      var n = document.createElement('p'); n.className = 'pk-note';
+      n.textContent = AL.t('exRoomNote');
+      sheet.appendChild(n);
+    }
+
+    (forRoom ? AL.EXPIRY_ROOM : AL.EXPIRY_MSG).forEach(function(o){
+      var b = document.createElement('button');
+      b.className = 'pk-opt' + (Math.abs((current || 0) - o[0]) < 0.001 ? ' cur' : '');
+      b.textContent = AL.t(o[1]);
+      b.addEventListener('click', function(){ close(o[0]); });
+      sheet.appendChild(b);
+    });
+  });
+};
+
+/* 알림줄 문구 — DB에는 열쇠만 담고 화면이 말로 바꿉니다.
+   그래야 언어를 바꿔도 지난 알림줄까지 같이 바뀝니다. */
+AL.systemText = function(raw){
+  var v;
+  try { v = typeof raw === 'string' ? JSON.parse(raw) : raw; } catch (e) { return raw; }
+  if (!v || !v.k) return String(raw || '');
+  var who = v.mine ? AL.t('sysYou') : (v.who || '');
+  if (v.k === 'sysAutoDelOn')
+    return AL.t('sysAutoDelOn', { who: who, label: AL.expiryLabel(v.hours) });
+  if (v.k === 'sysAutoDelOff')
+    return AL.t('sysAutoDelOff', { who: who });
+  return AL.t(v.k, v);
+};
+
+/* 글 속의 첫 주소 하나 */
+AL.firstUrl = function(text){
+  if (!text) return null;
+  var m = String(text).match(/https?:\/\/[^\s<>"']+/);
+  return m ? m[0] : null;
 };
 
 /* ── 공용 별칭 고르개 ────────────────────────────────────────────────
