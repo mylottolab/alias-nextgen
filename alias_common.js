@@ -171,6 +171,8 @@ AL.STR = {
   exRoomNote: { kr:'정한 시간이 지난 메시지가 양쪽에서 사라집니다.\n바꾸면 상대에게도 알려집니다. 몰래 바꿀 수 없습니다.',
                 en:'Messages older than this disappear for both of you.\nChanging it tells the other person. You cannot do it quietly.' },
   exWillGo:   { kr:'{when} 사라짐', en:'gone {when}' },
+  exBadge:    { kr:'{label} 사라짐', en:'gone {label}' },
+  exOnNow:    { kr:'사라지는 메시지 켜짐 · {label}', en:'Disappearing on · {label}' },
   exSetTimer: { kr:'사라지는 시간', en:'Disappear after' },
 
   /* 알림줄 — 대화 흐름에 남는 말 */

@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260905g">
-<link rel="stylesheet" href="alias_theme.css?v=20260905g">
+<link rel="stylesheet" href="alias_common.css?v=20260905i">
+<link rel="stylesheet" href="alias_theme.css?v=20260905i">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260905g"></script>
-<script src="alias_media.js?v=20260905g"></script>
-<script src="alias_extras.js?v=20260905g"></script>
+<script src="alias_common.js?v=20260905i"></script>
+<script src="alias_media.js?v=20260905i"></script>
+<script src="alias_extras.js?v=20260905i"></script>
 <script>document.addEventListener("DOMContentLoaded",function(){AL.bootTheme();});</script>
 </head>
 <body class="chat" data-t-title="ttChat">
@@ -45,6 +45,11 @@
     <span class="vtime" id="vTime">0:00</span>
     <button id="vCancel" data-t="vcCancel"></button>
     <button class="go" id="vStop" data-t="vcStop"></button>
+  </div>
+
+  <div class="tempbar" id="tempbar">
+    <span id="tempTxt"></span>
+    <button id="tempOff" data-t="exOff"></button>
   </div>
 
   <div class="uploading" id="upBar" style="display:none"></div>
@@ -118,6 +123,12 @@ function toBottom(){
 /* 말풍선 하나. 파일이면 사진·영상·문서로 갈립니다.
    ⚠ 사진 주소는 시한부라 여기서 바로 못 넣습니다. 자리만 잡아두고
      그린 뒤에 채웁니다(fillMedia). 그래야 화면이 안 튑니다. */
+/* 언제 사라지는지 말풍선 안에 적습니다. */
+function tempTag(m){
+  return '<span class="temp-tag">⏱ ' +
+    AL.esc(AL.t('exWillGo', { when: AL.fmtClock(m.expires_at) })) + '</span>';
+}
+
 function quoteHtml(m){
   if (!m.reply_to_message_id) return '';
   const t = msgs.filter(function(x){ return x.id === m.reply_to_message_id; })[0];
@@ -128,10 +139,10 @@ function quoteHtml(m){
          AL.esc(txt) + '</span>';
 }
 
-function bubbleHtml(m, gone){
+function bubbleHtml(m, gone, temp){
   if (gone) return '<div class="bub gone">' + AL.esc(AL.t('chatDeleted')) + '</div>';
 
-  const q = quoteHtml(m);
+  const q = (temp ? tempTag(m) : '') + quoteHtml(m);
 
   // 이모지 1~3개뿐이면 큰 그림으로. 카톡 이모티콘처럼요.
   if (!m.media_path && m.content) {
@@ -260,7 +271,10 @@ function paint(keepPos){
   const readMs = peer && peer.lastReadAt ? new Date(peer.lastReadAt).getTime() : 0;
 
   // 검색어나 즐겨찾기로 걸러냅니다. 비어 있으면 전부 보입니다.
+  const nowMs = Date.now();
   const show = msgs.filter(function(m){
+    // 이미 사라진 것은 검색 결과에도 안 나옵니다.
+    if ((findQ || starOnly) && m.expires_at && new Date(m.expires_at).getTime() <= nowMs) return false;
     if (starOnly && !stars[m.id]) return false;
     if (findQ && !(m.content || '').toLowerCase().includes(findQ.toLowerCase())) return false;
     return true;
@@ -288,16 +302,26 @@ function paint(keepPos){
     }
 
     const out = m.sender_side_id === me.sideId;
-    const gone = !!m.deleted_at;
+
+    // 🔴 서버가 치울 때까지 기다리지 않습니다.
+    //   "5분 뒤 사라진다" 고 해놓고 서버 사정에 맡기면 약속을 어기는 것입니다.
+    //   시각이 지나면 화면이 먼저 가립니다. 실제 삭제는 sweep 이 뒤따릅니다.
+    const expired = !!m.expires_at && new Date(m.expires_at) <= new Date();
+    const gone = !!m.deleted_at || expired;
     const read = out && readMs && new Date(when).getTime() <= readMs;
 
     if (firstUnreadId && m.id === firstUnreadId) {
       html += '<div class="newline"><span>' + AL.esc(AL.t('newHere')) + '</span></div>';
     }
 
+    // ⚠ 사라지는 메시지는 매 건마다, 양쪽 다 보이게 표시합니다.
+    //   받는 사람이 모르는 채로 사라지는 일은 없어야 합니다.
+    const temp = !!m.expires_at && !gone;
+
     html += '<div class="msg ' + (out ? 'out' : 'in') +
-      (m._fresh ? ' fresh' : '') + (m._failed ? ' failed' : '') + '">' +
-      bubbleHtml(m, gone) +
+      (m._fresh ? ' fresh' : '') + (m._failed ? ' failed' : '') +
+      (temp ? ' temp' : '') + '">' +
+      bubbleHtml(m, gone, temp) +
       '<div class="meta">' +
         (m._failed
           ? '<button class="retry" data-retry="' + AL.esc(m.id) + '">' +
@@ -306,9 +330,7 @@ function paint(keepPos){
         (stars[m.id] ? '<span class="star">★</span> ' : '') +
         AL.esc(AL.fmtClock(when)) +
         (m.edited_at ? '<br>' + AL.esc(AL.t('msgEdited')) : '') +
-        (m.expires_at && !m.deleted_at
-          ? '<span class="gone-in">' +
-            AL.esc(AL.t('exWillGo', { when: AL.fmtClock(m.expires_at) })) + '</span>' : '') +
+
       '</div>' +
     '</div>';
   });
@@ -817,11 +839,19 @@ document.getElementById('atTimer').addEventListener('click', async function(){
   showAttach(false);
   const h = await AL.pickExpiry(msgExpiry, false);
   if (h === null) return;
-  msgExpiry = h;
-  // 입력칸에 지금 상태를 알려줍니다. 모르고 보내면 곤란합니다.
-  const inp = document.getElementById('input');
-  inp.placeholder = h ? AL.t('exWillGo', { when: AL.expiryLabel(h) }) : AL.t('chatPlace');
+  setExpiry(h);
 });
+
+/* 켜져 있다는 것을 세 군데에 띄웁니다. 글을 쓰는 중에도 보여야 합니다. */
+function setExpiry(h){
+  msgExpiry = h;
+  const bar = document.getElementById('tempbar');
+  bar.classList.toggle('on', !!h);
+  if (h) document.getElementById('tempTxt').textContent =
+    AL.t('exOnNow', { label: AL.expiryLabel(h) });
+  document.getElementById('clip').classList.toggle('temp', !!h);
+}
+document.getElementById('tempOff').addEventListener('click', function(){ setExpiry(0); });
 
 /* ── 파일 보내기 ──────────────────────────────────────────────────
    ① 화면이 Storage 에 먼저 올립니다 (경로가 곧 권한 — 블록 23)
@@ -960,6 +990,17 @@ document.addEventListener('visibilitychange', function(){
 setInterval(function(){
   if (document.visibilityState === 'visible') refresh();
 }, 20000);
+
+// 사라질 시각이 되면 저절로 가려지도록 10초마다 다시 그립니다.
+// ⚠ 가릴 것이 있을 때만 그립니다. 없으면 화면을 건드리지 않습니다.
+setInterval(function(){
+  if (document.visibilityState !== 'visible') return;
+  const now = new Date();
+  const due = msgs.some(function(m){
+    return m.expires_at && !m.deleted_at && new Date(m.expires_at) <= now;
+  });
+  if (due) paint(true);
+}, 10000);
 
 // 다른 링크로 온 메시지는 공용 알림이 맡습니다.
 // 이 방 것은 아래에서 가로채 직접 처리합니다.

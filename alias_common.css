@@ -765,3 +765,34 @@ body.chat{padding:0;height:100dvh;overflow:hidden;display:flex;flex-direction:co
   background:transparent; color:var(--bad);
   border:1px solid var(--line); border-radius:7px; cursor:pointer;
 }
+
+/* 사라지는 메시지 — 매 건마다 눈에 띄게 (2026-09-05) */
+.msg.temp .bub{
+  border:1px dashed var(--warn, #D98E5A);
+}
+.msg.out.temp .bub{
+  background:var(--steel); border-color:rgba(0,0,0,.35);
+}
+.temp-tag{
+  display:inline-flex; align-items:center; gap:3px;
+  margin-bottom:5px; padding:2px 7px;
+  background:rgba(217,142,90,.16); color:var(--warn, #D98E5A);
+  border-radius:9px; font-size:10.5px; white-space:nowrap;
+}
+.msg.out .temp-tag{ background:rgba(0,0,0,.16); color:#2A1F14; }
+
+/* 켜져 있다는 것을 입력칸 위에 계속 띄웁니다 */
+.tempbar{
+  display:none; flex-shrink:0; align-items:center; gap:9px;
+  padding:8px 15px; font-size:12px;
+  background:rgba(217,142,90,.12); color:var(--warn, #D98E5A);
+  border-top:1px solid rgba(217,142,90,.3);
+}
+.tempbar.on{ display:flex; }
+.tempbar span{ flex:1; }
+.tempbar button{
+  flex-shrink:0; padding:4px 10px; font-size:11.5px; font-family:inherit;
+  background:transparent; color:inherit;
+  border:1px solid currentColor; border-radius:7px; cursor:pointer;
+}
+.chat-foot .clip.temp{ color:var(--warn, #D98E5A); border-color:var(--warn, #D98E5A); }
