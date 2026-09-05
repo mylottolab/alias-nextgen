@@ -4,12 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260905i">
-<link rel="stylesheet" href="alias_theme.css?v=20260905i">
+<link rel="stylesheet" href="alias_common.css?v=20260905l">
+<link rel="stylesheet" href="alias_theme.css?v=20260905l">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260905i"></script>
-<script src="alias_media.js?v=20260905i"></script>
-<script src="alias_extras.js?v=20260905i"></script>
+<script src="alias_common.js?v=20260905l"></script>
+<script src="alias_media.js?v=20260905l"></script>
+<script src="alias_extras.js?v=20260905l"></script>
+<script src="alias_room.js?v=20260905l"></script>
 <script>document.addEventListener("DOMContentLoaded",function(){AL.bootTheme();});</script>
 </head>
 <body class="chat" data-t-title="ttChat">
@@ -24,6 +25,8 @@
     <button class="icon" id="find" data-t-aria="fdTitle">⌕</button>
     <button class="icon" id="call" data-t-aria="ariaCall">☏</button>
   </div>
+
+  <div class="strip" id="strip"></div>
 
   <div class="findbar" id="findbar">
     <input id="q" type="search" autocomplete="off" data-t-ph="fdPlace">
@@ -211,6 +214,7 @@ function bubbleHtml(m, gone, temp){
 
 /* 주소가 든 메시지의 미리보기를 가져옵니다. 한 번 가져온 것은 다시 안 갑니다. */
 async function loadPreviews(){
+  if (!AL.featureOn(linkInfo, 'preview')) return;
   const urls = [];
   msgs.forEach(function(m){
     if (m.deleted_at || m.media_path) return;
@@ -416,6 +420,8 @@ async function open_(){
     me.peerLabel || (peer && peer.display) || AL.t('cntUnnamed');
   document.getElementById('whoFace').textContent =
     AL.t('chatMyFace', { face: me.myFace || '' });
+  document.getElementById('find').style.display =
+    AL.featureOn(out.link, 'search') ? '' : 'none';
 
   if (closed) {
     showErr(AL.t('chatClosed'));
@@ -423,9 +429,11 @@ async function open_(){
     document.getElementById('send').disabled = true;
   }
   roomHours = out.link.autoDeleteHours || null;
+  linkInfo = out.link;
 
   paint(false);
   loadPreviews();
+  loadRoom();
 }
 
 /* ── 실시간 ─────────────────────────────────────────────────────
@@ -518,6 +526,10 @@ let starOnly = false;
 let msgExpiry = 0;        // 다음에 보낼 메시지가 사라지는 시간(시간 단위)
 let roomHours = null;     // 이 방 전체 자동삭제
 let previews = {};        // 주소 → 미리보기
+let goals = [];           // 기념일
+let away = null;          // 내 자리비움
+let music = null;         // 같이 듣기
+let linkInfo = null;      // preset · features — 메뉴판
 
 async function refresh(){
   if (refreshing || !me) return;
@@ -537,6 +549,7 @@ async function refresh(){
   });
 
     roomHours = out.link.autoDeleteHours || null;
+    linkInfo = out.link;
     const server = out.messages || [];
     const have = {};
     server.forEach(function(m){ have[m.id] = 1; });
@@ -832,6 +845,74 @@ document.getElementById('qStar').addEventListener('click', function(){
   paint(true);
 });
 
+/* ── 머리 아래 띠 ────────────────────────────────────────────────
+   기념일 · 오늘의 질문 · 같이 듣기 · 자리비움을 한 줄에 모읍니다.
+   ⚠ 업무용 방에 기념일·질문이 뜨면 어색합니다. 지금은 다 보여주고,
+     가리는 것은 다음 단계("메뉴판")에서 합니다.
+------------------------------------------------------------------- */
+function paintStrip(){
+  const box = document.getElementById('strip');
+  box.innerHTML = '';
+
+  const on = function(k){ return AL.featureOn(linkInfo, k); };
+
+  // 가장 가까운 기념일 하나
+  if (on('goals') && goals.length) {
+    const g = goals.slice().sort(function(a, b){
+      return Math.abs(AL.dayDiff(a.goal_date)) - Math.abs(AL.dayDiff(b.goal_date));
+    })[0];
+    box.appendChild(chip((g.emoji || '🎉') + ' ' + g.title, AL.goalLabel(g.goal_date),
+      function(){ AL.openGoals(linkId, me.sideId).then(loadRoom); }));
+  } else if (on('goals')) {
+    box.appendChild(chip('🎉', AL.t('glTitle'),
+      function(){ AL.openGoals(linkId, me.sideId).then(loadRoom); }));
+  }
+
+  if (on('question'))
+    box.appendChild(chip('💬', AL.t('qTitle'),
+      function(){ AL.openQuestion(linkId, me.sideId); }));
+
+  if (on('music'))
+    box.appendChild(chip('♫', music ? AL.t('muStop') : AL.t('muTitle'),
+      function(){ AL.openMusic(linkId, me.sideId).then(loadRoom); }));
+
+  if (on('away')) {
+    const c = chip('🌙', away && away.on ? AL.t('awNow') : AL.t('awTitle'),
+      function(){
+        AL.openAway(me.sideId, away).then(function(v){ if (v) { away = v; paintStrip(); } });
+      });
+    if (away && away.on) c.classList.add('away');
+    box.appendChild(c);
+  }
+}
+
+function chip(icon, label, onClick){
+  const b = document.createElement('button');
+  b.className = 'chip';
+  b.appendChild(document.createTextNode(icon + ' '));
+  const t = document.createElement('b');
+  t.textContent = label;
+  b.appendChild(t);
+  b.addEventListener('click', onClick);
+  return b;
+}
+
+/* 방에 딸린 것들을 읽어옵니다. */
+async function loadRoom(){
+  try {
+    goals = await AL.loadGoals(linkId);
+  } catch (e) { goals = []; }
+  try {
+    const r = await AL.sb.from('link_sides')
+      .select('away_on, away_message').eq('id', me.sideId).maybeSingle();
+    away = r.data ? { on: r.data.away_on, message: r.data.away_message } : null;
+    const m = await AL.sb.from('links')
+      .select('music_youtube_id').eq('id', linkId).maybeSingle();
+    music = m.data ? m.data.music_youtube_id : null;
+  } catch (e) { /* 없어도 대화는 됩니다 */ }
+  paintStrip();
+}
+
 /* ── 사라지는 메시지 ────────────────────────────────────────────
    보내는 사람이 정합니다. 정하면 다음에 보내는 것부터 적용됩니다.
 ------------------------------------------------------------------- */
@@ -861,6 +942,15 @@ document.getElementById('tempOff').addEventListener('click', function(){ setExpi
    ⚠ 여러 장이면 한 장씩 차례로 보냅니다. 한꺼번에 올리면 순서가 뒤섞입니다.
 ------------------------------------------------------------------- */
 function showAttach(on){
+  if (on) {
+    // 끈 기능은 시트에서도 감춥니다. 있는데 안 되는 것보다 없는 게 낫습니다.
+    document.getElementById('atVoice').style.display =
+      AL.featureOn(linkInfo, 'voice') ? '' : 'none';
+    document.getElementById('atEmoji').style.display =
+      AL.featureOn(linkInfo, 'emoji') ? '' : 'none';
+    document.getElementById('atTimer').style.display =
+      AL.featureOn(linkInfo, 'expiry') ? '' : 'none';
+  }
   document.getElementById('atBg').classList.toggle('show', on);
   document.getElementById('atSheet').style.display = on ? '' : 'none';
 }

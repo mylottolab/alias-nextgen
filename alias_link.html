@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260905i">
-<link rel="stylesheet" href="alias_theme.css?v=20260905i">
+<link rel="stylesheet" href="alias_common.css?v=20260905l">
+<link rel="stylesheet" href="alias_theme.css?v=20260905l">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260905i"></script>
+<script src="alias_common.js?v=20260905l"></script>
 <script>document.addEventListener("DOMContentLoaded",function(){AL.bootTheme();});</script>
 </head>
 <body data-t-title="ttLink">
@@ -51,6 +51,7 @@ let row = null;
 let aliases = [];
 let linkTheme = {};
 let roomHours = null;
+let linkInfo = null;
 
 function themeIsCustom(){
   return !!(linkTheme.mode || linkTheme.color || linkTheme.bubble || linkTheme.scene);
@@ -101,6 +102,10 @@ function paint(){
         ' <button data-act="theme">' + AL.esc(AL.t('dtlChange')) + '</button></span>' +
     '</div>' +
     '<div class="drow">' +
+      '<span class="dlab">' + AL.esc(AL.t('mnTitle')) + '</span>' +
+      '<span class="dval"><button data-act="menu">' + AL.esc(AL.t('dtlChange')) + '</button></span>' +
+    '</div>' +
+    '<div class="drow">' +
       '<span class="dlab">' + AL.esc(AL.t('exRoom')) + '</span>' +
       '<span class="dval">' + AL.esc(AL.expiryLabel(roomHours || 0)) +
         ' <button data-act="expiry">' + AL.esc(AL.t('dtlChange')) + '</button></span>' +
@@ -130,6 +135,12 @@ async function act(kind){
 
     } else if (kind === 'mute') {
       await save({ muted: !row.muted });
+
+    } else if (kind === 'menu') {
+      const out = await AL.openMenu(row.my_side_id, linkInfo);
+      if (!out) return;
+      linkInfo = Object.assign({}, linkInfo, out);
+      showOk(AL.t('thSaved'));
 
     } else if (kind === 'expiry') {
       // ⚠ 양쪽에서 사라지므로 상대에게 알림줄이 남습니다.
@@ -210,8 +221,16 @@ async function load(){
   // 이 방만의 모양이 있으면 그것으로 칠합니다. my_contacts 는 테마를 안 주므로
   // link_sides 에서 내 줄만 따로 읽습니다(내 줄은 읽을 수 있습니다 — 블록 19).
   const lk = await AL.sb.from('links')
-    .select('auto_delete_hours').eq('id', linkId).maybeSingle();
+    .select('id, auto_delete_hours, preset').eq('id', linkId).maybeSingle();
   roomHours = lk.data ? lk.data.auto_delete_hours : null;
+
+  const fs = await AL.sb.from('link_sides')
+    .select('features').eq('id', row.my_side_id).maybeSingle();
+  linkInfo = {
+    id: linkId,
+    preset: lk.data ? lk.data.preset : 'personal',
+    features: fs.data ? fs.data.features : null,
+  };
 
   const th = await AL.sb.from('link_sides')
     .select('theme_mode, theme_color, bubble_style, scene').eq('id', row.my_side_id).maybeSingle();
