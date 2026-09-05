@@ -194,6 +194,7 @@ AL.STR = {
   clLogFailed:{ kr:'연결 실패', en:'Call failed' },
   clLogAs:    { kr:'{face}(으)로', en:'as {face}' },
   clCallBack: { kr:'다시 걸기', en:'Call back' },
+  clTapSound: { kr:'눌러서 소리 켜기', en:'Tap to enable sound' },
   clOut:      { kr:'걸음', en:'Outgoing' },
   clIn:       { kr:'받음', en:'Incoming' },
   clMissed:   { kr:'부재중', en:'Missed' },
@@ -1227,6 +1228,25 @@ AL.buzz = function(){
 };
 
 AL.alertNew = function(){ AL.ding(); AL.buzz(); };
+
+/* ── 전화벨 ──────────────────────────────────────────────────────────
+   받을 때까지 계속 울립니다. 한 번만 울리면 놓칩니다.
+   ⚠ 소리 설정을 꺼둔 사람에게는 진동만 갑니다.
+------------------------------------------------------------------ */
+AL._ringTimer = null;
+
+AL.startRinging = function(){
+  AL.stopRinging();
+  AL.alertNew();
+  AL._ringTimer = setInterval(function(){ AL.alertNew(); }, 2400);
+  // 안 받으면 45초 뒤 저절로 멎습니다. 영영 울리면 곤란합니다.
+  setTimeout(AL.stopRinging, 45000);
+};
+
+AL.stopRinging = function(){
+  if (AL._ringTimer) { clearInterval(AL._ringTimer); AL._ringTimer = null; }
+  try { if (navigator.vibrate) navigator.vibrate(0); } catch (e) {}
+};
 
 /* ── 새 메시지 엿듣기 ───────────────────────────────────────────────
    messages 표의 변화를 직접 듣습니다(블록 20). 채널 하나로 모든 링크를

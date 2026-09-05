@@ -39,6 +39,7 @@ AL.call = {
   type: 'voice',
   outgoing: true,
   answered: false,
+  sdpDone: false,      // offer/answer 교환이 끝났나
   pending: [],        // 아직 못 넣은 ICE 후보
   resendTimer: null,
   noAnswerTimer: null,
@@ -150,6 +151,7 @@ AL.startCall = async function(opts){
   AL.call.type = type;
   AL.call.outgoing = true;
   AL.call.answered = false;
+  AL.call.sdpDone = false;
   AL.call.pending = [];
   AL.call.onState = opts.onState || null;
 
@@ -199,11 +201,18 @@ AL.startCall = async function(opts){
   send('offer', { sdp: offer });
   say('ringing');
 
-  // ⚠ 상대가 늦게 들어오면 첫 offer 를 놓칩니다. 몇 번 더 보냅니다.
+  // 🔴 offer 다시 보내기를 언제 멈추느냐가 핵심입니다.
+  //   전에는 "answered" 를 받으면 멈췄습니다. 그런데 받는 쪽은 채널에 붙자마자
+  //   answered 를 보내는데, 그때는 아직 offer 를 못 받은 상태일 수 있습니다.
+  //   그러면 거는 쪽이 멈춰버려서 offer 가 영영 안 갑니다.
+  //   첫 통화는 타이밍이 맞아 넘어가고, 두 번째부터 조용해집니다.
+  //   → 이제 answer(SDP) 를 실제로 받을 때까지 계속 보냅니다.
+  AL.call.offerSdp = offer;
   AL.call.resendTimer = setInterval(function(){
-    if (AL.call.answered) { clearInterval(AL.call.resendTimer); return; }
-    send('offer', { sdp: offer });
-  }, 3000);
+    if (AL.call.sdpDone) { clearInterval(AL.call.resendTimer); AL.call.resendTimer = null; return; }
+    console.log('[call] offer 다시 보냄');
+    send('offer', { sdp: AL.call.offerSdp });
+  }, 1500);
 
   // 40초 안 받으면 부재중
   AL.call.noAnswerTimer = setTimeout(function(){
@@ -253,9 +262,20 @@ AL.answerCall = async function(opts){
   await AL.sb.from('calls')
     .update({ answered_at: new Date().toISOString() }).eq('id', opts.callId);
 
-  // 받았다고 알립니다. 거는 쪽이 offer 다시 보내기를 멈춥니다.
+  // 붙었다고 알립니다. 거는 쪽이 이걸 보고 offer 를 바로 보냅니다.
+  // ⚠ 이것만으로 offer 다시 보내기를 멈추게 하면 안 됩니다.
+  //   아직 offer 를 못 받았을 수 있습니다.
+  send('ready', {});
   send('answered', {});
   say('answering');
+
+  // 2초 안에 offer 가 안 오면 조릅니다.
+  setTimeout(function(){
+    if (AL.call.pc && !(AL.call.pc.remoteDescription && AL.call.pc.remoteDescription.type)) {
+      console.log('[call] offer 가 안 와서 조릅니다');
+      send('need-offer', {});
+    }
+  }, 2000);
 };
 
 /* ── 신호 처리 ───────────────────────────────────────────────────── */
@@ -277,13 +297,25 @@ async function handleSignal(m){
     if (AL.call.pc.remoteDescription && AL.call.pc.remoteDescription.type) return;
     await AL.call.pc.setRemoteDescription(new RTCSessionDescription(m.sdp));
     await drainPending();
+    // 🔴 이제서야 offer 다시 보내기를 멈춥니다.
+    AL.call.sdpDone = true;
+    if (AL.call.resendTimer) { clearInterval(AL.call.resendTimer); AL.call.resendTimer = null; }
+    console.log('[call] answer 받음. 교환 끝');
+
+  } else if (m.kind === 'ready' || m.kind === 'need-offer') {
+    // 받는 쪽이 붙었거나 offer 를 조릅니다. 바로 보냅니다.
+    if (AL.call.outgoing && AL.call.offerSdp) {
+      console.log('[call] 요청 받고 offer 보냄');
+      send('offer', { sdp: AL.call.offerSdp });
+    }
 
   } else if (m.kind === 'ice') {
     await addIce(m.candidate);
 
   } else if (m.kind === 'answered') {
+    // 사람이 받았다는 뜻입니다. 부재중 시계만 멈춥니다.
+    // ⚠ offer 다시 보내기는 여기서 멈추면 안 됩니다. 위 주석 참고.
     AL.call.answered = true;
-    if (AL.call.resendTimer) { clearInterval(AL.call.resendTimer); AL.call.resendTimer = null; }
     if (AL.call.noAnswerTimer) { clearTimeout(AL.call.noAnswerTimer); AL.call.noAnswerTimer = null; }
     say('answering');
 
@@ -355,6 +387,8 @@ function cleanup(){
   AL.call.token = null;
   AL.call.callId = null;
   AL.call.answered = false;
+  AL.call.sdpDone = false;
+  AL.call.offerSdp = null;
   AL.call.onState = null;
   AL.call.pending = [];
 }

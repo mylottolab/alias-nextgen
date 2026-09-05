@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260905q">
-<link rel="stylesheet" href="alias_theme.css?v=20260905q">
+<link rel="stylesheet" href="alias_common.css?v=20260905r">
+<link rel="stylesheet" href="alias_theme.css?v=20260905r">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260905q"></script>
-<script src="alias_call.js?v=20260905q"></script>
+<script src="alias_common.js?v=20260905r"></script>
+<script src="alias_call.js?v=20260905r"></script>
 <script>document.addEventListener("DOMContentLoaded",function(){AL.bootTheme();});</script>
 </head>
 <body class="callscreen" data-t-title="clVoice">
@@ -33,7 +33,9 @@
   <div class="callacts" id="acts"></div>
 </div>
 
-<audio id="remoteA" autoplay></audio>
+<audio id="remoteA" autoplay playsinline></audio>
+<button class="btn" id="tapSound" style="display:none;position:fixed;left:20px;right:20px;bottom:110px;width:auto;max-width:380px;margin:0 auto"
+        data-t="clTapSound"></button>
 
 <script>
 /* =====================================================================
@@ -161,12 +163,27 @@ function onState(state, extra){
     el('localV').srcObject = extra.stream;
   }
   if (state === 'remote-stream') {
-    if (callType === 'video') el('remoteV').srcObject = extra.stream;
-    else el('remoteA').srcObject = extra.stream;
+    const target = (callType === 'video') ? el('remoteV') : el('remoteA');
+    target.srcObject = extra.stream;
+    // ⚠ 브라우저가 소리 재생을 막을 수 있습니다(자동재생 정책).
+    //   막히면 조용히 실패하므로, 눌러서 켜는 단추를 띄웁니다.
+    const p = target.play();
+    if (p && p.catch) {
+      p.catch(function(e){
+        console.warn('[call] 소리 재생이 막혔습니다', e);
+        const b = el('tapSound');
+        b.style.display = '';
+        b.onclick = function(){
+          target.play().then(function(){ b.style.display = 'none'; })
+                       .catch(function(){});
+        };
+      });
+    }
   }
 }
 
 function bye(){
+  AL.stopRinging();
   if (tick) { clearInterval(tick); tick = null; }
   el('acts').innerHTML = '';
   // 잠깐 보여준 뒤 대화로 돌아갑니다.
@@ -176,6 +193,7 @@ function bye(){
 }
 
 async function answer(){
+  AL.stopRinging();
   try {
     await AL.answerCall({
       linkId: linkId, sideId: view.my_side_id,
@@ -190,6 +208,7 @@ async function answer(){
 }
 
 async function decline(){
+  AL.stopRinging();
   await AL.declineCall(callId);
   leaveTo('alias_chat.html?link=' + encodeURIComponent(linkId));
 }
@@ -214,7 +233,7 @@ async function decline(){
     }
     if (once) burnTicket(once);
     setStatus(AL.t('clRinging'));
-    AL.alertNew();                     // 벨 대신 딩동
+    AL.startRinging();                 // 받을 때까지 울립니다
 
   } else {
     // 거는 쪽 — 표가 없거나 이미 쓴 표면 걸지 않습니다.
@@ -236,6 +255,7 @@ async function decline(){
 })();
 
 window.addEventListener('beforeunload', function(){
+  AL.stopRinging();
   if (AL.call.pc) AL.endCall('canceled');
   else AL.callCleanup();
 });
