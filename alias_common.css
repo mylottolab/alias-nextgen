@@ -1001,3 +1001,41 @@ body.callscreen{
 .callline.missed{ border-color:rgba(217,106,106,.45); }
 .callline.missed .cx b{ color:var(--bad); }
 .callline .ct{ flex-shrink:0; font-size:10.5px; color:var(--faint); }
+
+/* ── 어디서나 돌아가는 길 (2026-09-05) ───────────────────────────── */
+.gohome{ display:flex; gap:7px; flex-shrink:0; }
+.gohome a{
+  display:flex; align-items:center; gap:5px;
+  padding:7px 11px; font-size:12px; text-decoration:none;
+  color:var(--dim); background:var(--raise2);
+  border:1px solid var(--line); border-radius:16px;
+}
+.gohome a:hover{ color:var(--text); border-color:var(--steel); }
+.chat-top .gohome a{ padding:6px 9px; font-size:11.5px; }
+
+/* 로그아웃은 눈에 덜 띄게, 맨 아래로 */
+.signout-zone{
+  margin-top:40px; padding-top:22px; border-top:1px solid var(--line);
+}
+.signout-zone button{
+  width:100%; padding:13px; font-size:13.5px; font-family:inherit;
+  background:transparent; color:var(--faint);
+  border:1px solid var(--line); border-radius:10px; cursor:pointer;
+}
+.signout-zone button:hover{ color:var(--bad); border-color:rgba(217,106,106,.4); }
+
+/* ── QR (2026-09-05) ─────────────────────────────────────────────── */
+.qr-box{
+  display:flex; justify-content:center; padding:18px;
+  background:#FFFFFF; border-radius:12px; margin:14px 0;
+}
+.qr-box canvas{ display:block; }
+.qr-cam{
+  width:100%; aspect-ratio:1; border-radius:12px; overflow:hidden;
+  background:#000; margin:12px 0;
+}
+.qr-cam video{ width:100%; height:100%; object-fit:cover; }
+.qr-note{
+  font-size:12px; color:var(--dim); line-height:1.6;
+  text-align:center; white-space:pre-line; margin:0 0 4px;
+}

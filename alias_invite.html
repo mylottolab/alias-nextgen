@@ -4,19 +4,20 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260905r">
-<link rel="stylesheet" href="alias_theme.css?v=20260905r">
+<link rel="stylesheet" href="alias_common.css?v=20260905s">
+<link rel="stylesheet" href="alias_theme.css?v=20260905s">
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260905r"></script>
+<script src="alias_common.js?v=20260905s"></script>
+<script src="alias_qr.js?v=20260905s"></script>
 <script>document.addEventListener("DOMContentLoaded",function(){AL.bootTheme();});</script>
 </head>
 <body data-t-title="ttInvite">
 <div class="wrap">
 
-  <a class="backlink" href="alias_contacts.html" data-t="dtlBack"></a>
+  <div class="tophead" style="margin-bottom:10px"><a class="backlink" href="alias_contacts.html" data-t="dtlBack"></a><span class="gohome"><a href="alias_contacts.html" data-t="goHome"></a><a href="alias_me.html" data-t="goMe"></a></span></div>
   <div class="top">
     <h1 class="h2" data-t="invTitle"></h1>
-    <button class="linkish" id="out" data-t="signOut"></button>
   </div>
   <p class="lede" data-t="invIntro"></p>
 
@@ -68,11 +69,16 @@
       <div class="cap" data-t="invCodeCap"></div>
       <div class="code small" id="codeOut"></div>
     </div>
+    <!-- 🔴 마주 보고 있으면 QR 이 가장 안전합니다. 어디로도 안 나갑니다. -->
+    <div class="qr-box" id="qrBox"></div>
+    <p class="qr-note" data-t="qrNote"></p>
+
     <div class="copybar">
       <button id="copyCode" data-t="copy"></button>
       <button id="copyLink" data-t="invCopyLink"></button>
+      <button id="shareBtn" data-t="invShareSys"></button>
     </div>
-    <p class="note" data-t="invLinkCap"></p>
+    <p class="note" data-t="invShareNote"></p>
     <button class="btn ghost" id="again" data-t="invMake"></button>
   </div>
 
@@ -214,6 +220,14 @@ async function makeInvite(){
     // 어떤 얼굴로 나가는지 반드시 보여줍니다. 고른 것과 다르면 여기서 알아챕니다.
     document.getElementById('whoWill').textContent =
       AL.t('invWillSee', { face: chosen ? chosen.display_name : '?' });
+
+    // QR 을 그립니다. 주소를 담아야 상대가 바로 열 수 있습니다.
+    try {
+      await AL.drawQr(document.getElementById('qrBox'), AL.inviteUrl(lastCode), 220);
+    } catch (e) {
+      console.warn('[qr] 못 그렸습니다', e);
+      document.getElementById('qrBox').style.display = 'none';
+    }
     document.getElementById('formPart').style.display = 'none';
     document.getElementById('madePart').classList.add('on');
     document.getElementById('memo').value = '';
@@ -247,11 +261,20 @@ document.getElementById('copyCode').addEventListener('click', function(){
 document.getElementById('copyLink').addEventListener('click', function(){
   AL.copyText(AL.inviteUrl(lastCode || ''), this);
 });
+document.getElementById('shareBtn').addEventListener('click', async function(){
+  // ⚠ 여기서 다른 앱을 거치면 그 앱에 내 번호가 남습니다.
+  //   그래서 위 QR 을 먼저 권합니다. 이건 멀리 있을 때의 차선책입니다.
+  const url = AL.inviteUrl(lastCode || '');
+  if (navigator.share) {
+    try { await navigator.share({ text: url }); return; } catch (e) { /* 취소 */ }
+  }
+  AL.copyText(url, this);
+});
+
 document.getElementById('again').addEventListener('click', function(){
   document.getElementById('madePart').classList.remove('on');
   document.getElementById('formPart').style.display = '';
 });
-document.getElementById('out').addEventListener('click', AL.signOut);
 
 (async function(){
   AL.paintText();

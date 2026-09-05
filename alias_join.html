@@ -4,25 +4,29 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260905r">
-<link rel="stylesheet" href="alias_theme.css?v=20260905r">
+<link rel="stylesheet" href="alias_common.css?v=20260905s">
+<link rel="stylesheet" href="alias_theme.css?v=20260905s">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260905r"></script>
+<script src="alias_common.js?v=20260905s"></script>
+<script src="alias_qr.js?v=20260905s"></script>
 <script>document.addEventListener("DOMContentLoaded",function(){AL.bootTheme();});</script>
 </head>
 <body data-t-title="ttJoin">
 <div class="wrap">
 
-  <a class="backlink" href="alias_contacts.html" data-t="dtlBack"></a>
+  <div class="tophead" style="margin-bottom:10px"><a class="backlink" href="alias_contacts.html" data-t="dtlBack"></a><span class="gohome"><a href="alias_contacts.html" data-t="goHome"></a><a href="alias_me.html" data-t="goMe"></a></span></div>
   <div class="top">
     <h1 class="h2" data-t="joinTitle"></h1>
-    <button class="linkish" id="out" data-t="signOut"></button>
   </div>
   <p class="lede" data-t="joinIntro"></p>
 
   <div id="formPart">
+    <!-- 마주 보고 있으면 찍는 것이 가장 쉽고 안전합니다 -->
+    <button class="btn" id="scanBtn" data-t="qrScan"></button>
+    <p class="qr-note" data-t="qrNote"></p>
+
     <div class="field">
-      <label for="code" data-t="joinCodeLbl"></label>
+      <label for="code" data-t="qrOrCode"></label>
       <input id="code" type="text" autocomplete="off" autocapitalize="off" spellcheck="false">
     </div>
 
@@ -138,11 +142,20 @@ async function join(){
   }
 }
 
+document.getElementById('scanBtn').addEventListener('click', async function(){
+  const raw = await AL.openScanner();
+  if (!raw) return;
+  const code = AL.codeFromScan(raw);
+  if (!code) { showErr(AL.t('errNotFound')); return; }
+  document.getElementById('code').value = code;
+  clearErr();
+  join();
+});
+
 document.getElementById('go').addEventListener('click', join);
 document.getElementById('label').addEventListener('keydown', function(e){
   if (e.key === 'Enter') join();
 });
-document.getElementById('out').addEventListener('click', AL.signOut);
 
 (async function(){
   AL.paintText();
@@ -161,6 +174,7 @@ document.getElementById('out').addEventListener('click', AL.signOut);
     showErr(AL.t('errNoAlias'));
     document.getElementById('go').disabled = true;
   }
+  if (!AL.canScanQr()) document.getElementById('scanBtn').style.display = 'none';
   paintFaces();
   AL.startAlerts();      // 어느 화면에 있든 새 메시지를 알려줍니다
 })();
