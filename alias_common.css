@@ -513,3 +513,94 @@ body.chat{padding:0;height:100dvh;overflow:hidden;display:flex;flex-direction:co
   border:1px solid var(--bad);border-radius:6px;
   font-size:10.5px;font-family:inherit;cursor:pointer;
 }
+
+/* =====================================================================
+   말풍선 속 파일   (2026-09-05)
+   ===================================================================== */
+.bub.media{ padding:5px; max-width:78%; overflow:hidden; }
+.bub.media img.ph{
+  display:block; width:100%; height:auto; border-radius:10px;
+  cursor:zoom-in; background:var(--raise2);
+}
+.bub.media video{ display:block; width:100%; border-radius:10px; background:#000; }
+.bub.media .cap{
+  padding:7px 8px 4px; font-size:14px; line-height:1.5; white-space:pre-wrap;
+}
+.filecard{
+  display:flex; align-items:center; gap:11px;
+  padding:11px 13px; text-decoration:none; color:inherit;
+}
+.filecard .fi{
+  width:34px; height:34px; flex-shrink:0; border-radius:8px;
+  background:var(--raise2); color:var(--steel);
+  display:flex; align-items:center; justify-content:center; font-size:15px;
+}
+.filecard .fn{ flex:1; min-width:0; }
+.filecard .fn b{
+  display:block; font-size:13.5px; font-weight:600;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.filecard .fn span{ font-size:11.5px; opacity:.7; }
+
+/* 올리는 동안 */
+.uploading{
+  padding:8px 16px; font-size:12.5px; color:var(--dim);
+  border-top:1px solid var(--line); background:var(--raise);
+}
+
+/* 붙이기 단추 */
+.chat-foot .clip{
+  flex-shrink:0; width:44px; height:44px; padding:0;
+  background:transparent; color:var(--dim);
+  border:1px solid var(--line); border-radius:50%;
+  font-size:18px; font-family:inherit; cursor:pointer;
+}
+.chat-foot .clip:hover{ color:var(--text); }
+
+/* =====================================================================
+   사진 크게 보기
+   ===================================================================== */
+.vw-bg{
+  position:fixed; inset:0; z-index:80; background:rgba(0,0,0,.92);
+  display:flex; align-items:center; justify-content:center;
+}
+.vw-bar{
+  position:absolute; top:0; left:0; right:0; z-index:2;
+  display:flex; align-items:center; gap:9px;
+  padding:14px 16px;
+  padding-top:calc(14px + env(safe-area-inset-top));
+}
+.vw-count{
+  flex:1; color:#fff; font-size:12px; opacity:.8;
+}
+.vw-btn{
+  width:36px; height:36px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(255,255,255,.14); color:#fff;
+  border:none; border-radius:50%;
+  font-size:16px; font-family:inherit; text-decoration:none; cursor:pointer;
+}
+.vw-port{
+  width:100%; height:100%; max-height:88vh;
+  display:flex; align-items:center; justify-content:center;
+  overflow:hidden; touch-action:none;
+}
+.vw-img{
+  max-width:100%; max-height:88vh; border-radius:8px;
+  cursor:zoom-in; user-select:none; -webkit-user-select:none;
+}
+.vw-img.zoomed{ cursor:grab; }
+.vw-hint{
+  position:absolute; bottom:16px; left:0; right:0; z-index:2;
+  text-align:center; font-size:11px; color:rgba(255,255,255,.55);
+  pointer-events:none;
+}
+.vw-nav{
+  position:absolute; top:50%; transform:translateY(-50%); z-index:2;
+  width:42px; height:42px;
+  background:rgba(0,0,0,.4); color:#fff;
+  border:none; border-radius:50%; font-size:21px; cursor:pointer;
+}
+.vw-prev{ left:10px; }
+.vw-next{ right:10px; }
+.vw-nav:disabled{ opacity:.22; cursor:default; }

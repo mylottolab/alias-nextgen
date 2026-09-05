@@ -46,6 +46,7 @@ AL.STR = {
   /* 공통 */
   appName:    { kr:'Alias', en:'Alias' },
   save:       { kr:'저장', en:'Save' },
+  close:      { kr:'닫기', en:'Close' },
   copy:       { kr:'복사', en:'Copy' },
   copied:     { kr:'복사했습니다', en:'Copied' },
   signOut:    { kr:'로그아웃', en:'Sign out' },
@@ -140,6 +141,22 @@ AL.STR = {
   prefNote:    { kr:'다른 화면을 보고 있을 때 새 메시지를 알려줍니다.\n소리는 화면을 한 번 누른 뒤부터 납니다(브라우저 규칙).',
                  en:'Alerts you to new messages while you are on another screen.\nSound starts working after your first tap (browser rule).' },
   newHere:     { kr:'여기부터 새 메시지', en:'New messages' },
+
+  /* 파일 */
+  mdAttach:    { kr:'파일 붙이기', en:'Attach' },
+  mdPhoto:     { kr:'사진 · 영상', en:'Photo or video' },
+  mdFile:      { kr:'문서', en:'Document' },
+  mdCompress:  { kr:'사진 줄이는 중…', en:'Shrinking photo…' },
+  mdUploading: { kr:'올리는 중…', en:'Uploading…' },
+  mdTooBig:    { kr:'파일이 너무 큽니다. {max} 까지 보낼 수 있습니다.',
+                 en:'That file is too large. The limit is {max}.' },
+  mdFailed:    { kr:'파일을 올리지 못했습니다: {msg}', en:'Upload failed: {msg}' },
+  mdDownload:  { kr:'내려받기', en:'Download' },
+  mdZoomHint:  { kr:'두 번 누르거나 손가락 두 개로 확대해보세요',
+                 en:'Double-tap or pinch to zoom' },
+  mdOpenFile:  { kr:'열기', en:'Open' },
+  mdVideo:     { kr:'영상', en:'Video' },
+  mdGone:      { kr:'파일을 찾을 수 없습니다', en:'File not found' },
 
   /* 대화 */
   chatPlace:   { kr:'메시지 입력', en:'Message' },
