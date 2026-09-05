@@ -4,11 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260905e">
-<link rel="stylesheet" href="alias_theme.css?v=20260905e">
+<link rel="stylesheet" href="alias_common.css?v=20260905f">
+<link rel="stylesheet" href="alias_theme.css?v=20260905f">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260905e"></script>
-<script src="alias_media.js?v=20260905e"></script>
+<script src="alias_common.js?v=20260905f"></script>
+<script src="alias_media.js?v=20260905f"></script>
+<script src="alias_extras.js?v=20260905f"></script>
 <script>document.addEventListener("DOMContentLoaded",function(){AL.bootTheme();});</script>
 </head>
 <body class="chat" data-t-title="ttChat">
@@ -20,12 +21,31 @@
       <div class="n" id="whoName"></div>
       <div class="f" id="whoFace"></div>
     </div>
+    <button class="icon" id="find" data-t-aria="fdTitle">⌕</button>
     <button class="icon" id="call" data-t-aria="ariaCall">☏</button>
+  </div>
+
+  <div class="findbar" id="findbar">
+    <input id="q" type="search" autocomplete="off" data-t-ph="fdPlace">
+    <button id="qStar" data-t="fdStars"></button>
+    <button id="qX">✕</button>
   </div>
 
   <div class="chat-body" id="body"></div>
   <div class="typing" id="typing"></div>
   <div class="chat-err" id="err" style="display:none"></div>
+
+  <div class="replybar" id="replybar">
+    <div class="rb-txt"><b data-t="msgReplyTo"></b><span id="rbText"></span></div>
+    <button class="rb-x" id="rbX">✕</button>
+  </div>
+
+  <div class="voicebar" id="voicebar">
+    <span class="vdot"></span>
+    <span class="vtime" id="vTime">0:00</span>
+    <button id="vCancel" data-t="vcCancel"></button>
+    <button class="go" id="vStop" data-t="vcStop"></button>
+  </div>
 
   <div class="uploading" id="upBar" style="display:none"></div>
 
@@ -38,6 +58,8 @@
     <button class="send" id="send" data-t-aria="ariaSend" disabled>↑</button>
   </div>
 
+  <div class="empanel" id="empanel"></div>
+
 </div>
 
 <div class="sheet-bg" id="atBg"></div>
@@ -45,6 +67,8 @@
   <div class="grip"></div>
   <button id="atPhoto" data-t="mdPhoto"></button>
   <button id="atFile" data-t="mdFile"></button>
+  <button id="atVoice" data-t="vcRecord"></button>
+  <button id="atEmoji" data-t="emPopular"></button>
 </div>
 
 <script>
@@ -93,13 +117,43 @@ function toBottom(){
 /* 말풍선 하나. 파일이면 사진·영상·문서로 갈립니다.
    ⚠ 사진 주소는 시한부라 여기서 바로 못 넣습니다. 자리만 잡아두고
      그린 뒤에 채웁니다(fillMedia). 그래야 화면이 안 튑니다. */
+function quoteHtml(m){
+  if (!m.reply_to_message_id) return '';
+  const t = msgs.filter(function(x){ return x.id === m.reply_to_message_id; })[0];
+  const txt = !t ? AL.t('msgGone')
+    : (t.deleted_at ? AL.t('msgGone')
+      : (t.content || AL.t({ photo:'mdPhoto', video:'mdVideo', audio:'vcRecord' }[t.message_type] || 'mdFile')));
+  return '<span class="quote" data-jump="' + AL.esc(m.reply_to_message_id) + '">' +
+         AL.esc(txt) + '</span>';
+}
+
 function bubbleHtml(m, gone){
   if (gone) return '<div class="bub gone">' + AL.esc(AL.t('chatDeleted')) + '</div>';
+
+  const q = quoteHtml(m);
+
+  // 이모지 1~3개뿐이면 큰 그림으로. 카톡 이모티콘처럼요.
+  if (!m.media_path && m.content) {
+    const only = AL.emojiOnly(m.content);
+    if (only) {
+      return '<div class="bub stickers" data-id="' + AL.esc(m.id) + '">' +
+        only.map(function(e){
+          return '<img src="' + AL.esc(e.url) + '" alt="' + AL.esc(e.char) + '">';
+        }).join('') + '</div>';
+    }
+  }
+
+  if (m.message_type === 'audio' && m.media_path) {
+    return '<div class="bub media" data-id="' + AL.esc(m.id) + '">' + q +
+      '<audio controls preload="metadata" data-mv="' + AL.esc(m.media_path) + '"></audio>' +
+      (m.content ? '<div class="cap">' + AL.esc(m.content) + '</div>' : '') +
+    '</div>';
+  }
 
   if (m.message_type === 'photo' && m.media_path) {
     // 미리 잡아둔 비율로 자리를 만들어 둡니다.
     const ratio = (m.media_w && m.media_h) ? (m.media_h / m.media_w * 100) : 66;
-    return '<div class="bub media">' +
+    return '<div class="bub media" data-id="' + AL.esc(m.id) + '">' + q +
       '<img class="ph" data-mp="' + AL.esc(m.media_path) + '" alt="" ' +
         'style="aspect-ratio:' + (m.media_w && m.media_h ? m.media_w + '/' + m.media_h : '3/2') +
         ';min-height:1px">' +
@@ -108,14 +162,14 @@ function bubbleHtml(m, gone){
   }
 
   if (m.message_type === 'video' && m.media_path) {
-    return '<div class="bub media">' +
+    return '<div class="bub media" data-id="' + AL.esc(m.id) + '">' + q +
       '<video controls preload="metadata" data-mv="' + AL.esc(m.media_path) + '"></video>' +
       (m.content ? '<div class="cap">' + AL.esc(m.content) + '</div>' : '') +
     '</div>';
   }
 
   if (m.media_path) {
-    return '<div class="bub media">' +
+    return '<div class="bub media" data-id="' + AL.esc(m.id) + '">' + q +
       '<a class="filecard" data-mf="' + AL.esc(m.media_path) + '" ' +
          'download="' + AL.esc(m.media_name || '') + '">' +
         '<span class="fi">▤</span>' +
@@ -126,7 +180,17 @@ function bubbleHtml(m, gone){
     '</div>';
   }
 
-  return '<div class="bub">' + AL.esc(m.content || '') + '</div>';
+  return '<div class="bub" data-id="' + AL.esc(m.id) + '">' + q + hilite(m.content || '') + '</div>';
+}
+
+/* 검색어를 노랗게 칠합니다. 나머지는 그대로 안전하게 씁니다. */
+function hilite(text){
+  if (!findQ) return AL.esc(text);
+  const i = text.toLowerCase().indexOf(findQ.toLowerCase());
+  if (i < 0) return AL.esc(text);
+  return AL.esc(text.slice(0, i)) +
+         '<span class="hit">' + AL.esc(text.slice(i, i + findQ.length)) + '</span>' +
+         AL.esc(text.slice(i + findQ.length));
 }
 
 /* 시한부 주소를 받아 채웁니다. 실패해도 대화는 계속 보입니다. */
@@ -158,9 +222,22 @@ function paint(keepPos){
   // 상대가 마지막으로 읽은 시각. 그보다 앞선 내 메시지에 "읽음"을 붙입니다.
   const readMs = peer && peer.lastReadAt ? new Date(peer.lastReadAt).getTime() : 0;
 
+  // 검색어나 즐겨찾기로 걸러냅니다. 비어 있으면 전부 보입니다.
+  const show = msgs.filter(function(m){
+    if (starOnly && !stars[m.id]) return false;
+    if (findQ && !(m.content || '').toLowerCase().includes(findQ.toLowerCase())) return false;
+    return true;
+  });
+
+  if ((findQ || starOnly) && !show.length) {
+    b.innerHTML = '<div class="sysline">' +
+      AL.esc(AL.t(starOnly && !findQ ? 'fdStarNone' : 'fdNone')) + '</div>';
+    return;
+  }
+
   let html = '';
   let prevDay = null;
-  msgs.forEach(function(m){
+  show.forEach(function(m){
     const when = m.sent_at || m.created_at;
     if (!prevDay || !AL.sameDay(prevDay, when)) {
       html += '<div class="daysep">' + AL.esc(AL.fmtDaySep(when)) + '</div>';
@@ -182,13 +259,34 @@ function paint(keepPos){
           ? '<button class="retry" data-retry="' + AL.esc(m.id) + '">' +
               AL.esc(AL.t('chatRetry')) + '</button>'
           : (read ? '<span class="rd">' + AL.esc(AL.t('chatRead')) + '</span>' : '')) +
+        (stars[m.id] ? '<span class="star">★</span> ' : '') +
         AL.esc(AL.fmtClock(when)) +
+        (m.edited_at ? '<br>' + AL.esc(AL.t('msgEdited')) : '') +
       '</div>' +
     '</div>';
   });
   b.innerHTML = html;
 
   fillMedia();
+
+  b.querySelectorAll('.bub[data-id]').forEach(function(el){
+    el.addEventListener('click', function(e){
+      // 사진·영상·문서·링크를 누른 것은 그쪽 동작이 먼저입니다.
+      if (e.target.closest('img.ph, video, audio, a, button, .quote')) return;
+      openMsgMenu(el.getAttribute('data-id'));
+    });
+  });
+
+  b.querySelectorAll('[data-jump]').forEach(function(el){
+    el.addEventListener('click', function(e){
+      e.stopPropagation();
+      const t = b.querySelector('.bub[data-id="' + el.getAttribute('data-jump') + '"]');
+      if (!t) return;
+      t.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      t.closest('.msg').classList.add('found');
+      setTimeout(function(){ t.closest('.msg').classList.remove('found'); }, 1800);
+    });
+  });
 
   // 사진을 누르면 크게 봅니다. 이 방의 사진 전부를 넘겨볼 수 있게 모아 줍니다.
   b.querySelectorAll('[data-mp]').forEach(function(el){
@@ -296,6 +394,16 @@ async function listen(){
     paint();
   });
 
+  channel.on('broadcast', { event: 'message-changed' }, function(e){
+    const p = e.payload;
+    if (!p || p.link_id !== linkId) return;
+    const m = msgs.filter(function(x){ return x.id === p.id; })[0];
+    if (!m) return;
+    if (p.action === 'delete') { m.deleted_at = p.deleted_at; m.content = null; }
+    else { m.content = p.content; m.edited_at = p.edited_at; }
+    paint(true);
+  });
+
   channel.on('broadcast', { event: 'read' }, function(e){
     if (!e.payload || e.payload.sideId === me.sideId) return;
     if (!peer) return;
@@ -331,6 +439,10 @@ async function listen(){
    그래서 주기적으로, 그리고 화면에 돌아올 때마다 다시 맞춥니다. */
 let refreshing = false;
 let refreshFails = 0;
+let replyTo = null;      // 답장 대상
+let stars = {};          // 즐겨찾기한 메시지 id
+let findQ = '';          // 검색어
+let starOnly = false;
 
 async function refresh(){
   if (refreshing || !me) return;
@@ -420,14 +532,19 @@ async function send(){
   const tempId = 'tmp-' + Date.now();
   msgs.push({
     id: tempId, sender_side_id: me.sideId, message_type: 'text',
-    content: text, sent_at: new Date().toISOString(), created_at: new Date().toISOString(),
+    content: text, reply_to_message_id: replyTo ? replyTo.id : null,
+    sent_at: new Date().toISOString(), created_at: new Date().toISOString(),
   });
+  clearReply();
   box.value = '';
   box.style.height = 'auto';
   paint(false);
 
   try {
-    const out = await AL.callFn('alias-message-send', { linkId: linkId, text: text });
+    const out = await AL.callFn('alias-message-send', {
+      linkId: linkId, text: text,
+      replyTo: replyTo ? replyTo.id : null,
+    });
     const i = msgs.findIndex(function(m){ return m.id === tempId; });
     if (i >= 0) {
       // 방송이 먼저 와서 이미 갈아끼워졌으면 여기 안 들어옵니다.
@@ -448,6 +565,177 @@ async function send(){
   }
 }
 
+/* ── 메시지를 누르면 나오는 메뉴 ────────────────────────────────
+   답장 · 수정 · 삭제 · 복사 · 즐겨찾기 · 신고
+   ⚠ 내가 보낸 것만 수정·삭제할 수 있습니다. 신고는 상대 것만 됩니다.
+------------------------------------------------------------------- */
+function openMsgMenu(id){
+  const m = msgs.filter(function(x){ return x.id === id; })[0];
+  if (!m || m.deleted_at || String(m.id).indexOf('tmp-') === 0) return;
+  const mine = m.sender_side_id === me.sideId;
+
+  const bg = document.createElement('div'); bg.className = 'pk-bg';
+  const sheet = document.createElement('div'); sheet.className = 'pk';
+  document.body.appendChild(bg); document.body.appendChild(sheet);
+
+  function close(){ bg.remove(); sheet.remove(); }
+  bg.addEventListener('click', close);
+
+  const items = [];
+  items.push(['msgReply', function(){ setReply(m); }]);
+  if (m.content) items.push(['msgCopy', function(){ AL.copyText(m.content); }]);
+  items.push([stars[m.id] ? 'msgUnstar' : 'msgStar', function(){ toggleStar(m); }]);
+  if (mine && !m.media_path) items.push(['msgEdit', function(){ editMsg(m); }]);
+  if (mine) items.push(['msgDelete', function(){ delMsg(m); }]);
+  if (!mine) items.push(['msgReport', function(){ reportMsg(m); }]);
+
+  sheet.innerHTML = '<div class="grip"></div>';
+  items.forEach(function(it){
+    const b = document.createElement('button');
+    b.textContent = AL.t(it[0]);
+    b.addEventListener('click', function(){ close(); it[1](); });
+    sheet.appendChild(b);
+  });
+}
+
+/* ── 답장 ─────────────────────────────────────────────────────── */
+function setReply(m){
+  replyTo = m;
+  document.getElementById('rbText').textContent =
+    m.content || AL.t({ photo:'mdPhoto', video:'mdVideo', audio:'vcRecord' }[m.message_type] || 'mdFile');
+  document.getElementById('replybar').classList.add('on');
+  document.getElementById('input').focus();
+}
+function clearReply(){
+  replyTo = null;
+  document.getElementById('replybar').classList.remove('on');
+}
+document.getElementById('rbX').addEventListener('click', clearReply);
+
+/* ── 수정 · 삭제 ──────────────────────────────────────────────── */
+async function editMsg(m){
+  const next = prompt(AL.t('msgEditAsk'), m.content || '');
+  if (next === null || !next.trim() || next === m.content) return;
+  try {
+    await AL.callFn('alias-message-edit', { messageId: m.id, action: 'edit', text: next.trim() });
+    m.content = next.trim();
+    m.edited_at = new Date().toISOString();
+    paint(true);
+  } catch (e) {
+    console.error(e);
+    showErr(AL.t('chatFailed', { msg: e.message || String(e) }));
+  }
+}
+
+async function delMsg(m){
+  if (!confirm(AL.t('msgDelAsk'))) return;
+  try {
+    await AL.callFn('alias-message-edit', { messageId: m.id, action: 'delete' });
+    m.deleted_at = new Date().toISOString();
+    m.content = null;
+    paint(true);
+  } catch (e) {
+    console.error(e);
+    showErr(AL.t('chatFailed', { msg: e.message || String(e) }));
+  }
+}
+
+/* ── 즐겨찾기 ────────────────────────────────────────────────── */
+async function toggleStar(m){
+  try {
+    if (stars[m.id]) {
+      await AL.sb.from('message_favorites')
+        .delete().eq('message_id', m.id).eq('side_id', me.sideId);
+      delete stars[m.id];
+    } else {
+      const res = await AL.sb.from('message_favorites')
+        .insert({ message_id: m.id, side_id: me.sideId });
+      if (res.error) throw res.error;
+      stars[m.id] = 1;
+    }
+    paint(true);
+  } catch (e) {
+    console.error(e);
+    showErr(AL.t('chatFailed', { msg: e.message || String(e) }));
+  }
+}
+
+async function loadStars(){
+  try {
+    const res = await AL.sb.from('message_favorites')
+      .select('message_id').eq('side_id', me.sideId);
+    stars = {};
+    (res.data || []).forEach(function(r){ stars[r.message_id] = 1; });
+  } catch (e) { /* 즐겨찾기가 없어도 대화는 됩니다 */ }
+}
+
+/* ── 신고 ────────────────────────────────────────────────────── */
+async function reportMsg(m){
+  const out = await AL.openReport({ sideId: me.sideId, linkId: linkId, messageId: m.id });
+  if (out && out.ok) { clearErr(); alert(AL.t('rpDone')); }
+}
+
+/* ── 음성메시지 ──────────────────────────────────────────────── */
+async function startVoice(){
+  try {
+    await AL.startRecording(function(ms){
+      document.getElementById('vTime').textContent = AL.fmtDuration(ms);
+    });
+    document.getElementById('vTime').textContent = '0:00';
+    document.getElementById('voicebar').classList.add('on');
+  } catch (e) {
+    console.error(e);
+    showErr(AL.t('vcDenied'));
+  }
+}
+document.getElementById('vCancel').addEventListener('click', function(){
+  if (AL.recorder) AL.recorder.cancel();
+  document.getElementById('voicebar').classList.remove('on');
+});
+document.getElementById('vStop').addEventListener('click', async function(){
+  if (!AL.recorder) return;
+  const out = await AL.recorder.stop();
+  document.getElementById('voicebar').classList.remove('on');
+  sendFiles([out.file], out.durationMs);
+});
+
+/* ── 이모지 ──────────────────────────────────────────────────── */
+let emReady = false;
+function toggleEmoji(){
+  const box = document.getElementById('empanel');
+  const on = !box.classList.contains('on');
+  box.classList.toggle('on', on);
+  if (on && !emReady) {
+    AL.paintEmojiPanel(box, function(ch){
+      const inp = document.getElementById('input');
+      inp.value += ch;
+      inp.dispatchEvent(new Event('input'));
+      inp.focus();
+    });
+    emReady = true;
+  }
+}
+
+/* ── 검색 ────────────────────────────────────────────────────── */
+function toggleFind(){
+  const bar = document.getElementById('findbar');
+  const on = !bar.classList.contains('on');
+  bar.classList.toggle('on', on);
+  if (on) document.getElementById('q').focus();
+  else { findQ = ''; starOnly = false; document.getElementById('q').value = ''; paint(true); }
+}
+document.getElementById('find').addEventListener('click', toggleFind);
+document.getElementById('qX').addEventListener('click', toggleFind);
+document.getElementById('q').addEventListener('input', function(){
+  findQ = this.value.trim();
+  paint(true);
+});
+document.getElementById('qStar').addEventListener('click', function(){
+  starOnly = !starOnly;
+  this.classList.toggle('on', starOnly);
+  paint(true);
+});
+
 /* ── 파일 보내기 ──────────────────────────────────────────────────
    ① 화면이 Storage 에 먼저 올립니다 (경로가 곧 권한 — 블록 23)
    ② 그 경로만 Edge Function 에 넘깁니다
@@ -466,7 +754,7 @@ function setUpBar(text){
   el.style.display = text ? '' : 'none';
 }
 
-async function sendFiles(files){
+async function sendFiles(files, durationMs){
   if (!files || !files.length || closed) return;
   clearErr();
   const caption = document.getElementById('input').value.trim();
@@ -482,10 +770,12 @@ async function sendFiles(files){
       });
 
       // 설명글은 첫 장에만 붙입니다.
+      if (durationMs) media.durationMs = durationMs;
       const out = await AL.callFn('alias-message-send', {
         linkId: linkId,
         text: (i === 0 && caption) ? caption : null,
         media: media,
+        replyTo: (i === 0 && replyTo) ? replyTo.id : null,
       });
 
       msgs.push({
@@ -493,8 +783,10 @@ async function sendFiles(files){
         message_type: media.kind, content: (i === 0 && caption) ? caption : null,
         media_path: media.path, media_name: media.name, media_mime: media.mime,
         media_bytes: media.bytes, media_w: media.w, media_h: media.h,
+        reply_to_message_id: (i === 0 && replyTo) ? replyTo.id : null,
         sent_at: out.sentAt, created_at: out.sentAt,
       });
+      if (i === 0) clearReply();
       paint(false);
 
     } catch (e) {
@@ -513,6 +805,12 @@ document.getElementById('atPhoto').addEventListener('click', function(){
 });
 document.getElementById('atFile').addEventListener('click', function(){
   showAttach(false); document.getElementById('pickAny').click();
+});
+document.getElementById('atVoice').addEventListener('click', function(){
+  showAttach(false); startVoice();
+});
+document.getElementById('atEmoji').addEventListener('click', function(){
+  showAttach(false); toggleEmoji();
 });
 ['pick', 'pickAny'].forEach(function(id){
   document.getElementById(id).addEventListener('change', function(){
@@ -553,6 +851,7 @@ document.getElementById('call').addEventListener('click', function(){
   if (!linkId) { showErr(AL.t('dtlNotFound')); return; }
   try {
     await open_();
+    await loadStars();
     listen();
     watchOthers();
   } catch (e) {
