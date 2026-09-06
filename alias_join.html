@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260906m">
-<link rel="stylesheet" href="alias_theme.css?v=20260906m">
+<link rel="stylesheet" href="alias_common.css?v=20260907a">
+<link rel="stylesheet" href="alias_theme.css?v=20260907a">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260906m"></script>
-<script src="alias_qr.js?v=20260906m"></script>
+<script src="alias_common.js?v=20260907a"></script>
+<script src="alias_qr.js?v=20260907a"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -75,7 +75,8 @@ document.addEventListener("DOMContentLoaded", function(){
 
 <script>
 /* =====================================================================
-   초대 받기 — use_invite() 를 부릅니다.
+   초대 받기 — accept_invite() 하나만 부릅니다.
+   방 초대인지 1:1 인지는 서버가 판단합니다.
    ⚠ 링크 한 개와 양쪽 두 줄이 한 번에 만들어집니다.
      화면에서 links/link_sides 에 직접 넣을 수 없습니다(정책이 막습니다).
      아직 링크가 없는 사이라 RLS로는 풀 수 없어서, 함수가 대신 합니다.
@@ -127,12 +128,14 @@ document.getElementById('face').addEventListener('click', async function(){
 let intoRoom = null;
 
 async function peekInvite(code){
-  if (!code) return null;
+  if (!code) return false;
   try {
-    const res = await AL.sb.from('invites')
-      .select('into_link_id').eq('code', code).maybeSingle();
-    return res.data ? res.data.into_link_id : null;
-  } catch (e) { return null; }
+    // ⚠ invites 표를 직접 읽으면 안 됩니다. 만든 사람만 읽을 수 있어서
+    //   받는 쪽에는 오류 없이 null 이 옵니다(함정 ⑦).
+    //   서버가 "방 초대인가" 만 알려줍니다.
+    const res = await AL.sb.rpc('invite_is_room', { p_code: code });
+    return !!(res && res.data);
+  } catch (e) { return false; }
 }
 
 function paintForRoom(isRoom){
@@ -161,22 +164,13 @@ async function join(){
   const btn = document.getElementById('go');
   btn.disabled = true;
   try {
-    // 방 초대인지 먼저 봅니다. into_link_id 가 있으면 그 방에 들어갑니다.
-    const peek = await AL.sb.from('invites')
-      .select('into_link_id').eq('code', code).maybeSingle();
-
-    if (peek.data && peek.data.into_link_id) {
-      const r = await AL.sb.rpc('join_room', {
-        p_code: code, p_persona_id: chosen.id,
-      });
-      if (r.error) throw r.error;
-      location.href = 'alias_chat.html?link=' + encodeURIComponent(r.data);
-      return;
-    }
-
-    const res = await AL.sb.rpc('use_invite', {
+    // 🔴 서버가 방 초대인지 판단합니다.
+    //   전에는 화면이 invites 를 미리 읽어 판단했는데, 그 표는 만든 사람만
+    //   읽을 수 있어서 받는 쪽에는 null 이 왔습니다(함정 ⑦).
+    //   그래서 방으로 갔어야 할 사람이 1:1 로 이어졌습니다.
+    const res = await AL.sb.rpc('accept_invite', {
       p_code: code,
-      p_my_persona_id: document.getElementById('faceId').value,
+      p_persona_id: document.getElementById('faceId').value,
       p_peer_label: document.getElementById('label').value.trim() || null,
     });
     if (res.error) throw res.error;
@@ -186,6 +180,12 @@ async function join(){
       const key = ERR_MAP[out.error];
       showErr(key ? AL.t(key) : AL.t('errGeneric', { msg: out.error || '?' }));
       btn.disabled = false; joining = false;
+      return;
+    }
+
+    // 방이면 바로 그 방으로 들어갑니다.
+    if (out.is_room) {
+      location.href = 'alias_chat.html?link=' + encodeURIComponent(out.link_id);
       return;
     }
 
@@ -206,13 +206,13 @@ document.getElementById('scanBtn').addEventListener('click', async function(){
   if (!code) { showErr(AL.t('errNotFound')); return; }
   document.getElementById('code').value = code;
   clearErr();
-  paintForRoom(!!await peekInvite(code));
+  paintForRoom(await peekInvite(code));
   join();
 });
 
 document.getElementById('code').addEventListener('input', async function(){
   const v = this.value.trim();
-  if (v.length >= 6) paintForRoom(!!await peekInvite(v));
+  if (v.length >= 6) paintForRoom(await peekInvite(v));
 });
 
 document.getElementById('go').addEventListener('click', join);
@@ -238,7 +238,7 @@ document.getElementById('label').addEventListener('keydown', function(e){
 
   // 초대 주소로 들어오면 코드가 미리 채워집니다: alias_join.html?c=XXXX
   const fromUrl = new URLSearchParams(location.search).get('c');
-  if (fromUrl) paintForRoom(!!await peekInvite(fromUrl));
+  if (fromUrl) paintForRoom(await peekInvite(fromUrl));
   if (fromUrl) document.getElementById('code').value = fromUrl;
 
   try {
