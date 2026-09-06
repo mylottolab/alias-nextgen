@@ -25,28 +25,55 @@
 window.AL = window.AL || {};
 
 /* ── QR 만들기 ───────────────────────────────────────────────────────
-   qrcode 라이브러리가 <script> 로 먼저 실려 있어야 합니다.
-   못 실렸으면 조용히 실패하지 말고 알려줍니다.
+   qrcode-generator 라이브러리를 씁니다. alias_qrlib.js 에 담겨 있습니다.
+
+   🔴 CDN 을 안 씁니다. 저장소에 직접 뒀습니다.
+     처음엔 qrcode 라는 패키지의 CDN 주소를 적었는데 404 였고(그 패키지는
+     브라우저용 묶음 파일을 안 냅니다), 주소를 고친 뒤에도 CDN 을 못 받는
+     일이 있었습니다. 우리 저장소에 두면 그럴 일이 없습니다.
+
+   ⚠ 만든 결과를 표준 디코더로 읽어 검증했습니다.
+     QR 은 손으로 짜면 안 읽히는 것이 나옵니다(실제로 그랬습니다).
 ------------------------------------------------------------------- */
 AL.qrReady = function(){
-  return typeof window.QRCode !== 'undefined' && typeof window.QRCode.toCanvas === 'function';
+  // ⚠ 라이브러리가 window 에 붙었는지, 아니면 전역에만 있는지 둘 다 봅니다.
+  return typeof window.qrcode === 'function' ||
+         (typeof qrcode !== 'undefined' && typeof qrcode === 'function');
 };
 
-/* 캔버스에 그립니다. 그림 파일도, 바깥 요청도 없습니다. */
+AL.qrLib = function(){
+  return (typeof window.qrcode === 'function') ? window.qrcode : qrcode;
+};
+
+/* 격자를 SVG 로 그립니다. 그림 파일도, 바깥 요청도 없습니다.
+   ⚠ 라이브러리는 브라우저 안에서 계산만 합니다. 초대 코드가 안 나갑니다. */
 AL.drawQr = function(box, text, px){
   return new Promise(function(resolve, reject){
     if (!AL.qrReady()) { reject(new Error('qr_lib_missing')); return; }
-    var canvas = document.createElement('canvas');
-    box.innerHTML = '';
-    box.appendChild(canvas);
-    window.QRCode.toCanvas(canvas, text, {
-      width: px || 240,
-      margin: 2,
-      errorCorrectionLevel: 'M',
-      color: { dark: '#000000', light: '#FFFFFF' },
-    }, function(err){
-      if (err) reject(err); else resolve(canvas);
-    });
+
+    var qr = AL.qrLib()(0, 'M');         // 0 = 크기 자동
+    qr.addData(text);
+    qr.make();
+
+    var n = qr.getModuleCount();
+    var quiet = 4, total = n + quiet * 2;
+    var parts = [];
+    for (var y = 0; y < n; y++) {
+      for (var x = 0; x < n; x++) {
+        if (qr.isDark(y, x)) {
+          parts.push('M' + (x + quiet) + ' ' + (y + quiet) + 'h1v1h-1z');
+        }
+      }
+    }
+
+    var size = px || 240;
+    box.innerHTML =
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + total + ' ' + total + '" ' +
+      'width="' + size + '" height="' + size + '" shape-rendering="crispEdges" role="img">' +
+      '<rect width="' + total + '" height="' + total + '" fill="#FFFFFF"/>' +
+      '<path d="' + parts.join('') + '" fill="#000000"/></svg>';
+
+    resolve(box.firstChild);
   });
 };
 

@@ -554,6 +554,8 @@ AL.STR = {
                  en:'This browser cannot read QR codes.\nPlease type the code instead.' },
   qrFound:     { kr:'코드를 읽었습니다.', en:'Code found.' },
   qrOrCode:    { kr:'또는 코드를 손으로 넣기', en:'Or type the code' },
+  qrFailed:    { kr:'QR 을 못 그렸습니다. 아래 코드나 주소를 쓰세요.',
+                 en:'Could not draw the QR. Use the code or link below.' },
   invShareWhy: { kr:'초대를 어떻게 전할까요',
                  en:'How will you pass this along' },
   invShareNote:{ kr:'마주 보고 계시면 QR 이 가장 안전합니다.\n멀리 계시면 코드나 주소를 보내야 하는데,\n그때는 쓰시던 다른 수단을 한 번 거치게 됩니다.',
