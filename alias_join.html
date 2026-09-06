@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260906a">
-<link rel="stylesheet" href="alias_theme.css?v=20260906a">
+<link rel="stylesheet" href="alias_common.css?v=20260906d">
+<link rel="stylesheet" href="alias_theme.css?v=20260906d">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260906a"></script>
-<script src="alias_qr.js?v=20260906a"></script>
+<script src="alias_common.js?v=20260906d"></script>
+<script src="alias_qr.js?v=20260906d"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -178,6 +178,17 @@ document.getElementById('label').addEventListener('keydown', function(e){
 
 (async function(){
   AL.paintText();
+
+  // 🔴 앱이 없는 사람이 QR 을 찍으면 여기로 옵니다. 로그인이 안 되어 있으면
+  //   코드를 들고 가입 화면으로 보냅니다. 안 그러면 가입한 뒤 초대가
+  //   사라져서 QR 을 다시 찍어달라고 해야 합니다.
+  const sess = await AL.sb.auth.getSession();
+  if (!sess.data.session) {
+    location.replace('alias_auth.html?next=' +
+      encodeURIComponent('alias_join.html' + location.search));
+    return;
+  }
+
   me = await AL.requireLogin();
   if (!me) return;
 
@@ -190,8 +201,16 @@ document.getElementById('label').addEventListener('keydown', function(e){
   } catch (e) { console.error(e); }
 
   if (!aliases.length) {
-    showErr(AL.t('errNoAlias'));
-    document.getElementById('go').disabled = true;
+    // ⚠ 가입 직후에는 별칭이 없습니다. 고르개가 바로 만들기부터 띄웁니다.
+    const made = await AL.pickAlias({ note: AL.t('errNoAlias') });
+    if (made) {
+      aliases.push(made);
+      chosen = made;
+      clearErr();
+    } else {
+      showErr(AL.t('errNoAlias'));
+      document.getElementById('go').disabled = true;
+    }
   }
   if (!AL.canScanQr()) document.getElementById('scanBtn').style.display = 'none';
   paintFaces();

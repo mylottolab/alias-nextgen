@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260906a">
-<link rel="stylesheet" href="alias_theme.css?v=20260906a">
+<link rel="stylesheet" href="alias_common.css?v=20260906d">
+<link rel="stylesheet" href="alias_theme.css?v=20260906d">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260906a"></script>
+<script src="alias_common.js?v=20260906d"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -34,8 +34,16 @@ document.addEventListener("DOMContentLoaded", function(){
 
   <!-- ── 로그인 / 가입 ────────────────────────────────── -->
   <div id="stepAuth" class="step on">
-    <h1 class="mark" data-t="appName"></h1>
-    <p class="lede" data-t="tagline"></p>
+    <div id="invited" style="display:none">
+      <h1 class="h2" data-t="invLanding"></h1>
+      <p class="lede" data-t="invWhat"></p>
+      <div class="ok show" data-t="invKeep"></div>
+    </div>
+
+    <div id="plain">
+      <h1 class="mark" data-t="appName"></h1>
+      <p class="lede" data-t="tagline"></p>
+    </div>
 
     <div class="field">
       <label for="nick" data-t="nickLabel"></label>
@@ -94,6 +102,17 @@ document.addEventListener("DOMContentLoaded", function(){
 
 let pendingCode = null;
 
+/* 🔴 초대 QR 을 앱 없는 사람이 찍으면 여기로 옵니다.
+   그때 초대 코드를 잃어버리면 안 됩니다. 가입 뒤 그 자리로 돌려보냅니다.
+     alias_auth.html?next=alias_join.html%3Fc%3D... */
+const NEXT = new URLSearchParams(location.search).get('next');
+
+function goNext(fallback){
+  // ⚠ 우리 화면으로만 보냅니다. 밖에서 준 주소로 튕기면 안 됩니다.
+  if (NEXT && /^alias_[a-z_]+\.html(\?|$)/.test(NEXT)) { location.href = NEXT; return; }
+  location.href = fallback;
+}
+
 function show(id){
   document.querySelectorAll('.step').forEach(function(el){ el.classList.remove('on'); });
   document.getElementById(id).classList.add('on');
@@ -131,7 +150,7 @@ async function start(){
     if (taken) {
       const loginRes = await AL.sb.auth.signInWithPassword({ email: email, password: pw });
       if (loginRes.error) { showErr(AL.t('errWrongPw')); btn.disabled = false; return; }
-      location.href = 'alias_contacts.html';
+      goNext('alias_contacts.html');
       return;
     }
 
@@ -180,16 +199,23 @@ document.getElementById('ack').addEventListener('change', function(){
 document.getElementById('cont').addEventListener('click', function(){
   pendingCode = null;                                   // 정말로 사라집니다
   document.getElementById('codeOut').textContent = '';
-  location.href = 'alias_me.html';                 // 첫 별칭을 만들러 갑니다
+  goNext('alias_me.html');                        // 첫 별칭을 만들러 갑니다
 });
 
 /* ── 시작 ─────────────────────────────────────────────── */
 AL.paintText();
+
+// 초대를 받고 처음 온 사람이면 이 앱이 무엇인지부터 알려줍니다.
+// ⚠ 모르는 앱에서 갑자기 "닉네임과 비밀번호" 를 만나면 아무도 안 씁니다.
+if (NEXT && NEXT.indexOf('alias_join') === 0) {
+  document.getElementById('invited').style.display = '';
+  document.getElementById('plain').style.display = 'none';
+}
 if (AL.keyProblem) {
   showErr(AL.keyProblem);
 } else {
   AL.sb.auth.getSession().then(function(res){
-    if (res.data.session) location.href = 'alias_contacts.html';
+    if (res.data.session) goNext('alias_contacts.html');
   });
 }
 </script>

@@ -480,6 +480,13 @@ AL.STR = {
   goBtn:     { kr:'시작하기', en:'Continue' },
   firstTime: { kr:'처음 쓰는 닉네임이면 계정이 새로 만들어집니다.',
                en:'A new nickname creates a new account.' },
+
+  /* 초대를 받고 처음 들어온 사람에게 */
+  invLanding:  { kr:'누군가 당신을 초대했습니다', en:'Someone invited you' },
+  invWhat:     { kr:'Alias 는 전화번호 없이 이어지는 전화입니다.\n초대를 받은 사람만 연락할 수 있습니다.\n번호도, 주소록도 필요 없습니다.',
+                 en:'Alias is a phone that works without phone numbers.\nOnly people you invite can reach you.\nNo number, no address book.' },
+  invKeep:     { kr:'가입하시면 이 초대가 바로 이어집니다.',
+                 en:'Sign up and this invite connects right away.' },
   madeTitle: { kr:'계정이 만들어졌습니다', en:'Your account is ready' },
   madeSub:   { kr:'아래 복구 코드를 지금 적어두세요.\n이 화면을 벗어나면 다시 볼 수 없습니다.',
                en:'Write down the recovery code below.\nYou cannot see it again after leaving this screen.' },
