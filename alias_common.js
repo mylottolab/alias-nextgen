@@ -16,26 +16,38 @@
 window.AL = window.AL || {};
 
 /* ── 접속 ─────────────────────────────────────────────────────────
-   ⚠ 함정 ㉑ — sb_publishable 말고 eyJ 로 시작하는 legacy anon 열쇠입니다.
------------------------------------------------------------------- */
-AL.SUPABASE_URL  = 'https://azredlrnvsssfjytaotb.supabase.co';
-AL.SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF6cmVkbHJudnNzc2ZqeXRhb3RiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MDg1MjgsImV4cCI6MjEwMzk4NDUyOH0.2gTxzr54vRSZzFnyhLSd1Imv3OnwRBQs925CYeXdonI';
+   🔴 열쇠는 alias_config.js 에 있습니다. 여기에는 없습니다.
+      이 파일을 새로 받으셔도 alias_config.js 는 그대로 두시면 됩니다.
+      전에는 여기 있어서, 파일을 바꿀 때마다 열쇠를 다시 넣어야 했습니다.
+      그 과정에서 열쇠가 두 줄로 나뉘어 화면이 통째로 비는 일이 세 번 있었습니다.
 
-/* ⚠ 열쇠를 안 넣으면 Supabase 가 헤더에 실을 때 터집니다. 한글이 섞이면
-     "String contains non ISO-8859-1 code point" 라는 엉뚱한 말이 나와서
-     원인을 찾기 어렵습니다. 여기서 미리 잡아 사람 말로 알려줍니다. */
+   ⚠ alias_config.js 가 alias_common.js 보다 먼저 실려야 합니다.
+------------------------------------------------------------------ */
+if (!window.AL || !AL.SUPABASE_URL) {
+  document.addEventListener('DOMContentLoaded', function(){
+    document.body.innerHTML =
+      '<div style="padding:26px;font-family:system-ui,sans-serif;line-height:1.8;' +
+      'color:#DDE5F0;background:#0E1621;min-height:100vh">' +
+      '<b style="font-size:17px">alias_config.js 를 못 읽었습니다.</b><br><br>' +
+      '이 파일이 alias_common.js 보다 먼저 실려야 합니다.<br>' +
+      '저장소에 alias_config.js 가 있는지 확인하세요.</div>';
+  });
+}
+
+/* 열쇠가 제대로 들어갔는지 봅니다.
+   ⚠ 한글이 섞이면 Supabase 가 헤더에 실을 때
+     "String contains non ISO-8859-1 code point" 라는 엉뚱한 말이 나옵니다. */
 AL.keyProblem = null;
 if (!AL.SUPABASE_ANON || AL.SUPABASE_ANON.indexOf('PASTE_') === 0) {
-  AL.keyProblem = 'alias_common.js 의 AL.SUPABASE_ANON 이 비어 있습니다.\nSupabase → Settings → API Keys 에서 anon 열쇠를 넣으세요.';
+  AL.keyProblem = 'alias_config.js 의 AL.SUPABASE_ANON 이 비어 있습니다.\nSupabase → Settings → API Keys 에서 anon 열쇠를 넣으세요.';
 } else if (!/^[\x20-\x7E]+$/.test(AL.SUPABASE_ANON)) {
-  AL.keyProblem = 'alias_common.js 의 AL.SUPABASE_ANON 에 영문·숫자가 아닌 글자가 있습니다.\neyJ 로 시작하는 열쇠인지 확인하세요.';
+  AL.keyProblem = 'alias_config.js 의 AL.SUPABASE_ANON 에 영문·숫자가 아닌 글자가 있습니다.\neyJ 로 시작하는 열쇠인지 확인하세요.';
 }
 
 AL.sb = window.supabase.createClient(
-  AL.SUPABASE_URL,
+  AL.SUPABASE_URL || 'https://placeholder.supabase.co',
   AL.keyProblem ? 'placeholder' : AL.SUPABASE_ANON
 );
-
 
 /* ── 문구 ─────────────────────────────────────────────────────────
    ⚠ 함정 ⑱ — 한쪽 사전에만 넣으면 undefined 가 되어 빈 글자가 됩니다.
