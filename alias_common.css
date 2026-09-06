@@ -818,7 +818,11 @@ html[data-bubble="outline"] .msg.out .temp-tag{
   flex-shrink:0; display:flex; gap:8px; overflow-x:auto;
   padding:9px 14px; background:var(--raise);
   border-bottom:1px solid var(--line);
+  /* ⚠ 가로 스크롤바가 보이면 지저분합니다. 손으로 밀면 그대로 밀립니다. */
+  scrollbar-width:none; -ms-overflow-style:none;
+  -webkit-overflow-scrolling:touch;
 }
+.strip::-webkit-scrollbar{ display:none; }
 .strip:empty{ display:none; }
 .chip{
   flex-shrink:0; display:flex; align-items:center; gap:6px;
