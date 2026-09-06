@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260906j">
-<link rel="stylesheet" href="alias_theme.css?v=20260906j">
+<link rel="stylesheet" href="alias_common.css?v=20260906k">
+<link rel="stylesheet" href="alias_theme.css?v=20260906k">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260906j"></script>
-<script src="alias_qr.js?v=20260906j"></script>
+<script src="alias_common.js?v=20260906k"></script>
+<script src="alias_qr.js?v=20260906k"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -50,12 +50,12 @@ document.addEventListener("DOMContentLoaded", function(){
     </div>
 
     <div class="field">
-      <label for="face" data-t="joinFaceLbl"></label>
+      <label for="face" id="faceLab" data-t="joinFaceLbl"></label>
       <button type="button" class="btn ghost" id="face" style="margin-top:0;text-align:left"></button>
       <input type="hidden" id="faceId">
     </div>
 
-    <div class="field">
+    <div class="field" id="labelRow">
       <label for="label" data-t="joinLabelLbl"></label>
       <input id="label" type="text" maxlength="40" autocomplete="off">
       <p class="hint" data-t="joinLabelHint"></p>
@@ -121,6 +121,31 @@ document.getElementById('face').addEventListener('click', async function(){
   paintFaces();
 });
 
+/* 방 초대인지 먼저 알아봅니다.
+   ⚠ 방 초대에는 "이 사람을 뭐라고 부를까요" 가 필요 없습니다.
+     상대가 여럿이라 부를 이름이 하나가 아닙니다. */
+let intoRoom = null;
+
+async function peekInvite(code){
+  if (!code) return null;
+  try {
+    const res = await AL.sb.from('invites')
+      .select('into_link_id').eq('code', code).maybeSingle();
+    return res.data ? res.data.into_link_id : null;
+  } catch (e) { return null; }
+}
+
+function paintForRoom(isRoom){
+  intoRoom = isRoom;
+  // 방 초대면 별명 칸을 감추고 문구를 바꿉니다.
+  const labelRow = document.getElementById('labelRow');
+  if (labelRow) labelRow.style.display = isRoom ? 'none' : '';
+  document.getElementById('go').textContent =
+    AL.t(isRoom ? 'grJoinRoom' : 'joinBtn');
+  const faceLab = document.getElementById('faceLab');
+  if (faceLab) faceLab.textContent = AL.t(isRoom ? 'grJoinAs' : 'joinFaceLbl');
+}
+
 async function join(){
   // ⚠ 버튼을 빠르게 두 번 누르면 두 번째가 첫 번째의 disabled 보다 먼저
   //   들어올 수 있습니다. 그러면 링크가 두 개 생깁니다. 자물쇠를 하나 둡니다.
@@ -181,7 +206,13 @@ document.getElementById('scanBtn').addEventListener('click', async function(){
   if (!code) { showErr(AL.t('errNotFound')); return; }
   document.getElementById('code').value = code;
   clearErr();
+  paintForRoom(!!await peekInvite(code));
   join();
+});
+
+document.getElementById('code').addEventListener('input', async function(){
+  const v = this.value.trim();
+  if (v.length >= 6) paintForRoom(!!await peekInvite(v));
 });
 
 document.getElementById('go').addEventListener('click', join);
@@ -207,6 +238,7 @@ document.getElementById('label').addEventListener('keydown', function(e){
 
   // 초대 주소로 들어오면 코드가 미리 채워집니다: alias_join.html?c=XXXX
   const fromUrl = new URLSearchParams(location.search).get('c');
+  if (fromUrl) paintForRoom(!!await peekInvite(fromUrl));
   if (fromUrl) document.getElementById('code').value = fromUrl;
 
   try {

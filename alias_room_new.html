@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260906j">
-<link rel="stylesheet" href="alias_theme.css?v=20260906j">
+<link rel="stylesheet" href="alias_common.css?v=20260906k">
+<link rel="stylesheet" href="alias_theme.css?v=20260906k">
 <script src="alias_qrlib.js"></script>
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260906j"></script>
-<script src="alias_qr.js?v=20260906j"></script>
+<script src="alias_common.js?v=20260906k"></script>
+<script src="alias_qr.js?v=20260906k"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function(){
   if (typeof AL === "undefined" || typeof AL.t !== "function") {
@@ -67,7 +67,7 @@ document.addEventListener("DOMContentLoaded", function(){
     <div id="inviteBox" style="display:none">
       <div class="codebox">
         <div class="clab" data-t="invCodeCap"></div>
-        <div class="ccode" id="code"></div>
+        <div class="ccode" id="codeOut"></div>
       </div>
       <div class="qr-box" id="qrBox"></div>
       <p class="qr-note" data-t="qrNote"></p>
@@ -78,10 +78,10 @@ document.addEventListener("DOMContentLoaded", function(){
       </div>
     </div>
 
-    <div class="sect" data-t="rmMembers"></div>
+    <div class="sect" id="memHead"></div>
     <div id="members"></div>
 
-    <button class="btn" id="goRoom" style="margin-top:20px" data-t="grRoom"></button>
+    <button class="btn" id="goRoom" style="margin-top:20px" data-t="grGoRoom"></button>
   </div>
 
   <div id="err" class="err"></div>
@@ -166,11 +166,14 @@ el('mkInvite').addEventListener('click', async function(){
     if (res.error) throw res.error;
 
     lastCode = res.data.code;
-    el('code').textContent = code;
+    // ⚠ 예전에 여기서 code 라고 썼다가, id="code" 요소가 대신 잡혔습니다.
+    //   브라우저가 id 를 전역 변수로 만들어줘서 조용히 엉뚱한 값이 들어갔습니다.
+    //   그래서 요소 id 를 codeOut 으로 바꿨습니다.
+    el('codeOut').textContent = lastCode;
     el('inviteBox').style.display = '';
 
     try {
-      await AL.drawQr(el('qrBox'), AL.inviteUrl(code), 200);
+      await AL.drawQr(el('qrBox'), AL.inviteUrl(lastCode), 200);
     } catch (e) {
       el('qrBox').innerHTML = '<div class="pk-err" style="margin:0">' +
         AL.esc(AL.t('qrFailed')) + '</div>';
@@ -198,6 +201,7 @@ async function loadMembers(){
   try {
     const res = await AL.sb.rpc('room_members', { p_link_id: linkId });
     const rows = res.data || [];
+    el('memHead').textContent = AL.t('grPeople', { n: rows.length });
     el('members').innerHTML = rows.map(function(r){
       return '<div class="memberrow">' +
         '<span class="mav">' + AL.esc(AL.initial(r.display_name)) + '</span>' +
