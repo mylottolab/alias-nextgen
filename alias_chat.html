@@ -4,15 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260906f">
-<link rel="stylesheet" href="alias_theme.css?v=20260906f">
+<link rel="stylesheet" href="alias_common.css?v=20260906h">
+<link rel="stylesheet" href="alias_theme.css?v=20260906h">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260906f"></script>
-<script src="alias_media.js?v=20260906f"></script>
-<script src="alias_extras.js?v=20260906f"></script>
-<script src="alias_room.js?v=20260906f"></script>
-<script src="alias_call.js?v=20260906f"></script>
+<script src="alias_common.js?v=20260906h"></script>
+<script src="alias_media.js?v=20260906h"></script>
+<script src="alias_extras.js?v=20260906h"></script>
+<script src="alias_room.js?v=20260906h"></script>
+<script src="alias_call.js?v=20260906h"></script>
+<script src="alias_e2ee.js?v=20260906h"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -47,6 +48,7 @@ document.addEventListener("DOMContentLoaded", function(){
     <button class="icon" id="call" data-t-aria="ariaCall">☏</button>
   </div>
 
+  <div class="lockrow" id="lockrow" style="display:none"></div>
   <div class="strip" id="strip"></div>
 
   <div class="findbar" id="findbar">
@@ -246,6 +248,16 @@ function bubbleHtml(m, gone, temp){
     '</div>';
   }
 
+  // 잠긴 메시지 — 풀렸으면 본문을, 못 풀었으면 안내를 보여줍니다.
+  if (m.enc) {
+    if (m._plain === null || m._plain === undefined) {
+      return '<div class="bub locked" data-id="' + AL.esc(m.id) + '">' +
+             AL.esc(AL.t('ecCantRead')) + '</div>';
+    }
+    return '<div class="bub" data-id="' + AL.esc(m.id) + '">' + q +
+           hilite(m._plain) + '</div>';
+  }
+
   // 주소가 들어 있으면 미리보기를 붙입니다.
   const u = AL.firstUrl(m.content);
   let lp = '';
@@ -331,7 +343,8 @@ function paint(keepPos){
     // 이미 사라진 것은 검색 결과에도 안 나옵니다.
     if ((findQ || starOnly) && m.expires_at && new Date(m.expires_at).getTime() <= nowMs) return false;
     if (starOnly && !stars[m.id]) return false;
-    if (findQ && !(m.content || '').toLowerCase().includes(findQ.toLowerCase())) return false;
+    const body = m.enc ? (m._plain || '') : (m.content || '');
+    if (findQ && !body.toLowerCase().includes(findQ.toLowerCase())) return false;
     return true;
   });
 
@@ -508,7 +521,36 @@ async function open_(){
   roomHours = out.link.autoDeleteHours || null;
   linkInfo = out.link;
 
+  e2ee = !!out.link.e2eeOn;
+  roomMode = out.link.roomMode || null;
+  myAgreed = out.me.e2eeAgreed;
+
+  // 🔴 아직 안 정한 방이면 먼저 물어봅니다.
+  //   모인 사람들이 스스로 정하는 것이 이 제품의 방식입니다.
+  if (!roomMode) {
+    roomMode = await AL.askRoomMode(linkId);
+  }
+
+  // 잠그기로 했는데 내가 아직 안 넣었으면, 넣어야 들어옵니다.
+  if (roomMode === 'lock' && myAgreed !== true) {
+    const ok = await AL.showRoomConsent(linkId, me.sideId);
+    if (!ok) {
+      // 거부했습니다. 대화가 안 보입니다.
+      showErr(AL.t('rmBlocked'));
+      document.getElementById('input').disabled = true;
+      document.getElementById('send').disabled = true;
+      paintLock();
+      return;
+    }
+    myAgreed = true;
+    e2ee = true;
+  }
+
+  if (e2ee) await prepareKey();
+  paintLock();
+
   await loadCalls();
+  await decryptAll();
   paint(false);
   loadPreviews();
   loadRoom();
@@ -540,6 +582,12 @@ async function listen(){
         return String(x.id).indexOf('tmp-') === 0 && x.content === m.content;
       });
       if (t >= 0) { msgs[t] = m; paint(); return; }
+    }
+
+    if (m.enc && msgKey) {
+      AL.decText(msgKey, m.content)
+        .then(function(t){ m._plain = t; paint(true); })
+        .catch(function(){ m._plain = null; });
     }
 
     if (m.sender_side_id !== me.sideId) {
@@ -609,6 +657,10 @@ let away = null;          // 내 자리비움
 let music = null;         // 같이 듣기
 let linkInfo = null;      // preset · features — 메뉴판
 let calls = [];           // 이 방의 통화 기록
+let e2ee = false;         // 이 방이 잠겨 있나
+let msgKey = null;        // 이 방의 대화 열쇠
+let roomMode = null;      // open · lock · null(아직 안 정함)
+let myAgreed = null;      // 내가 동의했나
 
 async function refresh(){
   if (refreshing || !me) return;
@@ -655,6 +707,7 @@ async function refresh(){
     const before = msgs.length;
     msgs = server.concat(temps);
     await loadCalls();              // 통화 기록도 함께 맞춥니다
+    await decryptAll();
     paint(msgs.length === before);   // 새 게 있으면 아래로 붙습니다
     loadPreviews();
   } catch (e) {
@@ -702,7 +755,8 @@ async function send(){
   const tempId = 'tmp-' + Date.now();
   msgs.push({
     id: tempId, sender_side_id: me.sideId, message_type: 'text',
-    content: text, reply_to_message_id: replyTo ? replyTo.id : null,
+    content: text, _plain: text,
+    reply_to_message_id: replyTo ? replyTo.id : null,
     sent_at: new Date().toISOString(), created_at: new Date().toISOString(),
   });
   clearReply();
@@ -711,8 +765,16 @@ async function send(){
   paint(false);
 
   try {
+    // ⚠ 잠긴 방이면 서버에 보내기 전에 여기서 잠급니다.
+    //   서버는 암호문만 받습니다. 풀 방법이 없습니다.
+    let body = text, encTag = null;
+    if (e2ee && msgKey) {
+      body = await AL.encText(msgKey, text);
+      encTag = 'aesgcm-v1';
+    }
+
     const out = await AL.callFn('alias-message-send', {
-      linkId: linkId, text: text,
+      linkId: linkId, text: body, enc: encTag,
       replyTo: replyTo ? replyTo.id : null,
       expiresInHours: msgExpiry || null,
     });
@@ -1018,6 +1080,86 @@ async function loadRoom(){
     music = m.data ? (m.data.music_youtube_id || m.data.track_id) : null;
   } catch (e) { /* 없어도 대화는 됩니다 */ }
   paintStrip();
+}
+
+/* ── 대화 잠그기 ────────────────────────────────────────────────
+   🔴 잠그면 서버도 못 읽습니다. 복구 코드가 있어야 열립니다.
+   ⚠ 옛 메시지는 그대로 둡니다. 소급해서 잠글 수 없습니다.
+     섞여 있어도 messages.enc 를 보고 갈라 그립니다.
+------------------------------------------------------------------- */
+function paintLock(){
+  const row = document.getElementById('lockrow');
+  if (!e2ee) {
+    row.style.display = 'none';
+    return;
+  }
+  row.style.display = '';
+  row.classList.toggle('warn', !msgKey);
+  row.innerHTML = '';
+
+  const ic = document.createElement('span');
+  ic.className = 'li';
+  ic.textContent = msgKey ? '🔒' : '🔑';
+  row.appendChild(ic);
+
+  const t = document.createElement('span');
+  t.textContent = msgKey ? AL.t('ecOn') : AL.t('ecLocked');
+  row.appendChild(t);
+
+  if (!msgKey) {
+    const b = document.createElement('button');
+    b.textContent = AL.t('ecUnlock');
+    b.addEventListener('click', async function(){
+      if (await AL.ensureUnlocked()) { await prepareKey(); await decryptAll(); paintLock(); paint(true); }
+    });
+    row.appendChild(b);
+  } else {
+    // 누가 들어와 있는지 볼 수 있게 합니다.
+    const b2 = document.createElement('button');
+    b2.textContent = AL.t('rmMembers', { n: '' }).trim() || '…';
+    b2.addEventListener('click', function(){
+      AL.showRoomConsent(linkId, me.sideId);
+    });
+    row.appendChild(b2);
+  }
+}
+
+async function prepareKey(){
+  try {
+    if (!AL.hasSecret()) { msgKey = null; return; }
+    msgKey = await AL.linkKey(linkId, me.sideId);
+  } catch (e) {
+    console.warn('[e2ee] 열쇠 준비 실패', e);
+    msgKey = null;
+  }
+}
+
+/* 잠긴 메시지를 풉니다. 못 풀면 "잠긴 메시지" 로 남습니다. */
+async function decryptAll(){
+  if (!msgKey) return;
+  for (const m of msgs) {
+    if (!m.enc || m._plain !== undefined) continue;
+    try { m._plain = await AL.decText(msgKey, m.content); }
+    catch (e) { m._plain = null; }
+  }
+}
+
+/* 이 대화를 잠급니다. 양쪽 다 열쇠가 있어야 합니다. */
+async function turnOnE2ee(){
+  if (!await AL.ensureUnlocked()) return;
+  try {
+    await AL.linkKey(linkId, me.sideId);       // 상대 공개 열쇠가 없으면 여기서 걸립니다
+    const r = await AL.sb.from('links').update({ e2ee_on: true }).eq('id', linkId).select('id');
+    if (r.error) throw r.error;
+    e2ee = true;
+    await prepareKey();
+    paintLock();
+    showOk(AL.t('ecMadeKey'));
+  } catch (e) {
+    console.error('[e2ee]', e);
+    showErr(e.message === 'peer_no_key' ? AL.t('ecPeerNoKey')
+            : AL.t('errGeneric', { msg: e.message || String(e) }));
+  }
 }
 
 /* ── 걸려온 전화 ────────────────────────────────────────────────

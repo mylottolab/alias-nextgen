@@ -4,11 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260906f">
-<link rel="stylesheet" href="alias_theme.css?v=20260906f">
+<link rel="stylesheet" href="alias_common.css?v=20260906h">
+<link rel="stylesheet" href="alias_theme.css?v=20260906h">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260906f"></script>
+<script src="alias_common.js?v=20260906h"></script>
+<script src="alias_e2ee.js?v=20260906h"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -70,6 +71,7 @@ let row = null;
 let aliases = [];
 let linkTheme = {};
 let roomHours = null;
+let e2ee = false;
 let linkInfo = null;
 
 function themeIsCustom(){
@@ -121,6 +123,12 @@ function paint(){
         ' <button data-act="theme">' + AL.esc(AL.t('dtlChange')) + '</button></span>' +
     '</div>' +
     '<div class="drow">' +
+      '<span class="dlab">' + AL.esc(AL.t('ecTitle')) + '</span>' +
+      '<span class="dval">' + AL.esc(e2ee ? AL.t('ecOn') : AL.t('ecOff')) +
+        (e2ee ? '' : ' <button data-act="lock">' + AL.esc(AL.t('ecTurnOn')) + '</button>') +
+      '</span>' +
+    '</div>' +
+    '<div class="drow">' +
       '<span class="dlab">' + AL.esc(AL.t('mnTitle')) + '</span>' +
       '<span class="dval"><button data-act="menu">' + AL.esc(AL.t('dtlChange')) + '</button></span>' +
     '</div>' +
@@ -154,6 +162,23 @@ async function act(kind){
 
     } else if (kind === 'mute') {
       await save({ muted: !row.muted });
+
+    } else if (kind === 'lock') {
+      // 🔴 한 번 잠그면 못 되돌립니다. 지난 메시지는 그대로 남습니다.
+      if (!await AL.ensureUnlocked()) return;
+      try {
+        await AL.linkKey(linkId, row.my_side_id);   // 상대 열쇠가 없으면 여기서 걸립니다
+        const r = await AL.sb.from('links').update({ e2ee_on: true })
+          .eq('id', linkId).select('id');
+        if (r.error) throw r.error;
+        e2ee = true;
+        paint();
+        showOk(AL.t('ecMadeKey') + ' ' + AL.t('ecKeyNote'));
+      } catch (e) {
+        console.error('[e2ee]', e);
+        showErr(e.message === 'peer_no_key' ? AL.t('ecPeerNoKey')
+                : AL.t('errGeneric', { msg: e.message || String(e) }));
+      }
 
     } else if (kind === 'menu') {
       const out = await AL.openMenu(row.my_side_id, linkInfo);
@@ -240,8 +265,9 @@ async function load(){
   // 이 방만의 모양이 있으면 그것으로 칠합니다. my_contacts 는 테마를 안 주므로
   // link_sides 에서 내 줄만 따로 읽습니다(내 줄은 읽을 수 있습니다 — 블록 19).
   const lk = await AL.sb.from('links')
-    .select('id, auto_delete_hours, preset').eq('id', linkId).maybeSingle();
+    .select('id, auto_delete_hours, preset, e2ee_on').eq('id', linkId).maybeSingle();
   roomHours = lk.data ? lk.data.auto_delete_hours : null;
+  e2ee = !!(lk.data && lk.data.e2ee_on);
 
   const fs = await AL.sb.from('link_sides')
     .select('features').eq('id', row.my_side_id).maybeSingle();
