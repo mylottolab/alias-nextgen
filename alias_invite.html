@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260906a">
-<link rel="stylesheet" href="alias_theme.css?v=20260906a">
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
+<link rel="stylesheet" href="alias_common.css?v=20260906b">
+<link rel="stylesheet" href="alias_theme.css?v=20260906b">
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@2.0.4/dist/qrcode.js"></script>
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260906a"></script>
-<script src="alias_qr.js?v=20260906a"></script>
+<script src="alias_common.js?v=20260906b"></script>
+<script src="alias_qr.js?v=20260906b"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -244,8 +244,16 @@ async function makeInvite(){
     try {
       await AL.drawQr(document.getElementById('qrBox'), AL.inviteUrl(lastCode), 220);
     } catch (e) {
-      console.warn('[qr] 못 그렸습니다', e);
-      document.getElementById('qrBox').style.display = 'none';
+      // ⚠ 조용히 숨기면 왜 안 되는지 아무도 모릅니다. 말을 하게 합니다.
+      console.error('[qr] 못 그렸습니다', e);
+      const qb = document.getElementById('qrBox');
+      qb.style.background = 'transparent';
+      qb.innerHTML = '';
+      const w = document.createElement('div');
+      w.className = 'pk-err';
+      w.style.margin = '0';
+      w.textContent = AL.t('qrFailed');
+      qb.appendChild(w);
     }
     document.getElementById('formPart').style.display = 'none';
     document.getElementById('madePart').classList.add('on');
