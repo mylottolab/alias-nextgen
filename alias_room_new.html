@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260906k">
-<link rel="stylesheet" href="alias_theme.css?v=20260906k">
+<link rel="stylesheet" href="alias_common.css?v=20260906l">
+<link rel="stylesheet" href="alias_theme.css?v=20260906l">
 <script src="alias_qrlib.js"></script>
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260906k"></script>
-<script src="alias_qr.js?v=20260906k"></script>
+<script src="alias_common.js?v=20260906l"></script>
+<script src="alias_qr.js?v=20260906l"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function(){
   if (typeof AL === "undefined" || typeof AL.t !== "function") {
@@ -66,7 +66,7 @@ document.addEventListener("DOMContentLoaded", function(){
 
     <div id="inviteBox" style="display:none">
       <div class="codebox">
-        <div class="clab" data-t="invCodeCap"></div>
+        <div class="clab" id="codeCap"></div>
         <div class="ccode" id="codeOut"></div>
       </div>
       <div class="qr-box" id="qrBox"></div>
@@ -76,6 +76,12 @@ document.addEventListener("DOMContentLoaded", function(){
         <button id="copyLink" data-t="invCopyLink"></button>
         <button id="shareBtn" data-t="invShareSys"></button>
       </div>
+
+      <!-- ⚠ 다음 사람을 부르려면 다시 눌러야 한다는 것을 분명히 합니다.
+           전에는 조용히 바뀌기만 해서 눌러도 되는지 몰랐습니다. -->
+      <p class="lede" data-t="grOneEach" style="margin-top:16px"></p>
+      <button class="btn" id="mkMore" data-t="grAddMore"></button>
+      <div id="madeList" style="margin-top:14px"></div>
     </div>
 
     <div class="sect" id="memHead"></div>
@@ -106,6 +112,7 @@ let aliases = [];
 let chosen = null;
 let linkId = null;
 let lastCode = null;
+let madeCodes = [];   // 지금까지 만든 초대
 
 function el(id){ return document.getElementById(id); }
 function showErr(msg){ const e = el('err'); e.textContent = msg; e.classList.add('show'); }
@@ -166,6 +173,8 @@ el('mkInvite').addEventListener('click', async function(){
     if (res.error) throw res.error;
 
     lastCode = res.data.code;
+    madeCodes.push(lastCode);
+    el('codeCap').textContent = AL.t('grNth', { n: madeCodes.length });
     // ⚠ 예전에 여기서 code 라고 썼다가, id="code" 요소가 대신 잡혔습니다.
     //   브라우저가 id 를 전역 변수로 만들어줘서 조용히 엉뚱한 값이 들어갔습니다.
     //   그래서 요소 id 를 codeOut 으로 바꿨습니다.
@@ -178,6 +187,7 @@ el('mkInvite').addEventListener('click', async function(){
       el('qrBox').innerHTML = '<div class="pk-err" style="margin:0">' +
         AL.esc(AL.t('qrFailed')) + '</div>';
     }
+    paintMade();
   } catch (e) {
     console.error('[room]', e);
     showErr(AL.t('errGeneric', { msg: e.message || String(e) }));
@@ -209,7 +219,14 @@ async function loadMembers(){
       '</div>';
     }).join('');
     // 네 명이 차면 더 못 부릅니다.
-    el('mkInvite').disabled = rows.length >= 4;
+    // ⚠ 이미 만든 초대도 자리를 차지합니다. 넷을 넘게 부르면 안 됩니다.
+    const left = 4 - rows.length - madeCodes.length;
+    const full = left <= 0;
+    el('mkInvite').disabled = full;
+    el('mkMore').disabled = full;
+    el('mkMore').textContent = full
+      ? AL.t('grFull')
+      : AL.t('grAddMore') + '  (' + AL.t('grRoomLeft', { n: left }) + ')';
     if (rows.length >= 4) showErr(AL.t('grFull'));
   } catch (e) { /* 목록이 안 나와도 방은 만들어졌습니다 */ }
 }
