@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260906d">
-<link rel="stylesheet" href="alias_theme.css?v=20260906d">
+<link rel="stylesheet" href="alias_common.css?v=20260906f">
+<link rel="stylesheet" href="alias_theme.css?v=20260906f">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260906d"></script>
+<script src="alias_common.js?v=20260906f"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -85,6 +85,36 @@ document.addEventListener("DOMContentLoaded", function(){
   <div class="preview">
     <div class="msg in"><div class="bub" data-t="thSample1"></div></div>
     <div class="msg out"><div class="bub" data-t="thSample2"></div></div>
+  </div>
+
+  <!-- 🔴 데이터를 얼마나 쓰는지 보여줍니다. 모르는 게 불안한 것입니다. -->
+  <div class="sect" data-t="dtTitle"></div>
+  <p class="lede" data-t="dtNote"></p>
+
+  <div class="dblock" id="usage"></div>
+
+  <div class="sect" data-t="dtSave"></div>
+  <div class="dblock">
+    <div class="prefrow">
+      <span class="pl"><b data-t="dtVideoWifi"></b>
+        <span class="ps" data-t="dtVideoWifiD"></span></span>
+      <button id="pVideoWifi"></button>
+    </div>
+    <div class="prefrow">
+      <span class="pl"><b data-t="dtLowRate"></b>
+        <span class="ps" data-t="dtLowRateD"></span></span>
+      <button id="pLowRate"></button>
+    </div>
+    <div class="prefrow">
+      <span class="pl"><b data-t="dtMediaWifi"></b>
+        <span class="ps" data-t="dtMediaWifiD"></span></span>
+      <button id="pMediaWifi"></button>
+    </div>
+    <div class="prefrow">
+      <span class="pl"><b data-t="dtWarn"></b>
+        <span class="ps" data-t="dtWarnD"></span></span>
+      <button id="pWarn"></button>
+    </div>
   </div>
 
   <div class="sect" data-t="prefTitle"></div>
@@ -224,6 +254,59 @@ document.getElementById('make').addEventListener('click', makeAlias);
 document.getElementById('name').addEventListener('keydown', function(e){
   if (e.key === 'Enter') makeAlias();
 });
+/* ── 데이터 ─────────────────────────────────────────────────── */
+const WARN_STEPS = [0, 200, 500, 1000, 2000];
+
+async function paintUsage(){
+  const box = document.getElementById('usage');
+  const u = await AL.dataUsage(30);
+  if (!u || !u.total_bytes) {
+    box.innerHTML = '<div class="drow"><span class="dlab">' +
+      AL.esc(AL.t('dtUsed30')) + '</span><span class="dval">' +
+      AL.esc(AL.t('dtNone')) + '</span></div>';
+    return;
+  }
+  const secs = Number(u.call_seconds || 0);
+  const dur = Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0');
+  box.innerHTML =
+    '<div class="drow"><span class="dlab">' + AL.esc(AL.t('dtUsed30')) + '</span>' +
+      '<span class="dval">' + AL.esc(AL.t('dtTotal', { size: AL.fmtBytes(u.total_bytes) })) + '</span></div>' +
+    '<div class="drow"><span class="dlab">' +
+      AL.esc(AL.t('dtCalls', { n: u.n_calls, dur: dur })) + '</span>' +
+      '<span class="dval">' + AL.esc(AL.fmtBytes(u.call_bytes)) + '</span></div>' +
+    '<div class="drow"><span class="dlab">' +
+      AL.esc(AL.t('dtMedia', { n: u.n_media })) + '</span>' +
+      '<span class="dval">' + AL.esc(AL.fmtBytes(u.media_bytes)) + '</span></div>';
+}
+
+function paintData(){
+  const p = AL.dataPrefs;
+  [['pVideoWifi','video_wifi_only'], ['pLowRate','low_bitrate'],
+   ['pMediaWifi','media_wifi_only']].forEach(function(o){
+    const b = document.getElementById(o[0]);
+    b.textContent = AL.t(p[o[1]] ? 'prefOn' : 'prefOff');
+    b.classList.toggle('on', !!p[o[1]]);
+  });
+  const w = document.getElementById('pWarn');
+  w.textContent = p.warn_mb ? (p.warn_mb + ' MB') : AL.t('dtWarnOff');
+  w.classList.toggle('on', !!p.warn_mb);
+}
+
+[['pVideoWifi','video_wifi_only'], ['pLowRate','low_bitrate'],
+ ['pMediaWifi','media_wifi_only']].forEach(function(o){
+  document.getElementById(o[0]).addEventListener('click', async function(){
+    try { await AL.saveDataPref(o[1], !AL.dataPrefs[o[1]]); paintData(); }
+    catch (e) { console.error(e); showErr(AL.t('errGeneric', { msg: e.message || String(e) })); }
+  });
+});
+
+document.getElementById('pWarn').addEventListener('click', async function(){
+  const i = WARN_STEPS.indexOf(AL.dataPrefs.warn_mb);
+  const next = WARN_STEPS[(i + 1) % WARN_STEPS.length];
+  try { await AL.saveDataPref('warn_mb', next); paintData(); }
+  catch (e) { console.error(e); showErr(AL.t('errGeneric', { msg: e.message || String(e) })); }
+});
+
 /* ── 언어 고르기 ─────────────────────────────────────────────── */
 const LANGS = [['auto','lgAuto'], ['kr','lgKr'], ['en','lgEn']];
 
@@ -316,6 +399,9 @@ document.getElementById('out').addEventListener('click', function(){
   document.getElementById('uid').textContent = me.id.slice(0, 8);
   paintLang();
   paintPrefs();
+  await AL.loadDataPrefs();
+  paintData();
+  paintUsage();
   theme = await AL.loadTheme();
   paintLang();          // 서버 값이 달랐으면 여기서 맞춰집니다
   paintTheme();

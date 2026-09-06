@@ -4,12 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260906d">
-<link rel="stylesheet" href="alias_theme.css?v=20260906d">
+<link rel="stylesheet" href="alias_common.css?v=20260906f">
+<link rel="stylesheet" href="alias_theme.css?v=20260906f">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260906d"></script>
-<script src="alias_call.js?v=20260906d"></script>
+<script src="alias_common.js?v=20260906f"></script>
+<script src="alias_media.js?v=20260906f"></script>
+<script src="alias_call.js?v=20260906f"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -44,6 +45,7 @@ document.addEventListener("DOMContentLoaded", function(){
     <div class="al" id="al"></div>
     <div class="st" id="st"></div>
     <div class="tm" id="tm"></div>
+    <div class="bytes" id="bytes"></div>
   </div>
 
   <!-- 🔴 이 제품의 서명 — 어떤 나로 통화하는지 -->
@@ -168,14 +170,19 @@ function startTimer(){
 
 function onState(state, extra){
   if (state === 'preparing')      setStatus(AL.t('clCalling'));
-  else if (state === 'ringing')   setStatus(AL.t('clCalling'));
-  else if (state === 'answering') setStatus(AL.t('clConnected'));
-  else if (state === 'connected') { setStatus(AL.t('clConnected')); startTimer(); paintActs(); }
+  else if (state === 'ringing')   { setStatus(AL.t('clCalling')); AL.startDialTone(); }
+  else if (state === 'answering') { AL.stopDialTone(); setStatus(AL.t('clConnected')); }
+  else if (state === 'connected') { AL.stopDialTone(); setStatus(AL.t('clConnected')); startTimer(); paintActs(); }
   else if (state === 'no-media')  setStatus(AL.t('clNoMedia'));
   else if (state === 'failed')    { setStatus(AL.t('clFailed')); bye(); }
   else if (state === 'declined')  { setStatus(AL.t('clDeclined')); bye(); }
   else if (state === 'peer-hangup') { setStatus(AL.t('clEnded')); bye(); }
   else if (state === 'ended')     { setStatus(AL.t('clEnded')); bye(); }
+  else if (state === 'need-wifi') { setStatus(AL.t('dtNoWifi')); bye(); }
+  else if (state === 'bytes') {
+    // ⚠ 통화 중에 얼마나 쓰는지 보여줍니다. 모르면 불안합니다.
+    el('bytes').textContent = AL.t('dtThisCall', { size: AL.fmtBytes(extra.bytes) });
+  }
 
   if (state === 'local-stream' && callType === 'video') {
     el('vid').classList.add('on');
@@ -203,6 +210,7 @@ function onState(state, extra){
 
 function bye(){
   AL.stopRinging();
+  AL.stopDialTone();
   if (tick) { clearInterval(tick); tick = null; }
   el('acts').innerHTML = '';
   // 잠깐 보여준 뒤 대화로 돌아갑니다.
@@ -236,6 +244,8 @@ async function decline(){
   AL.paintText();
   if (!await AL.requireLogin()) return;
   if (!linkId) { setStatus(AL.t('dtlNotFound')); return; }
+
+  await AL.loadDataPrefs();      // 음질·와이파이 설정을 먼저 읽습니다
 
   const res = await AL.sb.rpc('link_view', { p_link_id: linkId });
   view = (res.data || [])[0];
@@ -275,6 +285,7 @@ async function decline(){
 
 window.addEventListener('beforeunload', function(){
   AL.stopRinging();
+  AL.stopDialTone();
   if (AL.call.pc) AL.endCall('canceled');
   else AL.callCleanup();
 });

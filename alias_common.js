@@ -154,6 +154,37 @@ AL.STR = {
                   en:'Calm for work, warm for close friends.\nLeave blank to follow your default.' },
   thSaved:     { kr:'바꿨습니다.', en:'Saved.' },
 
+  /* 데이터 — 아는 게 안심입니다 */
+  dtTitle:    { kr:'데이터', en:'Data' },
+  dtNote:     { kr:'이 앱은 통신사 음성통화가 아니라 데이터를 씁니다.\n음성은 1분에 약 0.5MB, 영상은 약 15MB 입니다.',
+                en:'This app uses mobile data, not carrier voice minutes.\nVoice is about 0.5MB a minute; video about 15MB.' },
+  dtUsed30:   { kr:'최근 30일', en:'Last 30 days' },
+  dtCalls:    { kr:'통화 {n}건 · {dur}', en:'{n} calls · {dur}' },
+  dtMedia:    { kr:'사진·파일 {n}건', en:'{n} photos and files' },
+  dtTotal:    { kr:'모두 {size}', en:'{size} total' },
+  dtNone:     { kr:'아직 쓴 것이 없습니다.', en:'Nothing used yet.' },
+  dtSave:     { kr:'데이터 아끼기', en:'Save data' },
+  dtVideoWifi:{ kr:'영상통화는 와이파이에서만', en:'Video calls on Wi-Fi only' },
+  dtVideoWifiD:{ kr:'영상은 음성의 30배를 씁니다. 1시간에 약 900MB.',
+                 en:'Video uses 30x more than voice — about 900MB an hour.' },
+  dtLowRate:  { kr:'음질 낮추기', en:'Lower call quality' },
+  dtLowRateD: { kr:'데이터를 절반으로 줄입니다. 통화는 조금 거칠어집니다.',
+                en:'Halves the data. Calls sound a little rougher.' },
+  dtMediaWifi:{ kr:'사진·파일은 와이파이에서만', en:'Photos and files on Wi-Fi only' },
+  dtMediaWifiD:{ kr:'큰 파일을 이동통신으로 올리지 않습니다.',
+                 en:'Large files will not upload over mobile data.' },
+  dtWarn:     { kr:'많이 쓰면 알려주기', en:'Warn me at' },
+  dtWarnD:    { kr:'최근 30일 사용량이 이만큼을 넘으면 알려드립니다.',
+                en:'Tells you when the last 30 days go over this.' },
+  dtWarnOff:  { kr:'안 알림', en:'Off' },
+  dtOverWarn: { kr:'최근 30일 데이터를 {used} 썼습니다.\n와이파이를 쓰시거나 설정에서 아끼기를 켜보세요.',
+                en:'You have used {used} in the last 30 days.\nTry Wi-Fi, or turn on data saving in settings.' },
+  dtNoWifi:   { kr:'지금 와이파이가 아닙니다.\n설정에서 "영상통화는 와이파이에서만" 을 끄시면 걸 수 있습니다.',
+                en:'You are not on Wi-Fi right now.\nTurn off "Video calls on Wi-Fi only" in settings to continue.' },
+  dtNoWifiMedia:{ kr:'지금 와이파이가 아닙니다.\n설정에서 "사진·파일은 와이파이에서만" 을 끄시면 보낼 수 있습니다.',
+                  en:'You are not on Wi-Fi right now.\nTurn off "Photos and files on Wi-Fi only" to continue.' },
+  dtThisCall: { kr:'이번 통화 {size}', en:'{size} this call' },
+
   /* 알림 */
   prefTitle:   { kr:'알림', en:'Notifications' },
   prefSound:   { kr:'소리', en:'Sound' },
@@ -794,6 +825,17 @@ AL.loadAliases = async function(){
 
 
 /* ── 잔손 ────────────────────────────────────────────────────────── */
+/* 크기를 사람 말로.
+   ⚠ media.js 가 아니라 여기 둡니다. 통화·설정 화면도 씁니다. */
+AL.fmtBytes = function(n){
+  n = Number(n) || 0;
+  if (!n) return '0 B';
+  if (n < 1024) return n + ' B';
+  if (n < 1024 * 1024) return (n / 1024).toFixed(0) + ' KB';
+  if (n < 1024 * 1024 * 1024) return (n / 1024 / 1024).toFixed(1) + ' MB';
+  return (n / 1024 / 1024 / 1024).toFixed(2) + ' GB';
+};
+
 AL.esc = function(s){
   return String(s == null ? '' : s)
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
@@ -1282,6 +1324,53 @@ AL.alertNew = function(){ AL.ding(); AL.buzz(); };
 ------------------------------------------------------------------ */
 AL._ringTimer = null;
 
+/* ── 통화연결음 ──────────────────────────────────────────────────────
+   거는 쪽에도 소리가 나야 합니다. 아무 소리 없이 기다리면 답답하고,
+   걸리고 있는 건지 멈춘 건지 알 수가 없습니다.
+
+   ⚠ 받는 쪽 벨(딩동)과 달라야 합니다. 실제 전화기의 통화연결음은
+     낮고 길게 울립니다. 한국 기준으로 1초 울리고 2초 쉽니다.
+   ⚠ 소리 설정을 꺼두셨으면 안 납니다.
+------------------------------------------------------------------ */
+AL._dialTimer = null;
+AL._dialCtx = null;
+
+AL.startDialTone = function(){
+  AL.stopDialTone();
+  if (!AL.prefs().sound) return;
+  try {
+    var Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    AL._dialCtx = new Ctx();
+
+    var beep = function(){
+      if (!AL._dialCtx) return;
+      var ctx = AL._dialCtx;
+      var t0 = ctx.currentTime;
+      // 낮은 두 음을 겹칩니다. 전화기 소리에 가깝습니다.
+      [440, 480].forEach(function(freq){
+        var osc = ctx.createOscillator(), gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.0001, t0);
+        gain.gain.exponentialRampToValueAtTime(0.07, t0 + 0.04);
+        gain.gain.setValueAtTime(0.07, t0 + 0.95);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.0);
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.start(t0); osc.stop(t0 + 1.05);
+      });
+    };
+
+    beep();
+    AL._dialTimer = setInterval(beep, 3000);   // 1초 울리고 2초 쉼
+  } catch (e) { /* 소리가 안 나도 통화에는 지장 없습니다 */ }
+};
+
+AL.stopDialTone = function(){
+  if (AL._dialTimer) { clearInterval(AL._dialTimer); AL._dialTimer = null; }
+  if (AL._dialCtx) { try { AL._dialCtx.close(); } catch (e) {} AL._dialCtx = null; }
+};
+
 AL.startRinging = function(){
   AL.stopRinging();
   AL.alertNew();
@@ -1642,6 +1731,56 @@ AL.pickLinkTheme = function(current){
   });
 };
 
+/* ── 데이터 아끼기 ──────────────────────────────────────────────────
+   ⚠ 손님이 모르고 쓰다가 요금을 보면 그때 앱을 지웁니다.
+     얼마나 썼는지 보여주고, 아낄 방법을 고를 수 있어야 합니다.
+
+   ⚠ 브라우저는 "와이파이인가" 를 정확히 알려주지 않습니다.
+     navigator.connection 이 있는 기기에서만 압니다(안드로이드 크롬 등).
+     모르면 막지 않습니다. 잘못 막는 것보다 낫습니다.
+------------------------------------------------------------------ */
+AL.DATA_DEFAULT = {
+  video_wifi_only: true, low_bitrate: false,
+  media_wifi_only: false, warn_mb: 500,
+};
+
+AL.dataPrefs = Object.assign({}, AL.DATA_DEFAULT);
+
+AL.loadDataPrefs = async function(){
+  try {
+    var res = await AL.sb.from('account_settings')
+      .select('video_wifi_only, low_bitrate, media_wifi_only, warn_mb').maybeSingle();
+    if (res.data) AL.dataPrefs = Object.assign({}, AL.DATA_DEFAULT, res.data);
+  } catch (e) {}
+  return AL.dataPrefs;
+};
+
+AL.saveDataPref = async function(key, val){
+  AL.dataPrefs[key] = val;
+  var sess = await AL.sb.auth.getSession();
+  var uid = sess.data.session ? sess.data.session.user.id : null;
+  if (!uid) return;
+  var patch = { account_id: uid, updated_at: new Date().toISOString() };
+  patch[key] = val;
+  var res = await AL.sb.from('account_settings').upsert(patch, { onConflict: 'account_id' });
+  if (res.error) throw res.error;
+};
+
+/* 지금 와이파이인가. 모르면 null 을 돌려줍니다(막지 않습니다). */
+AL.onWifi = function(){
+  var c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  if (!c || !c.type) return null;
+  return c.type === 'wifi' || c.type === 'ethernet';
+};
+
+/* 이번 달 쓴 양 */
+AL.dataUsage = async function(days){
+  try {
+    var res = await AL.sb.rpc('my_data_usage', { p_days: days || 30 });
+    return (res.data || [])[0] || null;
+  } catch (e) { return null; }
+};
+
 /* ── 앱 전체 알림 ───────────────────────────────────────────────────
    어느 화면에 있든 새 메시지가 오면 소리·진동이 납니다.
    화면마다 따로 붙이면 화면을 하나 더 만들 때마다 잊습니다. 여기 한 번만 둡니다.
@@ -1656,9 +1795,31 @@ AL._alertWatcher = null;
 AL._mySideIds = [];
 AL._lastSeenTotal = null;
 
+/* 많이 썼으면 한 번 알려줍니다.
+   ⚠ 하루에 한 번만. 볼 때마다 뜨면 성가십니다. */
+AL.checkDataWarn = async function(){
+  try {
+    await AL.loadDataPrefs();
+    if (!AL.dataPrefs.warn_mb) return;
+    var key = 'alias_data_warned';
+    var today = new Date().toISOString().slice(0, 10);
+    if (localStorage.getItem(key) === today) return;
+
+    var u = await AL.dataUsage(30);
+    if (!u) return;
+    var mb = Number(u.total_bytes || 0) / 1024 / 1024;
+    if (mb < AL.dataPrefs.warn_mb) return;
+
+    localStorage.setItem(key, today);
+    alert(AL.t('dtOverWarn', { used: AL.fmtBytes(u.total_bytes) }));
+  } catch (e) {}
+};
+
 AL.startAlerts = function(opts){
   opts = opts || {};
   if (AL._alertWatcher) return;   // 한 화면에 두 번 붙지 않게
+
+  AL.checkDataWarn();
 
   // 내 side id 를 알아둬야 "내가 보낸 것"을 걸러낼 수 있습니다.
   AL.sb.rpc('my_contacts').then(function(res){
