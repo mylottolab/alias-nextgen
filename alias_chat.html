@@ -4,16 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260906l">
-<link rel="stylesheet" href="alias_theme.css?v=20260906l">
+<link rel="stylesheet" href="alias_common.css?v=20260906m">
+<link rel="stylesheet" href="alias_theme.css?v=20260906m">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260906l"></script>
-<script src="alias_media.js?v=20260906l"></script>
-<script src="alias_extras.js?v=20260906l"></script>
-<script src="alias_room.js?v=20260906l"></script>
-<script src="alias_call.js?v=20260906l"></script>
-<script src="alias_e2ee.js?v=20260906l"></script>
+<script src="alias_common.js?v=20260906m"></script>
+<script src="alias_media.js?v=20260906m"></script>
+<script src="alias_extras.js?v=20260906m"></script>
+<script src="alias_room.js?v=20260906m"></script>
+<script src="alias_call.js?v=20260906m"></script>
+<script src="alias_e2ee.js?v=20260906m"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -1174,24 +1174,6 @@ async function decryptAll(){
     if (!m.enc || m._plain !== undefined) continue;
     try { m._plain = await AL.decText(msgKey, m.content); }
     catch (e) { m._plain = null; }
-  }
-}
-
-/* 이 대화를 잠급니다. 양쪽 다 열쇠가 있어야 합니다. */
-async function turnOnE2ee(){
-  if (!await AL.ensureUnlocked()) return;
-  try {
-    await AL.linkKey(linkId, me.sideId);       // 상대 공개 열쇠가 없으면 여기서 걸립니다
-    const r = await AL.sb.from('links').update({ e2ee_on: true }).eq('id', linkId).select('id');
-    if (r.error) throw r.error;
-    e2ee = true;
-    await prepareKey();
-    paintLock();
-    showOk(AL.t('ecMadeKey'));
-  } catch (e) {
-    console.error('[e2ee]', e);
-    showErr(e.message === 'peer_no_key' ? AL.t('ecPeerNoKey')
-            : AL.t('errGeneric', { msg: e.message || String(e) }));
   }
 }
 

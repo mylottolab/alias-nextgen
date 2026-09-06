@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260906l">
-<link rel="stylesheet" href="alias_theme.css?v=20260906l">
+<link rel="stylesheet" href="alias_common.css?v=20260906m">
+<link rel="stylesheet" href="alias_theme.css?v=20260906m">
 <script src="alias_qrlib.js"></script>
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260906l"></script>
-<script src="alias_qr.js?v=20260906l"></script>
+<script src="alias_common.js?v=20260906m"></script>
+<script src="alias_qr.js?v=20260906m"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function(){
   if (typeof AL === "undefined" || typeof AL.t !== "function") {
@@ -204,6 +204,35 @@ el('shareBtn').addEventListener('click', async function(){
     try { await navigator.share({ text: url }); return; } catch (e) {}
   }
   AL.copyText(url, this);
+});
+
+/* 지금까지 만든 초대를 보여줍니다.
+   ⚠ 앞에 만든 것이 사라진 것처럼 보이면 불안합니다. 남겨둡니다. */
+function paintMade(){
+  if (madeCodes.length < 2) { el('madeList').innerHTML = ''; return; }
+  el('madeList').innerHTML = madeCodes.map(function(c, i){
+    const on = (c === lastCode);
+    return '<div class="memberrow' + (on ? ' ok' : '') + '" data-pick="' + AL.esc(c) + '">' +
+      '<span class="mav">' + (i + 1) + '</span>' +
+      '<span class="mn" style="font-family:ui-monospace,monospace;font-size:12px">' +
+        AL.esc(c) + '</span>' +
+    '</div>';
+  }).join('');
+  // 눌러서 그 초대의 QR 을 다시 볼 수 있게 합니다.
+  el('madeList').querySelectorAll('[data-pick]').forEach(function(row){
+    row.addEventListener('click', async function(){
+      lastCode = row.getAttribute('data-pick');
+      el('codeOut').textContent = lastCode;
+      el('codeCap').textContent =
+        AL.t('grNth', { n: madeCodes.indexOf(lastCode) + 1 });
+      try { await AL.drawQr(el('qrBox'), AL.inviteUrl(lastCode), 200); } catch (e) {}
+      paintMade();
+    });
+  });
+}
+
+el('mkMore').addEventListener('click', function(){
+  el('mkInvite').click();
 });
 
 /* ── 누가 들어와 있나 ──────────────────────────────────── */
