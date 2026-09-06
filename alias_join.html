@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260906h">
-<link rel="stylesheet" href="alias_theme.css?v=20260906h">
+<link rel="stylesheet" href="alias_common.css?v=20260906i">
+<link rel="stylesheet" href="alias_theme.css?v=20260906i">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260906h"></script>
-<script src="alias_qr.js?v=20260906h"></script>
+<script src="alias_common.js?v=20260906i"></script>
+<script src="alias_qr.js?v=20260906i"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -136,6 +136,19 @@ async function join(){
   const btn = document.getElementById('go');
   btn.disabled = true;
   try {
+    // 방 초대인지 먼저 봅니다. into_link_id 가 있으면 그 방에 들어갑니다.
+    const peek = await AL.sb.from('invites')
+      .select('into_link_id').eq('code', code).maybeSingle();
+
+    if (peek.data && peek.data.into_link_id) {
+      const r = await AL.sb.rpc('join_room', {
+        p_code: code, p_persona_id: chosen.id,
+      });
+      if (r.error) throw r.error;
+      location.href = 'alias_chat.html?link=' + encodeURIComponent(r.data);
+      return;
+    }
+
     const res = await AL.sb.rpc('use_invite', {
       p_code: code,
       p_my_persona_id: document.getElementById('faceId').value,

@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260906h">
-<link rel="stylesheet" href="alias_theme.css?v=20260906h">
+<link rel="stylesheet" href="alias_common.css?v=20260906i">
+<link rel="stylesheet" href="alias_theme.css?v=20260906i">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260906h"></script>
-<script src="alias_call.js?v=20260906h"></script>
+<script src="alias_common.js?v=20260906i"></script>
+<script src="alias_call.js?v=20260906i"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -115,11 +115,16 @@ function visible(){
 }
 
 function rowHtml(r){
-  const shown = r.peer_label || r.peer_display || AL.t('cntUnnamed');
+  // ⚠ 그룹은 상대가 여럿이라 방 이름으로 부릅니다.
+  const shown = (r.kind === 'group')
+    ? (r.room_name || AL.t('grNoName'))
+    : (r.peer_label || r.peer_display || AL.t('cntUnnamed'));
   const sub = r.peer_label ? (r.peer_display || '') : '';
   const n = r.unread || 0;
-  return '<div class="crow' + (n ? ' hasnew' : '') + '">' +
-    '<div class="cav" data-go="' + AL.esc(r.link_id) + '">' + AL.esc(AL.initial(r.my_face)) + '</div>' +
+  const isRoom = r.kind === 'group';
+  return '<div class="crow' + (n ? ' hasnew' : '') + (isRoom ? ' room' : '') + '">' +
+    '<div class="cav" data-go="' + AL.esc(r.link_id) + '">' +
+      AL.esc(isRoom ? '👥' : AL.initial(r.my_face)) + '</div>' +
     '<div class="cmid" data-go="' + AL.esc(r.link_id) + '">' +
       '<div class="cname">' + (r.pinned ? '▲ ' : '') + AL.esc(shown) +
         (n ? '<span class="unread">' + AL.esc(n > 99 ? '99+' : n) + '</span>' : '') +

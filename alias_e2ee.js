@@ -222,7 +222,14 @@ AL.lockUp = function(){
   AL._linkKeys = {};
 };
 
-/* 이 링크의 대화 열쇠를 가져옵니다. 없으면 만들어 양쪽 몫을 담습니다. */
+/* 이 방의 대화 열쇠를 가져옵니다. 없으면 만들어 사람 수만큼 담습니다.
+
+   🔴 1:1 이든 넷이든 같은 구조입니다.
+     대화 열쇠는 하나. 그것을 각자의 공개 열쇠로 따로따로 잠가서 담습니다.
+     그래서 사람이 늘어도 열쇠 관리가 복잡해지지 않습니다.
+
+   ⚠ 셋이면 자물쇠가 셋(A↔B, A↔C, B↔C)이 아니라
+     대화 열쇠 하나에 잠긴 사본이 셋입니다. 훨씬 간단합니다. */
 AL.linkKey = async function(linkId, mySideId){
   if (AL._linkKeys[linkId]) return AL._linkKeys[linkId];
   if (!AL._mySecret) throw new Error('locked');
@@ -240,23 +247,38 @@ AL.linkKey = async function(linkId, mySideId){
     return key;
   }
 
-  // 없으면 만듭니다. 상대 공개 열쇠가 있어야 합니다.
+  // 없으면 만듭니다. 방에 있는 모두의 공개 열쇠가 있어야 합니다.
   var pk = await AL.sb.rpc('peer_public_key', { p_link_id: linkId });
   if (pk.error) throw pk.error;
-  var peer = (pk.data || [])[0];
-  if (!peer || !peer.public_key) throw new Error('peer_no_key');
+  var peers = pk.data || [];
+  if (!peers.length) throw new Error('peer_no_key');
+  // 한 사람이라도 열쇠가 없으면 못 만듭니다.
+  var missing = peers.filter(function(p){ return !p.public_key; });
+  if (missing.length) throw new Error('peer_no_key');
 
   var made = await AL.makeLinkKey();
-  var lock2 = await AL.sharedLock(AL._mySecret, peer.public_key, peer.algo);
-  var wrapped = await AL.encBytes(lock2, made.raw);
 
-  // 양쪽 몫을 담습니다. 같은 자물쇠라 둘 다 이 값으로 열립니다.
-  var rows = [
-    { link_id: linkId, side_id: mySideId, key_wrapped: b64(wrapped),
-      sender_pub: peer.public_key, algo: peer.algo },
-    { link_id: linkId, side_id: peer.peer_side_id, key_wrapped: b64(wrapped),
-      sender_pub: AL._myPub, algo: AL._myAlgo },
-  ];
+  // 내 몫 — 나중에 내가 열 수 있어야 합니다.
+  // ⚠ 나 자신과의 자물쇠는 만들 수 없어서, 아무 상대나 하나 골라
+  //   그 사람과의 자물쇠로 내 몫도 잠급니다. 그 자물쇠는 나도 만들 수 있습니다.
+  var anchor = peers[0];
+  var myLock = await AL.sharedLock(AL._mySecret, anchor.public_key, anchor.algo);
+  var rows = [{
+    link_id: linkId, side_id: mySideId,
+    key_wrapped: b64(await AL.encBytes(myLock, made.raw)),
+    sender_pub: anchor.public_key, algo: anchor.algo,
+  }];
+
+  // 각자의 몫 — 그 사람과 나 사이의 자물쇠로 잠급니다.
+  for (var i = 0; i < peers.length; i++) {
+    var lockN = await AL.sharedLock(AL._mySecret, peers[i].public_key, peers[i].algo);
+    rows.push({
+      link_id: linkId, side_id: peers[i].peer_side_id,
+      key_wrapped: b64(await AL.encBytes(lockN, made.raw)),
+      sender_pub: AL._myPub, algo: AL._myAlgo,
+    });
+  }
+
   var ins = await AL.sb.from('link_keys').insert(rows);
   if (ins.error && ins.error.code !== '23505') throw ins.error;   // 이미 있으면 넘어갑니다
 

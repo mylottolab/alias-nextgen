@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Alias</title>
+<link rel="stylesheet" href="alias_common.css?v=20260906i">
+<link rel="stylesheet" href="alias_theme.css?v=20260906i">
+<script src="alias_qrlib.js"></script>
+<script src="alias_config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="alias_common.js?v=20260906i"></script>
+<script src="alias_qr.js?v=20260906i"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function(){
+  if (typeof AL === "undefined" || typeof AL.t !== "function") {
+    document.body.innerHTML =
+      '<div style="padding:26px;font-family:system-ui,sans-serif;line-height:1.8;' +
+      'color:#DDE5F0;background:#0E1621;min-height:100vh">' +
+      '<b style="font-size:17px">alias_common.js 를 못 읽었습니다.</b><br><br>' +
+      '가장 흔한 원인은 anon 열쇠 줄이 두 줄로 나뉜 것입니다.<br>' +
+      'alias_config.js 를 확인하세요.</div>';
+    return;
+  }
+  AL.bootTheme();
+});
+</script>
+</head>
+<body data-t-title="grNew">
+<div class="wrap">
+
+  <div class="tophead" style="margin-bottom:10px">
+    <a class="backlink" href="alias_contacts.html" data-t="navContacts"></a>
+    <span class="gohome">
+      <a href="alias_contacts.html" data-t="goHome"></a>
+      <a href="alias_me.html" data-t="goMe"></a>
+    </span>
+  </div>
+
+  <h1 class="h2" data-t="grNew"></h1>
+  <p class="lede" data-t="grNewD"></p>
+
+  <!-- ── 1단계: 방 만들기 ───────────────────────────────── -->
+  <div id="step1">
+    <div class="field">
+      <label for="rname" data-t="grName"></label>
+      <input id="rname" type="text" maxlength="30" data-t-ph="grNamePh">
+    </div>
+
+    <div class="field">
+      <label data-t="grMyFace"></label>
+      <button class="btn ghost" id="faceBtn"></button>
+    </div>
+
+    <button class="btn" id="make" data-t="grMake"></button>
+  </div>
+
+  <!-- ── 2단계: 사람 부르기 ─────────────────────────────── -->
+  <div id="step2" style="display:none">
+    <div class="ok show" id="madeMsg"></div>
+
+    <div class="sect" data-t="grInvite"></div>
+    <p class="lede" data-t="grInviteD"></p>
+
+    <button class="btn" id="mkInvite" data-t="grAdd"></button>
+
+    <div id="inviteBox" style="display:none">
+      <div class="codebox">
+        <div class="clab" data-t="invCodeCap"></div>
+        <div class="ccode" id="code"></div>
+      </div>
+      <div class="qr-box" id="qrBox"></div>
+      <p class="qr-note" data-t="qrNote"></p>
+      <div class="copybar">
+        <button id="copyCode" data-t="copy"></button>
+        <button id="copyLink" data-t="invCopyLink"></button>
+        <button id="shareBtn" data-t="invShareSys"></button>
+      </div>
+    </div>
+
+    <div class="sect" data-t="rmMembers"></div>
+    <div id="members"></div>
+
+    <button class="btn" id="goRoom" style="margin-top:20px" data-t="grRoom"></button>
+  </div>
+
+  <div id="err" class="err"></div>
+</div>
+
+<script>
+/* =====================================================================
+   여럿이 모이는 방 만들기
+   2026-09-06
+
+   순서
+     ① 방 이름과 내 별칭을 정합니다
+     ② 방이 만들어집니다 (아직 나 혼자)
+     ③ 부를 사람마다 초대를 하나씩 만듭니다 — 한 장에 한 사람
+     ④ 상대가 들어오면 목록에 뜹니다
+     ⑤ 방에 들어가면 "어떻게 쓸까요" 를 함께 정합니다
+
+   ⚠ 네 명까지입니다. 통화를 서버 없이 서로 직접 잇기 때문입니다.
+   ===================================================================== */
+
+let aliases = [];
+let chosen = null;
+let linkId = null;
+let lastCode = null;
+
+function el(id){ return document.getElementById(id); }
+function showErr(msg){ const e = el('err'); e.textContent = msg; e.classList.add('show'); }
+function clearErr(){ el('err').classList.remove('show'); }
+
+function paintFace(){
+  el('faceBtn').textContent = chosen ? chosen.display_name : AL.t('aliasNew');
+}
+
+el('faceBtn').addEventListener('click', async function(){
+  const picked = await AL.pickAlias({ existing: aliases });
+  if (!picked) return;
+  if (!aliases.some(function(a){ return a.id === picked.id; })) aliases.push(picked);
+  chosen = picked;
+  paintFace();
+});
+
+/* ── 방 만들기 ─────────────────────────────────────────── */
+el('make').addEventListener('click', async function(){
+  const name = el('rname').value.trim();
+  if (!name) { showErr(AL.t('grName')); return; }
+  if (!chosen) { showErr(AL.t('errNoAlias')); return; }
+
+  this.disabled = true;
+  clearErr();
+  try {
+    const res = await AL.sb.rpc('create_room', {
+      p_name: name, p_persona_id: chosen.id,
+    });
+    if (res.error) throw res.error;
+    linkId = res.data;
+
+    el('step1').style.display = 'none';
+    el('step2').style.display = '';
+    el('madeMsg').textContent = name;
+    await loadMembers();
+  } catch (e) {
+    console.error('[room]', e);
+    showErr(AL.t('errGeneric', { msg: e.message || String(e) }));
+    this.disabled = false;
+  }
+});
+
+/* ── 사람 부르기 ───────────────────────────────────────── */
+el('mkInvite').addEventListener('click', async function(){
+  this.disabled = true;
+  clearErr();
+  try {
+    // ⚠ 한 장에 한 사람입니다. 여럿이 같은 초대를 쓰면 누가 누군지 모릅니다.
+    // code 는 표의 default 가 만들어줍니다. 돌려받아야 화면에 보여줄 수 있습니다.
+    const sess = await AL.sb.auth.getSession();
+    const res = await AL.sb.from('invites').insert({
+      issuer_account_id: sess.data.session.user.id,
+      issuer_persona_id: chosen.id,
+      into_link_id: linkId,
+      max_uses: 1,
+    }).select('code').single();
+    if (res.error) throw res.error;
+
+    lastCode = res.data.code;
+    el('code').textContent = code;
+    el('inviteBox').style.display = '';
+
+    try {
+      await AL.drawQr(el('qrBox'), AL.inviteUrl(code), 200);
+    } catch (e) {
+      el('qrBox').innerHTML = '<div class="pk-err" style="margin:0">' +
+        AL.esc(AL.t('qrFailed')) + '</div>';
+    }
+  } catch (e) {
+    console.error('[room]', e);
+    showErr(AL.t('errGeneric', { msg: e.message || String(e) }));
+  } finally {
+    this.disabled = false;
+  }
+});
+
+el('copyCode').addEventListener('click', function(){ AL.copyText(lastCode, this); });
+el('copyLink').addEventListener('click', function(){ AL.copyText(AL.inviteUrl(lastCode), this); });
+el('shareBtn').addEventListener('click', async function(){
+  const url = AL.inviteUrl(lastCode || '');
+  if (navigator.share) {
+    try { await navigator.share({ text: url }); return; } catch (e) {}
+  }
+  AL.copyText(url, this);
+});
+
+/* ── 누가 들어와 있나 ──────────────────────────────────── */
+async function loadMembers(){
+  try {
+    const res = await AL.sb.rpc('room_members', { p_link_id: linkId });
+    const rows = res.data || [];
+    el('members').innerHTML = rows.map(function(r){
+      return '<div class="memberrow">' +
+        '<span class="mav">' + AL.esc(AL.initial(r.display_name)) + '</span>' +
+        '<span class="mn">' + AL.esc(r.is_me ? AL.t('rmMe') : (r.display_name || '')) + '</span>' +
+      '</div>';
+    }).join('');
+    // 네 명이 차면 더 못 부릅니다.
+    el('mkInvite').disabled = rows.length >= 4;
+    if (rows.length >= 4) showErr(AL.t('grFull'));
+  } catch (e) { /* 목록이 안 나와도 방은 만들어졌습니다 */ }
+}
+
+el('goRoom').addEventListener('click', function(){
+  location.href = 'alias_chat.html?link=' + encodeURIComponent(linkId);
+});
+
+(async function(){
+  AL.paintText();
+  if (!await AL.requireLogin()) return;
+
+  // 이미 있는 방에 사람을 더 부르러 온 경우입니다.
+  const into = new URLSearchParams(location.search).get('into');
+  if (into) {
+    linkId = into;
+    const v = await AL.sb.rpc('link_view', { p_link_id: into });
+    const row = (v.data || [])[0];
+    if (row) {
+      chosen = { id: null, display_name: row.my_face };
+      el('step1').style.display = 'none';
+      el('step2').style.display = '';
+      el('madeMsg').textContent = row.room_name || AL.t('grNoName');
+      // 초대를 낼 때 내 별칭 id 가 필요합니다.
+      const mine = await AL.sb.from('link_sides')
+        .select('persona_id').eq('id', row.my_side_id).maybeSingle();
+      if (mine.data) chosen.id = mine.data.persona_id;
+      await loadMembers();
+    }
+  }
+
+  const res = await AL.sb.from('personas')
+    .select('id, display_name').order('created_at');
+  aliases = res.data || [];
+  chosen = aliases[0] || null;
+  paintFace();
+
+  // 사람이 들어오면 목록이 갱신되게 5초마다 봅니다.
+  setInterval(function(){
+    if (linkId && document.visibilityState === 'visible') loadMembers();
+  }, 5000);
+
+  AL.startAlerts();
+})();
+</script>
+</body>
+</html>

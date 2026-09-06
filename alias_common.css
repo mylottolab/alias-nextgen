@@ -1121,3 +1121,22 @@ body.callscreen{
 .memberrow.ok .ms{ color:var(--steel); }
 .memberrow.no{ border-color:rgba(217,106,106,.4); }
 .memberrow.no .ms{ color:var(--bad); }
+
+/* ── 여럿이 모이는 방 (2026-09-06) ───────────────────────────────── */
+.crow.room .cav{ background:var(--raise); color:var(--steel); font-size:15px; }
+.crow.room .cname::before{ content:'👥 '; }
+
+/* 그룹 대화 — 누가 보냈는지 */
+.msg .who{
+  display:block; margin-bottom:3px; font-size:11px;
+  color:var(--steel); font-weight:600;
+}
+.msg.out .who{ display:none; }
+.msg .wav{
+  position:absolute; left:0; bottom:0;
+  width:26px; height:26px; border-radius:50%;
+  background:var(--raise2); color:var(--steel);
+  display:flex; align-items:center; justify-content:center;
+  font-size:10.5px; font-weight:600;
+}
+.chat-body.group .msg.in{ padding-left:34px; position:relative; }

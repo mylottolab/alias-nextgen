@@ -154,6 +154,33 @@ AL.STR = {
                   en:'Calm for work, warm for close friends.\nLeave blank to follow your default.' },
   thSaved:     { kr:'바꿨습니다.', en:'Saved.' },
 
+  /* 여럿이 모이는 방 */
+  grNew:      { kr:'여럿이 모이는 방', en:'Group room' },
+  grNewD:     { kr:'네 명까지 함께 이야기하고 통화합니다.',
+                en:'Up to four people can talk and call together.' },
+  grMake:     { kr:'방 만들기', en:'Create room' },
+  grName:     { kr:'방 이름', en:'Room name' },
+  grNamePh:   { kr:'예: 골프모임', en:'e.g. Golf crew' },
+  grMyFace:   { kr:'이 방에서 쓸 내 별칭', en:'Your alias in this room' },
+  grInvite:   { kr:'사람 부르기', en:'Invite people' },
+  grInviteD:  { kr:'부를 사람마다 초대를 하나씩 만드세요.\n한 장에 한 사람입니다.',
+                en:'Make one invite for each person.\nOne invite, one person.' },
+  grAdd:      { kr:'이 방에 부르기', en:'Invite to this room' },
+  grPromote:  { kr:'여럿이 쓰는 방으로 바꾸기', en:'Turn into a group room' },
+  grPromoteD: { kr:'이 대화에 사람을 더 부를 수 있게 됩니다.\n지금까지의 대화는 그대로 남습니다.',
+                en:'You will be able to invite more people.\nPast messages stay as they are.' },
+  grLockedNo: { kr:'잠긴 대화는 여럿이 쓰는 방으로 바꿀 수 없습니다.\n새 사람이 지난 대화를 읽을 수 없기 때문입니다.\n새 방을 만들어주세요.',
+                en:'A locked conversation cannot become a group room.\nNew members could not read past messages.\nPlease create a new room instead.' },
+  grLeave:    { kr:'방에서 나가기', en:'Leave room' },
+  grLeaveAsk: { kr:'이 방에서 나가시겠습니까?\n나가면 대화가 보이지 않습니다.',
+                en:'Leave this room?\nYou will no longer see the messages.' },
+  grFull:     { kr:'이 방은 네 명까지입니다.', en:'This room holds up to four.' },
+  grPeople:   { kr:'{n}명', en:'{n} people' },
+  grRoom:     { kr:'방', en:'Room' },
+  grNoName:   { kr:'이름 없는 방', en:'Untitled room' },
+  grJoined:   { kr:'{who} 님이 들어왔습니다.', en:'{who} joined.' },
+  grLeft:     { kr:'{who} 님이 나갔습니다.', en:'{who} left.' },
+
   /* 방을 어떻게 쓸까 — 모인 사람들이 정합니다 */
   rmAsk:      { kr:'이 방을 어떻게 쓸까요?', en:'How will you use this room?' },
   rmAskNote:  { kr:'한 번 정하면 바꾸기 어렵습니다.\n함께 계신 분들과 정하세요.',
@@ -1086,6 +1113,47 @@ AL.openMenu = function(sideId, link){
       sheet.appendChild(go);
     }
     draw();
+  });
+};
+
+/* ── 간단한 고르개 ──────────────────────────────────────────────────
+   두세 가지 중에 하나 고를 때 씁니다.
+     var v = await AL.pickOne([{key,label,note}, ...]);
+     null 이면 닫은 것입니다.
+------------------------------------------------------------------ */
+AL.pickOne = function(items, title){
+  return new Promise(function(resolve){
+    var bg = document.createElement('div'); bg.className = 'pk-bg';
+    var sheet = document.createElement('div'); sheet.className = 'pk';
+    document.body.appendChild(bg); document.body.appendChild(sheet);
+
+    var done = false;
+    function close(v){
+      if (done) return;
+      done = true;
+      document.removeEventListener('keydown', onKey);
+      bg.remove(); sheet.remove();
+      resolve(v);
+    }
+    function onKey(e){ if (e.key === 'Escape') close(null); }
+    document.addEventListener('keydown', onKey);
+    bg.addEventListener('click', function(){ close(null); });
+
+    sheet.innerHTML = '<div class="grip"></div>';
+    if (title) {
+      var h = document.createElement('p'); h.className = 'pk-title';
+      h.textContent = title; sheet.appendChild(h);
+    }
+    items.forEach(function(it){
+      var card = document.createElement('div');
+      card.className = 'roomchoice';
+      var b = document.createElement('b'); b.textContent = it.label; card.appendChild(b);
+      if (it.note) {
+        var d = document.createElement('span'); d.textContent = it.note; card.appendChild(d);
+      }
+      card.addEventListener('click', function(){ close(it.key); });
+      sheet.appendChild(card);
+    });
   });
 };
 

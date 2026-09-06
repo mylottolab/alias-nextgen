@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260906h">
-<link rel="stylesheet" href="alias_theme.css?v=20260906h">
+<link rel="stylesheet" href="alias_common.css?v=20260906i">
+<link rel="stylesheet" href="alias_theme.css?v=20260906i">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260906h"></script>
-<script src="alias_e2ee.js?v=20260906h"></script>
+<script src="alias_common.js?v=20260906i"></script>
+<script src="alias_e2ee.js?v=20260906i"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -72,6 +72,7 @@ let aliases = [];
 let linkTheme = {};
 let roomHours = null;
 let e2ee = false;
+let isRoom = false;
 let linkInfo = null;
 
 function themeIsCustom(){
@@ -122,6 +123,17 @@ function paint(){
         AL.esc(themeIsCustom() ? AL.t('thPickHere') : AL.t('thUsingMine')) +
         ' <button data-act="theme">' + AL.esc(AL.t('dtlChange')) + '</button></span>' +
     '</div>' +
+    (isRoom
+      ? '<div class="drow">' +
+          '<span class="dlab">' + AL.esc(AL.t('grInvite')) + '</span>' +
+          '<span class="dval"><button data-act="addone">' +
+            AL.esc(AL.t('grAdd')) + '</button></span>' +
+        '</div>'
+      : '<div class="drow">' +
+          '<span class="dlab">' + AL.esc(AL.t('grPromote')) + '</span>' +
+          '<span class="dval"><button data-act="promote">' +
+            AL.esc(AL.t('dtlChange')) + '</button></span>' +
+        '</div>') +
     '<div class="drow">' +
       '<span class="dlab">' + AL.esc(AL.t('ecTitle')) + '</span>' +
       '<span class="dval">' + AL.esc(e2ee ? AL.t('ecOn') : AL.t('ecOff')) +
@@ -162,6 +174,26 @@ async function act(kind){
 
     } else if (kind === 'mute') {
       await save({ muted: !row.muted });
+
+    } else if (kind === 'promote') {
+      // 🔴 잠긴 방은 못 바꿉니다. 새 사람이 지난 대화를 못 읽습니다.
+      if (e2ee) { showErr(AL.t('grLockedNo')); return; }
+      const nm = prompt(AL.t('grName'), row.peer_label || '');
+      if (nm === null) return;
+      try {
+        const r = await AL.sb.rpc('promote_to_room', { p_link_id: linkId, p_name: nm });
+        if (r.error) throw r.error;
+        isRoom = true;
+        paint();
+        showOk(AL.t('thSaved'));
+      } catch (e) {
+        console.error(e);
+        showErr(e.message === 'locked_room' ? AL.t('grLockedNo')
+                : AL.t('errGeneric', { msg: e.message || String(e) }));
+      }
+
+    } else if (kind === 'addone') {
+      location.href = 'alias_room_new.html?into=' + encodeURIComponent(linkId);
 
     } else if (kind === 'lock') {
       // 🔴 한 번 잠그면 못 되돌립니다. 지난 메시지는 그대로 남습니다.
@@ -265,9 +297,10 @@ async function load(){
   // 이 방만의 모양이 있으면 그것으로 칠합니다. my_contacts 는 테마를 안 주므로
   // link_sides 에서 내 줄만 따로 읽습니다(내 줄은 읽을 수 있습니다 — 블록 19).
   const lk = await AL.sb.from('links')
-    .select('id, auto_delete_hours, preset, e2ee_on').eq('id', linkId).maybeSingle();
+    .select('id, auto_delete_hours, preset, e2ee_on, kind, room_name').eq('id', linkId).maybeSingle();
   roomHours = lk.data ? lk.data.auto_delete_hours : null;
   e2ee = !!(lk.data && lk.data.e2ee_on);
+  isRoom = (lk.data && lk.data.kind === 'group');
 
   const fs = await AL.sb.from('link_sides')
     .select('features').eq('id', row.my_side_id).maybeSingle();

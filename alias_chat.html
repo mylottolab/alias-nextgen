@@ -4,16 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260906h">
-<link rel="stylesheet" href="alias_theme.css?v=20260906h">
+<link rel="stylesheet" href="alias_common.css?v=20260906i">
+<link rel="stylesheet" href="alias_theme.css?v=20260906i">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260906h"></script>
-<script src="alias_media.js?v=20260906h"></script>
-<script src="alias_extras.js?v=20260906h"></script>
-<script src="alias_room.js?v=20260906h"></script>
-<script src="alias_call.js?v=20260906h"></script>
-<script src="alias_e2ee.js?v=20260906h"></script>
+<script src="alias_common.js?v=20260906i"></script>
+<script src="alias_media.js?v=20260906i"></script>
+<script src="alias_extras.js?v=20260906i"></script>
+<script src="alias_room.js?v=20260906i"></script>
+<script src="alias_call.js?v=20260906i"></script>
+<script src="alias_e2ee.js?v=20260906i"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -403,9 +403,14 @@ function paint(keepPos){
     //   받는 사람이 모르는 채로 사라지는 일은 없어야 합니다.
     const temp = !!m.expires_at && !gone;
 
+    // 그룹이면 누가 보냈는지 이름과 동그라미를 붙입니다.
+    const who = (isRoom && !out) ? (members[m.sender_side_id] || '') : '';
+
     html += '<div class="msg ' + (out ? 'out' : 'in') +
       (m._fresh ? ' fresh' : '') + (m._failed ? ' failed' : '') +
       (temp ? ' temp' : '') + '">' +
+      (who ? '<span class="wav">' + AL.esc(AL.initial(who)) + '</span>' : '') +
+      (who ? '<span class="who">' + AL.esc(who) + '</span>' : '') +
       bubbleHtml(m, gone, temp) +
       '<div class="meta">' +
         (m._failed
@@ -506,10 +511,14 @@ async function open_(){
   })[0];
   firstUnreadId = firstNew ? firstNew.id : null;
 
-  document.getElementById('whoName').textContent =
-    me.peerLabel || (peer && peer.display) || AL.t('cntUnnamed');
-  document.getElementById('whoFace').textContent =
-    AL.t('chatMyFace', { face: me.myFace || '' });
+  // ⚠ 그룹은 상대가 여럿이라 방 이름으로 부릅니다.
+  document.getElementById('whoName').textContent = isRoom
+    ? (out.link.roomName || AL.t('grNoName'))
+    : (me.peerLabel || (peer && peer.display) || AL.t('cntUnnamed'));
+  document.getElementById('whoFace').textContent = isRoom
+    ? AL.t('grPeople', { n: out.link.memberCount || 1 }) + ' · ' +
+      AL.t('chatMyFace', { face: me.myFace || '' })
+    : AL.t('chatMyFace', { face: me.myFace || '' });
   document.getElementById('find').style.display =
     AL.featureOn(out.link, 'search') ? '' : 'none';
 
@@ -520,6 +529,10 @@ async function open_(){
   }
   roomHours = out.link.autoDeleteHours || null;
   linkInfo = out.link;
+
+  isRoom = out.link.kind === 'group';
+  document.getElementById('body').classList.toggle('group', isRoom);
+  if (isRoom) await loadMembers();
 
   e2ee = !!out.link.e2eeOn;
   roomMode = out.link.roomMode || null;
@@ -661,6 +674,8 @@ let e2ee = false;         // 이 방이 잠겨 있나
 let msgKey = null;        // 이 방의 대화 열쇠
 let roomMode = null;      // open · lock · null(아직 안 정함)
 let myAgreed = null;      // 내가 동의했나
+let isRoom = false;       // 여럿이 쓰는 방인가
+let members = {};         // side_id → 이름
 
 async function refresh(){
   if (refreshing || !me) return;
@@ -1049,6 +1064,16 @@ function chip(icon, label, onClick){
   b.appendChild(t);
   b.addEventListener('click', onClick);
   return b;
+}
+
+/* 방에 누가 있는지. 말풍선에 이름을 붙이려면 필요합니다.
+   ⚠ 1:1 은 왼쪽/오른쪽으로 갈리면 끝인데, 셋이면 왼쪽이 누구 것인지 모릅니다. */
+async function loadMembers(){
+  try {
+    const res = await AL.sb.rpc('room_members', { p_link_id: linkId });
+    members = {};
+    (res.data || []).forEach(function(r){ members[r.side_id] = r.display_name || ''; });
+  } catch (e) { members = {}; }
 }
 
 /* 이 방의 통화 기록. 대화에 섞어 그립니다.
