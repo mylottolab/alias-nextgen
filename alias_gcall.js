@@ -217,6 +217,7 @@ AL.joinGroupCall = async function(opts){
   AL.gcall.peers = {};
   AL.gcall.bytes = 0;
 
+  console.log('[gcall] 1. 마이크 여는 중');
   // 마이크
   try {
     AL.gcall.local = await navigator.mediaDevices.getUserMedia({
@@ -243,18 +244,25 @@ AL.joinGroupCall = async function(opts){
   }
   var row = (res.data || [])[0];
   if (!row) throw new Error('join_call 이 빈 결과를 줬습니다');
-  console.log('[gcall] 통화 자리', row.call_id, row.is_new ? '(새로 시작)' : '(들어감)');
+  console.log('[gcall] 2. 통화 자리', row.call_id, row.is_new ? '(새로 시작)' : '(들어감)');
 
   AL.gcall.callId = row.call_id;
   AL.gcall.token = row.session_token;
 
+  console.log('[gcall] 3. ICE 받는 중');
   var ice = await AL.getIceServers();
+  console.log('[gcall] 4. ICE 받음', (ice || []).length + '개');
+
+  console.log('[gcall] 5. 채널 붙는 중');
   AL.gcall.channel = await openChannel(row.session_token, function(m){
     handle(m, ice).catch(function(e){ console.warn('[gcall]', e); });
   });
 
+  console.log('[gcall] 6. 채널 붙음');
+
   // 이미 있는 사람들과 각각 잇습니다.
   await refreshPeople(ice);
+  console.log('[gcall] 7. 사람들과 이음');
 
   // 내가 왔다고 모두에게 알립니다.
   sendTo(null, 'here', {});
@@ -266,6 +274,7 @@ AL.joinGroupCall = async function(opts){
 
   startBytes();
   say();
+  console.log('[gcall] 8. 끝. 준비됐습니다');
   return row;
 };
 
