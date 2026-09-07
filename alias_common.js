@@ -1403,8 +1403,11 @@ AL.pickAlias = function(opts){
    실제로 여섯 시간짜리 대화에서 양쪽 다 상대 메시지를 못 받았습니다.
    자기가 보낸 것만 보여서 겉으로는 멀쩡해 보입니다.
 ------------------------------------------------------------------ */
+AL._lastToken = null;
+
 AL.sb.auth.onAuthStateChange(function(_event, session){
   if (session && session.access_token) {
+    AL._lastToken = session.access_token;
     try { AL.sb.realtime.setAuth(session.access_token); } catch (e) {}
   }
 });
@@ -1413,7 +1416,11 @@ AL.sb.auth.onAuthStateChange(function(_event, session){
 AL.syncRealtimeAuth = async function(){
   try {
     var sess = await AL.sb.auth.getSession();
-    if (sess.data.session) AL.sb.realtime.setAuth(sess.data.session.access_token);
+    if (sess.data.session) {
+      // ⚠ 창을 닫을 때는 getSession 을 기다릴 수 없습니다. 미리 담아둡니다.
+      AL._lastToken = sess.data.session.access_token;
+      AL.sb.realtime.setAuth(sess.data.session.access_token);
+    }
   } catch (e) {}
 };
 

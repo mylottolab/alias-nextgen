@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260907f">
-<link rel="stylesheet" href="alias_theme.css?v=20260907f">
+<link rel="stylesheet" href="alias_common.css?v=20260907g">
+<link rel="stylesheet" href="alias_theme.css?v=20260907g">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260907f"></script>
-<script src="alias_media.js?v=20260907f"></script>
-<script src="alias_call.js?v=20260907f"></script>
-<script src="alias_gcall.js?v=20260907f"></script>
+<script src="alias_common.js?v=20260907g"></script>
+<script src="alias_media.js?v=20260907g"></script>
+<script src="alias_call.js?v=20260907g"></script>
+<script src="alias_gcall.js?v=20260907g"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function(){
   if (typeof AL === "undefined" || typeof AL.t !== "function") {
@@ -199,9 +199,43 @@ async function leave(){
   }
 })();
 
-window.addEventListener('beforeunload', function(){
+/* 🔴 뒤로 가기나 창을 닫을 때도 서버에 "나갔다" 고 알려야 합니다.
+   화면만 정리하면 서버는 내가 아직 있는 줄 압니다. 그러면 통화가 안 끝나고,
+   다시 걸어도 이미 죽은 통화에 들어가서 아무 소리도 안 납니다.
+
+   ⚠ beforeunload 에서는 await 를 못 씁니다. 브라우저가 안 기다립니다.
+     sendBeacon 은 Supabase 호출에 못 쓰므로, 먼저 신호를 보내고
+     leave_call 은 keepalive 로 던집니다. */
+function leaveQuietly(){
+  try {
+    if (AL.gcall.channel && AL.gcall.mySideId) {
+      AL.gcall.channel.send({
+        type: 'broadcast', event: 'sig',
+        payload: { kind: 'bye', from: AL.gcall.mySideId, to: null },
+      });
+    }
+  } catch (e) {}
+
+  // 서버에도 알립니다. 응답을 기다리지 않습니다.
+  if (AL.gcall.callId) {
+    try {
+      fetch(AL.SUPABASE_URL + '/rest/v1/rpc/leave_call', {
+        method: 'POST',
+        keepalive: true,
+        headers: {
+          'apikey': AL.SUPABASE_ANON,
+          'Authorization': 'Bearer ' + (AL._lastToken || AL.SUPABASE_ANON),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ p_call_id: AL.gcall.callId }),
+      });
+    } catch (e) {}
+  }
   AL.gcallCleanup();
-});
+}
+
+window.addEventListener('pagehide', leaveQuietly);
+window.addEventListener('beforeunload', leaveQuietly);
 </script>
 </body>
 </html>
