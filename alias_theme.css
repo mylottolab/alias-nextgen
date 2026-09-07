@@ -123,6 +123,32 @@ html[data-color="charcoal"][data-mode="light"]{
   --steel:#8A6A3E; --paper:#1A1713; --paper-ink:#E6E0D6; --bad:#A3503F;
 }
 
+/* ── 청회 — 카카오톡 기본 배경 계열. 주간이 본체입니다 ──────────────
+   ⚠ 2026-09-08 신설. "지금 색들이 주간·야간 모두 흐릿하다"는 의견을 받아
+     글자를 기존 테마보다 한 단계 진하게, 흐린 글자(dim·faint)도 밝게 잡았습니다. */
+html[data-color="bluegrey"][data-mode="light"]{
+  --ink:#B2C7D9; --raise:#FFFFFF; --raise2:#C6D6E3; --line:#8FAAC3;
+  --text:#101820; --dim:#374B5F; --faint:#5E7389;
+  --steel:#1F5D93; --paper:#101820; --paper-ink:#EAF1F7; --bad:#A8323C;
+}
+html[data-color="bluegrey"][data-mode="dark"]{
+  --ink:#141C24; --raise:#1E2831; --raise2:#26323D; --line:#354451;
+  --text:#E9F0F6; --dim:#9AACBC; --faint:#718499;
+  --steel:#6FA8DC; --paper:#E9F0F6; --paper-ink:#1E2831; --bad:#E07A7A;
+}
+
+/* ── 풀빛 — Aliascall 대화창 연녹색 계열. 주간이 본체입니다 ───────── */
+html[data-color="sage"][data-mode="light"]{
+  --ink:#CBDDC7; --raise:#FFFFFF; --raise2:#DCEAD8; --line:#A2BE9D;
+  --text:#121F17; --dim:#385243; --faint:#5F7A69;
+  --steel:#26695A; --paper:#121F17; --paper-ink:#ECF3EA; --bad:#A3413C;
+}
+html[data-color="sage"][data-mode="dark"]{
+  --ink:#171E19; --raise:#212A23; --raise2:#2A352C; --line:#3A483B;
+  --text:#EAF1E8; --dim:#A1B4A1; --faint:#788A76;
+  --steel:#8FC79E; --paper:#EAF1E8; --paper-ink:#212A23; --bad:#DE8078;
+}
+
 /* 밝은 테마에서는 파란 단추 위 글자가 어두워야 합니다 */
 html[data-mode="light"] .btn,
 html[data-mode="light"] .plusbtn,
@@ -284,3 +310,7 @@ body > .sheet, body > .sheet-bg{ position:relative; z-index:1; }
 .sw-abyss    .dot{ background:#0B1622; }
 .sw-midnite  .dot{ background:#0E131B; }
 .sw-charcoal .dot{ background:#1B1815; }
+
+/* 2026-09-08 신설 — 이 둘은 주간이 본체라 밝은 쪽 색을 점으로 씁니다 */
+.sw-bluegrey .dot{ background:#B2C7D9; }
+.sw-sage     .dot{ background:#CBDDC7; }
