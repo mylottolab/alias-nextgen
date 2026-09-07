@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260907b">
-<link rel="stylesheet" href="alias_theme.css?v=20260907b">
+<link rel="stylesheet" href="alias_common.css?v=20260907c">
+<link rel="stylesheet" href="alias_theme.css?v=20260907c">
 <script src="alias_qrlib.js"></script>
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260907b"></script>
-<script src="alias_qr.js?v=20260907b"></script>
+<script src="alias_common.js?v=20260907c"></script>
+<script src="alias_qr.js?v=20260907c"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function(){
   if (typeof AL === "undefined" || typeof AL.t !== "function") {
@@ -248,8 +248,17 @@ async function loadMembers(){
       '</div>';
     }).join('');
     // 네 명이 차면 더 못 부릅니다.
-    // ⚠ 이미 만든 초대도 자리를 차지합니다. 넷을 넘게 부르면 안 됩니다.
-    const left = 4 - rows.length - madeCodes.length;
+    // ⚠ 이미 쓴 초대는 빼야 합니다.
+    //   들어온 사람은 그 초대를 써서 들어온 것인데,
+    //   초대도 따로 세면 한 사람을 두 번 세는 셈입니다.
+    //   그래서 3명이 들어오고 2장을 만들면 4-3-2 = -1 이 되어 막혔습니다.
+    let unused = madeCodes.length;
+    try {
+      const u = await AL.sb.rpc('unused_invites', { p_link_id: linkId });
+      if (u && typeof u.data === 'number') unused = u.data;
+    } catch (e) { /* 못 세면 만든 수를 그대로 씁니다 */ }
+
+    const left = 4 - rows.length - unused;
     const full = left <= 0;
     el('mkInvite').disabled = full;
     el('mkMore').disabled = full;

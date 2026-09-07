@@ -4,16 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260907b">
-<link rel="stylesheet" href="alias_theme.css?v=20260907b">
+<link rel="stylesheet" href="alias_common.css?v=20260907c">
+<link rel="stylesheet" href="alias_theme.css?v=20260907c">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260907b"></script>
-<script src="alias_media.js?v=20260907b"></script>
-<script src="alias_extras.js?v=20260907b"></script>
-<script src="alias_room.js?v=20260907b"></script>
-<script src="alias_call.js?v=20260907b"></script>
-<script src="alias_e2ee.js?v=20260907b"></script>
+<script src="alias_common.js?v=20260907c"></script>
+<script src="alias_media.js?v=20260907c"></script>
+<script src="alias_extras.js?v=20260907c"></script>
+<script src="alias_room.js?v=20260907c"></script>
+<script src="alias_call.js?v=20260907c"></script>
+<script src="alias_e2ee.js?v=20260907c"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -512,6 +512,7 @@ async function open_(){
   firstUnreadId = firstNew ? firstNew.id : null;
 
   // ⚠ 그룹은 상대가 여럿이라 방 이름으로 부릅니다.
+  // ⚠ 방이면 상대 이름을 절대 안 씁니다. 상대가 여럿이라 하나를 고를 수 없습니다.
   document.getElementById('whoName').textContent = isRoom
     ? (out.link.roomName || AL.t('grNoName'))
     : (me.peerLabel || (peer && peer.display) || AL.t('cntUnnamed'));
@@ -530,27 +531,29 @@ async function open_(){
   roomHours = out.link.autoDeleteHours || null;
   linkInfo = out.link;
 
-  isRoom = out.link.kind === 'group';
+  // 🔴 방인지 아닌지는 links 표를 직접 봅니다.
+  //   Edge Function 이 옛 판이면 kind 가 안 오거나 엉뚱한 값이 옵니다.
+  //   그러면 개설자 별칭이나 "(이름 없음)" 이 방 이름 자리에 나옵니다.
+  //   한 번 더 읽는 값이라도, 틀린 이름을 보여주는 것보다 낫습니다.
+  try {
+    const lk = await AL.sb.from('links')
+      .select('kind, room_name').eq('id', linkId).maybeSingle();
+    if (lk.data) {
+      out.link.kind = lk.data.kind;
+      out.link.roomName = lk.data.room_name;
+    }
+  } catch (e) { /* 못 읽으면 서버가 준 값을 씁니다 */ }
 
-  // ⚠ Edge Function 이 옛 판이면 kind·roomName 이 안 옵니다.
-  //   그때는 화면이 직접 읽습니다. 배포를 잊어도 이름이 나오게요.
-  if (!out.link.kind) {
-    try {
-      const lk = await AL.sb.from('links')
-        .select('kind, room_name').eq('id', linkId).maybeSingle();
-      if (lk.data) {
-        isRoom = lk.data.kind === 'group';
-        out.link.kind = lk.data.kind;
-        out.link.roomName = lk.data.room_name;
-        if (isRoom) {
-          const cnt = await AL.sb.rpc('room_members', { p_link_id: linkId });
-          out.link.memberCount = (cnt.data || []).length;
-        }
-      }
-    } catch (e) { /* 못 읽어도 대화는 됩니다 */ }
-  }
+  isRoom = out.link.kind === 'group';
   document.getElementById('body').classList.toggle('group', isRoom);
   if (isRoom) await loadMembers();
+
+  if (isRoom) {
+    try {
+      const cnt = await AL.sb.rpc('room_members', { p_link_id: linkId });
+      out.link.memberCount = (cnt.data || []).length;
+    } catch (e) { out.link.memberCount = out.link.memberCount || 0; }
+  }
 
   e2ee = !!out.link.e2eeOn;
   roomMode = out.link.roomMode || null;
