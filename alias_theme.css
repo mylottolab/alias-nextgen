@@ -149,6 +149,55 @@ html[data-color="sage"][data-mode="dark"]{
   --steel:#8FC79E; --paper:#EAF1E8; --paper-ink:#212A23; --bad:#DE8078;
 }
 
+/* ── 모래 — 온화한 붉은 기가 도는 베이지 ───────────────────────────
+   ⚠ 2026-09-08 신설. '종이'보다 붉은 쪽으로 기울였습니다. */
+html[data-color="sand"][data-mode="light"]{
+  --ink:#EFE1D4; --raise:#FDF7F1; --raise2:#E6D5C5; --line:#C9B29C;
+  --text:#241A13; --dim:#5C4636; --faint:#87705E;
+  --steel:#9C4F32; --paper:#241A13; --paper-ink:#FDF7F1; --bad:#A83A34;
+}
+html[data-color="sand"][data-mode="dark"]{
+  --ink:#1C1613; --raise:#271F1A; --raise2:#332822; --line:#42332B;
+  --text:#F0E4D9; --dim:#B09788; --faint:#846F62;
+  --steel:#D98A62; --paper:#F0E4D9; --paper-ink:#271F1A; --bad:#DE7B72;
+}
+
+/* ── 황토 — 모래보다 진한 흙빛 갈색 ──────────────────────────────── */
+html[data-color="clay"][data-mode="light"]{
+  --ink:#D9BFA8; --raise:#F6EBE0; --raise2:#CBAD93; --line:#A9866A;
+  --text:#1E1409; --dim:#523A26; --faint:#7A5D46;
+  --steel:#8A3A22; --paper:#1E1409; --paper-ink:#F6EBE0; --bad:#932B26;
+}
+html[data-color="clay"][data-mode="dark"]{
+  --ink:#1A120C; --raise:#251A12; --raise2:#31231A; --line:#412E22;
+  --text:#F2E2D2; --dim:#B7957C; --faint:#8A6D58;
+  --steel:#D97F4A; --paper:#F2E2D2; --paper-ink:#251A12; --bad:#DE7060;
+}
+
+/* ── 진한 청회 — 청회를 양쪽 다 한 단계 눌렀습니다 ────────────────── */
+html[data-color="bluegrey2"][data-mode="light"]{
+  --ink:#8CA9C2; --raise:#F0F5F9; --raise2:#7C9BB6; --line:#5E7F9C;
+  --text:#08111A; --dim:#22384C; --faint:#41586E;
+  --steel:#123F68; --paper:#08111A; --paper-ink:#F0F5F9; --bad:#8C232D;
+}
+html[data-color="bluegrey2"][data-mode="dark"]{
+  --ink:#080D13; --raise:#111820; --raise2:#18212B; --line:#22303C;
+  --text:#F0F6FB; --dim:#A6B8C8; --faint:#7C8FA1;
+  --steel:#5C9BD6; --paper:#F0F6FB; --paper-ink:#111820; --bad:#E06868;
+}
+
+/* ── 진한 풀빛 — 풀빛을 양쪽 다 한 단계 눌렀습니다 ────────────────── */
+html[data-color="sage2"][data-mode="light"]{
+  --ink:#A8C4A2; --raise:#F1F7EF; --raise2:#96B690; --line:#739C6D;
+  --text:#0A1610; --dim:#25402F; --faint:#456049;
+  --steel:#15503F; --paper:#0A1610; --paper-ink:#F1F7EF; --bad:#8C2B28;
+}
+html[data-color="sage2"][data-mode="dark"]{
+  --ink:#0C120E; --raise:#151D17; --raise2:#1D281F; --line:#2A382C;
+  --text:#EFF6ED; --dim:#A5BBA4; --faint:#7C9179;
+  --steel:#7ECB93; --paper:#EFF6ED; --paper-ink:#151D17; --bad:#E07A70;
+}
+
 /* 밝은 테마에서는 파란 단추 위 글자가 어두워야 합니다 */
 html[data-mode="light"] .btn,
 html[data-mode="light"] .plusbtn,
@@ -314,3 +363,9 @@ body > .sheet, body > .sheet-bg{ position:relative; z-index:1; }
 /* 2026-09-08 신설 — 이 둘은 주간이 본체라 밝은 쪽 색을 점으로 씁니다 */
 .sw-bluegrey .dot{ background:#B2C7D9; }
 .sw-sage     .dot{ background:#CBDDC7; }
+
+/* 2026-09-08 2차 — 붉은·갈색 계열 둘, 진하게 한 것 둘 */
+.sw-sand      .dot{ background:#EFE1D4; }
+.sw-clay      .dot{ background:#D9BFA8; }
+.sw-bluegrey2 .dot{ background:#8CA9C2; }
+.sw-sage2     .dot{ background:#A8C4A2; }
