@@ -303,6 +303,25 @@ AL.STR = {
   mdVideo:     { kr:'영상', en:'Video' },
   mdGone:      { kr:'파일을 찾을 수 없습니다', en:'File not found' },
 
+  /* 여럿이 하는 통화 */
+  gcTitle:    { kr:'함께 통화', en:'Group call' },
+  gcJoin:     { kr:'통화에 들어가기', en:'Join the call' },
+  gcStart:    { kr:'함께 통화 걸기', en:'Start a group call' },
+  gcLive:     { kr:'지금 {n}명이 통화 중', en:'{n} on a call now' },
+  gcConnecting:{ kr:'잇는 중…', en:'Connecting…' },
+  gcAlone:    { kr:'아직 혼자입니다. 기다리는 중…', en:'Just you so far. Waiting…' },
+  gcInCall:   { kr:'통화 중 · {n}명', en:'On a call · {n}' },
+  gcLeave:    { kr:'나가기', en:'Leave' },
+  gcNoMedia:  { kr:'마이크를 쓸 수 없습니다. 브라우저 설정을 확인해주세요.',
+                en:'Microphone unavailable. Check your browser settings.' },
+  gcMeshNote: { kr:'서로 직접 이어집니다. 서버를 거치지 않습니다.\n네 명까지 함께할 수 있습니다.',
+                en:'You connect directly to each other, never through our server.\nUp to four people.' },
+  gcDataNote: { kr:'사람이 늘수록 데이터를 더 씁니다.\n네 명이면 음성 기준 1분에 약 1.5MB 입니다.',
+                en:'More people means more data.\nWith four, voice uses about 1.5MB a minute.' },
+  gcWaiting:  { kr:'잇는 중', en:'Connecting' },
+  gcOn:       { kr:'이어짐', en:'Connected' },
+  gcLeft:     { kr:'나감', en:'Left' },
+
   /* 통화 */
   clVoice:    { kr:'음성통화', en:'Voice call' },
   clVideo:    { kr:'영상통화', en:'Video call' },

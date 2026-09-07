@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Alias</title>
+<link rel="stylesheet" href="alias_common.css?v=20260907f">
+<link rel="stylesheet" href="alias_theme.css?v=20260907f">
+<script src="alias_config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="alias_common.js?v=20260907f"></script>
+<script src="alias_media.js?v=20260907f"></script>
+<script src="alias_call.js?v=20260907f"></script>
+<script src="alias_gcall.js?v=20260907f"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function(){
+  if (typeof AL === "undefined" || typeof AL.t !== "function") {
+    document.body.innerHTML =
+      '<div style="padding:26px;font-family:system-ui,sans-serif;line-height:1.8;' +
+      'color:#DDE5F0;background:#0E1621;min-height:100vh">' +
+      '<b style="font-size:17px">alias_common.js 를 못 읽었습니다.</b><br><br>' +
+      'alias_config.js 를 확인하세요.</div>';
+    return;
+  }
+  AL.bootTheme();
+});
+</script>
+</head>
+<body class="callscreen" data-t-title="gcTitle">
+
+<div class="callbox">
+  <div class="who">
+    <div class="nm" id="roomName"></div>
+    <div class="al" id="myFace"></div>
+    <div class="st" id="st"></div>
+    <div class="tm" id="tm"></div>
+    <div class="bytes" id="bytes"></div>
+
+    <div class="gcpeople" id="people"></div>
+  </div>
+
+  <p class="qr-note" data-t="gcMeshNote" style="margin-bottom:14px"></p>
+
+  <div class="callacts" id="acts"></div>
+</div>
+
+<div id="audios"></div>
+
+<script>
+/* =====================================================================
+   여럿이 하는 통화
+   2026-09-07
+
+     alias_gcall.html?link=...&type=voice
+
+   🔴 1:1 과 다릅니다
+     1:1 은 "건다 → 받는다" 입니다.
+     여럿은 "방에 들어간다 → 이미 있는 사람들과 각각 잇는다" 입니다.
+     그래서 벨도 없고 거절도 없습니다. 들어오면 바로 이어집니다.
+
+   ⚠ 서로 직접 이어집니다. 서버를 안 거치니 회사 비용이 0 이고,
+     WebRTC 가 원래 암호화되어 있어 서버도 못 듣습니다.
+   ===================================================================== */
+
+const P = new URLSearchParams(location.search);
+const linkId   = P.get('link');
+const callType = P.get('type') || 'voice';
+
+let view = null, muted = false, tick = null, t0 = null;
+
+function el(id){ return document.getElementById(id); }
+
+function leaveTo(url){ location.replace(url); }
+
+function startTimer(){
+  if (tick) return;
+  t0 = Date.now();
+  tick = setInterval(function(){
+    const s = Math.round((Date.now() - t0) / 1000);
+    el('tm').textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  }, 500);
+}
+
+/* 통화 중인 사람들을 그립니다. */
+function paintPeople(){
+  const g = AL.gcall;
+  const box = el('people');
+  box.innerHTML = '';
+
+  // 나부터
+  box.appendChild(person(AL.t('rmMe'), true, 'me', AL.t('gcOn')));
+
+  const ids = Object.keys(g.peers);
+  ids.forEach(function(sid){
+    const slot = g.peers[sid];
+    const on = !!(slot.stream);
+    box.appendChild(person(g.names[sid] || '', false, on ? 'on' : '',
+                           AL.t(on ? 'gcOn' : 'gcWaiting')));
+    // 소리를 들려줍니다. 사람마다 audio 하나씩입니다.
+    if (on) attachAudio(sid, slot.stream);
+  });
+
+  const n = ids.filter(function(s){ return g.peers[s].stream; }).length + 1;
+  el('st').textContent = (ids.length === 0)
+    ? AL.t('gcAlone')
+    : AL.t('gcInCall', { n: n });
+  if (n >= 2) startTimer();
+  if (g.bytes) el('bytes').textContent = AL.t('dtThisCall', { size: AL.fmtBytes(g.bytes) });
+}
+
+function person(name, isMe, cls, state){
+  const d = document.createElement('div');
+  d.className = 'gcperson ' + cls;
+  const av = document.createElement('div');
+  av.className = 'gcav';
+  av.textContent = AL.initial(isMe ? (view && view.my_face) : name);
+  d.appendChild(av);
+  const nm = document.createElement('div');
+  nm.className = 'gcnm';
+  nm.textContent = isMe ? AL.t('rmMe') : name;
+  d.appendChild(nm);
+  const st = document.createElement('div');
+  st.className = 'gcst';
+  st.textContent = state;
+  d.appendChild(st);
+  return d;
+}
+
+/* ⚠ 사람마다 audio 요소를 따로 둡니다. 하나에 여럿을 못 담습니다. */
+function attachAudio(sid, stream){
+  let a = document.getElementById('a-' + sid);
+  if (!a) {
+    a = document.createElement('audio');
+    a.id = 'a-' + sid;
+    a.autoplay = true;
+    a.playsInline = true;
+    el('audios').appendChild(a);
+  }
+  if (a.srcObject !== stream) {
+    a.srcObject = stream;
+    const p = a.play();
+    if (p && p.catch) p.catch(function(){ /* 자동재생이 막히면 조용히 넘어갑니다 */ });
+  }
+}
+
+function paintActs(){
+  const box = el('acts');
+  box.innerHTML = '';
+
+  const m = document.createElement('button');
+  m.className = 'rbtn plain' + (muted ? ' on' : '');
+  m.textContent = muted ? '🔇' : '🎙';
+  m.setAttribute('aria-label', AL.t(muted ? 'clUnmute' : 'clMute'));
+  m.addEventListener('click', function(){ muted = AL.gcallMute(); paintActs(); });
+  box.appendChild(m);
+
+  const x = document.createElement('button');
+  x.className = 'rbtn hang';
+  x.textContent = '✕';
+  x.setAttribute('aria-label', AL.t('gcLeave'));
+  x.addEventListener('click', leave);
+  box.appendChild(x);
+}
+
+async function leave(){
+  if (tick) { clearInterval(tick); tick = null; }
+  await AL.leaveGroupCall();
+  leaveTo('alias_chat.html?link=' + encodeURIComponent(linkId));
+}
+
+(async function(){
+  AL.paintText();
+  if (!await AL.requireLogin()) return;
+  if (!linkId) { el('st').textContent = AL.t('dtlNotFound'); return; }
+
+  await AL.loadDataPrefs();
+
+  const res = await AL.sb.rpc('link_view', { p_link_id: linkId });
+  view = (res.data || [])[0];
+  if (!view) { el('st').textContent = AL.t('dtlNotFound'); return; }
+
+  el('roomName').textContent = view.room_name || AL.t('grNoName');
+  el('myFace').textContent = AL.t('chatMyFace', { face: view.my_face || '' });
+  el('st').textContent = AL.t('gcConnecting');
+  paintActs();
+
+  try {
+    await AL.joinGroupCall({
+      linkId: linkId,
+      sideId: view.my_side_id,
+      type: callType,
+      onChange: paintPeople,
+    });
+    paintPeople();
+  } catch (e) {
+    console.error('[gcall]', e);
+    el('st').textContent = (e.message === 'no_media')
+      ? AL.t('gcNoMedia') : AL.t('clFailed');
+  }
+})();
+
+window.addEventListener('beforeunload', function(){
+  AL.gcallCleanup();
+});
+</script>
+</body>
+</html>

@@ -1144,3 +1144,35 @@ body.callscreen{
   font-size:10.5px; font-weight:600;
 }
 .chat-body.group .msg.in{ padding-left:34px; position:relative; }
+
+/* ── 여럿이 하는 통화 (2026-09-07) ───────────────────────────────── */
+.gcbar{
+  flex-shrink:0; display:none; align-items:center; gap:10px;
+  padding:10px 15px;
+  background:rgba(76,175,125,.16); border-bottom:1px solid rgba(76,175,125,.35);
+  font-size:12.5px; color:#4CAF7D;
+}
+.gcbar.on{ display:flex; }
+.gcbar .gcx{ flex:1; }
+.gcbar button{
+  flex-shrink:0; padding:6px 13px; font-size:12px; font-family:inherit;
+  background:#4CAF7D; color:#08130D;
+  border:none; border-radius:15px; cursor:pointer;
+}
+
+/* 통화 중인 사람들 */
+.gcpeople{ display:flex; flex-wrap:wrap; gap:14px; justify-content:center; margin:22px 0; }
+.gcperson{ text-align:center; width:88px; }
+.gcperson .gcav{
+  width:62px; height:62px; margin:0 auto 7px; border-radius:50%;
+  background:var(--raise2); border:2px solid var(--line);
+  display:flex; align-items:center; justify-content:center;
+  font-size:21px; font-weight:600; color:var(--steel);
+}
+.gcperson.on .gcav{ border-color:#4CAF7D; }
+.gcperson.me .gcav{ border-color:var(--steel); }
+.gcperson .gcnm{
+  font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.gcperson .gcst{ font-size:10.5px; color:var(--faint); }
+.gcperson.on .gcst{ color:#4CAF7D; }
