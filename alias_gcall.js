@@ -236,9 +236,14 @@ AL.joinGroupCall = async function(opts){
   var res = await AL.sb.rpc('join_call', {
     p_link_id: opts.linkId, p_type: AL.gcall.type,
   });
-  if (res.error) throw res.error;
+  // ⚠ 오류를 그대로 올려보냅니다. 뭉뚱그리면 원인을 못 찾습니다.
+  if (res.error) {
+    console.error('[gcall] join_call 실패', res.error);
+    throw new Error(res.error.message || res.error.code || 'join_call');
+  }
   var row = (res.data || [])[0];
-  if (!row) throw new Error('join_failed');
+  if (!row) throw new Error('join_call 이 빈 결과를 줬습니다');
+  console.log('[gcall] 통화 자리', row.call_id, row.is_new ? '(새로 시작)' : '(들어감)');
 
   AL.gcall.callId = row.call_id;
   AL.gcall.token = row.session_token;

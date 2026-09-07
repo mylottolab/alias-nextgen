@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260907g">
-<link rel="stylesheet" href="alias_theme.css?v=20260907g">
+<link rel="stylesheet" href="alias_common.css?v=20260907h">
+<link rel="stylesheet" href="alias_theme.css?v=20260907h">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260907g"></script>
-<script src="alias_media.js?v=20260907g"></script>
-<script src="alias_call.js?v=20260907g"></script>
-<script src="alias_gcall.js?v=20260907g"></script>
+<script src="alias_common.js?v=20260907h"></script>
+<script src="alias_media.js?v=20260907h"></script>
+<script src="alias_call.js?v=20260907h"></script>
+<script src="alias_gcall.js?v=20260907h"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function(){
   if (typeof AL === "undefined" || typeof AL.t !== "function") {
@@ -193,9 +193,11 @@ async function leave(){
     });
     paintPeople();
   } catch (e) {
-    console.error('[gcall]', e);
+    // ⚠ 오류를 뭉뚱그리면 원인을 못 찾습니다. 그대로 보여줍니다.
+    console.error('[gcall] 실패', e);
     el('st').textContent = (e.message === 'no_media')
-      ? AL.t('gcNoMedia') : AL.t('clFailed');
+      ? AL.t('gcNoMedia')
+      : AL.t('clFailed') + ' — ' + (e.message || e.code || String(e));
   }
 })();
 
