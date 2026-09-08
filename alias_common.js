@@ -1989,6 +1989,15 @@ AL.startAlerts = function(opts){
 
   AL.checkDataWarn();
 
+  /* ⚠ 2026-09-08: 앱에서 열렸으면 기기 번호를 등록합니다.
+     startAlerts 는 거의 모든 화면이 부르므로 여기 붙이면 빠짐이 없습니다.
+     브라우저에서는 registerPush 가 스스로 아무 일도 안 하고 돌아옵니다.
+     한 번만 하면 되므로 자물쇠를 하나 둡니다. */
+  if (!AL._pushTried) {
+    AL._pushTried = true;
+    AL.registerPush().catch(function(){});
+  }
+
   // 내 side id 를 알아둬야 "내가 보낸 것"을 걸러낼 수 있습니다.
   AL.sb.rpc('my_contacts').then(function(res){
     var rows = (res && res.data) || [];
@@ -2079,4 +2088,154 @@ AL.callFn = async function(name, body){
 AL.inviteUrl = function(code){
   var base = location.href.replace(/[^/]*$/, '');
   return base + 'alias_join.html?c=' + encodeURIComponent(code);
+};
+
+
+/* =====================================================================
+   기기 등록 (FCM) — 2026-09-08 신설
+   3단계: 안드로이드 잠금화면에서 전화를 받기 위한 준비입니다.
+
+   하는 일은 하나입니다.
+     앱에서 열렸으면 → Firebase 에 기기 번호를 달라고 해서 devices 표에 담습니다.
+     브라우저에서 열렸으면 → 아무것도 안 하고 조용히 넘어갑니다.
+
+   ⚠ 브라우저에서도 절대 오류가 나면 안 됩니다. PC 로 쓰는 분이 있습니다.
+     그래서 모든 단계를 try 로 감싸고, 실패해도 화면은 그대로 돕니다.
+
+   ⚠ 안드로이드 13부터는 알림도 마이크처럼 허락을 받아야 합니다.
+     안 받으면 아무 소리 없이 푸시가 안 옵니다. 그래서 먼저 물어봅니다.
+------------------------------------------------------------------ */
+
+/* 지금 앱 안인가, 브라우저인가 */
+AL.isNativeApp = function(){
+  try {
+    return !!(window.Capacitor &&
+              typeof window.Capacitor.isNativePlatform === 'function' &&
+              window.Capacitor.isNativePlatform());
+  } catch (e) { return false; }
+};
+
+AL.pushPlatform = function(){
+  try {
+    var p = window.Capacitor && window.Capacitor.getPlatform && window.Capacitor.getPlatform();
+    return p || 'web';
+  } catch (e) { return 'web'; }
+};
+
+/* 같은 기기를 두 번 담지 않게, 이 기기가 쓰는 devices 줄의 id 를 적어둡니다. */
+AL.DEVICE_ID_KEY = 'alias_device_row_id';
+
+/* Firebase 가 준 기기 번호를 devices 표에 담습니다.
+   ⚠ 기기 번호는 앱을 지웠다 깔거나 한참 안 쓰면 바뀝니다.
+     그래서 켤 때마다 저장합니다. 같은 줄을 고쳐 쓰므로 쌓이지 않습니다. */
+AL.savePushToken = async function(token, platform){
+  if (!token) return false;
+  try {
+    var sess = await AL.sb.auth.getSession();
+    if (!sess.data.session) return false;
+    var uid = sess.data.session.user.id;
+    var now = new Date().toISOString();
+
+    /* 이 계정에 이미 같은 번호가 있으면 그 줄을 씁니다. */
+    var found = await AL.sb.from('devices')
+      .select('id').eq('account_id', uid).eq('push_token', token).maybeSingle();
+
+    if (found.data && found.data.id) {
+      await AL.sb.from('devices')
+        .update({ last_seen_at: now, platform: platform })
+        .eq('id', found.data.id);
+      try { localStorage.setItem(AL.DEVICE_ID_KEY, found.data.id); } catch (e) {}
+      return true;
+    }
+
+    /* 이 기기가 전에 쓰던 줄이 있으면 번호만 갈아끼웁니다.
+       ⚠ 이게 없으면 번호가 바뀔 때마다 줄이 하나씩 늘어나
+         죽은 번호로 푸시를 쏘게 됩니다. */
+    var oldId = null;
+    try { oldId = localStorage.getItem(AL.DEVICE_ID_KEY); } catch (e) {}
+    if (oldId) {
+      var upd = await AL.sb.from('devices')
+        .update({ push_token: token, platform: platform, last_seen_at: now })
+        .eq('id', oldId).eq('account_id', uid).select('id');
+      if (upd.data && upd.data.length) return true;
+    }
+
+    var ins = await AL.sb.from('devices').insert({
+      account_id: uid, platform: platform, push_token: token,
+      last_seen_at: now,
+    }).select('id').single();
+    if (ins.error) throw ins.error;
+    try { localStorage.setItem(AL.DEVICE_ID_KEY, ins.data.id); } catch (e) {}
+    return true;
+
+  } catch (e) {
+    console.warn('[push] 기기 등록 실패 — 앱은 그대로 씁니다', e);
+    return false;
+  }
+};
+
+/* 앱이 켜질 때 한 번 부릅니다. 브라우저면 아무 일도 안 합니다. */
+AL.registerPush = async function(){
+  if (!AL.isNativeApp()) return false;
+
+  var PN = null;
+  try {
+    PN = window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications;
+  } catch (e) {}
+  if (!PN) { console.warn('[push] 푸시 플러그인이 없습니다'); return false; }
+
+  try {
+    /* 알림을 받아도 되는지 먼저 묻습니다. */
+    var perm = await PN.checkPermissions();
+    if (perm.receive !== 'granted') {
+      perm = await PN.requestPermissions();
+    }
+    if (perm.receive !== 'granted') {
+      console.warn('[push] 알림이 거부되었습니다');
+      return false;
+    }
+
+    /* 번호를 받으면 registration 이 불립니다. 실패하면 registrationError 입니다.
+       ⚠ 듣는 귀를 먼저 달고 register() 를 불러야 합니다.
+         순서가 바뀌면 번호가 와도 못 받습니다. */
+    PN.addListener('registration', function(t){
+      var tok = t && (t.value || t.token);
+      console.log('[push] 기기 번호를 받았습니다');
+      AL.savePushToken(tok, AL.pushPlatform());
+    });
+
+    PN.addListener('registrationError', function(err){
+      console.error('[push] 기기 번호를 못 받았습니다', err);
+    });
+
+    /* 앱이 켜져 있을 때 알림이 오면 여기로 옵니다. */
+    PN.addListener('pushNotificationReceived', function(n){
+      console.log('[push] 알림이 왔습니다', n);
+      try { AL.alertNew && AL.alertNew(); } catch (e) {}
+    });
+
+    /* 잠금화면의 알림을 눌러서 들어온 경우입니다.
+       ⚠ 여기가 3단계의 핵심입니다. 알림을 누르면 통화 화면으로 갑니다. */
+    PN.addListener('pushNotificationActionPerformed', function(a){
+      try {
+        var d = (a && a.notification && a.notification.data) || {};
+        if (d.call_id && d.link_id) {
+          location.href = 'alias_call.html?call=' + encodeURIComponent(d.call_id) +
+            '&token=' + encodeURIComponent(d.session_token || '') +
+            '&link=' + encodeURIComponent(d.link_id) +
+            '&type=' + encodeURIComponent(d.call_type || 'voice') +
+            '&once=' + encodeURIComponent(d.call_id);
+        } else if (d.link_id) {
+          location.href = 'alias_chat.html?link=' + encodeURIComponent(d.link_id);
+        }
+      } catch (e) { console.error('[push] 알림 누름 처리 실패', e); }
+    });
+
+    await PN.register();
+    return true;
+
+  } catch (e) {
+    console.warn('[push] 준비 실패 — 앱은 그대로 씁니다', e);
+    return false;
+  }
 };
