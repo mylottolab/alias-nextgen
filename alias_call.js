@@ -187,6 +187,30 @@ AL.startCall = async function(opts){
   if (ins.error) { say('failed', { error: ins.error }); throw ins.error; }
   AL.call.callId = ins.data.id;
 
+  /* 🔴 2026-09-08 신설 (FCM 3단계) — 상대 폰을 깨웁니다.
+     여기까지 오면 통화 줄이 만들어졌습니다. 상대가 앱을 보고 있으면
+     watchIncoming 이 알아서 벨을 울리지만, 앱을 껐거나 폰이 잠겨 있으면
+     아무 일도 안 일어납니다. 그래서 알림을 한 번 쏩니다.
+
+     ⚠ 기다리지 않습니다. 알림이 늦거나 실패해도 통화는 그대로 진행돼야
+       합니다. 상대가 앱을 보고 있으면 알림 없이도 벨이 울립니다.
+     ⚠ 실패해도 조용히 넘어갑니다. 상대가 앱을 안 깔았거나 알림을 껐을
+       수 있는데, 그건 잘못이 아닙니다. */
+  try {
+    AL.callFn('alias-push-call', {
+      linkId: linkId,
+      callId: AL.call.callId,
+      sessionToken: token,
+      callType: type,
+    }).then(function(r){
+      console.log('[push] 알림 ' + (r && r.sent) + '대에 보냈습니다');
+    }).catch(function(e){
+      console.warn('[push] 알림을 못 보냈습니다 — 통화는 그대로 진행합니다', e);
+    });
+  } catch (e) {
+    console.warn('[push] 알림 보내기 실패', e);
+  }
+
   // 3) 신호 채널
   var ice = await AL.getIceServers();
   AL.call.channel = await openSignal(token, handleSignal);
