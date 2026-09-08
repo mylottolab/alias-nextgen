@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260908c">
-<link rel="stylesheet" href="alias_theme.css?v=20260908c">
+<link rel="stylesheet" href="alias_common.css?v=20260909a">
+<link rel="stylesheet" href="alias_theme.css?v=20260909a">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260908c"></script>
-<script src="alias_media.js?v=20260908c"></script>
-<script src="alias_call.js?v=20260908c"></script>
+<script src="alias_common.js?v=20260909a"></script>
+<script src="alias_media.js?v=20260909a"></script>
+<script src="alias_call.js?v=20260909a"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -211,6 +211,7 @@ function onState(state, extra){
 function bye(){
   AL.stopRinging();
   AL.stopDialTone();
+  stopAliveWatch();
   if (tick) { clearInterval(tick); tick = null; }
   el('acts').innerHTML = '';
   // 잠깐 보여준 뒤 대화로 돌아갑니다.
@@ -219,8 +220,77 @@ function bye(){
   }, 1600);
 }
 
+/* =====================================================================
+   🔴 2026-09-09 신설 — 벨이 영영 울리던 문제
+   받는 쪽은 "받기 전에는" 신호 채널에 들어가지 않습니다. 그래서 A 가
+   끊어도 그 신호가 B 에게 닿을 길이 없어, B 혼자 계속 울렸습니다.
+   실제로 6분·11분씩 울린 기록이 남아 있었습니다.
+
+   그래서 두 가지를 둡니다.
+     ① 3초마다 calls 표를 보고 ended_at 이 채워졌으면 멈춥니다
+     ② 그와 별개로 45초가 지나면 무조건 멈춥니다
+        (표를 못 읽는 경우를 위한 안전장치 — 함정 ⑦)
+   ===================================================================== */
+var aliveTimer = null, ringLimit = null;
+var RING_MAX_MS = 45000;
+
+function stopAliveWatch(){
+  if (aliveTimer) { clearInterval(aliveTimer); aliveTimer = null; }
+  if (ringLimit) { clearTimeout(ringLimit); ringLimit = null; }
+}
+
+function watchCallAlive(){
+  stopAliveWatch();
+
+  aliveTimer = setInterval(async function(){
+    if (AL.call.pc) { stopAliveWatch(); return; }   // 받았으면 그만 봅니다
+    try {
+      var r = await AL.sb.from('calls')
+        .select('ended_at').eq('id', callId).maybeSingle();
+      if (r.data && r.data.ended_at) {
+        stopAliveWatch();
+        AL.stopRinging();
+        setStatus(AL.t('clEnded'));
+        el('acts').innerHTML = '';
+        setTimeout(function(){
+          leaveTo('alias_chat.html?link=' + encodeURIComponent(linkId));
+        }, 1400);
+      }
+    } catch (e) { /* 못 읽어도 ② 가 있으니 괜찮습니다 */ }
+  }, 3000);
+
+  ringLimit = setTimeout(function(){
+    if (AL.call.pc) return;
+    stopAliveWatch();
+    AL.stopRinging();
+    setStatus(AL.t('clEnded'));
+    el('acts').innerHTML = '';
+    setTimeout(function(){
+      leaveTo('alias_chat.html?link=' + encodeURIComponent(linkId));
+    }, 1400);
+  }, RING_MAX_MS);
+}
+
 async function answer(){
   AL.stopRinging();
+  stopAliveWatch();
+
+  /* 🔴 2026-09-09: 받기 직전에 한 번 더 봅니다.
+     알림을 늦게 누르면 그 사이 A 가 끊었을 수 있습니다. 그대로 받으면
+     아무도 없는 채널에 들어가서 "전화 거는 중" 에 영영 멈춥니다. */
+  try {
+    var chk = await AL.sb.from('calls')
+      .select('ended_at, answered_at').eq('id', callId).maybeSingle();
+    if (chk.data && chk.data.ended_at) {
+      setStatus(AL.t('clEnded'));
+      el('acts').innerHTML = '';
+      setTimeout(function(){
+        leaveTo('alias_chat.html?link=' + encodeURIComponent(linkId));
+      }, 1400);
+      return;
+    }
+  } catch (e) { /* 못 읽으면 그냥 받아봅니다 */ }
+
   try {
     await AL.answerCall({
       linkId: linkId, sideId: view.my_side_id,
@@ -236,6 +306,7 @@ async function answer(){
 
 async function decline(){
   AL.stopRinging();
+  stopAliveWatch();
   await AL.declineCall(callId);
   leaveTo('alias_chat.html?link=' + encodeURIComponent(linkId));
 }
@@ -262,7 +333,8 @@ async function decline(){
     }
     if (once) burnTicket(once);
     setStatus(AL.t('clRinging'));
-    AL.startRinging();                 // 받을 때까지 울립니다
+    AL.startRinging();
+    watchCallAlive();      // 🔴 A 가 끊었는지 지켜봅니다 (아래 설명)
 
   } else {
     // 거는 쪽 — 표가 없거나 이미 쓴 표면 걸지 않습니다.
