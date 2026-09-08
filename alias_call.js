@@ -377,6 +377,24 @@ AL.endCall = async function(reason){
     } catch (e) { console.warn('[call] 기록 저장 실패', e); }
   }
 
+  /* 🔴 2026-09-09 신설 — 잠금화면에 떠 있는 알림을 거둡니다.
+     알림은 한 번 보내면 스스로 사라지지 않습니다. 지우라고 따로
+     말해줘야 합니다. 이게 없어서, 끊은 전화의 알림이 B 폰에
+     그대로 남아 계속 울렸습니다.
+     같은 표(tag) 로 조용한 알림을 덮어씌우면 앞의 것이 바뀝니다.
+
+     ⚠ 기다리지 않습니다. 끊는 일이 늦어지면 안 됩니다. */
+  if (AL.call.callId && AL.call.linkId && AL.call.outgoing) {
+    try {
+      AL.callFn('alias-push-call', {
+        linkId: AL.call.linkId,
+        callId: AL.call.callId,
+        cancel: true,
+        reason: reason,
+      }).catch(function(){ /* 못 거둬도 통화 종료는 됩니다 */ });
+    } catch (e) {}
+  }
+
   say('ended', { reason: reason });
   cleanup();
 };
