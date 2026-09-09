@@ -372,6 +372,15 @@ AL.endCall = async function(reason){
         patch.duration_seconds =
           Math.max(0, Math.round((Date.now() - Date.parse(got.data.answered_at)) / 1000));
         patch.ended_reason = (reason === 'no_answer') ? 'completed' : reason;
+      } else {
+        /* 🔴 2026-09-09 신설 — 안 받은 전화가 "통화 0:00" 으로 남던 문제
+           A 가 끊으면 받았는지 안 받았는지 상관없이 'completed' 로 적혔습니다.
+           그래서 통화기록에 "통화 0:00" 이 남았습니다.
+           answered_at 이 비어 있으면 아무도 안 받은 것이니 부재중입니다. */
+        if (reason === 'completed' || reason === 'canceled') {
+          patch.ended_reason = 'no_answer';
+        }
+        patch.duration_seconds = 0;
       }
       await AL.sb.from('calls').update(patch).eq('id', AL.call.callId);
     } catch (e) { console.warn('[call] 기록 저장 실패', e); }
