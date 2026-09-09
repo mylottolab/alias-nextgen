@@ -357,10 +357,42 @@ async function handleSignal(m){
   }
 }
 
+/* 🔴 2026-09-10 신설 — 상대 폰의 벨을 끄는 알림
+   화면을 떠나도 끝까지 가야 하므로 keepalive 로 던집니다.
+   AL.callFn 은 보통 fetch 라 화면이 바뀌면 취소됩니다. */
+function cancelPush(callId, linkId, outgoing, reason){
+  if (!callId || !linkId || !outgoing) return;
+  try {
+    fetch(AL.SUPABASE_URL + '/functions/v1/alias-push-call', {
+      method: 'POST',
+      keepalive: true,
+      headers: {
+        'apikey': AL.SUPABASE_ANON,
+        'Authorization': 'Bearer ' + (AL._lastToken || AL.SUPABASE_ANON),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        linkId: linkId, callId: callId, cancel: true, reason: reason,
+      }),
+    }).catch(function(){ /* 못 거둬도 통화 종료는 됩니다 */ });
+  } catch (e) {}
+}
+
 /* ── 끊기 ────────────────────────────────────────────────────────── */
 AL.endCall = async function(reason){
   reason = reason || 'completed';
   if (AL.call.channel) send(reason === 'declined' ? 'decline' : 'bye', { reason: reason });
+
+  /* 🔴 2026-09-10 고침 — 상대 폰의 벨을 끄는 알림을 "맨 먼저" 보냅니다.
+     전에는 기록을 저장한 뒤에 보냈는데, 그 사이 화면이 바뀌면서
+     브라우저가 요청을 취소해 버렸습니다. 그래서 상대 벨이 40초를
+     채우는 일이 생겼습니다. 통신이 빠르면 통과하고 느리면 잘려서
+     될 때도 있고 안 될 때도 있었습니다.
+
+     ⚠ keepalive 를 씁니다. 화면을 떠나도 요청이 끝까지 갑니다.
+       alias_gcall.js 의 leaveQuietly 와 같은 방식입니다.
+     ⚠ 값을 먼저 붙들어 둡니다. cleanup 이 돌면 callId 가 비워집니다. */
+  cancelPush(AL.call.callId, AL.call.linkId, AL.call.outgoing, reason);
 
   if (AL.call.callId) {
     try {
@@ -388,24 +420,6 @@ AL.endCall = async function(reason){
       }
       await AL.sb.from('calls').update(patch).eq('id', AL.call.callId);
     } catch (e) { console.warn('[call] 기록 저장 실패', e); }
-  }
-
-  /* 🔴 2026-09-09 신설 — 잠금화면에 떠 있는 알림을 거둡니다.
-     알림은 한 번 보내면 스스로 사라지지 않습니다. 지우라고 따로
-     말해줘야 합니다. 이게 없어서, 끊은 전화의 알림이 B 폰에
-     그대로 남아 계속 울렸습니다.
-     같은 표(tag) 로 조용한 알림을 덮어씌우면 앞의 것이 바뀝니다.
-
-     ⚠ 기다리지 않습니다. 끊는 일이 늦어지면 안 됩니다. */
-  if (AL.call.callId && AL.call.linkId && AL.call.outgoing) {
-    try {
-      AL.callFn('alias-push-call', {
-        linkId: AL.call.linkId,
-        callId: AL.call.callId,
-        cancel: true,
-        reason: reason,
-      }).catch(function(){ /* 못 거둬도 통화 종료는 됩니다 */ });
-    } catch (e) {}
   }
 
   say('ended', { reason: reason });
