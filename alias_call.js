@@ -202,6 +202,10 @@ AL.startCall = async function(opts){
       callId: AL.call.callId,
       sessionToken: token,
       callType: type,
+      /* 🔴 2026-09-10: 잠금화면에 "누가 거는지" 를 띄우려면 이름이 필요합니다.
+         ⚠ 상대가 나를 부르는 이름이 아니라, 내가 이 관계에서 쓰는 별칭입니다.
+           상대 화면에는 그 별칭이 보여야 맞습니다. */
+      who: (opts.myFace || ''),
     }).then(function(r){
       console.log('[push] 알림 ' + (r && r.sent) + '대에 보냈습니다');
     }).catch(function(e){
