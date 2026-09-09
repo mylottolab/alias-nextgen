@@ -249,6 +249,23 @@ AL.joinGroupCall = async function(opts){
   AL.gcall.callId = row.call_id;
   AL.gcall.token = row.session_token;
 
+  /* 🔴 2026-09-09 신설 — 방 사람들에게 알립니다.
+     ⚠ 내가 통화를 새로 시작했을 때만 보냅니다(row.is_new).
+       나중에 들어오는 사람마다 보내면 알림이 쏟아집니다.
+     ⚠ 1:1 처럼 전화벨을 울리지 않습니다. 여럿이 하는 통화는
+       "받는 사람" 이 정해져 있지 않아, 아무도 안 끊으면 벨이
+       영영 울립니다. 그래서 조용한 알림 한 번으로 알리고 맙니다.
+     ⚠ 기다리지 않습니다. 알림이 실패해도 통화는 그대로 시작됩니다. */
+  if (row.is_new) {
+    try {
+      AL.callFn('alias-push-call', {
+        linkId: opts.linkId,
+        group: true,
+        callType: AL.gcall.type,
+      }).catch(function(){ /* 못 보내도 통화는 됩니다 */ });
+    } catch (e) {}
+  }
+
   console.log('[gcall] 3. ICE 받는 중');
   var ice = await AL.getIceServers();
   console.log('[gcall] 4. ICE 받음', (ice || []).length + '개');

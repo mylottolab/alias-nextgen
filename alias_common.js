@@ -2219,13 +2219,27 @@ AL.registerPush = async function(){
     PN.addListener('pushNotificationActionPerformed', function(a){
       try {
         var d = (a && a.notification && a.notification.data) || {};
-        if (d.call_id && d.link_id) {
+        if (!d.link_id) return;
+
+        /* 🔴 2026-09-09: 알림 종류에 따라 갈 곳이 다릅니다.
+             gcall    여럿이 하는 통화 → 방으로 들어갑니다
+             call     1:1 전화        → 받는 화면으로 갑니다
+             missed   부재중          → 통화 화면으로 가면 안 됩니다.
+                                        이미 끝난 전화라 대화로 보냅니다.
+           ⚠ kind 를 먼저 봐야 합니다. call_id 만 보고 갈라면
+             부재중 알림을 눌렀을 때도 통화 화면으로 갑니다. */
+        if (d.kind === 'gcall') {
+          location.href = 'alias_gcall.html?link=' + encodeURIComponent(d.link_id) +
+            '&type=' + encodeURIComponent(d.call_type || 'voice');
+
+        } else if (d.kind === 'call' && d.call_id) {
           location.href = 'alias_call.html?call=' + encodeURIComponent(d.call_id) +
             '&token=' + encodeURIComponent(d.session_token || '') +
             '&link=' + encodeURIComponent(d.link_id) +
             '&type=' + encodeURIComponent(d.call_type || 'voice') +
             '&once=' + encodeURIComponent(d.call_id);
-        } else if (d.link_id) {
+
+        } else {
           location.href = 'alias_chat.html?link=' + encodeURIComponent(d.link_id);
         }
       } catch (e) { console.error('[push] 알림 누름 처리 실패', e); }
