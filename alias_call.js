@@ -39,6 +39,7 @@ AL.call = {
   type: 'voice',
   outgoing: true,
   answered: false,
+  answeredAt: null,
   sdpDone: false,      // offer/answer 교환이 끝났나
   pending: [],        // 아직 못 넣은 ICE 후보
   resendTimer: null,
@@ -151,6 +152,7 @@ AL.startCall = async function(opts){
   AL.call.type = type;
   AL.call.outgoing = true;
   AL.call.answered = false;
+  AL.call.answeredAt = null;
   AL.call.sdpDone = false;
   AL.call.pending = [];
   AL.call.onState = opts.onState || null;
@@ -260,6 +262,7 @@ AL.answerCall = async function(opts){
   AL.call.type = opts.type || 'voice';
   AL.call.outgoing = false;
   AL.call.answered = true;
+  AL.call.answeredAt = Date.now();   // 🔴 2026-09-10: 통화시간을 폰이 직접 셉니다
   AL.call.pending = [];
   AL.call.onState = opts.onState || null;
 
@@ -344,6 +347,7 @@ async function handleSignal(m){
     // 사람이 받았다는 뜻입니다. 부재중 시계만 멈춥니다.
     // ⚠ offer 다시 보내기는 여기서 멈추면 안 됩니다. 위 주석 참고.
     AL.call.answered = true;
+    AL.call.answeredAt = Date.now();   // 🔴 2026-09-10
     if (AL.call.noAnswerTimer) { clearTimeout(AL.call.noAnswerTimer); AL.call.noAnswerTimer = null; }
     say('answering');
 
@@ -394,31 +398,48 @@ AL.endCall = async function(reason){
      ⚠ 값을 먼저 붙들어 둡니다. cleanup 이 돌면 callId 가 비워집니다. */
   cancelPush(AL.call.callId, AL.call.linkId, AL.call.outgoing, reason);
 
+  /* 🔴 2026-09-10 고침 — 받는 쪽이 끊어도 기록이 안 남던 문제
+
+     전에는 서버에 두 번 다녀왔습니다.
+       ① answered_at 을 읽어오고  ② ended_at 을 적는다
+     그런데 끊으면 1.6초 뒤 화면이 바뀝니다. 그 사이에 요청이
+     잘리면 ended_at 이 안 적힙니다. 그러면 그 통화가 서버에
+     계속 살아 있어서, incoming_call() 이 3초마다 다시 집어옵니다.
+     "끊었는데 또 울린다" 가 이것이었습니다.
+
+     이제 한 번만, keepalive 로 보냅니다. 화면을 떠나도 끝까지 갑니다.
+     통화시간은 서버에 묻지 않고 폰이 직접 셉니다(answeredAt).
+     ⚠ alias_gcall.js 의 leaveQuietly 와 같은 방식입니다. */
   if (AL.call.callId) {
+    var doneId = AL.call.callId;
+    var secs = AL.call.answeredAt
+      ? Math.max(0, Math.round((Date.now() - AL.call.answeredAt) / 1000))
+      : 0;
+
+    var why = reason;
+    if (!AL.call.answeredAt && (reason === 'completed' || reason === 'canceled')) {
+      /* 아무도 안 받은 전화는 "통화 0:00" 이 아니라 부재중입니다. */
+      why = 'no_answer';
+    } else if (AL.call.answeredAt && reason === 'no_answer') {
+      why = 'completed';
+    }
+
     try {
-      var start = AL.call.answeredAt || null;
-      var patch = {
-        ended_at: new Date().toISOString(),
-        ended_reason: reason,
-      };
-      // 이어졌던 통화만 시간을 잽니다.
-      var got = await AL.sb.from('calls')
-        .select('answered_at').eq('id', AL.call.callId).maybeSingle();
-      if (got.data && got.data.answered_at) {
-        patch.duration_seconds =
-          Math.max(0, Math.round((Date.now() - Date.parse(got.data.answered_at)) / 1000));
-        patch.ended_reason = (reason === 'no_answer') ? 'completed' : reason;
-      } else {
-        /* 🔴 2026-09-09 신설 — 안 받은 전화가 "통화 0:00" 으로 남던 문제
-           A 가 끊으면 받았는지 안 받았는지 상관없이 'completed' 로 적혔습니다.
-           그래서 통화기록에 "통화 0:00" 이 남았습니다.
-           answered_at 이 비어 있으면 아무도 안 받은 것이니 부재중입니다. */
-        if (reason === 'completed' || reason === 'canceled') {
-          patch.ended_reason = 'no_answer';
-        }
-        patch.duration_seconds = 0;
-      }
-      await AL.sb.from('calls').update(patch).eq('id', AL.call.callId);
+      fetch(AL.SUPABASE_URL + '/rest/v1/calls?id=eq.' + encodeURIComponent(doneId), {
+        method: 'PATCH',
+        keepalive: true,
+        headers: {
+          'apikey': AL.SUPABASE_ANON,
+          'Authorization': 'Bearer ' + (AL._lastToken || AL.SUPABASE_ANON),
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal',
+        },
+        body: JSON.stringify({
+          ended_at: new Date().toISOString(),
+          ended_reason: why,
+          duration_seconds: secs,
+        }),
+      }).catch(function(e){ console.warn('[call] 기록 저장 실패', e); });
     } catch (e) { console.warn('[call] 기록 저장 실패', e); }
   }
 
@@ -456,6 +477,7 @@ function cleanup(){
   AL.call.token = null;
   AL.call.callId = null;
   AL.call.answered = false;
+  AL.call.answeredAt = null;
   AL.call.sdpDone = false;
   AL.call.offerSdp = null;
   AL.call.onState = null;
