@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260910c">
-<link rel="stylesheet" href="alias_theme.css?v=20260910c">
+<link rel="stylesheet" href="alias_common.css?v=20260910d">
+<link rel="stylesheet" href="alias_theme.css?v=20260910d">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260910c"></script>
-<script src="alias_media.js?v=20260910c"></script>
-<script src="alias_call.js?v=20260910c"></script>
+<script src="alias_common.js?v=20260910d"></script>
+<script src="alias_media.js?v=20260910d"></script>
+<script src="alias_call.js?v=20260910d"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -69,6 +69,15 @@ document.addEventListener("DOMContentLoaded", function(){
    🔴 화면 아래에 "나는 지금 개인용입니다" 가 늘 떠 있습니다.
      받기 전에 어떤 나로 받는지 알 수 있어야, 거래처 얼굴로 받아야 할 전화를
      개인 얼굴로 받는 사고가 안 납니다. 어떤 전화기도 이 줄을 못 씁니다.
+
+   🔴🔴 2026-09-10 고침 — 끝난 전화가 되살아나던 문제
+     ① 표(ticket)를 sessionStorage 에서 localStorage 로 옮겼습니다.
+        sessionStorage 는 앱(웹뷰)이 죽으면 통째로 지워집니다.
+        삼성이 앱을 재우면 표가 백지가 되어, 막아야 할 것을 못 막았습니다.
+        삼성 인터넷에서만 멀쩡했던 이유가 이것입니다 — 브라우저 탭은
+        안 죽으니 표가 남아 있었습니다.
+     ② 받는 쪽에서 벨을 울리기 "전에" 이미 끝난 통화인지 한 번 봅니다.
+        예전에는 3초 뒤에야 봤기 때문에 끝난 전화가 3초씩 울렸습니다.
    ===================================================================== */
 
 const P = new URLSearchParams(location.search);
@@ -84,22 +93,37 @@ const incoming = !!callId;
    뒤로 갈 때마다 전화가 걸립니다. 앞 화면을 볼 수가 없어집니다.
 
    그래서 통화를 걸 때 한 번만 쓰는 표를 주소에 담고, 여기서 태웁니다.
-   이미 쓴 표면 걸지 않고 그냥 나갑니다. */
+   이미 쓴 표면 걸지 않고 그냥 나갑니다.
+
+   ⚠ 2026-09-10 — localStorage 를 씁니다. sessionStorage 는 앱이 죽으면
+     지워져서, 정작 막아야 할 순간에 백지가 됩니다. */
 const USED_KEY = 'alias_used_call_tickets';
+
+function ticketBox(){
+  try {
+    localStorage.setItem('__alias_probe', '1');
+    localStorage.removeItem('__alias_probe');
+    return localStorage;
+  } catch (e) {
+    return sessionStorage;   // 시크릿 모드 등 — 없는 것보다는 낫습니다
+  }
+}
 
 function ticketUsed(t){
   try {
-    var raw = sessionStorage.getItem(USED_KEY);
+    var raw = ticketBox().getItem(USED_KEY);
     return raw ? JSON.parse(raw).indexOf(t) >= 0 : false;
   } catch (e) { return false; }
 }
 function burnTicket(t){
   try {
-    var raw = sessionStorage.getItem(USED_KEY);
+    var box = ticketBox();
+    var raw = box.getItem(USED_KEY);
     var list = raw ? JSON.parse(raw) : [];
+    if (list.indexOf(t) >= 0) return;
     list.push(t);
-    if (list.length > 30) list = list.slice(-30);
-    sessionStorage.setItem(USED_KEY, JSON.stringify(list));
+    if (list.length > 60) list = list.slice(-60);
+    box.setItem(USED_KEY, JSON.stringify(list));
   } catch (e) {}
 }
 
@@ -107,6 +131,11 @@ function burnTicket(t){
    그래야 뒤로 눌렀을 때 통화 화면이 아니라 그 앞 화면이 나옵니다. */
 function leaveTo(url){
   location.replace(url);
+}
+function goChat(delayMs){
+  setTimeout(function(){
+    leaveTo('alias_chat.html?link=' + encodeURIComponent(linkId));
+  }, delayMs || 0);
 }
 
 let me = null, view = null;
@@ -208,16 +237,22 @@ function onState(state, extra){
   }
 }
 
+/* 🔴 2026-09-10 — 두 번 부르지 않게 빗장을 겁니다.
+   'peer-hangup' 뒤에 'ended' 가 잇달아 오면 예전에는 bye() 가 두 번 돌아
+   나가는 타이머가 둘 겹쳤습니다. */
+var leaving = false;
+
 function bye(){
+  if (leaving) return;
+  leaving = true;
+
   AL.stopRinging();
   AL.stopDialTone();
   stopAliveWatch();
   if (tick) { clearInterval(tick); tick = null; }
   el('acts').innerHTML = '';
   // 잠깐 보여준 뒤 대화로 돌아갑니다.
-  setTimeout(function(){
-    leaveTo('alias_chat.html?link=' + encodeURIComponent(linkId));
-  }, 1600);
+  goChat(1600);
 }
 
 /* =====================================================================
@@ -230,6 +265,8 @@ function bye(){
      ① 3초마다 calls 표를 보고 ended_at 이 채워졌으면 멈춥니다
      ② 그와 별개로 45초가 지나면 무조건 멈춥니다
         (표를 못 읽는 경우를 위한 안전장치 — 함정 ⑦)
+
+   ⚠ 2026-09-10 추가 — 울리기 "전에" 도 한 번 봅니다. 아래 checkAlreadyOver()
    ===================================================================== */
 var aliveTimer = null, ringLimit = null;
 var RING_MAX_MS = 45000;
@@ -237,6 +274,31 @@ var RING_MAX_MS = 45000;
 function stopAliveWatch(){
   if (aliveTimer) { clearInterval(aliveTimer); aliveTimer = null; }
   if (ringLimit) { clearTimeout(ringLimit); ringLimit = null; }
+}
+
+function endedQuietly(){
+  stopAliveWatch();
+  AL.stopRinging();
+  setStatus(AL.t('clEnded'));
+  el('acts').innerHTML = '';
+  goChat(1400);
+}
+
+/* 🔴 2026-09-10 — 벨을 울리기 전에 물어봅니다.
+   이미 끝난 통화면 한 번도 울리지 않고 조용히 나갑니다.
+   되돌려주는 값
+     'over'    끝난 통화입니다 (또는 아예 없는 통화입니다)
+     'live'    아직 살아 있습니다
+     'unknown' 못 읽었습니다 — 일단 울리고 watchCallAlive 에 맡깁니다 */
+async function checkAlreadyOver(){
+  try {
+    var r = await AL.sb.from('calls')
+      .select('ended_at').eq('id', callId).maybeSingle();
+    if (!r.data) return 'over';                 // 없는 통화 = 열지 않습니다
+    return r.data.ended_at ? 'over' : 'live';
+  } catch (e) {
+    return 'unknown';
+  }
 }
 
 function watchCallAlive(){
@@ -247,27 +309,13 @@ function watchCallAlive(){
     try {
       var r = await AL.sb.from('calls')
         .select('ended_at').eq('id', callId).maybeSingle();
-      if (r.data && r.data.ended_at) {
-        stopAliveWatch();
-        AL.stopRinging();
-        setStatus(AL.t('clEnded'));
-        el('acts').innerHTML = '';
-        setTimeout(function(){
-          leaveTo('alias_chat.html?link=' + encodeURIComponent(linkId));
-        }, 1400);
-      }
+      if (r.data && r.data.ended_at) endedQuietly();
     } catch (e) { /* 못 읽어도 ② 가 있으니 괜찮습니다 */ }
   }, 3000);
 
   ringLimit = setTimeout(function(){
     if (AL.call.pc) return;
-    stopAliveWatch();
-    AL.stopRinging();
-    setStatus(AL.t('clEnded'));
-    el('acts').innerHTML = '';
-    setTimeout(function(){
-      leaveTo('alias_chat.html?link=' + encodeURIComponent(linkId));
-    }, 1400);
+    endedQuietly();
   }, RING_MAX_MS);
 }
 
@@ -281,14 +329,7 @@ async function answer(){
   try {
     var chk = await AL.sb.from('calls')
       .select('ended_at, answered_at').eq('id', callId).maybeSingle();
-    if (chk.data && chk.data.ended_at) {
-      setStatus(AL.t('clEnded'));
-      el('acts').innerHTML = '';
-      setTimeout(function(){
-        leaveTo('alias_chat.html?link=' + encodeURIComponent(linkId));
-      }, 1400);
-      return;
-    }
+    if (!chk.data || chk.data.ended_at) { endedQuietly(); return; }
   } catch (e) { /* 못 읽으면 그냥 받아봅니다 */ }
 
   try {
@@ -308,7 +349,7 @@ async function decline(){
   AL.stopRinging();
   stopAliveWatch();
   await AL.declineCall(callId);
-  leaveTo('alias_chat.html?link=' + encodeURIComponent(linkId));
+  goChat(0);
 }
 
 (async function(){
@@ -326,21 +367,38 @@ async function decline(){
   paintActs();
 
   if (incoming) {
-    // 받는 쪽 — 이미 처리한 전화면 다시 안 띄웁니다.
+    /* ── 받는 쪽 ──────────────────────────────────────────────
+       ① 이미 처리한 전화면 다시 안 띄웁니다 (표) */
     if (once && ticketUsed(once)) {
-      leaveTo('alias_chat.html?link=' + encodeURIComponent(linkId));
+      console.log('[call] 이미 쓴 표입니다. 열지 않습니다.', once);
+      goChat(0);
       return;
     }
+
+    /* ② 🔴 2026-09-10 — 울리기 전에 물어봅니다.
+       끝난 통화면 한 번도 안 울립니다. 표도 여기서 태웁니다. */
+    const st = await checkAlreadyOver();
+    if (st === 'over') {
+      if (once) burnTicket(once);
+      console.log('[call] 이미 끝난 전화입니다. 울리지 않습니다.');
+      setStatus(AL.t('clEnded'));
+      el('acts').innerHTML = '';
+      goChat(1200);
+      return;
+    }
+
     if (once) burnTicket(once);
     setStatus(AL.t('clRinging'));
     AL.startRinging();
-    watchCallAlive();      // 🔴 A 가 끊었는지 지켜봅니다 (아래 설명)
+    watchCallAlive();      // 🔴 A 가 끊었는지 지켜봅니다 (위 설명)
 
   } else {
-    // 거는 쪽 — 표가 없거나 이미 쓴 표면 걸지 않습니다.
-    // 뒤로 가기로 돌아온 경우입니다.
+    /* ── 거는 쪽 ──────────────────────────────────────────────
+       표가 없거나 이미 쓴 표면 걸지 않습니다.
+       뒤로 가기로 돌아온 경우입니다. */
     if (!once || ticketUsed(once)) {
-      leaveTo('alias_chat.html?link=' + encodeURIComponent(linkId));
+      console.log('[call] 표가 없거나 이미 쓴 표입니다. 걸지 않습니다.', once);
+      goChat(0);
       return;
     }
     burnTicket(once);
@@ -357,12 +415,24 @@ async function decline(){
   }
 })();
 
-window.addEventListener('beforeunload', function(){
-  AL.stopRinging();
-  AL.stopDialTone();
-  if (AL.call.pc) AL.endCall('canceled');
-  else AL.callCleanup();
-});
+/* 🔴 2026-09-10 — 화면을 떠날 때 반드시 정리합니다.
+   ⚠ 안드로이드 웹뷰에서는 beforeunload 가 안 불릴 때가 많습니다.
+     그래서 pagehide 를 같이 답니다. 둘 다 불려도 한 번만 돌게 빗장을 겁니다.
+     이걸 놓치면 마이크와 연결이 살아남아, 끊은 뒤에도 잡음이 들립니다. */
+var cleanedUp = false;
+function leaveCleanup(){
+  if (cleanedUp) return;
+  cleanedUp = true;
+  try {
+    AL.stopRinging();
+    AL.stopDialTone();
+    stopAliveWatch();
+    if (AL.call.pc) AL.endCall('canceled');
+    else AL.callCleanup();
+  } catch (e) {}
+}
+window.addEventListener('pagehide', leaveCleanup);
+window.addEventListener('beforeunload', leaveCleanup);
 </script>
 </body>
 </html>
