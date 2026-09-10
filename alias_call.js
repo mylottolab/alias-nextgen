@@ -1,6 +1,9 @@
 /* =====================================================================
    Alias Next-Gen — 통화 (WebRTC)
    2026-09-05
+   2026-09-10  🔴 "끊습니다" 인사가 폰을 못 떠나던 문제 고침 (endCall)
+   2026-09-10  🔴 상대가 소리 없이 사라졌을 때 12초 뒤 끊기 (onconnectionstatechange)
+   2026-09-10  🔴 두 번 끊기 막기 · 전화 건 발자국 남기기
 
    Aliascall 의 aliascall_connect.html 에서 옮겨왔습니다.
    그쪽이 이미 겪고 고쳐놓은 것들을 그대로 가져옵니다.
@@ -44,6 +47,7 @@ AL.call = {
   pending: [],        // 아직 못 넣은 ICE 후보
   resendTimer: null,
   noAnswerTimer: null,
+  dropTimer: null,     // 🔴 2026-09-10: 상대가 소리 없이 사라졌을 때
   onState: null,      // 화면이 상태를 받아보는 통로
 };
 
@@ -106,9 +110,26 @@ async function buildPeer(iceServers){
 
   pc.onconnectionstatechange = function(){
     var s = pc.connectionState;
-    if (s === 'connected') say('connected');
+    if (s === 'connected') {
+      if (AL.call.dropTimer) { clearTimeout(AL.call.dropTimer); AL.call.dropTimer = null; }
+      say('connected');
+    }
     else if (s === 'failed') say('failed');
-    else if (s === 'disconnected') say('disconnected');
+    else if (s === 'disconnected') {
+      say('disconnected');
+      /* 🔴 2026-09-10 신설 — 상대가 소리 없이 사라진 경우
+         상대의 "끊습니다" 인사가 못 왔을 때, 예전에는 이 화면이 영영
+         "통화 중" 인 채로 남았습니다. 마이크도 열린 채였습니다.
+         12초를 기다려보고 안 돌아오면 끝난 것으로 봅니다.
+         (잠깐 끊겼다 붙는 경우가 있어서 곧바로 끊지는 않습니다) */
+      if (AL.call.dropTimer) clearTimeout(AL.call.dropTimer);
+      AL.call.dropTimer = setTimeout(function(){
+        if (AL.call.pc && AL.call.pc.connectionState !== 'connected') {
+          console.warn('[call] 상대가 사라졌습니다. 끊습니다.');
+          AL.endCall('completed');
+        }
+      }, 12000);
+    }
   };
 
   return pc;
@@ -138,6 +159,16 @@ async function addIce(candidate){
 
 /* ── 걸기 ────────────────────────────────────────────────────────── */
 AL.startCall = async function(opts){
+  /* 🔴 2026-09-10 신설 — "누가 전화를 걸었나" 를 콘솔에 남깁니다.
+     유령 전화를 쫓을 때 이 세 줄이면 범인이 나옵니다.
+     chrome://inspect 의 Console 에서 ▶ 표시를 찾으세요. */
+  console.log('[call] ▶ 전화를 겁니다');
+  console.log('[call]   이 화면 주소 :', location.href);
+  console.log('[call]   앞 화면      :', document.referrer || '(없음)');
+  try { console.trace('[call]   누가 불렀나'); } catch (e) {}
+
+  AL._ending = false;
+
   // 🔴 앞 통화의 찌꺼기를 먼저 치웁니다.
   //   안 치우면 두 번째 통화가 첫 통화 위에 올라타서, 화면은 "통화 중"인데
   //   소리가 안 옵니다. 옛 채널·옛 PeerConnection 이 살아 있기 때문입니다.
@@ -252,6 +283,7 @@ AL.startCall = async function(opts){
 
 /* ── 받기 ────────────────────────────────────────────────────────── */
 AL.answerCall = async function(opts){
+  AL._ending = false;
   cleanup();
   await new Promise(function(r){ setTimeout(r, 250); });
 
@@ -383,9 +415,32 @@ function cancelPush(callId, linkId, outgoing, reason){
 }
 
 /* ── 끊기 ────────────────────────────────────────────────────────── */
+AL._ending = false;
+
 AL.endCall = async function(reason){
   reason = reason || 'completed';
-  if (AL.call.channel) send(reason === 'declined' ? 'decline' : 'bye', { reason: reason });
+
+  /* 🔴 2026-09-10 신설 — 두 번 끊는 것을 막습니다.
+     끊기 단추 · pagehide · 12초 시계가 한꺼번에 부를 수 있습니다.
+     그러면 기록이 두 번 덮어써지고 인사도 두 번 나갑니다. */
+  if (AL._ending) { console.log('[call] 이미 끊는 중입니다'); return; }
+  AL._ending = true;
+  setTimeout(function(){ AL._ending = false; }, 3000);
+
+  /* 🔴🔴 2026-09-10 고침 — "끊습니다" 인사가 폰을 못 떠나던 문제
+     전에는 인사를 보내자마자 아래 cleanup() 이 신호 채널을 닫아버렸습니다.
+     채널 보내기는 바로 나가는 게 아니라 잠깐 줄을 섭니다. 폰이 빠르면
+     통과하고, 느리면 줄을 선 채로 채널이 닫혀 인사가 사라졌습니다.
+     그러면 상대는 끊긴 줄 모르고 "통화 중" 인 채로 남습니다.
+     → 채널을 여기서 따로 붙들었다가, 인사가 나갈 짬을 준 뒤 닫습니다. */
+  var farewell = AL.call.channel;
+  if (farewell) send(reason === 'declined' ? 'decline' : 'bye', { reason: reason });
+  AL.call.channel = null;          // cleanup 이 곧바로 못 닫게 빼둡니다
+  if (farewell) {
+    setTimeout(function(){
+      try { AL.sb.removeChannel(farewell); } catch (e) {}
+    }, 900);
+  }
 
   /* 🔴 2026-09-10 고침 — 상대 폰의 벨을 끄는 알림을 "맨 먼저" 보냅니다.
      전에는 기록을 저장한 뒤에 보냈는데, 그 사이 화면이 바뀌면서
@@ -458,6 +513,7 @@ AL.declineCall = async function(callId){
 function cleanup(){
   if (AL.call.resendTimer) { clearInterval(AL.call.resendTimer); AL.call.resendTimer = null; }
   if (AL.call.noAnswerTimer) { clearTimeout(AL.call.noAnswerTimer); AL.call.noAnswerTimer = null; }
+  if (AL.call.dropTimer) { clearTimeout(AL.call.dropTimer); AL.call.dropTimer = null; }
   if (AL.call.local) {
     AL.call.local.getTracks().forEach(function(t){ try { t.stop(); } catch (e) {} });
     AL.call.local = null;

@@ -389,7 +389,7 @@ async function decline(){
 
     if (once) burnTicket(once);
     setStatus(AL.t('clRinging'));
-    AL.startRinging();
+    AL.startRinging({ quiet: AL.isNativeApp && AL.isNativeApp() });
     watchCallAlive();      // 🔴 A 가 끊었는지 지켜봅니다 (위 설명)
 
   } else {
