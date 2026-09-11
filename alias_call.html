@@ -228,6 +228,23 @@ function onState(state, extra){
        "통화 중" 인데 소리 없음   → 볼륨이나 마이크 문제
 
      ⚠ 이미 통화 중이면 덮어쓰지 않습니다. 시계가 도는 걸 가리면 안 됩니다. */
+  /* 🔴🔴 2026-09-11 신설 — 찾은 길을 화면에 그대로 보여줍니다.
+     USB 를 안 꽂아도 폰만 보면 원인을 알 수 있어야 합니다.
+
+       집 1 · 밖 1 · 중계 2    ← 정상. 중계를 쓸 수 있습니다
+       집 1 · 밖 1 · 중계 0    ← 중계 없음. 이동통신끼리는 통화가 안 됩니다
+       🔴 중계 못 받음         ← 함수를 아예 못 불렀습니다 (로그인 표 문제) */
+  else if (state === 'ice-found') {
+    var line;
+    if (!extra.turn) {
+      line = '🔴 중계 못 받음' + (extra.err ? ' (' + extra.err + ')' : '');
+    } else {
+      line = '집 ' + extra.host + ' · 밖 ' + extra.srflx + ' · 중계 ' + extra.relay;
+      if (!extra.relay) line = '🔴 ' + line;
+    }
+    el('bytes').textContent = line;
+  }
+
   else if (state === 'ice-state') {
     if (tick) return;                       // 이미 붙었으면 건드리지 않습니다
     var m = {

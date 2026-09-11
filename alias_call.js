@@ -74,6 +74,7 @@ AL.getIceServers = async function(){
 
        STUN 만으로도 **쉬운 조합에서는 통화가 됩니다.** 그래서 고장난 줄을
        모릅니다. 앞으로는 콘솔만 보면 알 수 있게 합니다. */
+    AL.call.turnReady = (out.turn !== false);
     if (out.turn === false) {
       console.error('[call] 🔴 중계(TURN)가 없습니다! ' +
         '통신사가 다른 이동통신끼리는 통화가 안 됩니다. ' +
@@ -86,6 +87,8 @@ AL.getIceServers = async function(){
   } catch (e) {
     console.error('[call] 🔴 ICE 를 못 받았습니다. STUN 만으로 해봅니다. ' +
       '이 상태면 이동통신끼리 통화가 안 됩니다.', e);
+    AL.call.turnReady = false;
+    AL.call.iceError = String((e && e.message) || e).slice(0, 60);
     return [{ urls: 'stun:stun.l.google.com:19302' }];
   }
 };
@@ -128,17 +131,28 @@ async function buildPeer(iceServers){
   pc.onicecandidate = function(e){
     if (e.candidate) {
       send('ice', { candidate: e.candidate });
-      /* 🔴 2026-09-11 — 어떤 길을 찾았는지 남깁니다.
+      /* 🔴 2026-09-11 — 어떤 길을 찾았는지 세어둡니다.
          relay 가 하나도 없으면 중계를 못 쓰고 있다는 뜻입니다. */
       var t = e.candidate.type || (e.candidate.candidate || '').split(' ')[7] || '?';
-      console.log('[ice] 내 길 찾음:', t);
+      AL.call.found = AL.call.found || {};
+      AL.call.found[t] = (AL.call.found[t] || 0) + 1;
       if (t === 'relay') AL.call.sawRelay = true;
     } else {
-      console.log('[ice] 길 찾기 끝. 중계(relay) 찾음:', !!AL.call.sawRelay);
+      var f = AL.call.found || {};
+      console.log('[ice] 길 찾기 끝:', JSON.stringify(f));
       if (!AL.call.sawRelay) {
-        console.error('[ice] 🔴 중계 길을 하나도 못 찾았습니다. ' +
-          'TURN 주소나 비밀번호를 확인하세요.');
+        console.error('[ice] 🔴 중계 길을 하나도 못 찾았습니다.');
       }
+      /* 🔴🔴 2026-09-11 — 화면에 그대로 보여줍니다.
+         USB 를 안 꽂아도 폰만 보면 알 수 있어야 합니다.
+           집 1 · 밖 1 · 중계 2   ← 중계가 0 이면 그게 원인입니다 */
+      say('ice-found', {
+        turn: AL.call.turnReady !== false,
+        err: AL.call.iceError || '',
+        host: f.host || 0,
+        srflx: f.srflx || 0,
+        relay: f.relay || 0,
+      });
     }
   };
 
@@ -655,6 +669,8 @@ function cleanup(){
   AL.call.bytesSeen = 0;
   AL.call.sawRelay = false;
   AL.call.pairLogged = false;
+  AL.call.found = null;
+  AL.call.iceError = '';
   if (AL.call.resendTimer) { clearInterval(AL.call.resendTimer); AL.call.resendTimer = null; }
   if (AL.call.noAnswerTimer) { clearTimeout(AL.call.noAnswerTimer); AL.call.noAnswerTimer = null; }
   if (AL.call.dropTimer) { clearTimeout(AL.call.dropTimer); AL.call.dropTimer = null; }
