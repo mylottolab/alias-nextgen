@@ -417,6 +417,26 @@ async function decline(){
     }
 
     if (once) burnTicket(once);
+
+    /* 🔴🔴 2026-09-11 — 통화화면이 열렸으니 알림 벨을 끕니다.
+
+       왜 꼭 여기서 꺼야 하나
+         안드로이드에서 전화벨은 **"소리 우선권(audio focus)"** 을 붙잡습니다.
+         통화 소리와는 다른 길로 나가는 소리입니다.
+         벨이 계속 울리는 동안에는 통화 소리가 나갈 길이 막힙니다.
+
+       실제로 난 일 (2026-09-11)
+         A(안드로이드 16)는 전체화면 알림이 떠서 MainActivity 가 돌고,
+         거기서 알림이 지워졌습니다 → 벨이 멎고 → 통화가 됐습니다.
+         B(안드로이드 13)는 전체화면 알림이 안 떠서 MainActivity 가 안 돌고,
+         화면만 watchIncoming 으로 열렸습니다 → 알림이 안 지워지고
+         → 벨이 계속 울리고 → **받아도 소리가 안 들렸습니다.**
+
+       화면이 이미 떠 있으면 알림은 필요 없습니다. 여기서 끕니다.
+       ⚠ 그래서 벨이 짧게 울리고 멎습니다. 그건 정상입니다.
+         화면에 이미 초록·빨강 단추가 보이는 상태입니다. */
+    if (AL.clearCallNotices) AL.clearCallNotices();
+
     setStatus(AL.t('clRinging'));
     AL.startRinging({ quiet: AL.isNativeApp && AL.isNativeApp() });
     watchCallAlive();      // 🔴 A 가 끊었는지 지켜봅니다 (위 설명)
