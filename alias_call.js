@@ -10,6 +10,8 @@
    2026-09-11  🔴 중계(TURN)가 없으면 콘솔에 크게 알림
    2026-09-11  🔴 소리가 오가는 양을 재서 화면에 보여줌 (bytes)
    2026-09-11  🔴 붙는 과정을 화면에 단계별로 보여줌 (ice-state)
+   2026-09-11  🔴 찾은 길을 줄 세워 보내고, 상대가 들어오면 다시 보냄
+                  (중계가 붙어 길이 14개로 늘면서 드러난 문제)
 
    Aliascall 의 aliascall_connect.html 에서 옮겨왔습니다.
    그쪽이 이미 겪고 고쳐놓은 것들을 그대로 가져옵니다.
@@ -55,6 +57,7 @@ AL.call = {
   noAnswerTimer: null,
   dropTimer: null,     // 🔴 2026-09-10: 상대가 소리 없이 사라졌을 때
   statsTimer: null,    // 🔴 2026-09-11: 소리가 실제로 오가는지 재는 시계
+  myCands: null,       // 🔴 2026-09-11: 내가 찾은 길. 상대가 들어오면 다시 보냅니다
   bytesSeen: 0,        // 🔴 2026-09-11: 지금까지 주고받은 양
   onState: null,      // 화면이 상태를 받아보는 통로
 };
@@ -118,6 +121,52 @@ async function openSignal(token, onMsg){
   return ch;
 }
 
+/* =====================================================================
+   🔴🔴 2026-09-11 신설 — 찾은 길(ICE)을 천천히, 그리고 다시 보냅니다
+
+   두 가지 문제를 같이 풉니다.
+
+   ① 상대가 아직 안 들어와 있는데 보냈습니다
+      거는 쪽은 걸자마자 길을 찾아 보냅니다. 그런데 받는 쪽은 "받기" 를
+      눌러야 신호 채널에 들어옵니다. 그 전에 보낸 것은 아무도 못 받고
+      사라집니다. 방송이라 기록이 안 남습니다.
+      → 찾은 길을 모아뒀다가, 상대가 들어오면 다시 보냅니다.
+
+   ② 한꺼번에 너무 빨리 보냈습니다
+      Supabase 실시간 채널은 **초당 열 개**까지만 받습니다.
+      중계가 붙으면서 길이 열네 개로 늘었는데, 전부 한 번에 던지니
+      뒤엣것이 조용히 버려졌습니다. 오류도 안 납니다.
+      → 0.13초 간격으로 줄 세워 보냅니다.
+
+   둘 다 **중계(TURN)가 붙은 뒤에야 드러나는** 문제입니다.
+   전에는 길이 두세 개뿐이라 우연히 타이밍이 맞았습니다.
+   ===================================================================== */
+var iceQueue = [];
+var iceTimer = null;
+
+function sendIce(cand){
+  iceQueue.push(cand);
+  if (iceTimer) return;
+  iceTimer = setInterval(function(){
+    if (!iceQueue.length) { clearInterval(iceTimer); iceTimer = null; return; }
+    if (!AL.call.channel) return;      // 채널이 잠깐 없으면 기다립니다
+    send('ice', { candidate: iceQueue.shift() });
+  }, 130);
+}
+
+function stopIceQueue(){
+  if (iceTimer) { clearInterval(iceTimer); iceTimer = null; }
+  iceQueue = [];
+}
+
+/* 상대가 신호 채널에 들어왔을 때, 그동안 찾아둔 길을 전부 다시 보냅니다. */
+function resendMyCands(){
+  var list = AL.call.myCands || [];
+  if (!list.length) return;
+  console.log('[ice] 찾아둔 길 ' + list.length + '개를 다시 보냅니다');
+  list.forEach(function(c){ sendIce(c); });
+}
+
 function send(kind, data){
   if (!AL.call.channel) return;
   AL.call.channel.send({ type: 'broadcast', event: 'sig',
@@ -130,7 +179,10 @@ async function buildPeer(iceServers){
 
   pc.onicecandidate = function(e){
     if (e.candidate) {
-      send('ice', { candidate: e.candidate });
+      /* 🔴 2026-09-11 — 모아두고(나중에 다시 보내려고) 줄 세워 보냅니다 */
+      AL.call.myCands = AL.call.myCands || [];
+      AL.call.myCands.push(e.candidate);
+      sendIce(e.candidate);
       /* 🔴 2026-09-11 — 어떤 길을 찾았는지 세어둡니다.
          relay 가 하나도 없으면 중계를 못 쓰고 있다는 뜻입니다. */
       var t = e.candidate.type || (e.candidate.candidate || '').split(' ')[7] || '?';
@@ -430,12 +482,20 @@ async function handleSignal(m){
     console.log('[call] answer 받음. 교환 끝');
 
   } else if (m.kind === 'ready' || m.kind === 'need-offer') {
-    // 받는 쪽이 붙었거나 offer 를 조릅니다. 바로 보냅니다.
+    /* 🔴🔴 2026-09-11 — 상대가 신호 채널에 막 들어왔습니다.
+       이때 offer 뿐 아니라 **그동안 찾아둔 길도 전부 다시 보내야** 합니다.
+       안 그러면 상대는 내 주소를 하나도 모른 채 "길 맞춰보는 중" 에서
+       영영 멈춥니다. */
     if (AL.call.outgoing && AL.call.offerSdp) {
-      console.log('[call] 요청 받고 offer 보냄');
-      send('offer', { sdp: AL.call.offerSdp });
+      /* 지금 시점의 설명을 보냅니다. 처음 만든 것보다 길 정보가 더 들어 있습니다. */
+      var sdpNow = AL.call.offerSdp;
+      try {
+        if (AL.call.pc && AL.call.pc.localDescription) sdpNow = AL.call.pc.localDescription;
+      } catch (e) {}
+      console.log('[call] 상대가 들어왔습니다. offer 를 다시 보냅니다');
+      send('offer', { sdp: sdpNow });
     }
-
+    resendMyCands();
   } else if (m.kind === 'ice') {
     await addIce(m.candidate);
 
@@ -666,6 +726,8 @@ function stopStats(){
 
 function cleanup(){
   stopStats();
+  stopIceQueue();
+  AL.call.myCands = null;
   AL.call.bytesSeen = 0;
   AL.call.sawRelay = false;
   AL.call.pairLogged = false;
