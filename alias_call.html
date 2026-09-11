@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260911a">
-<link rel="stylesheet" href="alias_theme.css?v=20260911a">
+<link rel="stylesheet" href="alias_common.css?v=20260910d">
+<link rel="stylesheet" href="alias_theme.css?v=20260910d">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260911a"></script>
-<script src="alias_media.js?v=20260911a"></script>
-<script src="alias_call.js?v=20260911a"></script>
+<script src="alias_common.js?v=20260910d"></script>
+<script src="alias_media.js?v=20260910d"></script>
+<script src="alias_call.js?v=20260910d"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -87,6 +87,9 @@ const token    = P.get('token');
 const callType = P.get('type') || 'voice';
 const once     = P.get('once');       // 이 통화의 표. 한 번만 씁니다
 const incoming = !!callId;
+/* 🔴 2026-09-11 — 잠금화면 CallStyle 알림의 빨강(거절) 단추로 들어온 경우입니다.
+   화면을 보여주지 않고 곧바로 거절하고 대화로 나갑니다. */
+const autoAct  = P.get('auto') || '';
 
 /* 🔴 뒤로 가기로 이 화면에 다시 오면 전화를 또 걸면 안 됩니다.
    브라우저는 그냥 주소를 다시 열 뿐이라, 주소만 보고 "걸어라" 하면
@@ -279,6 +282,9 @@ function stopAliveWatch(){
 function endedQuietly(){
   stopAliveWatch();
   AL.stopRinging();
+  /* 🔴 2026-09-11 — 벨을 울리던 알림도 같이 지웁니다.
+     알림이 남아 있으면 전화벨이 계속 반복됩니다. */
+  if (AL.clearCallNotices) AL.clearCallNotices();
   setStatus(AL.t('clEnded'));
   el('acts').innerHTML = '';
   goChat(1400);
@@ -348,6 +354,7 @@ async function answer(){
 async function decline(){
   AL.stopRinging();
   stopAliveWatch();
+  if (AL.clearCallNotices) AL.clearCallNotices();   // 🔴 2026-09-11 — 벨 끄기
   await AL.declineCall(callId);
   goChat(0);
 }
@@ -372,6 +379,18 @@ async function decline(){
     if (once && ticketUsed(once)) {
       console.log('[call] 이미 쓴 표입니다. 열지 않습니다.', once);
       if (AL.clearCallNotices) AL.clearCallNotices();
+      goChat(0);
+      return;
+    }
+
+    /* 🔴 2026-09-11 — 잠금화면에서 빨강 단추를 누른 경우입니다.
+       벨을 울리지도, 화면을 보여주지도 않고 곧바로 거절합니다. */
+    if (autoAct === 'decline') {
+      console.log('[call] 잠금화면에서 거절했습니다');
+      if (once) burnTicket(once);
+      AL.stopRinging();
+      if (AL.clearCallNotices) AL.clearCallNotices();
+      try { await AL.declineCall(callId); } catch (e) { console.warn(e); }
       goChat(0);
       return;
     }
