@@ -7,6 +7,7 @@
    2026-09-11  🔴 받는 쪽이 끊어도 벨끄기 알림을 보냄 (cancelPush)
    2026-09-11  🔴 이미 받은 전화는 watchIncoming 이 다시 안 띄움
    2026-09-11  🔴 웹에서 남은 전화 알림을 직접 지움 (벨이 안 멎던 문제)
+   2026-09-11  🔴 중계(TURN)가 없으면 콘솔에 크게 알림
 
    Aliascall 의 aliascall_connect.html 에서 옮겨왔습니다.
    그쪽이 이미 겪고 고쳐놓은 것들을 그대로 가져옵니다.
@@ -60,9 +61,27 @@ AL.call = {
 AL.getIceServers = async function(){
   try {
     var out = await AL.callFn('alias-ice', {});
+
+    /* 🔴🔴 2026-09-11 — 중계(TURN)가 들어 있는지 큰 소리로 알립니다.
+
+       2026-09-11 에 A(SKT 5G) ↔ B(U+ 5G) 통화가 안 됐습니다.
+       원인은 TURN 서버를 안 붙인 것이었는데, 아무 오류도 안 났습니다.
+       와이파이가 낀 통화는 멀쩡했기 때문에 몇 시간을 헤맸습니다.
+
+       STUN 만으로도 **쉬운 조합에서는 통화가 됩니다.** 그래서 고장난 줄을
+       모릅니다. 앞으로는 콘솔만 보면 알 수 있게 합니다. */
+    if (out.turn === false) {
+      console.error('[call] 🔴 중계(TURN)가 없습니다! ' +
+        '통신사가 다른 이동통신끼리는 통화가 안 됩니다. ' +
+        'alias-ice 함수의 로그와 Supabase Secrets 를 보세요.');
+    } else {
+      console.log('[call] 중계(TURN) 준비됨');
+    }
+
     return out.iceServers || [];
   } catch (e) {
-    console.warn('[call] ICE 를 못 받았습니다. STUN 만으로 해봅니다.', e);
+    console.error('[call] 🔴 ICE 를 못 받았습니다. STUN 만으로 해봅니다. ' +
+      '이 상태면 이동통신끼리 통화가 안 됩니다.', e);
     return [{ urls: 'stun:stun.l.google.com:19302' }];
   }
 };
