@@ -4,6 +4,9 @@
    2026-09-10  🔴 "끊습니다" 인사가 폰을 못 떠나던 문제 고침 (endCall)
    2026-09-10  🔴 상대가 소리 없이 사라졌을 때 12초 뒤 끊기 (onconnectionstatechange)
    2026-09-10  🔴 두 번 끊기 막기 · 전화 건 발자국 남기기
+   2026-09-11  🔴 받는 쪽이 끊어도 벨끄기 알림을 보냄 (cancelPush)
+   2026-09-11  🔴 이미 받은 전화는 watchIncoming 이 다시 안 띄움
+   2026-09-11  🔴 웹에서 남은 전화 알림을 직접 지움 (벨이 안 멎던 문제)
 
    Aliascall 의 aliascall_connect.html 에서 옮겨왔습니다.
    그쪽이 이미 겪고 고쳐놓은 것들을 그대로 가져옵니다.
@@ -284,6 +287,7 @@ AL.startCall = async function(opts){
 /* ── 받기 ────────────────────────────────────────────────────────── */
 AL.answerCall = async function(opts){
   AL._ending = false;
+  AL.clearCallNotices();   // 🔴 2026-09-11 — 받았으니 내 폰의 벨을 끕니다
   cleanup();
   await new Promise(function(r){ setTimeout(r, 250); });
 
@@ -393,11 +397,43 @@ async function handleSignal(m){
   }
 }
 
+/* 🔴🔴 2026-09-11 신설 — 이 폰에 남아 있는 전화 알림을 웹에서 직접 지웁니다.
+
+   왜 필요한가
+     전화 알림 채널은 USAGE_NOTIFICATION_RINGTONE 으로 만들었습니다.
+     그래야 알림음이 아니라 진짜 전화벨로 울립니다. 그런데 전화벨은
+     **알림이 떠 있는 내내 반복**됩니다. 손을 대야 멎습니다.
+
+     통화가 웹 화면에서 끝나도 자바는 그걸 모릅니다. 그래서 지울 사람이
+     없어 벨이 계속 울렸습니다.
+
+   이제 통화가 끝나거나, 이미 끝난 전화로 들어왔을 때 여기서 지웁니다.
+   Capacitor 의 알림 창구를 그대로 씁니다 — 새 플러그인이 필요 없습니다.
+
+   ⚠ 브라우저에서는 아무 일도 안 합니다(창구가 없습니다). 그래도 됩니다.
+   ⚠ 안 읽은 메시지 알림도 같이 지워집니다. 통화가 끝난 순간이면
+     손님이 앱을 보고 있다는 뜻이라 괜찮습니다. */
+AL.clearCallNotices = function(){
+  try {
+    var P = window.Capacitor && window.Capacitor.Plugins &&
+            window.Capacitor.Plugins.PushNotifications;
+    if (!P || !P.removeAllDeliveredNotifications) return;
+    P.removeAllDeliveredNotifications();
+    console.log('[push] 이 폰에 남은 알림을 지웠습니다');
+  } catch (e) { /* 못 지워도 통화에는 지장 없습니다 */ }
+};
+
 /* 🔴 2026-09-10 신설 — 상대 폰의 벨을 끄는 알림
    화면을 떠나도 끝까지 가야 하므로 keepalive 로 던집니다.
    AL.callFn 은 보통 fetch 라 화면이 바뀌면 취소됩니다. */
 function cancelPush(callId, linkId, outgoing, reason){
-  if (!callId || !linkId || !outgoing) return;
+  /* 🔴🔴 2026-09-11 고침 — 받는 쪽도 보내야 합니다.
+     전에는 outgoing(거는 쪽)일 때만 보냈습니다. 그래서
+       A 가 끊으면 → 이 알림이 나가 B 의 벨이 꺼짐        (조용)
+       B 가 끊으면 → 아무도 안 보냄 → 벨이 그대로 남음     (다시 울림)
+     이 비대칭이 "B 가 끊을 때만" 나던 증상의 원인이었습니다.
+     이제 누가 끊든 보냅니다. */
+  if (!callId || !linkId) return;
   try {
     fetch(AL.SUPABASE_URL + '/functions/v1/alias-push-call', {
       method: 'POST',
@@ -452,6 +488,7 @@ AL.endCall = async function(reason){
        alias_gcall.js 의 leaveQuietly 와 같은 방식입니다.
      ⚠ 값을 먼저 붙들어 둡니다. cleanup 이 돌면 callId 가 비워집니다. */
   cancelPush(AL.call.callId, AL.call.linkId, AL.call.outgoing, reason);
+  AL.clearCallNotices();   // 🔴 2026-09-11 — 내 폰에 남은 전화 알림도 지웁니다
 
   /* 🔴 2026-09-10 고침 — 받는 쪽이 끊어도 기록이 안 남던 문제
 
@@ -583,7 +620,11 @@ AL.watchIncoming = function(onCall){
     try {
       var res = await AL.sb.rpc('incoming_call');
       var r = (res.data || [])[0];
-      if (r && !AL.seenCall(r.call_id)) { AL.markSeenCall(r.call_id); onCall(r); }
+      if (!r) return;
+      /* 🔴 2026-09-11 — 이미 받은 전화는 다시 안 띄웁니다.
+         받는 도중에 기록이 늦게 적히면 여기가 집어갈 수 있습니다. */
+      if (r.answered_at) { AL.markSeenCall(r.call_id); return; }
+      if (!AL.seenCall(r.call_id)) { AL.markSeenCall(r.call_id); onCall(r); }
     } catch (e) { /* 조용히 넘어갑니다 */ }
   }, 3000);
   return { stop: function(){ clearInterval(timer); } };

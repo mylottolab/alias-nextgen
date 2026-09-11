@@ -873,6 +873,30 @@ AL.nicknameToEmail = function(nick){
 AL.requireLogin = async function(){
   if (AL.keyProblem) { alert(AL.keyProblem); return null; }
   var res = await AL.sb.auth.getSession();
+
+  /* 🔴🔴 2026-09-11 신설 — 앱이 "차갑게" 시작할 때 튕기던 문제
+
+     앱이 죽었다 깨어나면 로그인 정보를 저장소에서 꺼내오는 데 잠깐
+     걸립니다. 그 찰나에 물어보면 "로그인 안 됨" 으로 나옵니다.
+     그러면 로그인 화면으로 갔다가, 거기서 로그인이 확인되어
+     연락처 화면으로 보내집니다.
+
+     증상 — 알림을 눌렀는데 통화화면이 번쩍하고 연락처로 돌아감.
+            손님은 전화를 통째로 놓칩니다.
+
+     → 없다고 곧바로 포기하지 않고 2초 동안 여덟 번 더 물어봅니다.
+       진짜 로그아웃 상태면 2초 뒤에 그대로 로그인 화면으로 갑니다. */
+  if (!res.data.session) {
+    for (var i = 0; i < 8; i++) {
+      await new Promise(function(r){ setTimeout(r, 250); });
+      res = await AL.sb.auth.getSession();
+      if (res.data.session) {
+        console.log('[auth] 로그인 정보를 늦게 찾았습니다 (' + ((i + 1) * 250) + 'ms)');
+        break;
+      }
+    }
+  }
+
   if (!res.data.session) {
     location.href = 'alias_auth.html';
     return null;
@@ -1536,16 +1560,43 @@ AL.stopDialTone = function(){
   if (AL._dialCtx) { try { AL._dialCtx.close(); } catch (e) {} AL._dialCtx = null; }
 };
 
-AL.startRinging = function(){
+/* 🔴🔴 2026-09-10 고침 두 가지
+
+   ① 45초 시계에 손잡이를 안 달았습니다.
+      전에는 setTimeout 을 그냥 던져두어서, 45초 안에 다음 전화가 오면
+      "앞 전화의 45초" 가 뒤늦게 터져 **새 전화의 벨을 꺼버렸습니다.**
+      이제 손잡이를 붙들고 stopRinging 에서 같이 끕니다.
+
+   ② 앱에서는 소리를 두 번 냅니다 (함정 3-2 의 정체).
+      앱에서는 안드로이드가 알림 채널의 **진짜 벨소리**를 먼저 울립니다.
+      그런데 통화화면이 열리면 여기서 **알림음(딩동)** 을 또 2.4초마다
+      냅니다. 손님 귀에는 "크게 서너 번 울리다 모기소리로 작아진다" 로
+      들립니다. 폰이 앱을 재우는 게 아니었습니다.
+      → 앱에서는 quiet 로 불러서 진동만 하게 합니다.
+        브라우저에서는 알림 채널이 없으니 그대로 소리를 냅니다. */
+AL._ringStop = null;
+
+AL.startRinging = function(opts){
   AL.stopRinging();
-  AL.alertNew();
-  AL._ringTimer = setInterval(function(){ AL.alertNew(); }, 2400);
+  var quiet = !!(opts && opts.quiet);
+
+  var beat = function(){
+    if (quiet) {
+      try { if (navigator.vibrate) navigator.vibrate([400, 200, 400]); } catch (e) {}
+    } else {
+      AL.alertNew();
+    }
+  };
+
+  beat();
+  AL._ringTimer = setInterval(beat, 2400);
   // 안 받으면 45초 뒤 저절로 멎습니다. 영영 울리면 곤란합니다.
-  setTimeout(AL.stopRinging, 45000);
+  AL._ringStop = setTimeout(AL.stopRinging, 45000);
 };
 
 AL.stopRinging = function(){
   if (AL._ringTimer) { clearInterval(AL._ringTimer); AL._ringTimer = null; }
+  if (AL._ringStop) { clearTimeout(AL._ringStop); AL._ringStop = null; }
   try { if (navigator.vibrate) navigator.vibrate(0); } catch (e) {}
 };
 
@@ -2166,6 +2217,46 @@ AL.savePushToken = async function(token, platform){
     }).select('id').single();
     if (ins.error) throw ins.error;
     try { localStorage.setItem(AL.DEVICE_ID_KEY, ins.data.id); } catch (e) {}
+
+    /* 🔴🔴 2026-09-11 신설 — 옛 줄 치우기
+
+       왜 필요한가
+         위의 "전에 쓰던 줄 재활용" 은 localStorage 를 단서로 씁니다.
+         그런데 **앱을 지웠다 깔면 그 기억이 통째로 사라집니다.**
+         FCM 번호도 새로 생깁니다. 그러면 단서가 하나도 없어
+         새 줄이 만들어집니다.
+
+         2026-09-11 에 실제로 이 일이 났습니다. 폰은 세 대인데
+         기기 줄이 **열두 개**였습니다. 한 대는 일곱 개였습니다.
+         그러면 한 번 걸 때 푸시가 일곱 번 나갑니다. 죽은 번호로 간
+         것들이 **뒤늦게 배달되면서** 끊은 뒤에 벨이 다시 울렸습니다.
+
+       무엇을 하는가
+         새 줄을 만든 김에, 이 계정의 옛 줄을 치웁니다.
+           ① 30일 넘게 안 쓴 줄은 지웁니다
+           ② 그러고도 다섯 개가 넘으면 오래된 것부터 지웁니다
+         다섯 개면 폰·태블릿을 여러 대 쓰는 분도 넉넉합니다.
+
+       ⚠ 실패해도 조용히 넘어갑니다. 등록 자체는 이미 끝났습니다. */
+    try {
+      var cut = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      await AL.sb.from('devices')
+        .delete().eq('account_id', uid).lt('last_seen_at', cut);
+
+      var mine = await AL.sb.from('devices')
+        .select('id').eq('account_id', uid)
+        .order('last_seen_at', { ascending: false });
+
+      var rows = (mine && mine.data) || [];
+      if (rows.length > 5) {
+        var doomed = rows.slice(5).map(function(r){ return r.id; });
+        await AL.sb.from('devices').delete().in('id', doomed);
+        console.log('[push] 안 쓰는 기기 줄 ' + doomed.length + '개를 치웠습니다');
+      }
+    } catch (e) {
+      console.warn('[push] 옛 기기 줄 치우기 실패 — 등록은 됐습니다', e);
+    }
+
     return true;
 
   } catch (e) {
@@ -2233,6 +2324,14 @@ AL.registerPush = async function(){
             '&type=' + encodeURIComponent(d.call_type || 'voice');
 
         } else if (d.kind === 'call' && d.call_id) {
+          /* 🔴 2026-09-10 — 자바(MainActivity.openCallIfAsked)도 똑같은 일을 합니다.
+             둘이 겹치면 이미 들어간 통화화면에서 도로 튕겨나갑니다.
+             그 통화의 화면에 이미 있으면 아무 것도 하지 않습니다. */
+          if (location.pathname.indexOf('alias_call.html') >= 0 &&
+              location.search.indexOf('call=' + d.call_id) >= 0) {
+            console.log('[push] 이미 그 통화 화면입니다. 그냥 둡니다.');
+            return;
+          }
           location.href = 'alias_call.html?call=' + encodeURIComponent(d.call_id) +
             '&token=' + encodeURIComponent(d.session_token || '') +
             '&link=' + encodeURIComponent(d.link_id) +

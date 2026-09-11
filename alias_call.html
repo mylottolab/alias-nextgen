@@ -371,15 +371,25 @@ async function decline(){
        ① 이미 처리한 전화면 다시 안 띄웁니다 (표) */
     if (once && ticketUsed(once)) {
       console.log('[call] 이미 쓴 표입니다. 열지 않습니다.', once);
+      if (AL.clearCallNotices) AL.clearCallNotices();
       goChat(0);
       return;
     }
+
+    /* 🔴🔴 2026-09-11 — 이 전화를 "봤다" 고 지금 적어둡니다.
+       전에는 watchIncoming 안에서만 적었습니다. 그래서 잠금화면 알림으로
+       받으면 그 길을 안 지나 "본 적 없는 전화" 로 남았고, 끊고 대화 화면으로
+       돌아오면 watchIncoming 이 3초 뒤 그걸 집어 또 띄웠습니다. */
+    if (AL.markSeenCall) { try { AL.markSeenCall(callId); } catch (e) {} }
 
     /* ② 🔴 2026-09-10 — 울리기 전에 물어봅니다.
        끝난 통화면 한 번도 안 울립니다. 표도 여기서 태웁니다. */
     const st = await checkAlreadyOver();
     if (st === 'over') {
       if (once) burnTicket(once);
+      /* 🔴 2026-09-11 — 끝난 전화의 벨이 계속 울리고 있을 수 있습니다.
+         전화 채널은 알림이 떠 있는 내내 벨을 반복합니다. 여기서 끕니다. */
+      if (AL.clearCallNotices) AL.clearCallNotices();
       console.log('[call] 이미 끝난 전화입니다. 울리지 않습니다.');
       setStatus(AL.t('clEnded'));
       el('acts').innerHTML = '';
@@ -398,6 +408,7 @@ async function decline(){
        뒤로 가기로 돌아온 경우입니다. */
     if (!once || ticketUsed(once)) {
       console.log('[call] 표가 없거나 이미 쓴 표입니다. 걸지 않습니다.', once);
+      if (AL.clearCallNotices) AL.clearCallNotices();
       goChat(0);
       return;
     }
