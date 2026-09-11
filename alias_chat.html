@@ -4,17 +4,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260911c">
-<link rel="stylesheet" href="alias_theme.css?v=20260911c">
+<link rel="stylesheet" href="alias_common.css?v=20260910c">
+<link rel="stylesheet" href="alias_theme.css?v=20260910c">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260911c"></script>
-<script src="alias_media.js?v=20260911c"></script>
-<script src="alias_extras.js?v=20260911c"></script>
-<script src="alias_room.js?v=20260911c"></script>
-<script src="alias_call.js?v=20260911c"></script>
-<script src="alias_e2ee.js?v=20260911c"></script>
-<script src="alias_gcall.js?v=20260911c"></script>
+<script src="alias_common.js?v=20260910c"></script>
+<script src="alias_media.js?v=20260910c"></script>
+<script src="alias_extras.js?v=20260910c"></script>
+<script src="alias_room.js?v=20260910c"></script>
+<script src="alias_call.js?v=20260910c"></script>
+<script src="alias_e2ee.js?v=20260910c"></script>
+<script src="alias_gcall.js?v=20260910c"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -123,6 +123,9 @@ document.addEventListener("DOMContentLoaded", function(){
        머리 작은 글씨 = 내가 이 사람에게 보여주는 별칭
      상대의 peer_label 은 서버가 아예 안 내려줍니다.
    ===================================================================== */
+
+/* 🔴 2026-09-10 — 이 화면이 열린 시각. 막 열린 직후의 잘못 눌림을 막습니다. */
+var PAGE_OPENED_AT = Date.now();
 
 const linkId = new URLSearchParams(location.search).get('link');
 
@@ -430,9 +433,23 @@ function paint(keepPos){
 
   fillMedia();
 
+  /* 🔴🔴 2026-09-10 — 통화기록을 눌러 다시 거는 자리입니다.
+     여기가 유령 전화가 나올 수 있는 딱 한 곳입니다.
+
+     끊기 단추(✕)는 화면 아래에 있습니다. 끊으면 1.6초 뒤 이 대화 화면이
+     뜨는데, 방금 끝난 통화기록이 **바로 그 자리**에 나타납니다.
+     손가락이 남아 있거나 한 번 더 눌리면 곧바로 다시 걸립니다.
+
+     그래서 화면이 뜨고 2.5초 안의 누름은 무시합니다. */
   b.querySelectorAll('[data-call]').forEach(function(el){
     el.addEventListener('click', function(){
+      var since = Date.now() - PAGE_OPENED_AT;
+      if (since < 2500) {
+        console.log('[call] 화면이 막 열렸습니다. 누름을 무시합니다. (' + since + 'ms)');
+        return;
+      }
       if (confirm(AL.t('clCallBack'))) {
+        console.log('[call] 통화기록을 눌러서 다시 겁니다');
         location.href = 'alias_call.html?link=' + encodeURIComponent(linkId) +
     '&type=voice&once=' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
       }
@@ -1117,12 +1134,26 @@ async function loadMembers(){
      나중에 되짚을 때 "내가 그때 누구였더라" 가 안 풀리면 곤란합니다. */
 async function loadCalls(){
   try {
+    /* 🔴🔴 2026-09-11 고침 — 새 통화가 안 보이던 문제
+
+       전에는 이랬습니다.
+         .order('created_at', { ascending: true })   ← 오래된 것부터
+         .limit(200);                                ← 200개만
+
+       **오래된 것부터 200개**를 가져옵니다. 그래서 통화가 200건을 넘는
+       순간부터 **새 통화가 영영 안 보입니다.** 옛날 것만 계속 보입니다.
+
+       2026-09-11 에 하루 종일 시험하다 200건을 넘겼고, 그 뒤로 통화기록이
+       하나도 안 남는 것처럼 보였습니다. DB 에는 멀쩡히 저장돼 있었습니다.
+
+       → 최신 것부터 200개를 가져온 뒤, 그리기 좋게 순서를 뒤집습니다.
+         결과 모양은 전과 똑같습니다. */
     const res = await AL.sb.from('calls')
       .select('id, caller_side_id, call_type, ended_reason, duration_seconds, created_at, answered_at')
       .eq('link_id', linkId)
-      .order('created_at', { ascending: true })
+      .order('created_at', { ascending: false })   // 최신 것부터
       .limit(200);
-    calls = res.data || [];
+    calls = (res.data || []).reverse();            // 다시 오래된 것부터로
   } catch (e) { calls = []; }
 }
 
@@ -1407,6 +1438,12 @@ document.getElementById('who').addEventListener('click', function(){
   location.href = 'alias_link.html?link=' + encodeURIComponent(linkId);
 });
 document.getElementById('call').addEventListener('click', function(){
+  /* 🔴 2026-09-10 — 위 통화기록과 같은 이유로 막 열린 직후는 무시합니다. */
+  if (Date.now() - PAGE_OPENED_AT < 2500) {
+    console.log('[call] 화면이 막 열렸습니다. 누름을 무시합니다.');
+    return;
+  }
+  console.log('[call] 통화 단추를 눌러서 겁니다');
   // ⚠ 방이면 "건다" 가 아니라 "들어간다" 입니다. 벨도 거절도 없습니다.
   if (isRoom) {
     location.href = 'alias_gcall.html?link=' + encodeURIComponent(linkId) + '&type=voice';
