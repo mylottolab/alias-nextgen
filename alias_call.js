@@ -8,6 +8,8 @@
    2026-09-11  🔴 이미 받은 전화는 watchIncoming 이 다시 안 띄움
    2026-09-11  🔴 웹에서 남은 전화 알림을 직접 지움 (벨이 안 멎던 문제)
    2026-09-11  🔴 중계(TURN)가 없으면 콘솔에 크게 알림
+   2026-09-11  🔴 소리가 오가는 양을 재서 화면에 보여줌 (bytes)
+   2026-09-11  🔴 붙는 과정을 화면에 단계별로 보여줌 (ice-state)
 
    Aliascall 의 aliascall_connect.html 에서 옮겨왔습니다.
    그쪽이 이미 겪고 고쳐놓은 것들을 그대로 가져옵니다.
@@ -52,6 +54,8 @@ AL.call = {
   resendTimer: null,
   noAnswerTimer: null,
   dropTimer: null,     // 🔴 2026-09-10: 상대가 소리 없이 사라졌을 때
+  statsTimer: null,    // 🔴 2026-09-11: 소리가 실제로 오가는지 재는 시계
+  bytesSeen: 0,        // 🔴 2026-09-11: 지금까지 주고받은 양
   onState: null,      // 화면이 상태를 받아보는 통로
 };
 
@@ -122,7 +126,28 @@ async function buildPeer(iceServers){
   var pc = new RTCPeerConnection({ iceServers: iceServers });
 
   pc.onicecandidate = function(e){
-    if (e.candidate) send('ice', { candidate: e.candidate });
+    if (e.candidate) {
+      send('ice', { candidate: e.candidate });
+      /* 🔴 2026-09-11 — 어떤 길을 찾았는지 남깁니다.
+         relay 가 하나도 없으면 중계를 못 쓰고 있다는 뜻입니다. */
+      var t = e.candidate.type || (e.candidate.candidate || '').split(' ')[7] || '?';
+      console.log('[ice] 내 길 찾음:', t);
+      if (t === 'relay') AL.call.sawRelay = true;
+    } else {
+      console.log('[ice] 길 찾기 끝. 중계(relay) 찾음:', !!AL.call.sawRelay);
+      if (!AL.call.sawRelay) {
+        console.error('[ice] 🔴 중계 길을 하나도 못 찾았습니다. ' +
+          'TURN 주소나 비밀번호를 확인하세요.');
+      }
+    }
+  };
+
+  /* 🔴🔴 2026-09-11 신설 — 붙는 과정을 화면에 보여줍니다.
+     전에는 "전화 거는 중" 한 줄뿐이라 어디서 막혔는지 알 수가 없었습니다. */
+  pc.oniceconnectionstatechange = function(){
+    var s = pc.iceConnectionState;
+    console.log('[ice] 상태:', s);
+    say('ice-state', { state: s });
   };
 
   pc.ontrack = function(e){
@@ -132,8 +157,10 @@ async function buildPeer(iceServers){
 
   pc.onconnectionstatechange = function(){
     var s = pc.connectionState;
+    console.log('[call] 연결 상태:', s);
     if (s === 'connected') {
       if (AL.call.dropTimer) { clearTimeout(AL.call.dropTimer); AL.call.dropTimer = null; }
+      startStats();          // 🔴 2026-09-11 — 소리가 오가는지 재기 시작
       say('connected');
     }
     else if (s === 'failed') say('failed');
@@ -566,7 +593,68 @@ AL.declineCall = async function(callId){
   } catch (e) { /* 기록이 안 남아도 거절은 된 것입니다 */ }
 };
 
+/* =====================================================================
+   🔴🔴 2026-09-11 신설 — 소리가 실제로 오가는지 재서 화면에 보여줍니다
+
+   왜 필요한가
+     화면에 "이번 통화 ○○KB" 를 보여줄 자리는 예전부터 있었는데,
+     그 값을 보내주는 코드가 **없었습니다.** 만들다 만 기능이었습니다.
+
+     그래서 통화가 안 될 때 "소리가 오가고는 있는가" 를 귀로만 판단해야
+     했습니다. 그런데 echoCancellation 이 메아리를 지워버려서 두 폰을
+     나란히 놓고 시험해도 아무 소리가 안 납니다. 2026-09-11 에 이것 때문에
+     한참 헤맸습니다.
+
+   이제 이렇게 보입니다
+     0:07
+     이번 통화 42KB      ← 숫자가 올라가면 소리가 실제로 오가는 중
+
+   ⚠ 2초마다 잽니다. 통화에 부담이 없는 수준입니다.
+   ===================================================================== */
+function startStats(){
+  if (AL.call.statsTimer) return;
+
+  AL.call.statsTimer = setInterval(async function(){
+    if (!AL.call.pc) { stopStats(); return; }
+    try {
+      var stats = await AL.call.pc.getStats();
+      var total = 0;
+      var pair = null;
+
+      stats.forEach(function(r){
+        if (r.type === 'inbound-rtp' && r.bytesReceived) total += r.bytesReceived;
+        if (r.type === 'outbound-rtp' && r.bytesSent) total += r.bytesSent;
+        if (r.type === 'candidate-pair' && r.state === 'succeeded' && r.nominated) pair = r;
+      });
+
+      AL.call.bytesSeen = total;
+      say('bytes', { bytes: total });
+
+      /* 어떤 길로 붙었는지 한 번만 남깁니다. 나중에 원인을 찾을 때 씁니다. */
+      if (pair && !AL.call.pairLogged) {
+        AL.call.pairLogged = true;
+        try {
+          var lo = stats.get(pair.localCandidateId);
+          var re = stats.get(pair.remoteCandidateId);
+          console.log('[ice] 붙은 길:',
+            (lo && lo.candidateType) || '?', '→', (re && re.candidateType) || '?',
+            ((lo && lo.candidateType) === 'relay' || (re && re.candidateType) === 'relay')
+              ? '(중계를 탔습니다)' : '(직접 붙었습니다)');
+        } catch (e) {}
+      }
+    } catch (e) { /* 못 재도 통화에는 지장 없습니다 */ }
+  }, 2000);
+}
+
+function stopStats(){
+  if (AL.call.statsTimer) { clearInterval(AL.call.statsTimer); AL.call.statsTimer = null; }
+}
+
 function cleanup(){
+  stopStats();
+  AL.call.bytesSeen = 0;
+  AL.call.sawRelay = false;
+  AL.call.pairLogged = false;
   if (AL.call.resendTimer) { clearInterval(AL.call.resendTimer); AL.call.resendTimer = null; }
   if (AL.call.noAnswerTimer) { clearTimeout(AL.call.noAnswerTimer); AL.call.noAnswerTimer = null; }
   if (AL.call.dropTimer) { clearTimeout(AL.call.dropTimer); AL.call.dropTimer = null; }

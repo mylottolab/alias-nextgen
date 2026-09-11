@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260911b">
-<link rel="stylesheet" href="alias_theme.css?v=20260911b">
+<link rel="stylesheet" href="alias_common.css?v=20260910d">
+<link rel="stylesheet" href="alias_theme.css?v=20260910d">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260911b"></script>
-<script src="alias_media.js?v=20260911b"></script>
-<script src="alias_call.js?v=20260911b"></script>
+<script src="alias_common.js?v=20260910d"></script>
+<script src="alias_media.js?v=20260910d"></script>
+<script src="alias_call.js?v=20260910d"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -87,9 +87,6 @@ const token    = P.get('token');
 const callType = P.get('type') || 'voice';
 const once     = P.get('once');       // 이 통화의 표. 한 번만 씁니다
 const incoming = !!callId;
-/* 🔴 2026-09-11 — 잠금화면 CallStyle 알림의 빨강(거절) 단추로 들어온 경우입니다.
-   화면을 보여주지 않고 곧바로 거절하고 대화로 나갑니다. */
-const autoAct  = P.get('auto') || '';
 
 /* 🔴 뒤로 가기로 이 화면에 다시 오면 전화를 또 걸면 안 됩니다.
    브라우저는 그냥 주소를 다시 열 뿐이라, 주소만 보고 "걸어라" 하면
@@ -214,6 +211,35 @@ function onState(state, extra){
   else if (state === 'bytes') {
     // ⚠ 통화 중에 얼마나 쓰는지 보여줍니다. 모르면 불안합니다.
     el('bytes').textContent = AL.t('dtThisCall', { size: AL.fmtBytes(extra.bytes) });
+  }
+
+  /* 🔴🔴 2026-09-11 신설 — 붙는 과정을 눈으로 보여줍니다.
+
+     전에는 "전화 거는 중" 한 줄뿐이라, 안 붙을 때 어디서 막혔는지
+     알 수가 없었습니다. 이제 단계가 보입니다.
+
+       길 찾는 중    상대에게 닿을 길을 찾고 있습니다
+       길 맞춰보는 중 찾은 길들을 하나씩 두드려 보고 있습니다
+       통화 중       뚫렸습니다
+
+     어느 칸에서 멈추는지로 원인이 반쯤 갈립니다.
+       "길 찾는 중" 에서 멈춤     → 중계(TURN) 나 네트워크 문제
+       "길 맞춰보는 중" 에서 멈춤 → 양쪽이 서로 닿지 못하는 것
+       "통화 중" 인데 소리 없음   → 볼륨이나 마이크 문제
+
+     ⚠ 이미 통화 중이면 덮어쓰지 않습니다. 시계가 도는 걸 가리면 안 됩니다. */
+  else if (state === 'ice-state') {
+    if (tick) return;                       // 이미 붙었으면 건드리지 않습니다
+    var m = {
+      'new':          '길 찾는 중',
+      'checking':     '길 맞춰보는 중',
+      'connected':    '연결됨',
+      'completed':    '연결됨',
+      'disconnected': '끊겼습니다 · 다시 붙는 중',
+      'failed':       '길을 못 찾았습니다',
+      'closed':       '',
+    }[extra.state];
+    if (m) setStatus(m);
   }
 
   if (state === 'local-stream' && callType === 'video') {
@@ -383,18 +409,6 @@ async function decline(){
       return;
     }
 
-    /* 🔴 2026-09-11 — 잠금화면에서 빨강 단추를 누른 경우입니다.
-       벨을 울리지도, 화면을 보여주지도 않고 곧바로 거절합니다. */
-    if (autoAct === 'decline') {
-      console.log('[call] 잠금화면에서 거절했습니다');
-      if (once) burnTicket(once);
-      AL.stopRinging();
-      if (AL.clearCallNotices) AL.clearCallNotices();
-      try { await AL.declineCall(callId); } catch (e) { console.warn(e); }
-      goChat(0);
-      return;
-    }
-
     /* 🔴🔴 2026-09-11 — 이 전화를 "봤다" 고 지금 적어둡니다.
        전에는 watchIncoming 안에서만 적었습니다. 그래서 잠금화면 알림으로
        받으면 그 길을 안 지나 "본 적 없는 전화" 로 남았고, 끊고 대화 화면으로
@@ -417,25 +431,6 @@ async function decline(){
     }
 
     if (once) burnTicket(once);
-
-    /* 🔴🔴 2026-09-11 — 통화화면이 열렸으니 알림 벨을 끕니다.
-
-       왜 꼭 여기서 꺼야 하나
-         안드로이드에서 전화벨은 **"소리 우선권(audio focus)"** 을 붙잡습니다.
-         통화 소리와는 다른 길로 나가는 소리입니다.
-         벨이 계속 울리는 동안에는 통화 소리가 나갈 길이 막힙니다.
-
-       실제로 난 일 (2026-09-11)
-         A(안드로이드 16)는 전체화면 알림이 떠서 MainActivity 가 돌고,
-         거기서 알림이 지워졌습니다 → 벨이 멎고 → 통화가 됐습니다.
-         B(안드로이드 13)는 전체화면 알림이 안 떠서 MainActivity 가 안 돌고,
-         화면만 watchIncoming 으로 열렸습니다 → 알림이 안 지워지고
-         → 벨이 계속 울리고 → **받아도 소리가 안 들렸습니다.**
-
-       화면이 이미 떠 있으면 알림은 필요 없습니다. 여기서 끕니다.
-       ⚠ 그래서 벨이 짧게 울리고 멎습니다. 그건 정상입니다.
-         화면에 이미 초록·빨강 단추가 보이는 상태입니다. */
-    if (AL.clearCallNotices) AL.clearCallNotices();
 
     setStatus(AL.t('clRinging'));
     AL.startRinging({ quiet: AL.isNativeApp && AL.isNativeApp() });
