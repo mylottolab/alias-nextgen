@@ -10,6 +10,7 @@
    2026-09-11  🔴 중계(TURN)가 없으면 콘솔에 크게 알림
    2026-09-11  🔴 소리가 오가는 양을 재서 화면에 보여줌 (bytes)
    2026-09-11  🔴 붙는 과정을 화면에 단계별로 보여줌 (ice-state)
+   2026-09-12  🔴 영상 화질·보내는 양에 상한 (700kbps · 20장/초 · 640x480)
    2026-09-12  🔴 거는 과정을 다섯 단계로 화면에 보여줌 (어디서 멈추는지)
    2026-09-12  🔴 영상통화 — 카메라 끄고 받기 · 앞뒤 전환
    2026-09-12  🔴 상대가 거절하면 거는 쪽도 바로 끝납니다
@@ -177,6 +178,51 @@ function resendMyCands(){
 
 /* 🔴 2026-09-12 신설 — 기다리다 지치면 포기합니다.
    서버가 답을 안 주면 await 가 영영 안 끝나고 화면도 멈춥니다. */
+/* =====================================================================
+   🔴🔴 2026-09-12 신설 — 영상 보내는 양에 상한 걸기
+
+   왜 필요한가
+     WebRTC 는 회선이 허락하는 만큼 화질을 끝까지 올립니다. 그래서
+     0:46 통화에 17MB(초당 3Mbps)가 나왔습니다.
+
+     ① 오래된 폰(노트20)의 영상 처리 장치가 못 따라갑니다.
+        그러면 첫 장면만 보내고 멈춥니다. 소리는 멀쩡한데 화면만
+        정지화상으로 굳는 증상이 이것입니다.
+     ② 데이터가 1시간에 1.3GB 입니다. 손님 요금제가 거덜납니다.
+        중계(TURN)를 타면 회사 요금도 스무 배가 됩니다.
+
+   700kbps · 초당 20장으로 묶습니다. 얼굴을 보는 데는 충분합니다.
+   1시간에 약 300MB 로 줄어듭니다.
+
+   ⚠ maintain-framerate — 회선이 나빠지면 화질을 낮추고 **움직임을
+     지킵니다.** 얼굴 통화는 또렷한 정지화면보다 부드러운 쪽이 낫습니다.
+   ⚠ setLocalDescription 전에는 encodings 가 비어 있을 수 있어서,
+     붙은 뒤에 한 번 더 겁니다.
+   ===================================================================== */
+var VIDEO_MAX_BPS = 700000;
+var VIDEO_MAX_FPS = 20;
+
+async function capVideo(){
+  try {
+    if (!AL.call.pc) return;
+    var sender = AL.call.pc.getSenders().filter(function(x){
+      return x.track && x.track.kind === 'video';
+    })[0];
+    if (!sender) return;
+
+    var p = sender.getParameters();
+    if (!p.encodings || !p.encodings.length) p.encodings = [{}];
+    p.encodings[0].maxBitrate = VIDEO_MAX_BPS;
+    p.encodings[0].maxFramerate = VIDEO_MAX_FPS;
+    p.degradationPreference = 'maintain-framerate';
+    await sender.setParameters(p);
+    console.log('[call] 영상 상한 걸었습니다: ' +
+      (VIDEO_MAX_BPS / 1000) + 'kbps · ' + VIDEO_MAX_FPS + '장/초');
+  } catch (e) {
+    console.warn('[call] 영상 상한 설정 실패 — 통화에는 지장 없습니다', e);
+  }
+}
+
 function withTimeout(p, ms, what){
   return Promise.race([
     p,
@@ -248,6 +294,7 @@ async function buildPeer(iceServers){
     if (s === 'connected') {
       if (AL.call.dropTimer) { clearTimeout(AL.call.dropTimer); AL.call.dropTimer = null; }
   if (AL.call.endWatch) { clearInterval(AL.call.endWatch); AL.call.endWatch = null; }
+      capVideo();            // 🔴 2026-09-12 — 붙은 뒤 한 번 더 확실히
       startStats();          // 🔴 2026-09-11 — 소리가 오가는지 재기 시작
       say('connected');
     }
@@ -351,7 +398,10 @@ AL.startCall = async function(opts){
         noiseSuppression: true,
         autoGainControl: true,
       },
-      video: (type === 'video') ? { facingMode: AL.call.facing } : false,
+      /* 🔴 2026-09-12 — 카메라가 주는 최고 화질을 그대로 쓰면 안 됩니다.
+         0:46 에 17MB(초당 3Mbps)가 나왔습니다. 보통 화상통화의 세 배입니다.
+         오래된 폰이 못 따라가고, 데이터도 1시간에 1.3GB 씩 먹습니다. */
+      video: (type === 'video') ? { facingMode: AL.call.facing, width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 20, max: 24 } } : false,
     });
   } catch (e) {
     say('no-media', { error: e });
@@ -428,6 +478,7 @@ AL.startCall = async function(opts){
     console.log('[call] 보낼 것:', t.kind);
     AL.call.pc.addTrack(t, AL.call.local);
   });
+  await capVideo();   // 🔴 2026-09-12
 
   // 4) offer
   var offer = await AL.call.pc.createOffer();
@@ -532,7 +583,7 @@ AL.answerCall = async function(opts){
         noiseSuppression: true,
         autoGainControl: true,
       },
-      video: wantVideo ? { facingMode: AL.call.facing } : false,
+      video: wantVideo ? { facingMode: AL.call.facing, width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 20, max: 24 } } : false,
     });
   } catch (e) {
     say('no-media', { error: e });
@@ -546,6 +597,7 @@ AL.answerCall = async function(opts){
   AL.call.local.getTracks().forEach(function(t){
     AL.call.pc.addTrack(t, AL.call.local);
   });
+  await capVideo();   // 🔴 2026-09-12
 
   await AL.sb.from('calls')
     .update({ answered_at: new Date().toISOString() }).eq('id', opts.callId);
@@ -965,7 +1017,7 @@ AL.switchCamera = async function(){
 
     AL.call.facing = (AL.call.facing === 'environment') ? 'user' : 'environment';
     var s = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: AL.call.facing },
+      video: { facingMode: AL.call.facing, width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 20, max: 24 } },
     });
     var nt = s.getVideoTracks()[0];
     if (!nt) return null;
