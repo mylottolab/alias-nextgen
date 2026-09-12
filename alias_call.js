@@ -63,6 +63,8 @@ AL.call = {
   noAnswerTimer: null,
   dropTimer: null,     // 🔴 2026-09-10: 상대가 소리 없이 사라졌을 때
   endWatch: null,      // 🔴 2026-09-12: 상대가 거절했는지 지켜보는 시계
+  remoteA: null,       // 🔴 2026-09-12: 상대 소리만 담는 상자
+  remoteV: null,       // 🔴 2026-09-12: 상대 영상만 담는 상자
   facing: 'user',      // 🔴 2026-09-12: 카메라 앞/뒤
   noCam: false,        // 🔴 2026-09-12: 카메라를 아예 안 켜고 받았는가
   statsTimer: null,    // 🔴 2026-09-11: 소리가 실제로 오가는지 재는 시계
@@ -284,21 +286,34 @@ async function buildPeer(iceServers){
   };
 
   pc.ontrack = function(e){
-    /* 🔴🔴 2026-09-12 — **어느 종류가 왔는지** 함께 알려줍니다.
+    /* 🔴🔴 2026-09-12 — 소리와 영상을 **따로 담아** 보냅니다.
 
-       ontrack 은 소리 한 번, 영상 한 번 불립니다. 그런데 넘겨주는 상자
-       (MediaStream)는 **같은 것**입니다. 화면 쪽에서 그냥
-         target.srcObject = stream
-       을 하면, 두 번째는 같은 상자라 아무 일도 안 일어납니다.
+       무슨 일이 났나
+         거는 쪽(A)에서 상대 영상이 첫 장면에 굳었습니다. 숫자를 보니
+         초당 20장을 제대로 받아 풀고 있었는데 화면만 안 바뀌었습니다.
 
-       소리가 먼저 도착하면 화면 요소가 "소리짜리" 로 자리를 잡고,
-       뒤늦게 영상이 들어와도 그릴 자리가 없습니다. 풀기는 계속 푸니까
-       숫자만 올라가고 화면은 첫 장면에 굳습니다.
-       2026-09-12 에 거는 쪽에서만 영상이 정지화상으로 굳던 원인입니다. */
-    AL.call.remote = e.streams[0];
+       왜 그런가
+         ontrack 은 소리 한 번, 영상 한 번 불리는데 상자(MediaStream)는
+         **같은 것**입니다. 소리가 먼저 도착하면 화면 요소가 "소리짜리" 로
+         자리를 잡고, 뒤늦게 영상이 들어와도 그릴 자리를 못 만듭니다.
+         도착 순서가 폰마다 달라서 한쪽만 증상이 났습니다.
+
+       그래서
+         소리는 소리 상자에, 영상은 영상 상자에 따로 담습니다.
+         화면 쪽도 <audio> 와 <video> 로 갈라서 받습니다.
+         이러면 순서가 어떻든 각자 제 자리를 잡습니다.
+
+       ⚠ 음성통화는 하나도 안 바뀝니다. 소리 상자만 쓰던 대로 갑니다. */
     var kind = (e.track && e.track.kind) || '';
+    if (!AL.call.remoteA) AL.call.remoteA = new MediaStream();
+    if (!AL.call.remoteV) AL.call.remoteV = new MediaStream();
+
+    var box = (kind === 'video') ? AL.call.remoteV : AL.call.remoteA;
+    try { box.addTrack(e.track); } catch (err) { /* 이미 들어 있으면 넘어갑니다 */ }
+
+    AL.call.remote = e.streams[0];
     console.log('[call] 받은 것:', kind);
-    say('remote-stream', { stream: e.streams[0], kind: kind });
+    say('remote-stream', { stream: box, kind: kind });
   };
 
   pc.onconnectionstatechange = function(){
@@ -970,6 +985,8 @@ function cleanup(){
      안 끄면 통화가 끝난 뒤에도 3초마다 DB 를 들여다보고, 나중에 엉뚱한
      통화를 "거절됐다" 고 끝낼 수 있습니다. */
   if (AL.call.endWatch) { clearInterval(AL.call.endWatch); AL.call.endWatch = null; }
+  AL.call.remoteA = null;   // 🔴 2026-09-12
+  AL.call.remoteV = null;
   if (AL.call.local) {
     AL.call.local.getTracks().forEach(function(t){ try { t.stop(); } catch (e) {} });
     AL.call.local = null;

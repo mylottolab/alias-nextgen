@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260912m">
-<link rel="stylesheet" href="alias_theme.css?v=20260912m">
+<link rel="stylesheet" href="alias_common.css?v=20260912n">
+<link rel="stylesheet" href="alias_theme.css?v=20260912n">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260912m"></script>
-<script src="alias_media.js?v=20260912m"></script>
-<script src="alias_call.js?v=20260912m"></script>
+<script src="alias_common.js?v=20260912n"></script>
+<script src="alias_media.js?v=20260912n"></script>
+<script src="alias_call.js?v=20260912n"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -63,13 +63,17 @@ document.addEventListener("DOMContentLoaded", function(){
 .callvid{display:none}
 body.vidon .callvid{
   display:block;position:fixed;inset:0;z-index:1;background:#000}
-body.vidon #remoteV{width:100%;height:100%;object-fit:cover;background:#000}
+/* 🔴 2026-09-12 — 영상 요소에 제 층을 줍니다.
+   안드로이드 웹뷰에서 층이 없으면 그림이 갱신 안 되고 굳는 일이 있습니다. */
+body.vidon #remoteV{width:100%;height:100%;object-fit:cover;background:#000;
+  transform:translateZ(0);will-change:transform;backface-visibility:hidden}
 body.vidon .callvid .mini{
   position:absolute;right:14px;top:calc(14px + env(safe-area-inset-top,0px));
   width:104px;height:140px;border-radius:14px;overflow:hidden;
   border:1px solid rgba(255,255,255,.35);background:#111;
   box-shadow:0 6px 18px rgba(0,0,0,.5)}
-body.vidon .callvid .mini video{width:100%;height:100%;object-fit:cover}
+body.vidon .callvid .mini video{width:100%;height:100%;object-fit:cover;
+  transform:translateZ(0);will-change:transform}
 
 /* 글씨와 단추를 영상 위로 올립니다. */
 body.vidon .callbox{position:relative;z-index:2;background:transparent}
@@ -411,62 +415,42 @@ function onState(state, extra){
     el('localV').srcObject = extra.stream;
   }
   if (state === 'remote-stream') {
-    const target = (callType === 'video') ? el('remoteV') : el('remoteA');
+    /* 🔴🔴 2026-09-12 — 소리와 영상을 갈라 받습니다.
+       소리는 <audio id="remoteA"> 로, 영상은 <video id="remoteV"> 로.
+       한 요소에 둘 다 밀어넣으면 도착 순서에 따라 영상이 안 그려집니다. */
+    const isVid = (extra.kind === 'video');
+    const target = isVid ? el('remoteV') : el('remoteA');
+    target.srcObject = extra.stream;
 
-    /* 🔴🔴 2026-09-12 — 같은 상자를 다시 붙일 때는 **한 번 떼었다 붙입니다.**
+    if (isVid) showVideoMode();
 
-       ontrack 은 소리 한 번, 영상 한 번 불리는데 상자는 같습니다.
-       그냥 다시 넣으면 브라우저가 "같은 것" 이라며 아무 일도 안 합니다.
-       그러면 소리만 있던 시절의 자리 그대로라 영상이 안 그려집니다.
-       (숫자는 올라가는데 화면만 첫 장면에 굳습니다 — 2026-09-12 증상)
-
-       null 로 한 번 떼었다 붙이면 화면 요소가 처음부터 다시 잡습니다. */
-    if (target.srcObject === extra.stream) {
-      target.srcObject = null;
-      target.srcObject = extra.stream;
-      try { target.load(); } catch (e) {}
-      console.log('[call] 화면을 다시 붙였습니다 (' + (extra.kind || '?') + ')');
-    } else {
-      target.srcObject = extra.stream;
-    }
-    /* 🔴 2026-09-12 — 카메라를 끄고 받았으면 local-stream 에서 화면을
-       못 켭니다(내 영상이 없으니까요). 상대 영상이 올 때도 켭니다. */
-    if (callType === 'video') showVideoMode();
-    // ⚠ 브라우저가 소리 재생을 막을 수 있습니다(자동재생 정책).
-    //   막히면 조용히 실패하므로, 눌러서 켜는 단추를 띄웁니다.
-    /* 🔴 2026-09-12 — 영상이 첫 장면에서 멈추는 일이 있습니다.
-       브라우저가 재생을 막았거나 화면이 잠깐 가려졌을 때입니다.
-       3초마다 살펴보고 멈춰 있으면 다시 틀어줍니다.
-       ⚠ 이미 돌고 있으면 아무 일도 안 합니다. */
-    if (callType === 'video' && !window.__vidNudge) {
+    /* 🔴 2026-09-12 — 첫 장면에서 멈추면 다시 틀어줍니다.
+       브라우저가 재생을 막았거나 화면이 잠깐 가려졌을 때입니다. */
+    if (isVid && !window.__vidNudge) {
       window.__vidNudge = setInterval(function(){
         const v = el('remoteV');
         if (!v || !v.srcObject) return;
-        if (v.paused || v.readyState < 2) {
-          v.play().catch(function(){});
-        }
+        if (v.paused || v.readyState < 2) v.play().catch(function(){});
       }, 3000);
     }
 
+    // ⚠ 브라우저가 소리 재생을 막을 수 있습니다(자동재생 정책).
+    //   막히면 조용히 실패하므로, 눌러서 켜는 단추를 띄웁니다.
     const p = target.play();
     if (p && p.catch) {
       p.catch(function(e){
-        console.warn('[call] 소리 재생이 막혔습니다', e);
+        console.warn('[call] 재생이 막혔습니다 (' + (extra.kind || '?') + ')', e);
         const b = el('tapSound');
         b.style.display = '';
         b.onclick = function(){
-          target.play().then(function(){ b.style.display = 'none'; })
-                       .catch(function(){});
+          el('remoteA').play().catch(function(){});
+          el('remoteV').play().catch(function(){});
+          b.style.display = 'none';
         };
       });
     }
   }
 }
-
-/* 🔴 2026-09-10 — 두 번 부르지 않게 빗장을 겁니다.
-   'peer-hangup' 뒤에 'ended' 가 잇달아 오면 예전에는 bye() 가 두 번 돌아
-   나가는 타이머가 둘 겹쳤습니다. */
-var leaving = false;
 
 function bye(){
   if (leaving) return;
