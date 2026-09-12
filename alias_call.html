@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260912r">
-<link rel="stylesheet" href="alias_theme.css?v=20260912r">
+<link rel="stylesheet" href="alias_common.css?v=20260912s">
+<link rel="stylesheet" href="alias_theme.css?v=20260912s">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260912r"></script>
-<script src="alias_media.js?v=20260912r"></script>
-<script src="alias_call.js?v=20260912r"></script>
+<script src="alias_common.js?v=20260912s"></script>
+<script src="alias_media.js?v=20260912s"></script>
+<script src="alias_call.js?v=20260912s"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -31,6 +31,10 @@ document.addEventListener("DOMContentLoaded", function(){
 });
 </script>
 <style>
+/* 🔴 2026-09-12 — "눌러서 소리 켜기" 단추가 ✕ 를 덮고 있었습니다.
+   bottom:110px 은 하필 끊기 단추 자리입니다. 위로 올리고 맨 앞에 둡니다. */
+#tapSound{bottom:auto !important;top:26vh !important;z-index:90 !important}
+
 /* 🔴 2026-09-12 신설 — 영상통화 안내줄
 
    받기 **전에** "영상입니다 · 얼굴이 나갑니다" 를 분명히 보여줍니다.
@@ -359,8 +363,9 @@ function onState(state, extra){
       line += '\n↑' + AL.fmtBytes(extra.up) + '  ↓' + AL.fmtBytes(extra.down);
       line += '  · 영상↓' + AL.fmtBytes(extra.vIn);
       if (extra.fps != null) line += ' · ' + Math.round(extra.fps) + '장/초';
-      const v = el('remoteV');
-      if (v) line += ' · ' + (v.paused ? '멈춤' : '재생') ;
+      const v = el('remoteV'), a = el('remoteA');
+      line += ' · 영상' + (v && !v.paused ? '재생' : '멈춤');
+      line += ' · 소리' + (a && !a.paused ? '재생' : '멈춤');
     }
     el('bytes').style.whiteSpace = 'pre-line';
     el('bytes').textContent = line;
@@ -447,12 +452,23 @@ function onState(state, extra){
 
     /* 🔴 2026-09-12 — 첫 장면에서 멈추면 다시 틀어줍니다.
        브라우저가 재생을 막았거나 화면이 잠깐 가려졌을 때입니다. */
-    if (isVid && !window.__vidNudge) {
-      window.__vidNudge = setInterval(function(){
-        const v = el('remoteV');
-        if (!v || !v.srcObject) return;
-        if (v.paused || v.readyState < 2) v.play().catch(function(){});
-      }, 3000);
+    /* 🔴🔴 2026-09-12 — **소리도** 다시 틀어봅니다.
+
+       거는 쪽(A)에서만 소리가 안 들리는 일이 났습니다.
+       받는 쪽은 "받기" 를 이 화면에서 눌렀으니 브라우저가 "소리를 내도
+       좋다" 고 봅니다. 거는 쪽은 앞 화면에서 누르고 넘어왔기 때문에
+       이 화면에는 그 허락이 없습니다. 그래서 막힐 수 있습니다.
+
+       2초마다 살펴보고 멈춰 있으면 다시 틀어줍니다.
+       이미 나오고 있으면 아무 일도 안 합니다. */
+    if (!window.__mediaNudge) {
+      window.__mediaNudge = setInterval(function(){
+        ['remoteA', 'remoteV'].forEach(function(id){
+          const m = el(id);
+          if (!m || !m.srcObject) return;
+          if (m.paused) m.play().catch(function(){});
+        });
+      }, 2000);
     }
 
     // ⚠ 브라우저가 소리 재생을 막을 수 있습니다(자동재생 정책).
@@ -713,7 +729,7 @@ var cleanedUp = false;
 function leaveCleanup(){
   if (cleanedUp) return;
   cleanedUp = true;
-  if (window.__vidNudge) { clearInterval(window.__vidNudge); window.__vidNudge = null; }
+  if (window.__mediaNudge) { clearInterval(window.__mediaNudge); window.__mediaNudge = null; }
   try {
     AL.stopRinging();
     AL.stopDialTone();
