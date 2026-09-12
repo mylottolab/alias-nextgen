@@ -1645,17 +1645,69 @@ AL.stopDialTone = function(){
       → 앱에서는 quiet 로 불러서 진동만 하게 합니다.
         브라우저에서는 알림 채널이 없으니 그대로 소리를 냅니다. */
 AL._ringStop = null;
+AL._ringCtx = null;
 
+/* 🔴🔴 2026-09-12 신설 — 진짜 전화벨
+
+   왜 필요한가
+     전에는 걸려온 전화에 AL.alertNew()(딩동)를 썼습니다. 그건 메시지
+     알림음이라 짧고 작습니다. 손님이 "모기소리" 라고 하셨습니다.
+
+     2026-09-12 에 USE_FULL_SCREEN_INTENT 권한을 넣자, 전화가 오면
+     통화화면이 **즉시** 열리게 됐습니다. 그때 안드로이드 알림이
+     지워지면서 알림 채널의 벨도 같이 멎습니다(함정 65).
+     그러면 소리를 낼 사람이 화면밖에 없습니다.
+
+   그래서 여기서 제대로 된 벨을 만듭니다.
+     440Hz + 480Hz 를 겹쳐 "따르릉" 두 번, 그리고 쉼.
+     예전 전화기 벨소리가 이 두 음입니다.
+
+   ⚠ 소리 상자(AudioContext)를 하나만 만들어 계속 씁니다.
+     울릴 때마다 새로 만들면 폰이 버거워합니다.
+   ⚠ 소리가 막히면(자동재생 정책) 진동이라도 납니다. */
+AL.ringTone = function(){
+  if (!AL.prefs().sound) return;
+  try {
+    var Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    if (!AL._ringCtx) AL._ringCtx = new Ctx();
+    var ctx = AL._ringCtx;
+    if (ctx.state === 'suspended') { try { ctx.resume(); } catch (e) {} }
+
+    var t0 = ctx.currentTime;
+    [0, 0.55].forEach(function(off){          // 따르릉 두 번
+      var at = t0 + off;
+      [440, 480].forEach(function(f){
+        var osc = ctx.createOscillator(), g = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = f;
+        g.gain.setValueAtTime(0.0001, at);
+        g.gain.exponentialRampToValueAtTime(0.30, at + 0.03);
+        g.gain.setValueAtTime(0.30, at + 0.38);
+        g.gain.exponentialRampToValueAtTime(0.0001, at + 0.46);
+        osc.connect(g); g.connect(ctx.destination);
+        osc.start(at); osc.stop(at + 0.5);
+      });
+    });
+  } catch (e) { /* 소리가 안 나도 진동은 납니다 */ }
+};
+
+/* 🔴 2026-09-11 고침 두 가지
+
+   ① 45초 시계에 손잡이를 안 달았습니다.
+      전에는 setTimeout 을 그냥 던져두어서, 45초 안에 다음 전화가 오면
+      "앞 전화의 45초" 가 뒤늦게 터져 새 전화의 벨을 꺼버렸습니다.
+
+   ② 2026-09-12 — quiet 는 이제 거의 안 씁니다.
+      통화화면이 열릴 때 안드로이드 알림을 바로 지우므로 소리가 겹치지
+      않습니다. 그래서 화면이 마음껏 울려도 됩니다(함정 59 해소). */
 AL.startRinging = function(opts){
   AL.stopRinging();
   var quiet = !!(opts && opts.quiet);
 
   var beat = function(){
-    if (quiet) {
-      try { if (navigator.vibrate) navigator.vibrate([400, 200, 400]); } catch (e) {}
-    } else {
-      AL.alertNew();
-    }
+    if (!quiet) AL.ringTone();
+    try { if (navigator.vibrate) navigator.vibrate([500, 220, 500]); } catch (e) {}
   };
 
   beat();
@@ -1667,6 +1719,7 @@ AL.startRinging = function(opts){
 AL.stopRinging = function(){
   if (AL._ringTimer) { clearInterval(AL._ringTimer); AL._ringTimer = null; }
   if (AL._ringStop) { clearTimeout(AL._ringStop); AL._ringStop = null; }
+  if (AL._ringCtx) { try { AL._ringCtx.close(); } catch (e) {} AL._ringCtx = null; }
   try { if (navigator.vibrate) navigator.vibrate(0); } catch (e) {}
 };
 

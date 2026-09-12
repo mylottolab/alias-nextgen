@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260912b">
-<link rel="stylesheet" href="alias_theme.css?v=20260912b">
+<link rel="stylesheet" href="alias_common.css?v=20260910d">
+<link rel="stylesheet" href="alias_theme.css?v=20260910d">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260912b"></script>
-<script src="alias_media.js?v=20260912b"></script>
-<script src="alias_call.js?v=20260912b"></script>
+<script src="alias_common.js?v=20260910d"></script>
+<script src="alias_media.js?v=20260910d"></script>
+<script src="alias_call.js?v=20260910d"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -449,8 +449,19 @@ async function decline(){
 
     if (once) burnTicket(once);
 
+    /* 🔴🔴 2026-09-12 — 통화화면이 열렸으니 안드로이드 알림을 끕니다.
+
+       왜 여기서 끄나
+         전화벨은 알림이 떠 있는 동안만 울립니다(함정 65). 그대로 두면
+         알림 벨과 화면 벨이 겹치고(함정 59), 알림 벨이 "소리 우선권" 을
+         붙잡아 **받아도 통화 소리가 안 나옵니다.** 9/11 에 겪었습니다.
+
+       끄고 나면 소리를 낼 사람이 화면뿐입니다. 그래서 아래에서
+       quiet 없이 제대로 된 전화벨을 울립니다. */
+    if (AL.clearCallNotices) AL.clearCallNotices();
+
     setStatus(AL.t('clRinging'));
-    AL.startRinging({ quiet: AL.isNativeApp && AL.isNativeApp() });
+    AL.startRinging();   // 🔴 2026-09-12 — 소리 내어 울립니다
     watchCallAlive();      // 🔴 A 가 끊었는지 지켜봅니다 (위 설명)
 
   } else {
