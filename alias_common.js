@@ -794,6 +794,26 @@ AL.STR = {
   cntMsgNow:    { kr:'💬 메시지 보내기', en:'💬 Message' },
   cntMoveUp:    { kr:'▲ 한 칸 위로', en:'▲ Move up' },
   cntMoveDown:  { kr:'▼ 한 칸 아래로', en:'▼ Move down' },
+
+  /* 🔴 2026-09-12 신설 — 부름 화면 (alias_phone.html)
+     ⚠ 이름은 아직 정하는 중입니다. 여기 한 줄만 고치면 화면 제목이 바뀝니다.
+       후보: 부름 · 드보크 · 여보세요 · 손짓 */
+  phTitle:    { kr:'부름', en:'Dial' },
+  phSearch:   { kr:'이름으로 찾기', en:'Search by name' },
+  phEmptySlot:{ kr:'비어 있음', en:'empty' },
+  phPickWho:  { kr:'{n}번으로 누구를 넣을까요?', en:'Who goes in {n}?' },
+  phEditOn:   { kr:'번호 바꾸기', en:'Edit numbers' },
+  phEditOff:  { kr:'다 됐습니다', en:'Done' },
+  phEditHint: { kr:'칸을 눌러 사람을 넣거나 비웁니다. 지금은 전화가 걸리지 않습니다.',
+                en:'Tap a slot to set or clear it. Calls are paused while editing.' },
+  phClear:    { kr:'이 번호 비우기', en:'Clear this number' },
+  phNoPair:   { kr:'1:1 로 이어진 사람이 없습니다.', en:'No one-to-one contacts yet.' },
+  phEmpty:    { kr:'아직 이어진 사람이 없습니다.', en:'Nobody is connected yet.' },
+  phNoMatch:  { kr:'찾는 이름이 없습니다.', en:'No matching name.' },
+  phGoContacts:{ kr:'연락처로', en:'Contacts' },
+  phRoomOnly: { kr:'방은 대화만 됩니다', en:'Rooms are chat only' },
+  ariaCall:   { kr:'전화 걸기', en:'Call' },
+  ariaMsg:    { kr:'메시지 보내기', en:'Message' },
 };
 
 /* ── 언어 ───────────────────────────────────────────────────────────

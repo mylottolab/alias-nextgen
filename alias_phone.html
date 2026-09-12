@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Alias</title>
+<link rel="stylesheet" href="alias_common.css?v=20260912a">
+<link rel="stylesheet" href="alias_theme.css?v=20260912a">
+<script src="alias_config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="alias_common.js?v=20260912a"></script>
+<script src="alias_call.js?v=20260912a"></script>
+<script>
+/* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
+   그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
+   여기서 잡아 사람 말로 알려줍니다. */
+document.addEventListener("DOMContentLoaded", function(){
+  if (typeof AL === "undefined" || typeof AL.t !== "function") {
+    document.body.innerHTML =
+      '<div style="padding:26px;font-family:system-ui,sans-serif;line-height:1.8;' +
+      'color:#DDE5F0;background:#0E1621;min-height:100vh">' +
+      '<b style="font-size:17px">alias_common.js 를 못 읽었습니다.</b><br><br>' +
+      '가장 흔한 원인은 anon 열쇠 줄이 두 줄로 나뉜 것입니다.<br>' +
+      'alias_common.js 20번 줄이 한 줄인지 확인하세요.<br><br>' +
+      '<span style="color:#7E8FA6">F12 → Console 에 진짜 원인이 찍힙니다.</span></div>';
+    return;
+  }
+  AL.bootTheme();
+});
+</script>
+
+<style>
+/* =====================================================================
+   🔴 2026-09-12 신설 — 부름 화면
+
+   폰의 초록 전화 아이콘이 하는 일을 한 화면에 모읍니다.
+     위   단축번호 아홉 칸 — 누르면 바로 걸립니다
+     아래 명부 — 줄마다 ☏ 와 💬 가 바로 있습니다
+
+   ⚠ 공용 CSS 를 안 건드리려고 여기에 다 적습니다.
+     다른 화면에 영향이 없습니다. 잘못돼도 이 파일만 되돌리면 됩니다.
+   ===================================================================== */
+.phwrap{padding:14px 14px 90px;max-width:520px;margin:0 auto}
+
+.phtop{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.phtop h1{margin:0;font-size:24px;font-weight:800}
+
+.phfind{width:100%;box-sizing:border-box;padding:13px 15px;margin-bottom:14px;
+  border-radius:12px;font-size:16px;
+  background:rgba(255,255,255,.06);color:inherit;
+  border:1px solid rgba(255,255,255,.14)}
+
+.padhead{display:flex;align-items:center;justify-content:space-between;
+  margin:0 2px 8px;font-size:12.5px;opacity:.7}
+.editbtn{appearance:none;-webkit-appearance:none;cursor:pointer;margin:0;
+  padding:7px 13px;border-radius:999px;font-size:12.5px;font-weight:700;
+  background:rgba(255,255,255,.07);color:inherit;
+  border:1px solid rgba(255,255,255,.18)}
+.editbtn.on{background:rgba(120,200,150,.22);color:#8FE3B0;
+  border-color:rgba(120,200,150,.45)}
+
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:8px}
+.slot{appearance:none;-webkit-appearance:none;cursor:pointer;margin:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:74px;padding:8px 4px;border-radius:14px;
+  background:rgba(255,255,255,.06);color:inherit;
+  border:1px solid rgba(255,255,255,.12)}
+.slot:active{background:rgba(255,255,255,.16)}
+.slot .num{font-size:19px;font-weight:800;line-height:1.1}
+.slot .who{margin-top:4px;font-size:12.5px;font-weight:600;max-width:100%;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.slot.set{background:rgba(120,200,150,.13);border-color:rgba(120,200,150,.34)}
+.slot.set .num{color:#8FE3B0}
+.slot.blank{opacity:.45}
+.slot.blank .who{font-weight:400}
+.pad.editing .slot{border-style:dashed;border-color:rgba(255,215,120,.55)}
+
+.edithint{margin:0 2px 14px;font-size:12.5px;line-height:1.6;color:#F2C94C;opacity:.9}
+
+.phsep{height:1px;margin:16px 2px 12px;background:rgba(255,255,255,.10)}
+
+.prow{display:flex;align-items:center;gap:10px;padding:11px 4px;
+  border-bottom:1px solid rgba(255,255,255,.06)}
+.prow .pav{width:38px;height:38px;flex:0 0 38px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-weight:700;
+  background:rgba(255,255,255,.08)}
+.prow .pmid{flex:1;min-width:0;cursor:pointer}
+.prow .pname{font-size:15.5px;font-weight:600;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prow .psub{font-size:12px;opacity:.6;margin-top:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prow .spd{display:inline-block;min-width:1.35em;padding:0 .2em;margin-right:.35em;
+  border-radius:.5em;text-align:center;font-weight:700;font-size:12.5px;
+  background:rgba(120,200,150,.18);color:#8FE3B0}
+.prow .star{margin-right:.3em;color:#F2C94C}
+.act{appearance:none;-webkit-appearance:none;cursor:pointer;margin:0;
+  width:42px;height:42px;flex:0 0 42px;border-radius:50%;font-size:17px;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(255,255,255,.07);color:inherit;
+  border:1px solid rgba(255,255,255,.14)}
+.act.call{background:rgba(120,200,150,.18);border-color:rgba(120,200,150,.38)}
+.act:active{background:rgba(255,255,255,.2)}
+.act.off{opacity:.25;pointer-events:none}
+
+.phnote{padding:22px 6px;text-align:center;opacity:.6;font-size:14px;line-height:1.7}
+.pherr{display:none;margin:12px 2px;padding:12px 14px;border-radius:10px;
+  background:rgba(255,90,90,.14);color:#FFB4B4;font-size:13.5px;line-height:1.6}
+.pherr.show{display:block}
+
+.phfoot{position:fixed;left:0;right:0;bottom:0;padding:12px 14px;
+  display:flex;justify-content:center;
+  background:rgba(14,22,33,.94);border-top:1px solid rgba(255,255,255,.08)}
+.phfoot a{padding:10px 20px;border-radius:999px;font-size:14px;font-weight:600;
+  text-decoration:none;color:inherit;background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.14)}
+
+/* 누구를 넣을지 고르는 창 */
+#pickbg{display:none;position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.55)}
+#pickbox{display:none;position:fixed;z-index:81;left:50%;top:50%;
+  transform:translate(-50%,-50%);width:min(400px,88vw);max-height:74vh;
+  overflow:auto;padding:10px;border-radius:16px;
+  background:#1B2430;border:1px solid rgba(255,255,255,.14);
+  box-shadow:0 18px 44px rgba(0,0,0,.6)}
+#pickbox .ttl{padding:10px 12px 8px;font-size:13.5px;font-weight:700;opacity:.85}
+#pickbox button{display:block;width:100%;margin:0;text-align:left;
+  appearance:none;-webkit-appearance:none;cursor:pointer;
+  padding:13px 12px;border:0;border-radius:9px;background:transparent;
+  color:#DDE5F0;font-size:15.5px}
+#pickbox button:active{background:rgba(255,255,255,.12)}
+#pickbox .sep{height:1px;margin:6px 4px;background:rgba(255,255,255,.11)}
+#pickbox button.warn{color:#FFB4B4}
+</style>
+</head>
+
+<body class="tabbed" data-t-title="ttContacts">
+<div class="phwrap">
+
+  <div class="phtop">
+    <h1 data-t="phTitle"></h1>
+  </div>
+
+  <input class="phfind" id="q" type="search" autocomplete="off" data-t-ph="phSearch">
+
+  <div class="padhead">
+    <span>1 – 9</span>
+    <button class="editbtn" id="editBtn"></button>
+  </div>
+  <div class="pad" id="pad"></div>
+  <p class="edithint" id="editHint" style="display:none" data-t="phEditHint"></p>
+
+  <div class="phsep"></div>
+
+  <div id="list"></div>
+  <div id="err" class="pherr"></div>
+
+</div>
+
+<div class="phfoot">
+  <a href="alias_contacts.html" data-t="phGoContacts"></a>
+</div>
+
+<div id="pickbg"></div>
+<div id="pickbox"></div>
+
+<script>
+/* =====================================================================
+   부름 — 거는 곳과 명부를 한 화면에
+
+   ⚠ 이름은 아직 정하는 중입니다. 화면에 뜨는 글씨는 alias_common.js 의
+     phTitle 한 줄에서 옵니다. 거기만 고치면 바뀝니다.
+     후보: 부름 · 드보크 · 여보세요 · 손짓
+
+   왜 한 화면인가
+     보통 폰은 초록 전화 아이콘 하나가 키패드·최근기록·연락처를 다 갖고
+     있습니다. 손님은 그 하나만 기억하면 됩니다.
+     우리도 같게 합니다. 위는 단축번호, 아래는 명부입니다.
+
+   ⚠ 방(그룹)은 1:1 통화 화면으로 못 갑니다. 방 통화는 다른 화면(gcall)
+     이라 여기서는 대화만 걸어줍니다.
+   ===================================================================== */
+
+let rows = [];         // my_contacts() 가 준 줄들
+let extra = {};        // my_side_id → { starred, speed_dial, pin_order }
+let editing = false;   // 번호 바꾸기 모드
+let pickSlot = null;   // 지금 채우려는 번호
+
+function showErr(msg){
+  const el = document.getElementById('err');
+  el.textContent = msg; el.classList.add('show');
+}
+
+function ex(r){
+  return extra[r.my_side_id] || { starred: false, speed_dial: null, pin_order: null };
+}
+function nameOf(r){
+  return (r.kind === 'group')
+    ? (r.room_name || AL.t('grNoName'))
+    : (r.peer_label || r.peer_display || AL.t('cntUnnamed'));
+}
+function isRoom(r){ return r.kind === 'group'; }
+
+/* 통화 화면은 한 번만 쓰는 표를 요구합니다. 없으면 그냥 나가버립니다. */
+function newTicket(){
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+function callTo(linkId){
+  location.href = 'alias_call.html?link=' + encodeURIComponent(linkId) +
+    '&type=voice&once=' + newTicket();
+}
+function chatTo(linkId){
+  location.href = 'alias_chat.html?link=' + encodeURIComponent(linkId);
+}
+
+/* ── 단축번호 판 ──────────────────────────────────────────────────
+   아홉 칸을 **전부** 보여줍니다. 빈 칸이 곧 "여기에 넣으세요" 라는
+   안내가 됩니다. 정해진 것만 보이면 이 기능이 있는 줄도 모릅니다. */
+function bySpeed(){
+  const map = {};
+  rows.forEach(function(r){
+    const n = ex(r).speed_dial;
+    if (n) map[n] = r;
+  });
+  return map;
+}
+
+function paintPad(){
+  const map = bySpeed();
+  let html = '';
+  for (let n = 1; n <= 9; n++) {
+    const r = map[n];
+    html += '<button class="slot ' + (r ? 'set' : 'blank') + '" data-slot="' + n + '">' +
+      '<span class="num">' + n + '</span>' +
+      '<span class="who">' + AL.esc(r ? nameOf(r) : AL.t('phEmptySlot')) + '</span>' +
+    '</button>';
+  }
+  const pad = document.getElementById('pad');
+  pad.innerHTML = html;
+  pad.classList.toggle('editing', editing);
+
+  pad.querySelectorAll('[data-slot]').forEach(function(el){
+    el.addEventListener('click', function(){
+      const n = parseInt(el.getAttribute('data-slot'), 10);
+      const r = map[n];
+      /* 번호를 바꾸는 중에는 전화가 걸리면 안 됩니다.
+         고치려다 엉뚱한 사람에게 거는 사고를 막습니다. */
+      if (editing || !r) { openPicker(n, r); return; }
+      callTo(r.link_id);
+    });
+  });
+
+  const eb = document.getElementById('editBtn');
+  eb.textContent = editing ? AL.t('phEditOff') : AL.t('phEditOn');
+  eb.classList.toggle('on', editing);
+  document.getElementById('editHint').style.display = editing ? '' : 'none';
+}
+
+/* ── 명부 ─────────────────────────────────────────────────────────
+   별표부터, 그다음 최근 순. 줄마다 ☏ 와 💬 가 바로 있습니다.
+   ⋯ 를 거치지 않고 한 번에 끝냅니다. */
+function visible(){
+  const q = document.getElementById('q').value.trim().toLowerCase();
+  const list = q ? rows.filter(function(r){
+    return [r.peer_label, r.peer_display, r.room_name, r.my_face]
+      .some(function(v){ return v && v.toLowerCase().indexOf(q) >= 0; });
+  }) : rows.slice();
+
+  return list.sort(function(a, b){
+    const sa = ex(a).starred ? 0 : 1, sb = ex(b).starred ? 0 : 1;
+    if (sa !== sb) return sa - sb;
+    return String(b.last_activity_at || '').localeCompare(String(a.last_activity_at || ''));
+  });
+}
+
+function paintList(){
+  const box = document.getElementById('list');
+  if (!rows.length) {
+    box.innerHTML = '<div class="phnote">' + AL.esc(AL.t('phEmpty')) + '</div>';
+    return;
+  }
+  const list = visible();
+  if (!list.length) {
+    box.innerHTML = '<div class="phnote">' + AL.esc(AL.t('phNoMatch')) + '</div>';
+    return;
+  }
+
+  box.innerHTML = list.map(function(r){
+    const e = ex(r);
+    const room = isRoom(r);
+    return '<div class="prow">' +
+      '<div class="pav">' + AL.esc(room ? '👥' : AL.initial(r.my_face)) + '</div>' +
+      '<div class="pmid" data-go="' + AL.esc(r.link_id) + '">' +
+        '<div class="pname">' +
+          (e.speed_dial ? '<span class="spd">' + AL.esc(e.speed_dial) + '</span>' : '') +
+          (e.starred ? '<span class="star">★</span>' : '') +
+          AL.esc(nameOf(r)) +
+        '</div>' +
+        '<div class="psub">' + AL.esc(AL.fmtWhen(r.last_activity_at)) +
+          (room ? ' · ' + AL.esc(AL.t('phRoomOnly')) : '') + '</div>' +
+      '</div>' +
+      '<button class="act call' + (room ? ' off' : '') + '" data-call="' + AL.esc(r.link_id) +
+        '" aria-label="' + AL.esc(AL.t('ariaCall')) + '">☏</button>' +
+      '<button class="act" data-msg="' + AL.esc(r.link_id) +
+        '" aria-label="' + AL.esc(AL.t('ariaMsg')) + '">💬</button>' +
+    '</div>';
+  }).join('');
+
+  box.querySelectorAll('[data-go]').forEach(function(el){
+    el.addEventListener('click', function(){ chatTo(el.getAttribute('data-go')); });
+  });
+  box.querySelectorAll('[data-call]').forEach(function(el){
+    el.addEventListener('click', function(){ callTo(el.getAttribute('data-call')); });
+  });
+  box.querySelectorAll('[data-msg]').forEach(function(el){
+    el.addEventListener('click', function(){ chatTo(el.getAttribute('data-msg')); });
+  });
+}
+
+function paint(){ paintPad(); paintList(); }
+
+/* ── 누구를 넣을지 고르기 ─────────────────────────────────────────
+   빈 칸을 누르면 바로 여기가 열립니다. 연락처까지 가서 ⋯ 를 누를
+   필요가 없습니다.
+   ⚠ 방은 1:1 통화가 안 되므로 고르는 목록에 안 냅니다. */
+function showPick(on){
+  document.getElementById('pickbg').style.display = on ? 'block' : 'none';
+  document.getElementById('pickbox').style.display = on ? 'block' : 'none';
+}
+document.getElementById('pickbg').addEventListener('click', function(){ showPick(false); });
+
+function openPicker(n, cur){
+  pickSlot = n;
+  const pairs = rows.filter(function(r){ return !isRoom(r); });
+
+  let html = '<div class="ttl">' + AL.esc(AL.t('phPickWho', { n: n })) + '</div>';
+  if (!pairs.length) {
+    html += '<div class="phnote">' + AL.esc(AL.t('phNoPair')) + '</div>';
+  } else {
+    html += pairs.map(function(r){
+      const e = ex(r);
+      const tag = e.speed_dial ? ' (' + e.speed_dial + ')' : '';
+      return '<button data-pick="' + AL.esc(r.link_id) + '">' +
+        AL.esc(nameOf(r)) + AL.esc(tag) + '</button>';
+    }).join('');
+  }
+  if (cur) {
+    html += '<div class="sep"></div>' +
+      '<button class="warn" data-clear="1">' + AL.esc(AL.t('phClear')) + '</button>';
+  }
+
+  const box = document.getElementById('pickbox');
+  box.innerHTML = html;
+  box.scrollTop = 0;
+  showPick(true);
+
+  box.querySelectorAll('[data-pick]').forEach(function(el){
+    el.addEventListener('click', function(){ setSpeed(el.getAttribute('data-pick')); });
+  });
+  box.querySelectorAll('[data-clear]').forEach(function(el){
+    el.addEventListener('click', function(){ setSpeed(null); });
+  });
+}
+
+async function setSpeed(linkId){
+  const n = pickSlot;
+  try {
+    const map = bySpeed();
+    const cur = map[n];                                   // 지금 이 번호를 쓰는 사람
+
+    /* ⚠ 한 사람이 같은 번호를 둘 가질 수 없게 DB 에 막아뒀습니다.
+       그러니 쓰던 사람을 **먼저 비우고** 나서 넣어야 합니다.
+       순서를 바꾸면 "이미 있다" 는 오류가 납니다. */
+    if (cur) {
+      const c = await AL.sb.from('link_sides')
+        .update({ speed_dial: null }).eq('id', cur.my_side_id).select('id');
+      if (c.error) throw c.error;
+    }
+
+    if (linkId) {
+      const r = rows.filter(function(x){ return x.link_id === linkId; })[0];
+      if (r) {
+        /* 그 사람이 다른 번호를 갖고 있었으면 그건 비워집니다. 한 사람에 한 번호. */
+        const u = await AL.sb.from('link_sides')
+          .update({ speed_dial: n }).eq('id', r.my_side_id).select('id');
+        if (u.error) throw u.error;
+        if (!u.data || !u.data.length) throw new Error(AL.t('errNoRows'));
+      }
+    }
+
+    showPick(false);
+    await reload();
+  } catch (e) {
+    console.error(e);
+    showPick(false);
+    showErr(AL.t('errGeneric', { msg: e.message || String(e) }));
+  }
+}
+
+/* ── 읽어오기 ───────────────────────────────────────────────────── */
+async function reload(){
+  try {
+    const res = await AL.sb.rpc('my_contacts');
+    if (res.error) throw res.error;
+    rows = res.data || [];
+
+    /* 별표·단축번호는 link_sides 에서 따로 읽습니다.
+       my_contacts 함수를 안 건드리려는 것입니다. 연락처 화면과 같은 방식입니다.
+       ⚠ 못 읽어도 명부는 그려야 합니다. 번호만 안 보일 뿐입니다. */
+    try {
+      const e2 = await AL.sb.from('link_sides')
+        .select('id, starred, speed_dial, pin_order');
+      if (!e2.error) {
+        extra = {};
+        (e2.data || []).forEach(function(x){ extra[x.id] = x; });
+      } else {
+        console.warn('[phone] 별표를 못 읽었습니다', e2.error);
+      }
+    } catch (e) { console.warn('[phone] 별표를 못 읽었습니다', e); }
+
+    paint();
+  } catch (e) {
+    console.error(e);
+    showErr(AL.t('errGeneric', { msg: e.message || String(e) }));
+  }
+}
+
+document.getElementById('q').addEventListener('input', paintList);
+document.getElementById('editBtn').addEventListener('click', function(){
+  editing = !editing;
+  paintPad();
+});
+
+(async function(){
+  AL.paintText();
+  if (!await AL.requireLogin()) return;
+  await reload();
+
+  AL.startAlerts({
+    onMessage: function(){ reload(); return false; },   // 소리는 공용이 냅니다
+    onPoll: function(){ reload(); },
+    pollMs: 15000,
+  });
+
+  document.addEventListener('visibilitychange', function(){
+    if (document.visibilityState === 'visible') reload();
+  });
+
+  /* 어느 화면에 있든 걸려온 전화를 받습니다.
+     ⚠ 이 화면이 첫 화면이 될 수 있으므로 여기에도 꼭 있어야 합니다. */
+  AL.watchIncoming(function(c){
+    AL.alertNew();
+    location.href = 'alias_call.html?call=' + encodeURIComponent(c.call_id) +
+      '&token=' + encodeURIComponent(c.session_token) +
+      '&link=' + encodeURIComponent(c.link_id) +
+      '&type=' + encodeURIComponent(c.call_type) +
+      '&once=' + encodeURIComponent(c.call_id);
+  });
+})();
+</script>
+</body>
+</html>
