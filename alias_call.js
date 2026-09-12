@@ -175,6 +175,19 @@ function resendMyCands(){
   list.forEach(function(c){ sendIce(c); });
 }
 
+/* 🔴 2026-09-12 신설 — 기다리다 지치면 포기합니다.
+   서버가 답을 안 주면 await 가 영영 안 끝나고 화면도 멈춥니다. */
+function withTimeout(p, ms, what){
+  return Promise.race([
+    p,
+    new Promise(function(_, bad){
+      setTimeout(function(){
+        bad(new Error((what || '요청') + ' — ' + (ms / 1000) + '초 안에 답이 없습니다'));
+      }, ms);
+    }),
+  ]);
+}
+
 function send(kind, data){
   if (!AL.call.channel) return;
   AL.call.channel.send({ type: 'broadcast', event: 'sig',
@@ -351,12 +364,27 @@ AL.startCall = async function(opts){
   var token = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
   AL.call.token = token;
 
-  var ins = await AL.sb.from('calls').insert({
-    link_id: linkId, caller_side_id: sideId,
-    session_token: token, call_type: type,
-    mode: opts.mode || 'normal',
-  }).select('id').single();
-  if (ins.error) { say('failed', { error: ins.error }); throw ins.error; }
+  /* 🔴🔴 2026-09-12 신설 — 영영 매달려 있지 않게 합니다.
+
+     2026-09-12 에 영상통화가 "전화 거는 중…" 에서 오류도 없이 멈췄습니다.
+     서버에 보낸 요청이 답을 안 주고 매달려 있었던 것입니다.
+     await 는 끝까지 기다리므로 화면도 함께 멈춥니다.
+
+     이제 8초가 지나면 포기하고 **무엇이 안 됐는지 화면에 적습니다.**
+     조용히 멈추는 것보다 잘못됐다고 말하는 편이 낫습니다(함정 76). */
+  var ins = await withTimeout(
+    AL.sb.from('calls').insert({
+      link_id: linkId, caller_side_id: sideId,
+      session_token: token, call_type: type,
+      mode: opts.mode || 'normal',
+    }).select('id').single(),
+    8000, '통화 줄 만들기(calls insert)'
+  );
+  if (ins.error) {
+    console.error('[call] 통화 줄 만들기 실패', ins.error);
+    say('failed', { error: ins.error });
+    throw new Error('통화 줄: ' + (ins.error.message || ins.error.code || '알 수 없음'));
+  }
   AL.call.callId = ins.data.id;
   say('step', { n: 2, of: 5, what: '통화 줄' });
 
@@ -389,10 +417,10 @@ AL.startCall = async function(opts){
   }
 
   // 3) 신호 채널
-  var ice = await AL.getIceServers();
+  var ice = await withTimeout(AL.getIceServers(), 8000, '중계 주소(alias-ice)');
   say('step', { n: 3, of: 5, what: '중계 주소' });
 
-  AL.call.channel = await openSignal(token, handleSignal);
+  AL.call.channel = await withTimeout(openSignal(token, handleSignal), 10000, '신호 채널');
   say('step', { n: 4, of: 5, what: '신호 채널' });
 
   AL.call.pc = await buildPeer(ice);
