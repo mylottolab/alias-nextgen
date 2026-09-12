@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260912g">
-<link rel="stylesheet" href="alias_theme.css?v=20260912g">
+<link rel="stylesheet" href="alias_common.css?v=20260912h">
+<link rel="stylesheet" href="alias_theme.css?v=20260912h">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260912g"></script>
-<script src="alias_media.js?v=20260912g"></script>
-<script src="alias_call.js?v=20260912g"></script>
+<script src="alias_common.js?v=20260912h"></script>
+<script src="alias_media.js?v=20260912h"></script>
+<script src="alias_call.js?v=20260912h"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -299,6 +299,20 @@ function onState(state, extra){
        집 1 · 밖 1 · 중계 2    ← 정상. 중계를 쓸 수 있습니다
        집 1 · 밖 1 · 중계 0    ← 중계 없음. 이동통신끼리는 통화가 안 됩니다
        🔴 중계 못 받음         ← 함수를 아예 못 불렀습니다 (로그인 표 문제) */
+  /* 🔴🔴 2026-09-12 신설 — 거는 과정을 다섯 단계로 보여줍니다.
+
+     전에는 실패해도 "전화 거는 중…" 에서 조용히 멈췄습니다. 오류는
+     콘솔에만 찍혀서 USB 를 꽂지 않으면 알 수가 없었습니다(함정 76).
+     이제 **어디까지 갔는지**가 화면에 남습니다.
+
+       1/5 마이크·카메라  2/5 통화 줄  3/5 중계 주소
+       4/5 신호 채널      5/5 제안 보냄
+
+     멈춘 자리 바로 다음이 문제입니다. */
+  else if (state === 'step') {
+    el('bytes').textContent = extra.n + '/' + extra.of + ' ' + extra.what;
+  }
+
   else if (state === 'ice-found') {
     var line;
     if (!extra.turn) {
@@ -559,7 +573,14 @@ async function decline(){
         myFace: view.my_face || '',
       });
     } catch (e) {
-      console.error(e);
+      /* 🔴🔴 2026-09-12 — 조용히 멈추지 않습니다.
+         전에는 console.error 만 하고 화면은 "전화 거는 중…" 그대로였습니다.
+         손님도 저도 무슨 일이 났는지 알 수가 없었습니다. */
+      console.error('[call] 걸기 실패', e);
+      setStatus(AL.t('clFailed'));
+      el('bytes').textContent = String((e && e.message) || e).slice(0, 90);
+      el('acts').innerHTML = '';
+      goChat(2600);
     }
   }
 })();

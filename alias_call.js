@@ -10,6 +10,7 @@
    2026-09-11  🔴 중계(TURN)가 없으면 콘솔에 크게 알림
    2026-09-11  🔴 소리가 오가는 양을 재서 화면에 보여줌 (bytes)
    2026-09-11  🔴 붙는 과정을 화면에 단계별로 보여줌 (ice-state)
+   2026-09-12  🔴 거는 과정을 다섯 단계로 화면에 보여줌 (어디서 멈추는지)
    2026-09-12  🔴 영상통화 — 카메라 끄고 받기 · 앞뒤 전환
    2026-09-12  🔴 상대가 거절하면 거는 쪽도 바로 끝납니다
    2026-09-11  🔴 통화 시작 때 로그인 표를 새로 받음 (기록이 안 남던 문제)
@@ -344,6 +345,7 @@ AL.startCall = async function(opts){
     throw e;
   }
   say('local-stream', { stream: AL.call.local });
+  say('step', { n: 1, of: 5, what: '마이크·카메라' });
 
   // 2) 통화 줄을 만듭니다. 받는 쪽이 이걸 보고 벨을 울립니다.
   var token = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
@@ -356,6 +358,7 @@ AL.startCall = async function(opts){
   }).select('id').single();
   if (ins.error) { say('failed', { error: ins.error }); throw ins.error; }
   AL.call.callId = ins.data.id;
+  say('step', { n: 2, of: 5, what: '통화 줄' });
 
   /* 🔴 2026-09-08 신설 (FCM 3단계) — 상대 폰을 깨웁니다.
      여기까지 오면 통화 줄이 만들어졌습니다. 상대가 앱을 보고 있으면
@@ -387,9 +390,14 @@ AL.startCall = async function(opts){
 
   // 3) 신호 채널
   var ice = await AL.getIceServers();
+  say('step', { n: 3, of: 5, what: '중계 주소' });
+
   AL.call.channel = await openSignal(token, handleSignal);
+  say('step', { n: 4, of: 5, what: '신호 채널' });
+
   AL.call.pc = await buildPeer(ice);
   AL.call.local.getTracks().forEach(function(t){
+    console.log('[call] 보낼 것:', t.kind);
     AL.call.pc.addTrack(t, AL.call.local);
   });
 
@@ -397,6 +405,7 @@ AL.startCall = async function(opts){
   var offer = await AL.call.pc.createOffer();
   await AL.call.pc.setLocalDescription(offer);
   send('offer', { sdp: offer });
+  say('step', { n: 5, of: 5, what: '제안 보냄' });
   say('ringing');
 
   // 🔴 offer 다시 보내기를 언제 멈추느냐가 핵심입니다.
