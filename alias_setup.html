@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>전화를 잘 받으려면 — Alias</title>
+<style>
+/* =====================================================================
+   손님 안내 — 전화를 제대로 받기 위한 폰 설정
+   2026-09-12
+
+   ⚠ 이 화면은 **아무 파일도 안 불러옵니다.**
+     alias_common.js 도, 테마도 안 씁니다.
+     그래서 공용 파일을 고쳐도 ?v= 를 올릴 필요가 없습니다.
+     손님에게 주소만 알려주면 되는 화면이라 가볍게 두었습니다.
+
+   ⚠ 폰의 안드로이드 판을 스스로 알아보고, 그 판에 필요한 것만 보여줍니다.
+     안 해도 되는 손님에게 시키면 혼란만 커집니다.
+   ===================================================================== */
+:root{
+  --bg:#0E1621; --card:#182230; --line:rgba(255,255,255,.12);
+  --tx:#DDE5F0; --dim:#94A3B8; --ok:#8FE3B0; --warn:#F2C94C;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:24px 18px 60px;background:var(--bg);color:var(--tx);
+  font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',
+    'Malgun Gothic',system-ui,sans-serif;
+  line-height:1.75;font-size:16px;-webkit-text-size-adjust:100%}
+.wrap{max-width:520px;margin:0 auto}
+h1{font-size:25px;font-weight:800;margin:0 0 6px;line-height:1.35}
+.sub{color:var(--dim);font-size:14.5px;margin:0 0 26px}
+h2{font-size:19px;font-weight:700;margin:34px 0 10px}
+p{margin:0 0 14px}
+.card{background:var(--card);border:1px solid var(--line);
+  border-radius:16px;padding:18px 18px 6px;margin:0 0 18px}
+.card.good{border-color:rgba(143,227,176,.4)}
+.card.warn{border-color:rgba(242,201,76,.45)}
+.badge{display:inline-block;padding:4px 11px;border-radius:999px;
+  font-size:12.5px;font-weight:700;margin-bottom:10px}
+.badge.good{background:rgba(143,227,176,.18);color:var(--ok)}
+.badge.warn{background:rgba(242,201,76,.18);color:var(--warn)}
+ol{margin:0 0 14px;padding-left:22px}
+ol li{margin-bottom:9px}
+.path{display:block;margin:10px 0 16px;padding:13px 15px;border-radius:11px;
+  background:rgba(255,255,255,.06);border:1px solid var(--line);
+  font-weight:700;font-size:15px;word-break:keep-all}
+.path b{color:var(--ok)}
+.why{color:var(--dim);font-size:14px;margin:0 0 16px}
+.tip{border-left:3px solid var(--line);padding:2px 0 2px 14px;
+  color:var(--dim);font-size:14.5px;margin:0 0 16px}
+.ver{display:inline-block;padding:3px 10px;border-radius:8px;
+  background:rgba(255,255,255,.08);font-size:13.5px;color:var(--dim)}
+hr{border:0;border-top:1px solid var(--line);margin:30px 0}
+.foot{color:var(--dim);font-size:13.5px;margin-top:34px}
+#need,#noneed,#unknown{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>전화를 잘 받으려면</h1>
+  <p class="sub">폰 설정 몇 가지만 봐주세요. 오래 걸리지 않습니다.</p>
+
+  <p><span class="ver" id="verBox">내 폰을 확인하는 중…</span></p>
+
+  <!-- ── 안드로이드 14 이상: 전체 화면 알림을 켜야 합니다 ───────── -->
+  <div id="need">
+    <div class="card warn">
+      <span class="badge warn">꼭 해주세요</span>
+      <h2 style="margin-top:0">잠금화면에 전화 화면 띄우기</h2>
+      <p class="why">
+        지금은 전화가 와도 <b>위에 작은 알림만</b> 뜹니다. 그걸 눌러야
+        전화 화면이 나옵니다. 자칫 놓치기 쉽습니다.<br><br>
+        아래를 켜두시면 <b>화면이 저절로 켜지면서 전화 화면이 통째로</b>
+        뜹니다. 일반 전화와 똑같아집니다.
+      </p>
+
+      <span class="path">
+        설정 → 애플리케이션 → <b>Alias</b> → <b>전체 화면 알림</b> → 켜기
+      </span>
+
+      <p class="tip">
+        <b>그 항목이 안 보이시나요?</b><br>
+        설정 맨 위 <b>돋보기(검색)</b> 를 눌러 <b>전체 화면</b> 이라고 쳐보세요.
+        폰 회사마다 자리가 조금씩 다릅니다.
+      </p>
+
+      <p class="why">
+        안드로이드 14부터 생긴 규칙입니다. 앱이 함부로 화면을 켜지 못하도록
+        <b>손님이 직접 허락</b>하게 바뀌었습니다.
+      </p>
+    </div>
+  </div>
+
+  <!-- ── 안드로이드 13 이하: 할 일 없음 ──────────────────────── -->
+  <div id="noneed">
+    <div class="card good">
+      <span class="badge good">안 하셔도 됩니다</span>
+      <h2 style="margin-top:0">잠금화면 설정</h2>
+      <p class="why">
+        이 폰은 따로 켤 것이 없습니다. 전화가 오면 화면이 저절로 켜지면서
+        전화 화면이 뜹니다.
+      </p>
+    </div>
+  </div>
+
+  <!-- ── 판을 못 알아낸 경우 ────────────────────────────────── -->
+  <div id="unknown">
+    <div class="card">
+      <span class="badge warn">확인해 보세요</span>
+      <h2 style="margin-top:0">잠금화면에 전화 화면 띄우기</h2>
+      <p class="why">
+        폰 판을 알아내지 못했습니다. 아래를 한 번 봐주세요.
+        <b>그런 항목이 없으면 안 하셔도 되는 폰</b>입니다.
+      </p>
+      <span class="path">
+        설정 → 애플리케이션 → <b>Alias</b> → <b>전체 화면 알림</b> → 켜기
+      </span>
+    </div>
+  </div>
+
+  <hr>
+
+  <h2>이 셋도 함께 봐주세요</h2>
+  <p class="sub" style="margin-bottom:18px">
+    전화가 안 울리는 경우, 거의 이 셋 중 하나입니다.
+  </p>
+
+  <div class="card">
+    <h2 style="margin-top:0">1. 알림 허용</h2>
+    <p class="why">이게 꺼져 있으면 <b>벨이 아예 안 울립니다.</b></p>
+    <span class="path">설정 → 애플리케이션 → <b>Alias</b> → <b>알림</b> → 켜기</span>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top:0">2. 배터리 제한 풀기</h2>
+    <p class="why">
+      폰이 배터리를 아끼려고 앱을 재우면, 벨이 <b>울리다 중간에 멈추거나</b>
+      아예 안 울립니다.
+    </p>
+    <span class="path">
+      설정 → 애플리케이션 → <b>Alias</b> → <b>배터리</b> →
+      <b>제한 없음</b> 고르기
+    </span>
+    <p class="tip">
+      삼성 폰은 <b>설정 → 배터리 → 백그라운드 사용 제한</b> 에도
+      Alias 가 들어 있지 않은지 봐주세요.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top:0">3. 소리 크기</h2>
+    <p class="why">
+      통화 소리는 <b>일반 전화의 음량이 아니라 "미디어" 음량</b>으로 나옵니다.
+      그게 낮으면 통화가 잘 연결돼도 상대 목소리가 작게 들립니다.
+    </p>
+    <span class="path">
+      통화 중에 <b>음량 버튼 위쪽</b>을 몇 번 눌러보세요
+    </span>
+    <p class="tip">
+      무음 모드나 방해금지가 켜져 있으면 벨이 안 납니다.
+      함께 확인해 주세요.
+    </p>
+  </div>
+
+  <hr>
+
+  <h2>그래도 안 되면</h2>
+  <p>
+    폰을 한 번 <b>껐다 켜 보세요.</b> 설정을 바꾼 뒤에는 다시 켜야
+    제대로 적용되는 폰이 있습니다.
+  </p>
+  <p>
+    그래도 안 되면 <b>Alias 를 지웠다가 다시 설치</b>해 보세요.
+    대화 내용은 사라지지 않습니다.
+  </p>
+
+  <p class="foot" id="foot"></p>
+
+</div>
+
+<script>
+/* 폰의 안드로이드 판을 알아봅니다.
+   ⚠ 알아내지 못해도 안내는 보여줘야 합니다. 빈 화면이 제일 나쁩니다. */
+(function(){
+  var ua = navigator.userAgent || '';
+  var m = ua.match(/Android\s+(\d+)/i);
+  var v = m ? parseInt(m[1], 10) : null;
+  var verBox = document.getElementById('verBox');
+
+  if (!m) {
+    verBox.textContent = '안드로이드 폰이 아니거나, 판을 알 수 없습니다';
+    document.getElementById('unknown').style.display = '';
+  } else if (v >= 14) {
+    verBox.textContent = '내 폰 · 안드로이드 ' + v;
+    document.getElementById('need').style.display = '';
+  } else {
+    verBox.textContent = '내 폰 · 안드로이드 ' + v;
+    document.getElementById('noneed').style.display = '';
+  }
+
+  document.getElementById('foot').textContent =
+    '이 안내는 폰 설정에 관한 것입니다. Alias 는 전화번호를 묻지 않습니다.';
+})();
+</script>
+</body>
+</html>
