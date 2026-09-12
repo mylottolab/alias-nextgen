@@ -798,6 +798,16 @@ AL.endCall = async function(reason){
      통과하고, 느리면 줄을 선 채로 채널이 닫혀 인사가 사라졌습니다.
      그러면 상대는 끊긴 줄 모르고 "통화 중" 인 채로 남습니다.
      → 채널을 여기서 따로 붙들었다가, 인사가 나갈 짬을 준 뒤 닫습니다. */
+  /* 🔴🔴 2026-09-12 — 끊기는 **무슨 일이 있어도** 되어야 합니다.
+
+     오늘 끊기 단추가 안 먹는 일이 났습니다. 아래 일들 중 하나가 걸리면
+     맨 끝의 say('ended') 와 cleanup() 까지 못 가서 화면이 안 닫힙니다.
+
+     인사 보내기 · 알림 끄기 · 기록 저장은 **덤**입니다.
+     하나가 안 돼도 통화는 끝나야 합니다. 그래서 전부 try 로 감쌉니다.
+     손님이 끊고 싶을 때 못 끊는 것만큼 나쁜 일은 없습니다. */
+  try {
+
   var farewell = AL.call.channel;
   if (farewell) send(reason === 'declined' ? 'decline' : 'bye', { reason: reason });
   AL.call.channel = null;          // cleanup 이 곧바로 못 닫게 빼둡니다
@@ -873,6 +883,11 @@ AL.endCall = async function(reason){
         }
       }).catch(function(e){ console.warn('[call] 기록 저장 실패', e); });
     } catch (e) { console.warn('[call] 기록 저장 실패', e); }
+  }
+
+  } catch (e) {
+    /* 여기서 걸려도 아래 끝맺음은 반드시 합니다. */
+    console.error('[call] 끊는 중에 문제가 있었습니다 — 그래도 끝냅니다', e);
   }
 
   say('ended', { reason: reason });

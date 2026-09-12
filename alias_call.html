@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260912n">
-<link rel="stylesheet" href="alias_theme.css?v=20260912n">
+<link rel="stylesheet" href="alias_common.css?v=20260912p">
+<link rel="stylesheet" href="alias_theme.css?v=20260912p">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260912n"></script>
-<script src="alias_media.js?v=20260912n"></script>
-<script src="alias_call.js?v=20260912n"></script>
+<script src="alias_common.js?v=20260912p"></script>
+<script src="alias_media.js?v=20260912p"></script>
+<script src="alias_call.js?v=20260912p"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -300,7 +300,23 @@ function paintActs(){
     }));
   }
 
-  box.appendChild(btn('rbtn hang', '✕', AL.t('clHangup'), function(){ AL.endCall('completed'); }));
+  /* 🔴🔴 2026-09-12 — 끊기 단추에 안전장치를 둡니다.
+
+     끊기는 손님이 제일 급할 때 누르는 단추입니다. 무슨 일이 있어도
+     들어야 합니다. 세 겹으로 둡니다.
+       ① 누르자마자 글씨를 바꿔 **눌렸다는 것**을 보여줍니다
+       ② 끊는 도중에 문제가 생겨도 삼켜서 멈추지 않게 합니다
+       ③ 3초가 지나도 화면이 안 닫히면 **그냥 나갑니다** */
+  box.appendChild(btn('rbtn hang', '✕', AL.t('clHangup'), function(){
+    console.log('[call] 끊기 단추를 눌렀습니다');
+    setStatus(AL.t('clEnded'));                       // ①
+    try { AL.endCall('completed'); }                  // ②
+    catch (e) {
+      console.error('[call] 끊기 실패', e);
+      el('bytes').textContent = '끊기: ' + String((e && e.message) || e).slice(0, 60);
+    }
+    setTimeout(function(){ if (!leaving) bye(); }, 3000);   // ③
+  }));
 }
 
 function btn(cls, icon, label, onClick){
@@ -421,6 +437,11 @@ function onState(state, extra){
     const isVid = (extra.kind === 'video');
     const target = isVid ? el('remoteV') : el('remoteA');
     target.srcObject = extra.stream;
+    /* 🔴 2026-09-12 — 소리 요소의 음량을 끝까지 올려둡니다.
+       영상통화에서 소리가 작게 들린다는 말씀이 있었습니다.
+       ⚠ 이것과 별개로 **폰의 "미디어" 음량**이 낮으면 작게 들립니다.
+         통화 중에 음량 버튼 위쪽을 눌러야 합니다(함정 ㊾). */
+    try { target.volume = 1.0; target.muted = false; } catch (e) {}
 
     if (isVid) showVideoMode();
 
