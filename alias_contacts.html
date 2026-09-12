@@ -53,6 +53,30 @@ document.addEventListener("DOMContentLoaded", function(){
   border:1px solid rgba(255,255,255,.16);margin:0}
 .sortbtn:active{background:rgba(255,255,255,.16)}
 .sortbtn::after{content:' ▾';opacity:.7}
+
+/* 🔴 2026-09-12 — 누른 자리 밑에 펼쳐지는 메뉴 */
+#popbg{display:none;position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.35)}
+#popmenu{display:none;position:absolute;z-index:81;min-width:210px;max-width:82vw;
+  padding:6px;border-radius:14px;
+  background:#1B2430;border:1px solid rgba(255,255,255,.14);
+  box-shadow:0 14px 34px rgba(0,0,0,.55)}
+#popmenu .ttl{padding:9px 12px 7px;font-size:12px;opacity:.65;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#popmenu button{display:block;width:100%;margin:0;text-align:left;
+  appearance:none;-webkit-appearance:none;cursor:pointer;
+  padding:13px 12px;border:0;border-radius:9px;background:transparent;
+  color:#DDE5F0;font-size:15.5px;line-height:1.25}
+#popmenu button:active{background:rgba(255,255,255,.12)}
+#popmenu .sep{height:1px;margin:6px 4px;background:rgba(255,255,255,.11)}
+/* 지금 고른 것은 색으로 알려줍니다 */
+#popmenu button.cur{color:#8FE3B0;font-weight:700}
+#popmenu button.cur::after{content:' ✓'}
+#popmenu .spdgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:4px}
+#popmenu .spdgrid button{text-align:center;font-size:19px;font-weight:700;
+  padding:12px 0;background:rgba(255,255,255,.06)}
+#popmenu .spdgrid button.used{opacity:.6}
+#popmenu .spdgrid button small{display:block;font-size:10.5px;font-weight:400;
+  opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 </style>
 </head>
 <body class="tabbed" data-t-title="ttContacts">
@@ -105,42 +129,16 @@ document.addEventListener("DOMContentLoaded", function(){
   </a>
 </div>
 
-<!-- 줄 메뉴 -->
-<div class="sheet-bg" id="rowBg"></div>
-<div class="sheet" id="rowSheet" style="display:none">
-  <div class="grip"></div>
-  <p class="hint" id="rowWho" style="margin:0 0 14px"></p>
-  <button id="mCall" data-t="cntCallNow"></button>
-  <button id="mMsg" data-t="cntMsgNow"></button>
-  <hr class="msep">
-  <button id="mStar"></button>
-  <button id="mSpeed"></button>
-  <button id="mPin"></button>
-  <button id="mUp" data-t="cntMoveUp" style="display:none"></button>
-  <button id="mDown" data-t="cntMoveDown" style="display:none"></button>
-  <button id="mMute"></button>
-  <hr class="msep">
-  <button id="mOpen" data-t="cntOpenDetail"></button>
-</div>
+<!-- 🔴 2026-09-12 — 누른 자리 바로 밑에 펼쳐지는 메뉴.
 
-<!-- 정렬 고르기 -->
-<div class="sheet-bg" id="sortBg"></div>
-<div class="sheet" id="sortSheet" style="display:none">
-  <div class="grip"></div>
-  <button data-sort="recent" data-t="cntSortRecent"></button>
-  <button data-sort="name"   data-t="cntSortName"></button>
-  <button data-sort="star"   data-t="cntSortStar"></button>
-  <button data-sort="speed"  data-t="cntSortSpeed"></button>
-</div>
+     전에는 화면 맨 아래에서 올라오는 방식(sheet)이었습니다. 그런데
+     누른 자리와 메뉴가 멀어서 눈이 따라가질 못했습니다. 목록이 길면
+     더 그렇습니다. 손님이 "찾기가 쉽지 않다" 고 하셨습니다.
 
-<!-- 단축번호 고르기 -->
-<div class="sheet-bg" id="spdBg"></div>
-<div class="sheet" id="spdSheet" style="display:none">
-  <div class="grip"></div>
-  <p class="hint" id="spdAsk" style="margin:0 0 14px"></p>
-  <div class="spdgrid" id="spdGrid"></div>
-  <button id="spdNone" data-t="cntSpeedNone"></button>
-</div>
+     이제 정렬 단추든 ⋯ 든, 누른 그 자리 바로 밑에 펼쳐집니다.
+     메뉴는 하나만 두고 내용만 갈아끼웁니다. -->
+<div id="popbg"></div>
+<div id="popmenu"></div>
 
 <nav class="tabbar">
   <a href="alias_contacts.html" class="on" id="tabContacts"></a>
@@ -338,7 +336,7 @@ function paint(){
   box.querySelectorAll('[data-menu]').forEach(function(el){
     el.addEventListener('click', function(e){
       e.stopPropagation();
-      openRowMenu(el.getAttribute('data-menu'));
+      openRowMenu(el);
     });
   });
   box.querySelectorAll('[data-grp]').forEach(function(el){
@@ -350,36 +348,92 @@ function paint(){
   });
 }
 
-/* ── 줄 메뉴 ─────────────────────────────────────────────────── */
-function openRowMenu(linkId){
+/* =====================================================================
+   🔴🔴 2026-09-12 — 누른 자리 바로 밑에 펼쳐지는 메뉴
+
+   전에는 화면 맨 아래에서 올라오는 방식이었습니다. 누른 자리와 메뉴가
+   멀어 눈이 따라가질 못했고, 목록이 길면 아예 못 찾았습니다.
+
+   이제 메뉴 상자는 **하나만** 두고 내용만 갈아끼웁니다.
+   정렬 단추든 ⋯ 든, 그 단추 바로 밑에 붙습니다.
+
+   ⚠ 화면 아래쪽 줄에서 누르면 메뉴가 화면 밖으로 나갑니다.
+     그때는 단추 **위쪽**에 붙입니다.
+   ⚠ 오른쪽 끝 줄에서 누르면 옆으로 넘칩니다. 그때는 오른쪽 끝에 맞춥니다.
+   ===================================================================== */
+let menuRowEl = null;   // ⋯ 를 누른 그 단추. 메뉴를 붙일 자리입니다.
+
+function closePop(){
+  document.getElementById('popbg').style.display = 'none';
+  document.getElementById('popmenu').style.display = 'none';
+}
+
+function openPop(anchor, html){
+  const pop = document.getElementById('popmenu');
+  pop.innerHTML = html;
+  document.getElementById('popbg').style.display = 'block';
+  pop.style.display = 'block';
+
+  // 크기를 알려면 일단 보여야 합니다. 그 뒤에 자리를 잡습니다.
+  const r = anchor.getBoundingClientRect();
+  const w = pop.offsetWidth, hh = pop.offsetHeight;
+
+  let left = r.left + window.scrollX;
+  if (left + w > window.innerWidth - 10) left = window.innerWidth - w - 10;
+  if (left < 10) left = 10;
+
+  let top = r.bottom + window.scrollY + 6;
+  if (r.bottom + hh + 12 > window.innerHeight) {
+    top = r.top + window.scrollY - hh - 6;            // 위로 뒤집기
+    if (top < window.scrollY + 10) top = window.scrollY + 10;
+  }
+
+  pop.style.left = left + 'px';
+  pop.style.top = top + 'px';
+  return pop;
+}
+
+document.getElementById('popbg').addEventListener('click', closePop);
+window.addEventListener('resize', closePop);
+
+/* ── 줄 메뉴 (⋯) ─────────────────────────────────────────────── */
+function openRowMenu(btn){
+  const linkId = btn.getAttribute('data-menu');
   menuRow = rows.filter(function(r){ return r.link_id === linkId; })[0];
   if (!menuRow) return;
+  menuRowEl = btn;
+
   const e = ex(menuRow);
+  const isRoom = menuRow.kind === 'group';
+  const b = function(act, label){
+    return '<button data-act="' + act + '">' + AL.esc(label) + '</button>';
+  };
 
-  document.getElementById('rowWho').textContent = nameOf(menuRow);
-  document.getElementById('mStar').textContent =
-    e.starred ? AL.t('cntStarOff') : AL.t('cntStarOn');
-  document.getElementById('mSpeed').textContent =
-    AL.t('cntSpeedSet') + (e.speed_dial ? ' (' + e.speed_dial + ')' : '');
-  document.getElementById('mPin').textContent =
-    menuRow.pinned ? AL.t('dtlPinOff') : AL.t('dtlPinOn');
-  document.getElementById('mMute').textContent =
-    menuRow.muted ? AL.t('dtlMuteOff') : AL.t('dtlMuteOn');
+  let html = '<div class="ttl">' + AL.esc(nameOf(menuRow)) + '</div>';
 
-  /* ▲▼ 는 위로 올린 것에만 씁니다. 안 올린 것에는 옮길 자리가 없습니다. */
-  const canMove = !!menuRow.pinned;
-  document.getElementById('mUp').style.display = canMove ? '' : 'none';
-  document.getElementById('mDown').style.display = canMove ? '' : 'none';
+  /* 바로 하는 일 */
+  if (!isRoom) html += b('call', AL.t('cntCallNow'));
+  html += b('msg', AL.t('cntMsgNow'));
+  html += '<div class="sep"></div>';
 
-  /* 그룹은 1:1 통화 화면으로 못 갑니다. 방 통화는 다른 화면입니다. */
-  document.getElementById('mCall').style.display =
-    (menuRow.kind === 'group') ? 'none' : '';
+  /* 이 사람을 어떻게 둘지 */
+  html += b('star', e.starred ? AL.t('cntStarOff') : AL.t('cntStarOn'));
+  html += b('speed', AL.t('cntSpeedSet') + (e.speed_dial ? ' (' + e.speed_dial + ')' : ''));
+  html += b('pin', menuRow.pinned ? AL.t('dtlPinOff') : AL.t('dtlPinOn'));
+  if (menuRow.pinned) {
+    html += b('up', AL.t('cntMoveUp'));
+    html += b('down', AL.t('cntMoveDown'));
+  }
+  html += b('mute', menuRow.muted ? AL.t('dtlMuteOff') : AL.t('dtlMuteOn'));
+  html += '<div class="sep"></div>';
 
-  showRowSheet(true);
-}
-function showRowSheet(on){
-  document.getElementById('rowBg').classList.toggle('show', on);
-  document.getElementById('rowSheet').style.display = on ? '' : 'none';
+  /* 다른 화면으로 */
+  html += b('open', AL.t('cntOpenDetail'));
+
+  const pop = openPop(btn, html);
+  pop.querySelectorAll('[data-act]').forEach(function(el){
+    el.addEventListener('click', function(){ rowAction(el.getAttribute('data-act')); });
+  });
 }
 
 async function patchSide(patch){
@@ -391,48 +445,43 @@ async function patchSide(patch){
   await reload();
 }
 
-document.getElementById('mPin').addEventListener('click', async function(){
-  showRowSheet(false);
-  try { await patchSide({ pinned: !menuRow.pinned }); }
-  catch (e) { console.error(e); showErr(AL.t('errGeneric', { msg: e.message || String(e) })); }
-});
-document.getElementById('mMute').addEventListener('click', async function(){
-  showRowSheet(false);
-  try { await patchSide({ muted: !menuRow.muted }); }
-  catch (e) { console.error(e); showErr(AL.t('errGeneric', { msg: e.message || String(e) })); }
-});
-document.getElementById('mOpen').addEventListener('click', function(){
-  location.href = 'alias_link.html?link=' + encodeURIComponent(menuRow.link_id);
-});
-document.getElementById('rowBg').addEventListener('click', function(){ showRowSheet(false); });
-
-/* ── 🔴 2026-09-12 신설 — 바로 걸기 · 바로 메시지 ─────────────────
-   ⚠ 표(once)를 반드시 붙입니다. 없으면 통화 화면이 그냥 나가버립니다.
-     alias_chat.html 이 만드는 것과 같은 방식입니다. */
 function newTicket(){
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
-document.getElementById('mCall').addEventListener('click', function(){
-  const id = menuRow.link_id;
-  showRowSheet(false);
-  location.href = 'alias_call.html?link=' + encodeURIComponent(id) +
-    '&type=voice&once=' + newTicket();
-});
-document.getElementById('mMsg').addEventListener('click', function(){
-  const id = menuRow.link_id;
-  showRowSheet(false);
-  location.href = 'alias_chat.html?link=' + encodeURIComponent(id);
-});
 
-/* ── 🔴 2026-09-12 신설 — 별표 ───────────────────────────────── */
-document.getElementById('mStar').addEventListener('click', async function(){
-  const on = !ex(menuRow).starred;
-  showRowSheet(false);
-  try { await patchSide({ starred: on }); }
-  catch (e) { console.error(e); showErr(AL.t('errGeneric', { msg: e.message || String(e) })); }
-});
+async function rowAction(act){
+  const id = menuRow.link_id;
 
-/* ── 🔴 2026-09-12 신설 — 위로 올린 것들의 순서 ────────────────────
+  /* 단축번호는 메뉴를 닫지 않고 그 자리에서 번호판으로 바뀝니다. */
+  if (act === 'speed') { openSpeedPad(); return; }
+
+  closePop();
+  try {
+    if (act === 'call') {
+      location.href = 'alias_call.html?link=' + encodeURIComponent(id) +
+        '&type=voice&once=' + newTicket();
+    } else if (act === 'msg') {
+      location.href = 'alias_chat.html?link=' + encodeURIComponent(id);
+    } else if (act === 'open') {
+      location.href = 'alias_link.html?link=' + encodeURIComponent(id);
+    } else if (act === 'star') {
+      await patchSide({ starred: !ex(menuRow).starred });
+    } else if (act === 'pin') {
+      await patchSide({ pinned: !menuRow.pinned });
+    } else if (act === 'mute') {
+      await patchSide({ muted: !menuRow.muted });
+    } else if (act === 'up') {
+      await movePinned(-1);
+    } else if (act === 'down') {
+      await movePinned(1);
+    }
+  } catch (e) {
+    console.error(e);
+    showErr(AL.t('errGeneric', { msg: e.message || String(e) }));
+  }
+}
+
+/* ── 위로 올린 것들의 순서 ────────────────────────────────────────
    손가락으로 끌어 옮기는 방식(드래그)은 폰에서 잘 안 눌립니다.
    ▲▼ 단추가 훨씬 확실합니다.
 
@@ -454,53 +503,37 @@ async function movePinned(delta){
   }
   await reload();
 }
-document.getElementById('mUp').addEventListener('click', async function(){
-  showRowSheet(false);
-  try { await movePinned(-1); }
-  catch (e) { console.error(e); showErr(AL.t('errGeneric', { msg: e.message || String(e) })); }
-});
-document.getElementById('mDown').addEventListener('click', async function(){
-  showRowSheet(false);
-  try { await movePinned(1); }
-  catch (e) { console.error(e); showErr(AL.t('errGeneric', { msg: e.message || String(e) })); }
-});
 
-/* ── 🔴 2026-09-12 신설 — 단축번호 ─────────────────────────────── */
-function showSpdSheet(on){
-  document.getElementById('spdBg').classList.toggle('show', on);
-  document.getElementById('spdSheet').style.display = on ? '' : 'none';
-}
-document.getElementById('spdBg').addEventListener('click', function(){ showSpdSheet(false); });
-
-document.getElementById('mSpeed').addEventListener('click', function(){
-  showRowSheet(false);
-  document.getElementById('spdAsk').textContent =
-    nameOf(menuRow) + ' — ' + AL.t('cntSpeedAsk');
-
-  /* 이미 다른 사람이 쓰는 번호는 그 사람 이름을 같이 보여줍니다.
-     모르고 눌렀다가 남의 번호를 빼앗으면 곤란합니다. */
+/* ── 단축번호 번호판 ─────────────────────────────────────────────
+   ⋯ 메뉴가 있던 그 자리에서 번호판으로 바뀝니다. 화면이 안 움직이니
+   어디를 보고 있었는지 안 놓칩니다. */
+function openSpeedPad(){
   const owner = {};
   rows.forEach(function(r){
     const n = ex(r).speed_dial;
     if (n) owner[n] = r;
   });
 
-  let html = '';
+  let html = '<div class="ttl">' + AL.esc(nameOf(menuRow)) + ' — ' +
+             AL.esc(AL.t('cntSpeedAsk')) + '</div><div class="spdgrid">';
   for (let n = 1; n <= 9; n++) {
     const o = owner[n];
     const mine = o && o.link_id === menuRow.link_id;
-    html += '<button data-spd="' + n + '" class="' + (o && !mine ? 'used' : '') + '">' +
-      n + (o ? '<small>' + AL.esc(nameOf(o)) + '</small>' : '') + '</button>';
+    html += '<button data-spd="' + n + '" class="' +
+      (mine ? 'cur' : (o ? 'used' : '')) + '">' + n +
+      (o ? '<small>' + AL.esc(nameOf(o)) + '</small>' : '') + '</button>';
   }
-  const grid = document.getElementById('spdGrid');
-  grid.innerHTML = html;
-  grid.querySelectorAll('[data-spd]').forEach(function(el){
-    el.addEventListener('click', function(){ setSpeed(parseInt(el.getAttribute('data-spd'), 10), owner); });
-  });
-  showSpdSheet(true);
-});
+  html += '</div><div class="sep"></div>' +
+          '<button data-spd="0">' + AL.esc(AL.t('cntSpeedNone')) + '</button>';
 
-document.getElementById('spdNone').addEventListener('click', function(){ setSpeed(null, {}); });
+  const pop = openPop(menuRowEl, html);
+  pop.querySelectorAll('[data-spd]').forEach(function(el){
+    el.addEventListener('click', function(){
+      const n = parseInt(el.getAttribute('data-spd'), 10);
+      setSpeed(n || null, owner);
+    });
+  });
+}
 
 async function setSpeed(n, owner){
   try {
@@ -513,35 +546,45 @@ async function setSpeed(n, owner){
         .update({ speed_dial: null }).eq('id', owner[n].my_side_id).select('id');
       if (c.error) throw c.error;
     }
-    showSpdSheet(false);
+    closePop();
     await patchSide({ speed_dial: n });
   } catch (e) {
     console.error(e);
-    showSpdSheet(false);
+    closePop();
     showErr(AL.t('errGeneric', { msg: e.message || String(e) }));
   }
 }
 
-/* ── 🔴 2026-09-12 신설 — 정렬 고르기 ──────────────────────────── */
+/* ── 정렬 고르기 ─────────────────────────────────────────────────
+   지금 고른 것은 **색과 ✓** 로 알려줍니다. 뭘 보고 있는지 알아야
+   바꿀지 말지 정할 수 있습니다. */
+const SORTS = [
+  ['recent', 'cntSortRecent'],
+  ['name',   'cntSortName'],
+  ['star',   'cntSortStar'],
+  ['speed',  'cntSortSpeed'],
+];
+
 function sortLabel(){
-  return AL.t('cntSort') + ' · ' + AL.t({
-    recent: 'cntSortRecent', name: 'cntSortName',
-    star: 'cntSortStar', speed: 'cntSortSpeed',
-  }[sortBy]);
+  const hit = SORTS.filter(function(s){ return s[0] === sortBy; })[0] || SORTS[0];
+  return AL.t('cntSort') + ' · ' + AL.t(hit[1]);
 }
-function showSortSheet(on){
-  document.getElementById('sortBg').classList.toggle('show', on);
-  document.getElementById('sortSheet').style.display = on ? '' : 'none';
-}
-document.getElementById('sortBtn').addEventListener('click', function(){ showSortSheet(true); });
-document.getElementById('sortBg').addEventListener('click', function(){ showSortSheet(false); });
-document.querySelectorAll('[data-sort]').forEach(function(el){
-  el.addEventListener('click', function(){
-    sortBy = el.getAttribute('data-sort');
-    try { localStorage.setItem(SORT_KEY, sortBy); } catch (e) {}
-    document.getElementById('sortBtn').textContent = sortLabel();
-    showSortSheet(false);
-    paint();
+
+document.getElementById('sortBtn').addEventListener('click', function(){
+  const btn = this;
+  const html = SORTS.map(function(s){
+    return '<button data-sort="' + s[0] + '" class="' +
+      (s[0] === sortBy ? 'cur' : '') + '">' + AL.esc(AL.t(s[1])) + '</button>';
+  }).join('');
+  const pop = openPop(btn, html);
+  pop.querySelectorAll('[data-sort]').forEach(function(el){
+    el.addEventListener('click', function(){
+      sortBy = el.getAttribute('data-sort');
+      try { localStorage.setItem(SORT_KEY, sortBy); } catch (e) {}
+      btn.textContent = sortLabel();
+      closePop();
+      paint();
+    });
   });
 });
 
