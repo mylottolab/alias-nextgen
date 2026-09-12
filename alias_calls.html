@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260912e">
-<link rel="stylesheet" href="alias_theme.css?v=20260912e">
+<link rel="stylesheet" href="alias_common.css?v=20260912f">
+<link rel="stylesheet" href="alias_theme.css?v=20260912f">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260912e"></script>
-<script src="alias_call.js?v=20260912e"></script>
+<script src="alias_common.js?v=20260912f"></script>
+<script src="alias_call.js?v=20260912f"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -69,7 +69,12 @@ function showErr(msg){
 }
 
 function dirLabel(r){
-  if (r.ended_reason === 'no_answer' || r.ended_reason === 'declined') return AL.t('clMissed');
+  /* 🔴 2026-09-12 — 거절과 부재중을 갈라 적습니다.
+     전에는 둘 다 "부재중" 이었습니다. 손님에게는 아주 다른 일입니다.
+       부재중 — 상대가 못 봤습니다. 다시 걸어볼 만합니다.
+       거절   — 상대가 지금은 안 받겠다고 했습니다. */
+  if (r.ended_reason === 'declined') return AL.t('clRejected');
+  if (r.ended_reason === 'no_answer') return AL.t('clMissed');
   return AL.t(r.outgoing ? 'clOut' : 'clIn');
 }
 

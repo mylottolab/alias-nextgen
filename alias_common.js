@@ -335,8 +335,17 @@ AL.STR = {
   clRinging:  { kr:'전화가 왔습니다', en:'Incoming call' },
   clConnected:{ kr:'통화 중', en:'Connected' },
   clEnded:    { kr:'통화가 끝났습니다', en:'Call ended' },
-  clDeclined: { kr:'상대가 받지 않았습니다', en:'They declined' },
+  /* 🔴 2026-09-12 고침 — 거절과 부재중은 다른 일입니다.
+
+     한국어 글씨가 "상대가 받지 않았습니다" 로 돼 있었습니다. 영어는
+     "They declined" 인데 한국어만 뭉뚱그려져 있었습니다.
+
+     손님에게 이 둘은 아주 다릅니다.
+       부재중 — 상대가 못 봤습니다. 다시 걸어볼 만합니다.
+       거절   — 상대가 지금은 안 받겠다고 했습니다. 다시 걸면 실례입니다. */
+  clDeclined: { kr:'상대가 거절했습니다', en:'They declined' },
   clNoAnswer: { kr:'받지 않았습니다', en:'No answer' },
+  clRejected: { kr:'거절함', en:'Declined' },
   clFailed:   { kr:'연결하지 못했습니다', en:'Could not connect' },
   clNoMedia:  { kr:'마이크를 쓸 수 없습니다. 브라우저 설정을 확인해주세요.',
                 en:'Microphone unavailable. Check your browser settings.' },
