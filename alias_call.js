@@ -10,6 +10,7 @@
    2026-09-11  🔴 중계(TURN)가 없으면 콘솔에 크게 알림
    2026-09-11  🔴 소리가 오가는 양을 재서 화면에 보여줌 (bytes)
    2026-09-11  🔴 붙는 과정을 화면에 단계별로 보여줌 (ice-state)
+   2026-09-12  🔴 영상통화 — 카메라 끄고 받기 · 앞뒤 전환
    2026-09-12  🔴 상대가 거절하면 거는 쪽도 바로 끝납니다
    2026-09-11  🔴 통화 시작 때 로그인 표를 새로 받음 (기록이 안 남던 문제)
    2026-09-11  🔴 기록 저장이 거절당하면 콘솔에 알림
@@ -60,6 +61,8 @@ AL.call = {
   noAnswerTimer: null,
   dropTimer: null,     // 🔴 2026-09-10: 상대가 소리 없이 사라졌을 때
   endWatch: null,      // 🔴 2026-09-12: 상대가 거절했는지 지켜보는 시계
+  facing: 'user',      // 🔴 2026-09-12: 카메라 앞/뒤
+  noCam: false,        // 🔴 2026-09-12: 카메라를 아예 안 켜고 받았는가
   statsTimer: null,    // 🔴 2026-09-11: 소리가 실제로 오가는지 재는 시계
   myCands: null,       // 🔴 2026-09-11: 내가 찾은 길. 상대가 들어오면 다시 보냅니다
   bytesSeen: 0,        // 🔴 2026-09-11: 지금까지 주고받은 양
@@ -334,7 +337,7 @@ AL.startCall = async function(opts){
         noiseSuppression: true,
         autoGainControl: true,
       },
-      video: type === 'video',
+      video: (type === 'video') ? { facingMode: AL.call.facing } : false,
     });
   } catch (e) {
     say('no-media', { error: e });
@@ -470,13 +473,29 @@ AL.answerCall = async function(opts){
   say('preparing');
 
   try {
+    /* 🔴🔴 2026-09-12 — "카메라 끄고 받기"
+
+       이 제품은 얼굴을 감추는 것이 뼈대입니다. 영상통화가 와도
+       **내 카메라는 안 켜고 상대 얼굴만 보는** 길이 있어야 합니다.
+
+       ⚠ 카메라를 "껐다" 가 아니라 **아예 안 켭니다.**
+         track.enabled = false 로 끄면 까만 화면이 나갈 뿐,
+         카메라는 실제로 열려 있습니다. 폰 위쪽 초록 점도 켜집니다.
+         손님에게 "안 켰다" 고 말하려면 진짜로 안 켜야 합니다.
+
+       ⚠ 그래서 통화 중에 다시 켤 수는 없습니다. 켜려면 연결을 새로
+         맞춰야 하는데(재협상), 그 과정에서 통화가 끊길 수 있습니다.
+         "카메라 끄고 받기" 는 그 통화 내내 유지됩니다. */
+    AL.call.noCam = !!(opts && opts.noCam);
+    var wantVideo = (AL.call.type === 'video') && !AL.call.noCam;
+
     AL.call.local = await navigator.mediaDevices.getUserMedia({
       audio: {
         echoCancellation: true,
         noiseSuppression: true,
         autoGainControl: true,
       },
-      video: AL.call.type === 'video',
+      video: wantVideo ? { facingMode: AL.call.facing } : false,
     });
   } catch (e) {
     say('no-media', { error: e });
@@ -849,6 +868,63 @@ function cleanup(){
 AL.callCleanup = cleanup;
 
 /* ── 소리 끄기 · 스피커 ──────────────────────────────────────────── */
+/* =====================================================================
+   🔴🔴 2026-09-12 신설 — 카메라 다루기
+
+   ⚠ 카메라를 안 켜고 받은 통화(noCam)에서는 아무 것도 안 합니다.
+     없는 카메라를 켤 수는 없습니다. 화면도 단추를 안 보여줍니다.
+   ===================================================================== */
+
+/* 카메라를 껐다 켰다 합니다. 되돌려주는 값: true = 지금 꺼짐 */
+AL.toggleCamera = function(){
+  var t = AL.call.local && AL.call.local.getVideoTracks()[0];
+  if (!t) return true;               // 카메라가 아예 없습니다
+  t.enabled = !t.enabled;
+  return !t.enabled;
+};
+
+AL.cameraIsOff = function(){
+  var t = AL.call.local && AL.call.local.getVideoTracks()[0];
+  return !t || !t.enabled;
+};
+
+AL.hasCamera = function(){
+  return !!(AL.call.local && AL.call.local.getVideoTracks().length);
+};
+
+/* 앞뒤 카메라를 바꿉니다.
+   ⚠ 통화를 끊지 않고 바꿉니다. 보내는 자리(sender)의 트랙만 갈아끼웁니다.
+     연결을 새로 맞추지 않아도 되므로 통화가 안 끊깁니다. */
+AL.switchCamera = async function(){
+  try {
+    if (!AL.call.pc || !AL.call.local) return null;
+    var cur = AL.call.local.getVideoTracks()[0];
+    if (!cur) return null;
+
+    AL.call.facing = (AL.call.facing === 'environment') ? 'user' : 'environment';
+    var s = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: AL.call.facing },
+    });
+    var nt = s.getVideoTracks()[0];
+    if (!nt) return null;
+    nt.enabled = cur.enabled;        // 꺼둔 상태면 그대로 꺼둡니다
+
+    var sender = AL.call.pc.getSenders().filter(function(x){
+      return x.track && x.track.kind === 'video';
+    })[0];
+    if (sender) await sender.replaceTrack(nt);
+
+    cur.stop();
+    AL.call.local.removeTrack(cur);
+    AL.call.local.addTrack(nt);
+    console.log('[call] 카메라 전환:', AL.call.facing);
+    return AL.call.local;
+  } catch (e) {
+    console.warn('[call] 카메라 전환 실패', e);
+    return null;
+  }
+};
+
 AL.toggleMute = function(){
   if (!AL.call.local) return false;
   var on = false;

@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260912f">
-<link rel="stylesheet" href="alias_theme.css?v=20260912f">
+<link rel="stylesheet" href="alias_common.css?v=20260912g">
+<link rel="stylesheet" href="alias_theme.css?v=20260912g">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260912f"></script>
-<script src="alias_call.js?v=20260912f"></script>
+<script src="alias_common.js?v=20260912g"></script>
+<script src="alias_call.js?v=20260912g"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -411,8 +411,13 @@ function openRowMenu(btn){
 
   let html = '<div class="ttl">' + AL.esc(nameOf(menuRow)) + '</div>';
 
-  /* 바로 하는 일 */
-  if (!isRoom) html += b('call', AL.t('cntCallNow'));
+  /* 바로 하는 일
+     🔴 2026-09-12 — 영상은 **따로 골라야** 합니다. 기본은 늘 음성입니다.
+        실수로 얼굴이 나가면 되돌릴 수 없습니다. */
+  if (!isRoom) {
+    html += b('call', AL.t('cntCallNow'));
+    html += b('vcall', AL.t('clVideoCall'));
+  }
   html += b('msg', AL.t('cntMsgNow'));
   html += '<div class="sep"></div>';
 
@@ -460,6 +465,9 @@ async function rowAction(act){
     if (act === 'call') {
       location.href = 'alias_call.html?link=' + encodeURIComponent(id) +
         '&type=voice&once=' + newTicket();
+    } else if (act === 'vcall') {
+      location.href = 'alias_call.html?link=' + encodeURIComponent(id) +
+        '&type=video&once=' + newTicket();
     } else if (act === 'msg') {
       location.href = 'alias_chat.html?link=' + encodeURIComponent(id);
     } else if (act === 'open') {

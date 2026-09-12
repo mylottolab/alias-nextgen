@@ -353,6 +353,25 @@ AL.STR = {
   clAnswerAs: { kr:'{face}(으)로 받습니다', en:'Answering as {face}' },
   clAnswer:   { kr:'받기', en:'Answer' },
   clDecline:  { kr:'거절', en:'Decline' },
+
+  /* 🔴 2026-09-12 신설 — 영상통화
+
+     이 제품은 "내가 누구인지 안 밝히고 만나는" 앱입니다. 그런데 얼굴은
+     세상에서 가장 확실한 신분증입니다. 그래서 영상은 **늘 한 번 더 묻고,
+     카메라를 안 켜고도 받을 수 있게** 합니다. */
+  clVideoCall:  { kr:'📹 영상으로 걸기', en:'📹 Video call' },
+  clVoiceCall:  { kr:'☏ 전화 걸기', en:'☏ Voice call' },
+  clVideoIn:    { kr:'영상통화가 왔습니다', en:'Incoming video call' },
+  clAnsVideo:   { kr:'영상으로 받기', en:'Answer with video' },
+  clAnsAudio:   { kr:'카메라 끄고 받기', en:'Answer without camera' },
+  clFaceWarn:   { kr:'받으면 내 얼굴이 상대에게 보입니다',
+                  en:'They will see your camera if you answer' },
+  clNoCamNote:  { kr:'카메라를 켜지 않고 받았습니다. 상대 얼굴만 보입니다.',
+                  en:'Answered without camera. You can see them only.' },
+  clCamOff:     { kr:'카메라 끄기', en:'Turn camera off' },
+  clCamOn:      { kr:'카메라 켜기', en:'Turn camera on' },
+  clCamFlip:    { kr:'앞뒤 전환', en:'Flip camera' },
+  clSendingVid: { kr:'내 카메라가 나가는 중입니다', en:'Your camera is on' },
   clHangup:   { kr:'끊기', en:'End' },
   clMute:     { kr:'음소거', en:'Mute' },
   clUnmute:   { kr:'음소거 해제', en:'Unmute' },

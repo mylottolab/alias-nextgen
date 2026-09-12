@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260912f">
-<link rel="stylesheet" href="alias_theme.css?v=20260912f">
+<link rel="stylesheet" href="alias_common.css?v=20260912g">
+<link rel="stylesheet" href="alias_theme.css?v=20260912g">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260912f"></script>
-<script src="alias_call.js?v=20260912f"></script>
+<script src="alias_common.js?v=20260912g"></script>
+<script src="alias_call.js?v=20260912g"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -93,8 +93,11 @@ document.addEventListener("DOMContentLoaded", function(){
   border-radius:.5em;text-align:center;font-weight:700;font-size:12.5px;
   background:rgba(120,200,150,.18);color:#8FE3B0}
 .prow .star{margin-right:.3em;color:#F2C94C}
+/* 🔴 2026-09-12 — 단추가 셋(☏ 📹 💬)이 되어 조금 줄였습니다.
+   좁은 폰에서 이름이 밀리지 않게 합니다. */
+.prow{gap:7px}
 .act{appearance:none;-webkit-appearance:none;cursor:pointer;margin:0;
-  width:42px;height:42px;flex:0 0 42px;border-radius:50%;font-size:17px;
+  width:38px;height:38px;flex:0 0 38px;border-radius:50%;font-size:15.5px;
   display:flex;align-items:center;justify-content:center;
   background:rgba(255,255,255,.07);color:inherit;
   border:1px solid rgba(255,255,255,.14)}
@@ -213,9 +216,10 @@ function isRoom(r){ return r.kind === 'group'; }
 function newTicket(){
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
-function callTo(linkId){
+function callTo(linkId, kind){
+  /* 🔴 2026-09-12 — 기본은 늘 음성입니다. 영상은 따로 골라야 합니다. */
   location.href = 'alias_call.html?link=' + encodeURIComponent(linkId) +
-    '&type=voice&once=' + newTicket();
+    '&type=' + (kind === 'video' ? 'video' : 'voice') + '&once=' + newTicket();
 }
 function chatTo(linkId){
   location.href = 'alias_chat.html?link=' + encodeURIComponent(linkId);
@@ -309,6 +313,9 @@ function paintList(){
       '</div>' +
       '<button class="act call' + (room ? ' off' : '') + '" data-call="' + AL.esc(r.link_id) +
         '" aria-label="' + AL.esc(AL.t('ariaCall')) + '">☏</button>' +
+      /* 🔴 2026-09-12 — 영상. 방은 1:1 영상이 안 되므로 흐리게 꺼둡니다. */
+      '<button class="act' + (room ? ' off' : '') + '" data-vcall="' + AL.esc(r.link_id) +
+        '" aria-label="' + AL.esc(AL.t('clVideoCall')) + '">📹</button>' +
       '<button class="act" data-msg="' + AL.esc(r.link_id) +
         '" aria-label="' + AL.esc(AL.t('ariaMsg')) + '">💬</button>' +
     '</div>';
@@ -318,7 +325,10 @@ function paintList(){
     el.addEventListener('click', function(){ chatTo(el.getAttribute('data-go')); });
   });
   box.querySelectorAll('[data-call]').forEach(function(el){
-    el.addEventListener('click', function(){ callTo(el.getAttribute('data-call')); });
+    el.addEventListener('click', function(){ callTo(el.getAttribute('data-call'), 'voice'); });
+  });
+  box.querySelectorAll('[data-vcall]').forEach(function(el){
+    el.addEventListener('click', function(){ callTo(el.getAttribute('data-vcall'), 'video'); });
   });
   box.querySelectorAll('[data-msg]').forEach(function(el){
     el.addEventListener('click', function(){ chatTo(el.getAttribute('data-msg')); });

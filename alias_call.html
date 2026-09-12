@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260912f">
-<link rel="stylesheet" href="alias_theme.css?v=20260912f">
+<link rel="stylesheet" href="alias_common.css?v=20260912g">
+<link rel="stylesheet" href="alias_theme.css?v=20260912g">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260912f"></script>
-<script src="alias_media.js?v=20260912f"></script>
-<script src="alias_call.js?v=20260912f"></script>
+<script src="alias_common.js?v=20260912g"></script>
+<script src="alias_media.js?v=20260912g"></script>
+<script src="alias_call.js?v=20260912g"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -30,8 +30,24 @@ document.addEventListener("DOMContentLoaded", function(){
   AL.bootTheme();
 });
 </script>
+<style>
+/* 🔴 2026-09-12 신설 — 영상통화 안내줄
+
+   받기 **전에** "영상입니다 · 얼굴이 나갑니다" 를 분명히 보여줍니다.
+   모르고 받았다가 얼굴이 나가면 되돌릴 수 없습니다.
+
+   ⚠ 공용 CSS(alias_theme.css)를 안 건드리려고 여기에 둡니다.
+     다른 화면에 영향이 없습니다. */
+.vidwarn{display:block;margin-top:9px;padding:10px 14px;border-radius:11px;
+  font-size:13.5px;line-height:1.55;font-weight:600;word-break:keep-all;
+  background:rgba(242,201,76,.14);color:#F2C94C;
+  border:1px solid rgba(242,201,76,.32)}
+/* 카메라를 껐을 때 내 작은 화면은 숨깁니다. 까만 네모가 남아 있으면
+   껐는지 고장인지 헷갈립니다. */
+.callvid .mini video[style*="hidden"]{display:none}
+</style>
 </head>
-<body class="callscreen" data-t-title="clVoice">
+<body class="callscreen" data-t-title="clVoice" id="callBody">
 
 <div class="callvid" id="vid">
   <video id="remoteV" autoplay playsinline></video>
@@ -159,6 +175,17 @@ function paintWho(){
   t.textContent = AL.t(incoming ? 'clAnswerAs' : 'clIAm', { face: view.my_face || '' });
   box.appendChild(t);
   box.classList.toggle('warn', incoming);
+
+  /* 🔴🔴 2026-09-12 — 영상통화임을 **받기 전에** 분명히 알립니다.
+     모르고 받았다가 얼굴이 나가면 되돌릴 수 없습니다. */
+  if (callType === 'video') {
+    const v = document.createElement('div');
+    v.className = 'vidwarn';
+    v.textContent = incoming
+      ? ('📹 ' + AL.t('clVideoIn') + ' — ' + AL.t('clFaceWarn'))
+      : ('📹 ' + AL.t('clSendingVid'));
+    box.appendChild(v);
+  }
 }
 
 function paintActs(){
@@ -167,7 +194,27 @@ function paintActs(){
 
   if (incoming && !AL.call.pc) {
     box.appendChild(btn('rbtn hang', '✕', AL.t('clDecline'), decline));
-    box.appendChild(btn('rbtn take', '☏', AL.t('clAnswer'), answer));
+
+    /* 🔴🔴 2026-09-12 — 영상통화는 받는 길이 둘입니다.
+
+       얼굴은 세상에서 가장 확실한 신분증입니다. 이 앱은 그것을 감추려고
+       쓰는 앱인데, 영상통화를 받는 순간 다 드러나면 곤란합니다.
+
+         🎙 카메라 끄고 받기 — 내 카메라는 아예 안 켭니다. 상대만 보입니다
+         📹 영상으로 받기   — 서로 봅니다
+
+       ⚠ 순서가 중요합니다. **카메라 끄고 받기를 먼저** 둡니다.
+         급하면 오른쪽 큰 단추를 누르게 되는데, 그게 얼굴이 나가는 쪽이면
+         사고가 납니다. 조심스러운 쪽을 손에 가까이 둡니다. */
+    if (callType === 'video') {
+      box.appendChild(btn('rbtn plain', '🎙', AL.t('clAnsAudio'),
+        function(){ answer({ noCam: true }); }));
+      box.appendChild(btn('rbtn take', '📹', AL.t('clAnsVideo'),
+        function(){ answer({ noCam: false }); }));
+    } else {
+      box.appendChild(btn('rbtn take', '☏', AL.t('clAnswer'),
+        function(){ answer({}); }));
+    }
     return;
   }
 
@@ -176,6 +223,24 @@ function paintActs(){
       muted = AL.toggleMute(); paintActs();
     });
   box.appendChild(m);
+
+  /* 🔴 2026-09-12 — 카메라 단추는 **카메라가 실제로 있을 때만** 냅니다.
+     "카메라 끄고 받기" 로 받았으면 켤 카메라가 없습니다.
+     없는 단추를 보여주고 눌러도 아무 일이 없으면 손님이 고장인 줄 압니다. */
+  if (callType === 'video' && AL.hasCamera && AL.hasCamera()) {
+    const off = AL.cameraIsOff();
+    box.appendChild(btn('rbtn plain' + (off ? ' on' : ''), off ? '🚫' : '📹',
+      AL.t(off ? 'clCamOn' : 'clCamOff'), function(){
+        AL.toggleCamera();
+        el('localV').style.visibility = AL.cameraIsOff() ? 'hidden' : '';
+        paintActs();
+      }));
+    box.appendChild(btn('rbtn plain', '🔄', AL.t('clCamFlip'), async function(){
+      const s = await AL.switchCamera();
+      if (s) el('localV').srcObject = s;
+    }));
+  }
+
   box.appendChild(btn('rbtn hang', '✕', AL.t('clHangup'), function(){ AL.endCall('completed'); }));
 }
 
@@ -266,6 +331,9 @@ function onState(state, extra){
   if (state === 'remote-stream') {
     const target = (callType === 'video') ? el('remoteV') : el('remoteA');
     target.srcObject = extra.stream;
+    /* 🔴 2026-09-12 — 카메라를 끄고 받았으면 local-stream 에서 화면을
+       못 켭니다(내 영상이 없으니까요). 상대 영상이 올 때도 켭니다. */
+    if (callType === 'video') el('vid').classList.add('on');
     // ⚠ 브라우저가 소리 재생을 막을 수 있습니다(자동재생 정책).
     //   막히면 조용히 실패하므로, 눌러서 켜는 단추를 띄웁니다.
     const p = target.play();
@@ -368,7 +436,8 @@ function watchCallAlive(){
   }, RING_MAX_MS);
 }
 
-async function answer(){
+async function answer(opts){
+  opts = opts || {};
   AL.stopRinging();
   stopAliveWatch();
 
@@ -385,8 +454,12 @@ async function answer(){
     await AL.answerCall({
       linkId: linkId, sideId: view.my_side_id,
       callId: callId, token: token, type: callType,
+      noCam: !!opts.noCam,          // 🔴 2026-09-12 — 카메라 끄고 받기
       onState: onState,
     });
+    /* 카메라 없이 받았으면 그 사실을 화면에 남깁니다.
+       "왜 내 얼굴이 안 보이지" 하고 고장으로 오해하면 안 됩니다. */
+    if (opts.noCam) el('bytes').textContent = AL.t('clNoCamNote');
     paintActs();
   } catch (e) {
     console.error(e);
@@ -404,6 +477,8 @@ async function decline(){
 
 (async function(){
   AL.paintText();
+  /* 🔴 2026-09-12 — 영상통화면 제목도 영상으로. paintText 뒤에 덮어씁니다. */
+  if (callType === 'video') document.title = AL.t('clVideo');
   if (!await AL.requireLogin()) return;
   if (!linkId) { setStatus(AL.t('dtlNotFound')); return; }
 
