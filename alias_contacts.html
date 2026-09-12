@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260911d">
-<link rel="stylesheet" href="alias_theme.css?v=20260911d">
+<link rel="stylesheet" href="alias_common.css?v=20260912a">
+<link rel="stylesheet" href="alias_theme.css?v=20260912a">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260911d"></script>
-<script src="alias_call.js?v=20260911d"></script>
+<script src="alias_common.js?v=20260912a"></script>
+<script src="alias_call.js?v=20260912a"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -29,6 +29,23 @@ document.addEventListener("DOMContentLoaded", function(){
   AL.bootTheme();
 });
 </script>
+<style>
+/* 🔴 2026-09-12 신설 — 별표·단축번호 표시.
+   공용 CSS(alias_theme.css)를 안 건드리려고 여기에 둡니다.
+   다른 화면에 영향이 없습니다. */
+.spd{display:inline-block;min-width:1.35em;padding:0 .2em;margin-right:.35em;
+     border-radius:.5em;text-align:center;font-weight:700;
+     background:rgba(120,200,150,.18);color:#8FE3B0}
+.star{margin-right:.3em;color:#F2C94C}
+.spdgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
+.spdgrid button{margin:0;font-size:20px;padding:14px 0}
+.spdgrid button.used{opacity:.55}
+.spdgrid button small{display:block;font-size:11px;opacity:.75;font-weight:400}
+/* 🔴 2026-09-12 — 줄 메뉴 칸막이.
+   성격이 다른 것끼리 붙어 있으면 급할 때 엉뚱한 걸 누릅니다.
+     바로 하는 일  |  이 사람을 어떻게 둘지  |  다른 화면으로 */
+.msep{border:0;border-top:1px solid rgba(255,255,255,.10);margin:10px 2px}
+</style>
 </head>
 <body class="tabbed" data-t-title="ttContacts">
 <div class="wrap">
@@ -40,6 +57,7 @@ document.addEventListener("DOMContentLoaded", function(){
 
   <div class="tools">
     <input id="q" type="search" autocomplete="off" data-t-ph="cntSearch">
+    <button class="toggle" id="sortBtn"></button>
     <button class="toggle" id="grpBtn" data-t="cntGroup"></button>
   </div>
 
@@ -77,9 +95,36 @@ document.addEventListener("DOMContentLoaded", function(){
 <div class="sheet" id="rowSheet" style="display:none">
   <div class="grip"></div>
   <p class="hint" id="rowWho" style="margin:0 0 14px"></p>
+  <button id="mCall" data-t="cntCallNow"></button>
+  <button id="mMsg" data-t="cntMsgNow"></button>
+  <hr class="msep">
+  <button id="mStar"></button>
+  <button id="mSpeed"></button>
   <button id="mPin"></button>
+  <button id="mUp" data-t="cntMoveUp" style="display:none"></button>
+  <button id="mDown" data-t="cntMoveDown" style="display:none"></button>
   <button id="mMute"></button>
+  <hr class="msep">
   <button id="mOpen" data-t="cntOpenDetail"></button>
+</div>
+
+<!-- 정렬 고르기 -->
+<div class="sheet-bg" id="sortBg"></div>
+<div class="sheet" id="sortSheet" style="display:none">
+  <div class="grip"></div>
+  <button data-sort="recent" data-t="cntSortRecent"></button>
+  <button data-sort="name"   data-t="cntSortName"></button>
+  <button data-sort="star"   data-t="cntSortStar"></button>
+  <button data-sort="speed"  data-t="cntSortSpeed"></button>
+</div>
+
+<!-- 단축번호 고르기 -->
+<div class="sheet-bg" id="spdBg"></div>
+<div class="sheet" id="spdSheet" style="display:none">
+  <div class="grip"></div>
+  <p class="hint" id="spdAsk" style="margin:0 0 14px"></p>
+  <div class="spdgrid" id="spdGrid"></div>
+  <button id="spdNone" data-t="cntSpeedNone"></button>
 </div>
 
 <nav class="tabbar">
@@ -101,6 +146,29 @@ let grouped = false;   // 별칭별로 묶어 볼지
 let closedGroups = {}; // 접힌 묶음
 let menuRow = null;    // ⋯ 를 누른 줄
 
+/* 🔴🔴 2026-09-12 신설 — 별표 · 단축번호 · 고정순서
+
+   왜 따로 읽는가
+     연락처 목록은 my_contacts() 함수가 만들어 줍니다. 거기에 칸을 더하려면
+     함수의 반환 모양을 바꿔야 하는데, 그러면 함수를 지웠다 다시 만들어야
+     하고 다른 화면까지 영향을 받습니다.
+     그래서 link_sides 에서 **필요한 세 칸만 따로 읽어** 붙입니다.
+     서버에 한 번 더 다녀오지만 연락처가 수백 개가 아니면 차이가 없습니다.
+     나중에 느려지면 그때 함수로 옮기면 됩니다.
+
+   ⚠ my_contacts 가 돌려주는 my_side_id 가 link_sides.id 입니다.
+     그것으로 짝을 맞춥니다. */
+let extra = {};        // my_side_id → { starred, speed_dial, pin_order }
+
+const SORT_KEY = 'alias_contacts_sort_v1';
+let sortBy = 'recent'; // recent · name · star · speed
+try { sortBy = localStorage.getItem(SORT_KEY) || 'recent'; } catch (e) {}
+
+/* 줄 하나의 별표·단축번호를 꺼냅니다. 없으면 기본값입니다. */
+function ex(r){
+  return extra[r.my_side_id] || { starred: false, speed_dial: null, pin_order: null };
+}
+
 function showErr(msg){
   const el = document.getElementById('err');
   el.textContent = msg; el.classList.add('show');
@@ -118,24 +186,78 @@ function visible(){
   });
 }
 
-function rowHtml(r){
-  // ⚠ 그룹은 상대가 여럿이라 방 이름으로 부릅니다.
-  const shown = (r.kind === 'group')
+/* 목록에 보일 이름. 그룹이면 방 이름입니다. */
+function nameOf(r){
+  return (r.kind === 'group')
     ? (r.room_name || AL.t('grNoName'))
     : (r.peer_label || r.peer_display || AL.t('cntUnnamed'));
+}
+
+/* ── 정렬 ────────────────────────────────────────────────────────
+   ⚠ 어느 정렬이든 "위로 올린 것" 은 항상 맨 위입니다.
+     손님이 일부러 올려둔 것이니, 정렬을 바꿨다고 내려가면 안 됩니다.
+   ⚠ 위로 올린 것들끼리는 pin_order 로 순서를 매깁니다(⋯ 의 ▲▼). */
+function sorted(list){
+  const byName = function(a, b){
+    return nameOf(a).localeCompare(nameOf(b), AL.lang === 'kr' ? 'ko' : 'en');
+  };
+  const byRecent = function(a, b){
+    return String(b.last_activity_at || '').localeCompare(String(a.last_activity_at || ''));
+  };
+
+  const rest = function(a, b){
+    if (sortBy === 'name') return byName(a, b);
+    if (sortBy === 'star') {
+      const sa = ex(a).starred ? 0 : 1, sb = ex(b).starred ? 0 : 1;
+      if (sa !== sb) return sa - sb;
+      return byRecent(a, b);
+    }
+    if (sortBy === 'speed') {
+      // 단축번호가 있는 것이 먼저, 번호 순. 없는 것은 뒤에 최근 순.
+      const na = ex(a).speed_dial, nb = ex(b).speed_dial;
+      if (na && nb) return na - nb;
+      if (na) return -1;
+      if (nb) return 1;
+      return byRecent(a, b);
+    }
+    return byRecent(a, b);
+  };
+
+  return list.slice().sort(function(a, b){
+    if (!!a.pinned !== !!b.pinned) return a.pinned ? -1 : 1;   // 올린 것이 항상 위
+    if (a.pinned && b.pinned) {
+      const oa = ex(a).pin_order, ob = ex(b).pin_order;
+      if (oa != null && ob != null && oa !== ob) return oa - ob;
+      if (oa != null) return -1;
+      if (ob != null) return 1;
+    }
+    return rest(a, b);
+  });
+}
+
+function rowHtml(r){
+  // ⚠ 그룹은 상대가 여럿이라 방 이름으로 부릅니다.
+  const shown = nameOf(r);
   const sub = r.peer_label ? (r.peer_display || '') : '';
+  const e = ex(r);   // 🔴 2026-09-12 — 별표 · 단축번호
   const n = r.unread || 0;
   const isRoom = r.kind === 'group';
   return '<div class="crow' + (n ? ' hasnew' : '') + (isRoom ? ' room' : '') + '">' +
     '<div class="cav" data-go="' + AL.esc(r.link_id) + '">' +
       AL.esc(isRoom ? '👥' : AL.initial(r.my_face)) + '</div>' +
     '<div class="cmid" data-go="' + AL.esc(r.link_id) + '">' +
-      '<div class="cname">' + (r.pinned ? '▲ ' : '') + AL.esc(shown) +
+      '<div class="cname">' +
+        (e.speed_dial ? '<span class="spd">' + AL.esc(e.speed_dial) + '</span>' : '') +
+        (e.starred ? '<span class="star">★</span>' : '') +
+        (r.pinned ? '▲ ' : '') + AL.esc(shown) +
         (n ? '<span class="unread">' + AL.esc(n > 99 ? '99+' : n) + '</span>' : '') +
       '</div>' +
       (sub ? '<div class="csub">' + AL.esc(sub) + '</div>' : '') +
     '</div>' +
-    '<div class="ctime">' + AL.esc(AL.fmtShort(r.last_activity_at)) + '</div>' +
+    /* 🔴 2026-09-12 — "어제" 가 아니라 월일 시분까지 보여줍니다.
+       같은 상대가 여러 줄일 때 시각으로 구별하라고 안내하면서
+       정작 시각을 안 보여주고 있었습니다. */
+    '<div class="ctime">' + AL.esc(AL.fmtWhen(r.last_activity_at)) + '</div>' +
     '<button class="cdots" data-menu="' + AL.esc(r.link_id) + '" aria-label="' + AL.esc(AL.t('ariaMore')) + '">⋯</button>' +
   '</div>';
 }
@@ -171,7 +293,7 @@ function paint(){
   }
 
   if (!grouped) {
-    box.innerHTML = list.map(rowHtml).join('');
+    box.innerHTML = sorted(list).map(rowHtml).join('');
   } else {
     // 내가 쓰는 별칭으로 묶습니다. "업무용으로 만난 사람들"이 한 덩어리가 됩니다.
     const order = [];
@@ -189,7 +311,7 @@ function paint(){
           '<span class="gcount">' + AL.esc(AL.t('cntCount', { n: bag[k].length })) + '</span>' +
           '<span class="gcaret">▼</span>' +
         '</div>' +
-        (closed ? '' : bag[k].map(rowHtml).join(''));
+        (closed ? '' : sorted(bag[k]).map(rowHtml).join(''));
     }).join('');
   }
 
@@ -217,12 +339,27 @@ function paint(){
 function openRowMenu(linkId){
   menuRow = rows.filter(function(r){ return r.link_id === linkId; })[0];
   if (!menuRow) return;
-  document.getElementById('rowWho').textContent =
-    menuRow.peer_label || menuRow.peer_display || AL.t('cntUnnamed');
+  const e = ex(menuRow);
+
+  document.getElementById('rowWho').textContent = nameOf(menuRow);
+  document.getElementById('mStar').textContent =
+    e.starred ? AL.t('cntStarOff') : AL.t('cntStarOn');
+  document.getElementById('mSpeed').textContent =
+    AL.t('cntSpeedSet') + (e.speed_dial ? ' (' + e.speed_dial + ')' : '');
   document.getElementById('mPin').textContent =
     menuRow.pinned ? AL.t('dtlPinOff') : AL.t('dtlPinOn');
   document.getElementById('mMute').textContent =
     menuRow.muted ? AL.t('dtlMuteOff') : AL.t('dtlMuteOn');
+
+  /* ▲▼ 는 위로 올린 것에만 씁니다. 안 올린 것에는 옮길 자리가 없습니다. */
+  const canMove = !!menuRow.pinned;
+  document.getElementById('mUp').style.display = canMove ? '' : 'none';
+  document.getElementById('mDown').style.display = canMove ? '' : 'none';
+
+  /* 그룹은 1:1 통화 화면으로 못 갑니다. 방 통화는 다른 화면입니다. */
+  document.getElementById('mCall').style.display =
+    (menuRow.kind === 'group') ? 'none' : '';
+
   showRowSheet(true);
 }
 function showRowSheet(on){
@@ -254,12 +391,165 @@ document.getElementById('mOpen').addEventListener('click', function(){
 });
 document.getElementById('rowBg').addEventListener('click', function(){ showRowSheet(false); });
 
+/* ── 🔴 2026-09-12 신설 — 바로 걸기 · 바로 메시지 ─────────────────
+   ⚠ 표(once)를 반드시 붙입니다. 없으면 통화 화면이 그냥 나가버립니다.
+     alias_chat.html 이 만드는 것과 같은 방식입니다. */
+function newTicket(){
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+document.getElementById('mCall').addEventListener('click', function(){
+  const id = menuRow.link_id;
+  showRowSheet(false);
+  location.href = 'alias_call.html?link=' + encodeURIComponent(id) +
+    '&type=voice&once=' + newTicket();
+});
+document.getElementById('mMsg').addEventListener('click', function(){
+  const id = menuRow.link_id;
+  showRowSheet(false);
+  location.href = 'alias_chat.html?link=' + encodeURIComponent(id);
+});
+
+/* ── 🔴 2026-09-12 신설 — 별표 ───────────────────────────────── */
+document.getElementById('mStar').addEventListener('click', async function(){
+  const on = !ex(menuRow).starred;
+  showRowSheet(false);
+  try { await patchSide({ starred: on }); }
+  catch (e) { console.error(e); showErr(AL.t('errGeneric', { msg: e.message || String(e) })); }
+});
+
+/* ── 🔴 2026-09-12 신설 — 위로 올린 것들의 순서 ────────────────────
+   손가락으로 끌어 옮기는 방식(드래그)은 폰에서 잘 안 눌립니다.
+   ▲▼ 단추가 훨씬 확실합니다.
+
+   ⚠ pin_order 가 비어 있는 줄이 섞여 있을 수 있어, 옮길 때마다
+     올린 것 전체에 1,2,3... 을 다시 매깁니다. 몇 개 안 되니 괜찮습니다. */
+async function movePinned(delta){
+  const pins = sorted(rows.filter(function(r){ return r.pinned; }));
+  const i = pins.findIndex(function(r){ return r.link_id === menuRow.link_id; });
+  if (i < 0) return;
+  const j = i + delta;
+  if (j < 0 || j >= pins.length) return;           // 맨 끝이면 그대로
+
+  const t = pins[i]; pins[i] = pins[j]; pins[j] = t;
+
+  for (let k = 0; k < pins.length; k++) {
+    const res = await AL.sb.from('link_sides')
+      .update({ pin_order: k + 1 }).eq('id', pins[k].my_side_id).select('id');
+    if (res.error) throw res.error;
+  }
+  await reload();
+}
+document.getElementById('mUp').addEventListener('click', async function(){
+  showRowSheet(false);
+  try { await movePinned(-1); }
+  catch (e) { console.error(e); showErr(AL.t('errGeneric', { msg: e.message || String(e) })); }
+});
+document.getElementById('mDown').addEventListener('click', async function(){
+  showRowSheet(false);
+  try { await movePinned(1); }
+  catch (e) { console.error(e); showErr(AL.t('errGeneric', { msg: e.message || String(e) })); }
+});
+
+/* ── 🔴 2026-09-12 신설 — 단축번호 ─────────────────────────────── */
+function showSpdSheet(on){
+  document.getElementById('spdBg').classList.toggle('show', on);
+  document.getElementById('spdSheet').style.display = on ? '' : 'none';
+}
+document.getElementById('spdBg').addEventListener('click', function(){ showSpdSheet(false); });
+
+document.getElementById('mSpeed').addEventListener('click', function(){
+  showRowSheet(false);
+  document.getElementById('spdAsk').textContent =
+    nameOf(menuRow) + ' — ' + AL.t('cntSpeedAsk');
+
+  /* 이미 다른 사람이 쓰는 번호는 그 사람 이름을 같이 보여줍니다.
+     모르고 눌렀다가 남의 번호를 빼앗으면 곤란합니다. */
+  const owner = {};
+  rows.forEach(function(r){
+    const n = ex(r).speed_dial;
+    if (n) owner[n] = r;
+  });
+
+  let html = '';
+  for (let n = 1; n <= 9; n++) {
+    const o = owner[n];
+    const mine = o && o.link_id === menuRow.link_id;
+    html += '<button data-spd="' + n + '" class="' + (o && !mine ? 'used' : '') + '">' +
+      n + (o ? '<small>' + AL.esc(nameOf(o)) + '</small>' : '') + '</button>';
+  }
+  const grid = document.getElementById('spdGrid');
+  grid.innerHTML = html;
+  grid.querySelectorAll('[data-spd]').forEach(function(el){
+    el.addEventListener('click', function(){ setSpeed(parseInt(el.getAttribute('data-spd'), 10), owner); });
+  });
+  showSpdSheet(true);
+});
+
+document.getElementById('spdNone').addEventListener('click', function(){ setSpeed(null, {}); });
+
+async function setSpeed(n, owner){
+  try {
+    /* ⚠ 한 사람이 같은 번호를 둘 가질 수 없게 DB 에 막아뒀습니다.
+       그러니 남이 쓰던 번호면 **먼저 비우고** 나서 넣어야 합니다.
+       순서를 바꾸면 "이미 있다" 는 오류가 납니다. */
+    if (n && owner[n] && owner[n].link_id !== menuRow.link_id) {
+      if (!confirm(AL.t('cntSpeedTaken', { n: n, who: nameOf(owner[n]) }))) return;
+      const c = await AL.sb.from('link_sides')
+        .update({ speed_dial: null }).eq('id', owner[n].my_side_id).select('id');
+      if (c.error) throw c.error;
+    }
+    showSpdSheet(false);
+    await patchSide({ speed_dial: n });
+  } catch (e) {
+    console.error(e);
+    showSpdSheet(false);
+    showErr(AL.t('errGeneric', { msg: e.message || String(e) }));
+  }
+}
+
+/* ── 🔴 2026-09-12 신설 — 정렬 고르기 ──────────────────────────── */
+function sortLabel(){
+  return AL.t('cntSort') + ' · ' + AL.t({
+    recent: 'cntSortRecent', name: 'cntSortName',
+    star: 'cntSortStar', speed: 'cntSortSpeed',
+  }[sortBy]);
+}
+function showSortSheet(on){
+  document.getElementById('sortBg').classList.toggle('show', on);
+  document.getElementById('sortSheet').style.display = on ? '' : 'none';
+}
+document.getElementById('sortBtn').addEventListener('click', function(){ showSortSheet(true); });
+document.getElementById('sortBg').addEventListener('click', function(){ showSortSheet(false); });
+document.querySelectorAll('[data-sort]').forEach(function(el){
+  el.addEventListener('click', function(){
+    sortBy = el.getAttribute('data-sort');
+    try { localStorage.setItem(SORT_KEY, sortBy); } catch (e) {}
+    document.getElementById('sortBtn').textContent = sortLabel();
+    showSortSheet(false);
+    paint();
+  });
+});
+
 /* ── 읽어오기 ───────────────────────────────────────────────── */
 async function reload(){
   try {
     const res = await AL.sb.rpc('my_contacts');
     if (res.error) throw res.error;
     rows = res.data || [];
+
+    /* 🔴 2026-09-12 — 별표 · 단축번호 · 고정순서를 따로 읽어 붙입니다.
+       my_contacts 함수를 안 건드리려는 것입니다. 위 설명 참고.
+       ⚠ 못 읽어도 목록은 그려야 합니다. 별표만 안 보일 뿐입니다. */
+    try {
+      const e2 = await AL.sb.from('link_sides')
+        .select('id, starred, speed_dial, pin_order');
+      if (!e2.error) {
+        extra = {};
+        (e2.data || []).forEach(function(x){ extra[x.id] = x; });
+      } else {
+        console.warn('[contacts] 별표를 못 읽었습니다', e2.error);
+      }
+    } catch (e) { console.warn('[contacts] 별표를 못 읽었습니다', e); }
 
     paint();
   } catch (e) {
@@ -287,6 +577,7 @@ document.getElementById('addBg').addEventListener('click', function(){ showAdd(f
 
 (async function(){
   AL.paintText();
+  document.getElementById('sortBtn').textContent = sortLabel();   // 🔴 2026-09-12
   if (!await AL.requireLogin()) return;
   await reload();
 

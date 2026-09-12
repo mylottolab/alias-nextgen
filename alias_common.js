@@ -776,6 +776,24 @@ AL.STR = {
   cntLegend:  { kr:'이름이 셋인 이유\n· 큰 글씨 — 내가 상대를 부르는 이름. 상대는 못 봅니다.\n· 상대 별칭 — 상대가 나에게 보여주는 이름.\n· 내 별칭 — 내가 상대에게 보여주는 이름.',
                 en:'Why three names\n· Large — what you call them. They never see it.\n· Their alias — the name they show you.\n· Your alias — the name they see for you.' },
   cntLegendOpen:{ kr:'이름이 왜 셋인가요?', en:'Why three names?' },
+
+  /* 🔴 2026-09-12 신설 — 별표 · 단축번호 · 정렬 */
+  cntSort:      { kr:'정렬', en:'Sort' },
+  cntSortRecent:{ kr:'최근 순', en:'Recent' },
+  cntSortName:  { kr:'이름 순', en:'Name' },
+  cntSortStar:  { kr:'별표 먼저', en:'Starred first' },
+  cntSortSpeed: { kr:'단축번호 순', en:'Speed dial' },
+  cntStarOn:    { kr:'★ 별표 켜기', en:'★ Add star' },
+  cntStarOff:   { kr:'☆ 별표 끄기', en:'☆ Remove star' },
+  cntSpeedSet:  { kr:'단축번호 정하기', en:'Set speed dial' },
+  cntSpeedNone: { kr:'단축번호 없음', en:'No speed dial' },
+  cntSpeedAsk:  { kr:'몇 번으로 할까요?', en:'Which number?' },
+  cntSpeedTaken:{ kr:'{n}번은 "{who}" 가 쓰고 있습니다. 바꿀까요?',
+                  en:'"{who}" already uses {n}. Replace?' },
+  cntCallNow:   { kr:'☏ 전화 걸기', en:'☏ Call' },
+  cntMsgNow:    { kr:'💬 메시지 보내기', en:'💬 Message' },
+  cntMoveUp:    { kr:'▲ 한 칸 위로', en:'▲ Move up' },
+  cntMoveDown:  { kr:'▼ 한 칸 아래로', en:'▼ Move down' },
 };
 
 /* ── 언어 ───────────────────────────────────────────────────────────
@@ -1001,6 +1019,38 @@ AL.fmtDateTime = function(iso){
 };
 
 /* 목록에 쓰는 짧은 시각. 오늘이면 시:분, 어제면 "어제", 그 앞은 날짜. */
+/* 🔴🔴 2026-09-12 신설 — 월일 시분까지 다 보여줍니다.
+
+   왜 필요한가
+     연락처에서 같은 상대와 여러 번 이어지면 "연결한 시각으로 구별하세요"
+     라고 안내하면서, 정작 날짜는 "어제" 라고만 적었습니다.
+     같은 사람 셋이 다 "어제" 면 누구라도 못 고릅니다.
+     안내문이 요구하는 정보를 화면이 안 주고 있었습니다.
+
+   fmtShort 는 대화 목록처럼 "언제쯤인지" 만 알면 되는 곳에 그대로 씁니다.
+   여기는 **구별해야 하는 곳**이라 다릅니다.
+
+     오늘이면      20:33
+     올해면        9/11 20:33
+     지난해면      2025. 9/11 20:33
+*/
+AL.fmtWhen = function(iso){
+  if (!iso) return '';
+  var d = new Date(iso), now = new Date();
+  var p = function(n){ return String(n).padStart(2,'0'); };
+  var hm = p(d.getHours()) + ':' + p(d.getMinutes());
+  var md = (d.getMonth()+1) + '/' + d.getDate();
+
+  var sameDay = d.getFullYear()===now.getFullYear() &&
+                d.getMonth()===now.getMonth() && d.getDate()===now.getDate();
+  if (sameDay) return hm;
+
+  if (d.getFullYear() !== now.getFullYear()) {
+    return d.getFullYear() + '. ' + md + ' ' + hm;
+  }
+  return md + ' ' + hm;
+};
+
 AL.fmtShort = function(iso){
   if (!iso) return '';
   var d = new Date(iso), now = new Date();
