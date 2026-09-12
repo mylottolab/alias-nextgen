@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260912k">
-<link rel="stylesheet" href="alias_theme.css?v=20260912k">
+<link rel="stylesheet" href="alias_common.css?v=20260912m">
+<link rel="stylesheet" href="alias_theme.css?v=20260912m">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260912k"></script>
-<script src="alias_media.js?v=20260912k"></script>
-<script src="alias_call.js?v=20260912k"></script>
+<script src="alias_common.js?v=20260912m"></script>
+<script src="alias_media.js?v=20260912m"></script>
+<script src="alias_call.js?v=20260912m"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -412,7 +412,23 @@ function onState(state, extra){
   }
   if (state === 'remote-stream') {
     const target = (callType === 'video') ? el('remoteV') : el('remoteA');
-    target.srcObject = extra.stream;
+
+    /* 🔴🔴 2026-09-12 — 같은 상자를 다시 붙일 때는 **한 번 떼었다 붙입니다.**
+
+       ontrack 은 소리 한 번, 영상 한 번 불리는데 상자는 같습니다.
+       그냥 다시 넣으면 브라우저가 "같은 것" 이라며 아무 일도 안 합니다.
+       그러면 소리만 있던 시절의 자리 그대로라 영상이 안 그려집니다.
+       (숫자는 올라가는데 화면만 첫 장면에 굳습니다 — 2026-09-12 증상)
+
+       null 로 한 번 떼었다 붙이면 화면 요소가 처음부터 다시 잡습니다. */
+    if (target.srcObject === extra.stream) {
+      target.srcObject = null;
+      target.srcObject = extra.stream;
+      try { target.load(); } catch (e) {}
+      console.log('[call] 화면을 다시 붙였습니다 (' + (extra.kind || '?') + ')');
+    } else {
+      target.srcObject = extra.stream;
+    }
     /* 🔴 2026-09-12 — 카메라를 끄고 받았으면 local-stream 에서 화면을
        못 켭니다(내 영상이 없으니까요). 상대 영상이 올 때도 켭니다. */
     if (callType === 'video') showVideoMode();

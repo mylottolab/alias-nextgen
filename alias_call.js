@@ -284,8 +284,21 @@ async function buildPeer(iceServers){
   };
 
   pc.ontrack = function(e){
+    /* 🔴🔴 2026-09-12 — **어느 종류가 왔는지** 함께 알려줍니다.
+
+       ontrack 은 소리 한 번, 영상 한 번 불립니다. 그런데 넘겨주는 상자
+       (MediaStream)는 **같은 것**입니다. 화면 쪽에서 그냥
+         target.srcObject = stream
+       을 하면, 두 번째는 같은 상자라 아무 일도 안 일어납니다.
+
+       소리가 먼저 도착하면 화면 요소가 "소리짜리" 로 자리를 잡고,
+       뒤늦게 영상이 들어와도 그릴 자리가 없습니다. 풀기는 계속 푸니까
+       숫자만 올라가고 화면은 첫 장면에 굳습니다.
+       2026-09-12 에 거는 쪽에서만 영상이 정지화상으로 굳던 원인입니다. */
     AL.call.remote = e.streams[0];
-    say('remote-stream', { stream: e.streams[0] });
+    var kind = (e.track && e.track.kind) || '';
+    console.log('[call] 받은 것:', kind);
+    say('remote-stream', { stream: e.streams[0], kind: kind });
   };
 
   pc.onconnectionstatechange = function(){
@@ -953,6 +966,10 @@ function cleanup(){
   if (AL.call.resendTimer) { clearInterval(AL.call.resendTimer); AL.call.resendTimer = null; }
   if (AL.call.noAnswerTimer) { clearTimeout(AL.call.noAnswerTimer); AL.call.noAnswerTimer = null; }
   if (AL.call.dropTimer) { clearTimeout(AL.call.dropTimer); AL.call.dropTimer = null; }
+  /* 🔴 2026-09-12 — 거절 감시 시계를 여기서 꼭 꺼야 합니다.
+     안 끄면 통화가 끝난 뒤에도 3초마다 DB 를 들여다보고, 나중에 엉뚱한
+     통화를 "거절됐다" 고 끝낼 수 있습니다. */
+  if (AL.call.endWatch) { clearInterval(AL.call.endWatch); AL.call.endWatch = null; }
   if (AL.call.local) {
     AL.call.local.getTracks().forEach(function(t){ try { t.stop(); } catch (e) {} });
     AL.call.local = null;
