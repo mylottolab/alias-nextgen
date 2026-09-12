@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260912i">
-<link rel="stylesheet" href="alias_theme.css?v=20260912i">
+<link rel="stylesheet" href="alias_common.css?v=20260912j">
+<link rel="stylesheet" href="alias_theme.css?v=20260912j">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260912i"></script>
-<script src="alias_media.js?v=20260912i"></script>
-<script src="alias_call.js?v=20260912i"></script>
+<script src="alias_common.js?v=20260912j"></script>
+<script src="alias_media.js?v=20260912j"></script>
+<script src="alias_call.js?v=20260912j"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -330,7 +330,20 @@ function onState(state, extra){
   else if (state === 'need-wifi') { setStatus(AL.t('dtNoWifi')); bye(); }
   else if (state === 'bytes') {
     // ⚠ 통화 중에 얼마나 쓰는지 보여줍니다. 모르면 불안합니다.
-    el('bytes').textContent = AL.t('dtThisCall', { size: AL.fmtBytes(extra.bytes) });
+    let line = AL.t('dtThisCall', { size: AL.fmtBytes(extra.bytes) });
+
+    /* 🔴 2026-09-12 — 영상통화일 때만 자세히 보여줍니다.
+       보낸 것과 받은 것이 나뉘어야 어느 쪽이 안 되는지 알 수 있습니다.
+       음성통화 화면은 전과 똑같습니다. */
+    if (callType === 'video') {
+      line += '\n↑' + AL.fmtBytes(extra.up) + '  ↓' + AL.fmtBytes(extra.down);
+      line += '  · 영상↓' + AL.fmtBytes(extra.vIn);
+      if (extra.fps != null) line += ' · ' + Math.round(extra.fps) + '장/초';
+      const v = el('remoteV');
+      if (v) line += ' · ' + (v.paused ? '멈춤' : '재생') ;
+    }
+    el('bytes').style.whiteSpace = 'pre-line';
+    el('bytes').textContent = line;
   }
 
   /* 🔴🔴 2026-09-11 신설 — 붙는 과정을 눈으로 보여줍니다.
@@ -405,6 +418,20 @@ function onState(state, extra){
     if (callType === 'video') showVideoMode();
     // ⚠ 브라우저가 소리 재생을 막을 수 있습니다(자동재생 정책).
     //   막히면 조용히 실패하므로, 눌러서 켜는 단추를 띄웁니다.
+    /* 🔴 2026-09-12 — 영상이 첫 장면에서 멈추는 일이 있습니다.
+       브라우저가 재생을 막았거나 화면이 잠깐 가려졌을 때입니다.
+       3초마다 살펴보고 멈춰 있으면 다시 틀어줍니다.
+       ⚠ 이미 돌고 있으면 아무 일도 안 합니다. */
+    if (callType === 'video' && !window.__vidNudge) {
+      window.__vidNudge = setInterval(function(){
+        const v = el('remoteV');
+        if (!v || !v.srcObject) return;
+        if (v.paused || v.readyState < 2) {
+          v.play().catch(function(){});
+        }
+      }, 3000);
+    }
+
     const p = target.play();
     if (p && p.catch) {
       p.catch(function(e){
@@ -648,6 +675,7 @@ var cleanedUp = false;
 function leaveCleanup(){
   if (cleanedUp) return;
   cleanedUp = true;
+  if (window.__vidNudge) { clearInterval(window.__vidNudge); window.__vidNudge = null; }
   try {
     AL.stopRinging();
     AL.stopDialTone();

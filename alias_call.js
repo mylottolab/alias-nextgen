@@ -835,14 +835,39 @@ function startStats(){
       var total = 0;
       var pair = null;
 
+      /* 🔴🔴 2026-09-12 — 보낸 것과 받은 것을 **나눠서** 셉니다.
+
+         2026-09-12 에 "소리는 양쪽 다 되는데 영상만 한쪽이 멈춘다" 는 일이
+         났습니다. 그때 합쳐진 숫자만 보고는 아무것도 알 수가 없었습니다.
+         보내는 쪽이 문제인지 받는 쪽이 문제인지 구별이 안 되니까요.
+
+         이제 이렇게 보입니다.
+           ↑12MB ↓0.2MB · 화면 0장/초      ← 받는 쪽이 안 오고 있습니다
+           ↑12MB ↓11MB · 화면 24장/초      ← 잘 오고 있는데 안 그려지는 것 */
+      var vIn = 0, vOut = 0, aIn = 0, aOut = 0, fps = null, frames = null;
+
       stats.forEach(function(r){
-        if (r.type === 'inbound-rtp' && r.bytesReceived) total += r.bytesReceived;
-        if (r.type === 'outbound-rtp' && r.bytesSent) total += r.bytesSent;
+        if (r.type === 'inbound-rtp') {
+          if (r.kind === 'video') {
+            vIn += (r.bytesReceived || 0);
+            if (typeof r.framesPerSecond === 'number') fps = r.framesPerSecond;
+            if (typeof r.framesDecoded === 'number') frames = r.framesDecoded;
+          } else aIn += (r.bytesReceived || 0);
+        }
+        if (r.type === 'outbound-rtp') {
+          if (r.kind === 'video') vOut += (r.bytesSent || 0);
+          else aOut += (r.bytesSent || 0);
+        }
         if (r.type === 'candidate-pair' && r.state === 'succeeded' && r.nominated) pair = r;
       });
 
+      total = vIn + vOut + aIn + aOut;
       AL.call.bytesSeen = total;
-      say('bytes', { bytes: total });
+      say('bytes', {
+        bytes: total,
+        up: vOut + aOut, down: vIn + aIn,
+        vIn: vIn, vOut: vOut, fps: fps, frames: frames,
+      });
 
       /* 어떤 길로 붙었는지 한 번만 남깁니다. 나중에 원인을 찾을 때 씁니다. */
       if (pair && !AL.call.pairLogged) {
