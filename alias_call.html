@@ -45,6 +45,45 @@ document.addEventListener("DOMContentLoaded", function(){
 /* 카메라를 껐을 때 내 작은 화면은 숨깁니다. 까만 네모가 남아 있으면
    껐는지 고장인지 헷갈립니다. */
 .callvid .mini video[style*="hidden"]{display:none}
+
+/* 🔴🔴 2026-09-12 신설 — 영상 화면을 실제로 보이게 합니다
+
+   무슨 일이 났나
+     영상통화가 붙고 데이터도 오갔는데(46초에 17MB) **화면이 안 나왔습니다.**
+     <video> 자리는 있었지만 그것을 펼쳐 보여주는 CSS 가 없었습니다.
+     alias_theme.css 에 .callvid.on 같은 규칙이 없었던 것입니다.
+
+   공용 CSS 를 안 건드리려고 여기에 다 적습니다.
+   ⚠ body 에 vidon 이 붙었을 때만 켜집니다. 음성통화는 하나도 안 바뀝니다.
+
+   짜임새
+     상대 얼굴  화면 전체
+     내 얼굴    오른쪽 위 작은 네모
+     글씨·단추  그 위에 올라갑니다 (어두운 그늘을 깔아 읽히게) */
+.callvid{display:none}
+body.vidon .callvid{
+  display:block;position:fixed;inset:0;z-index:1;background:#000}
+body.vidon #remoteV{width:100%;height:100%;object-fit:cover;background:#000}
+body.vidon .callvid .mini{
+  position:absolute;right:14px;top:calc(14px + env(safe-area-inset-top,0px));
+  width:104px;height:140px;border-radius:14px;overflow:hidden;
+  border:1px solid rgba(255,255,255,.35);background:#111;
+  box-shadow:0 6px 18px rgba(0,0,0,.5)}
+body.vidon .callvid .mini video{width:100%;height:100%;object-fit:cover}
+
+/* 글씨와 단추를 영상 위로 올립니다. */
+body.vidon .callbox{position:relative;z-index:2;background:transparent}
+/* 위아래에 어두운 그늘을 깔아야 흰 글씨가 읽힙니다. */
+body.vidon .callbox::before{
+  content:'';position:fixed;left:0;right:0;top:0;height:46vh;z-index:-1;
+  background:linear-gradient(to bottom,rgba(0,0,0,.72),rgba(0,0,0,0));
+  pointer-events:none}
+body.vidon .callbox::after{
+  content:'';position:fixed;left:0;right:0;bottom:0;height:42vh;z-index:-1;
+  background:linear-gradient(to top,rgba(0,0,0,.78),rgba(0,0,0,0));
+  pointer-events:none}
+/* 상대 얼굴이 보이는데 머리글자 동그라미까지 있으면 어수선합니다. */
+body.vidon .who .av{display:none}
 </style>
 </head>
 <body class="callscreen" data-t-title="clVoice" id="callBody">
@@ -162,6 +201,22 @@ function el(id){ return document.getElementById(id); }
 
 function setStatus(text){ el('st').textContent = text || ''; }
 
+/* 🔴 2026-09-12 — 영상 화면을 켭니다.
+   body 에 표를 붙여야 위 CSS 가 살아납니다. */
+function showVideoMode(){
+  el('vid').classList.add('on');
+  document.body.classList.add('vidon');
+}
+
+/* 붙고 나면 "받으면 얼굴이 보입니다" 는 더 이상 맞는 말이 아닙니다.
+   지금 내 카메라가 나가는지 아닌지로 바꿔 적습니다. */
+function paintVidNote(){
+  const w = document.querySelector('.vidwarn');
+  if (!w || callType !== 'video') return;
+  const on = AL.hasCamera && AL.hasCamera() && !AL.cameraIsOff();
+  w.textContent = on ? ('📹 ' + AL.t('clSendingVid')) : AL.t('clNoCamNote');
+}
+
 function paintWho(){
   const shown = view.peer_label || view.peer_display || AL.t('cntUnnamed');
   el('av').textContent = AL.initial(view.my_face);
@@ -233,7 +288,7 @@ function paintActs(){
       AL.t(off ? 'clCamOn' : 'clCamOff'), function(){
         AL.toggleCamera();
         el('localV').style.visibility = AL.cameraIsOff() ? 'hidden' : '';
-        paintActs();
+        paintActs(); paintVidNote();
       }));
     box.appendChild(btn('rbtn plain', '🔄', AL.t('clCamFlip'), async function(){
       const s = await AL.switchCamera();
@@ -266,7 +321,7 @@ function onState(state, extra){
   if (state === 'preparing')      setStatus(AL.t('clCalling'));
   else if (state === 'ringing')   { setStatus(AL.t('clCalling')); AL.startDialTone(); }
   else if (state === 'answering') { AL.stopDialTone(); setStatus(AL.t('clConnected')); }
-  else if (state === 'connected') { AL.stopDialTone(); setStatus(AL.t('clConnected')); startTimer(); paintActs(); }
+  else if (state === 'connected') { AL.stopDialTone(); setStatus(AL.t('clConnected')); startTimer(); paintActs(); paintVidNote(); }
   else if (state === 'no-media')  setStatus(AL.t('clNoMedia'));
   else if (state === 'failed')    { setStatus(AL.t('clFailed')); bye(); }
   else if (state === 'declined')  { setStatus(AL.t('clDeclined')); bye(); }
@@ -339,7 +394,7 @@ function onState(state, extra){
   }
 
   if (state === 'local-stream' && callType === 'video') {
-    el('vid').classList.add('on');
+    showVideoMode();
     el('localV').srcObject = extra.stream;
   }
   if (state === 'remote-stream') {
@@ -347,7 +402,7 @@ function onState(state, extra){
     target.srcObject = extra.stream;
     /* 🔴 2026-09-12 — 카메라를 끄고 받았으면 local-stream 에서 화면을
        못 켭니다(내 영상이 없으니까요). 상대 영상이 올 때도 켭니다. */
-    if (callType === 'video') el('vid').classList.add('on');
+    if (callType === 'video') showVideoMode();
     // ⚠ 브라우저가 소리 재생을 막을 수 있습니다(자동재생 정책).
     //   막히면 조용히 실패하므로, 눌러서 켜는 단추를 띄웁니다.
     const p = target.play();
