@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260912p">
-<link rel="stylesheet" href="alias_theme.css?v=20260912p">
+<link rel="stylesheet" href="alias_common.css?v=20260912r">
+<link rel="stylesheet" href="alias_theme.css?v=20260912r">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260912p"></script>
-<script src="alias_media.js?v=20260912p"></script>
-<script src="alias_call.js?v=20260912p"></script>
+<script src="alias_common.js?v=20260912r"></script>
+<script src="alias_media.js?v=20260912r"></script>
+<script src="alias_call.js?v=20260912r"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -472,6 +472,23 @@ function onState(state, extra){
     }
   }
 }
+
+/* 🔴 2026-09-10 신설 — 두 번 부르지 않게 빗장을 겁니다.
+   'peer-hangup' 뒤에 'ended' 가 잇달아 오면 예전에는 bye() 가 두 번 돌아
+   나가는 타이머가 둘 겹쳤습니다.
+
+   ⚠⚠ 2026-09-12 — 이 한 줄이 **사라진 적이 있습니다.**
+     영상 받는 부분을 다시 쓰면서 그 아래 있던 이 줄까지 같이 날아갔습니다.
+     그러면 if (leaving) 에서 "그런 것 없다" 며 튕겨나가, bye() 가 통째로
+     안 돕니다. 증상은 이랬습니다.
+
+       ✕ 를 눌러도 화면이 안 닫힘
+       "통화가 끝났습니다" 글씨는 뜨는데 통화시간이 계속 올라감
+       양쪽 다 그럼
+
+     문법 검사로는 절대 안 잡힙니다. 쓸 때가 되어야 터집니다.
+     **이 줄을 지우지 마세요.** */
+var leaving = false;
 
 function bye(){
   if (leaving) return;

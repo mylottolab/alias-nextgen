@@ -107,8 +107,23 @@ AL.getIceServers = async function(){
   }
 };
 
+/* 🔴🔴 2026-09-12 — 화면에서 난 오류가 통화 엔진을 망가뜨리지 못하게 합니다.
+
+   무슨 일이 났나
+     화면 쪽 bye() 안에서 오류가 났는데, 그게 여기를 타고 위로 올라가
+     AL.endCall 의 마지막 줄 cleanup() 을 건너뛰었습니다.
+     그러면 연결도 안 닫히고 마이크도 안 꺼집니다.
+     "끊었는데 계속 연결되어 있다" 가 이것이었습니다.
+
+   화면에 글씨를 쓰다 생긴 문제로 **통화가 안 끊기면 안 됩니다.**
+   여기서 삼키고 로그만 남깁니다. 함정 (67) 과 같은 생각입니다. */
 function say(state, extra){
-  if (AL.call.onState) AL.call.onState(state, extra || {});
+  if (!AL.call.onState) return;
+  try {
+    AL.call.onState(state, extra || {});
+  } catch (e) {
+    console.error('[call] 화면 쪽에서 문제가 났습니다 (' + state + ') — 통화는 계속 정리합니다', e);
+  }
 }
 
 /* ── 신호를 주고받는 채널 ────────────────────────────────────────────
