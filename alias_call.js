@@ -10,6 +10,7 @@
    2026-09-11  🔴 중계(TURN)가 없으면 콘솔에 크게 알림
    2026-09-11  🔴 소리가 오가는 양을 재서 화면에 보여줌 (bytes)
    2026-09-11  🔴 붙는 과정을 화면에 단계별로 보여줌 (ice-state)
+   2026-09-12  🔴 상대가 거절하면 거는 쪽도 바로 끝납니다
    2026-09-11  🔴 통화 시작 때 로그인 표를 새로 받음 (기록이 안 남던 문제)
    2026-09-11  🔴 기록 저장이 거절당하면 콘솔에 알림
    2026-09-11  🔴 찾은 길을 줄 세워 보내고, 상대가 들어오면 다시 보냄
@@ -58,6 +59,7 @@ AL.call = {
   resendTimer: null,
   noAnswerTimer: null,
   dropTimer: null,     // 🔴 2026-09-10: 상대가 소리 없이 사라졌을 때
+  endWatch: null,      // 🔴 2026-09-12: 상대가 거절했는지 지켜보는 시계
   statsTimer: null,    // 🔴 2026-09-11: 소리가 실제로 오가는지 재는 시계
   myCands: null,       // 🔴 2026-09-11: 내가 찾은 길. 상대가 들어오면 다시 보냅니다
   bytesSeen: 0,        // 🔴 2026-09-11: 지금까지 주고받은 양
@@ -228,6 +230,7 @@ async function buildPeer(iceServers){
     console.log('[call] 연결 상태:', s);
     if (s === 'connected') {
       if (AL.call.dropTimer) { clearTimeout(AL.call.dropTimer); AL.call.dropTimer = null; }
+  if (AL.call.endWatch) { clearInterval(AL.call.endWatch); AL.call.endWatch = null; }
       startStats();          // 🔴 2026-09-11 — 소리가 오가는지 재기 시작
       say('connected');
     }
@@ -405,6 +408,37 @@ AL.startCall = async function(opts){
     console.log('[call] offer 다시 보냄');
     send('offer', { sdp: AL.call.offerSdp });
   }, 1500);
+
+  /* 🔴🔴 2026-09-12 신설 — 상대가 거절했는지 지켜봅니다
+
+     무슨 일이 났나
+       B 가 거절하면 B 화면은 대화로 돌아가는데, A 는 계속 "거는 중" 이었습니다.
+
+     왜 그런가
+       받는 쪽은 **"받기" 를 눌러야** 신호 채널에 들어옵니다. 거절은 받기
+       전에 하는 것이라, B 는 채널에 들어온 적이 없습니다.
+       그러니 "거절합니다" 라는 말이 나갈 길이 아예 없습니다.
+       A 는 40초짜리 부재중 시계가 터질 때까지 기다렸습니다.
+
+     받는 쪽은 이미 반대 상황을 대비해 3초마다 DB 를 봅니다(watchCallAlive).
+     거는 쪽에도 같은 눈을 답니다.
+
+     ⚠ 받고 나면 볼 필요가 없습니다. 그때부터는 채널로 이야기가 오갑니다.
+     ⚠ cleanup() 이 반드시 꺼줍니다. 안 그러면 끝난 통화를 계속 들여다봅니다. */
+  AL.call.endWatch = setInterval(async function(){
+    if (AL.call.answered || !AL.call.callId) return;
+    try {
+      var r = await AL.sb.from('calls')
+        .select('ended_at, ended_reason').eq('id', AL.call.callId).maybeSingle();
+      if (r.data && r.data.ended_at) {
+        var why = r.data.ended_reason || 'ended';
+        console.log('[call] 상대가 끝냈습니다:', why);
+        clearInterval(AL.call.endWatch); AL.call.endWatch = null;
+        say(why === 'declined' ? 'declined' : 'ended', { reason: why });
+        cleanup();
+      }
+    } catch (e) { /* 못 읽어도 부재중 시계가 있습니다 */ }
+  }, 3000);
 
   // 40초 안 받으면 부재중
   AL.call.noAnswerTimer = setTimeout(function(){
