@@ -418,7 +418,7 @@ AL.answerCall = async function(opts){
   try { await AL.syncRealtimeAuth(); } catch (e) {}
 
   AL._ending = false;
-  AL.clearCallNotices();   // 🔴 2026-09-11 — 받았으니 내 폰의 벨을 끕니다
+  AL.clearCallNotices(opts && opts.callId);   // 🔴 받았으니 벨을 끕니다
   cleanup();
   await new Promise(function(r){ setTimeout(r, 250); });
 
@@ -552,13 +552,33 @@ async function handleSignal(m){
    ⚠ 브라우저에서는 아무 일도 안 합니다(창구가 없습니다). 그래도 됩니다.
    ⚠ 안 읽은 메시지 알림도 같이 지워집니다. 통화가 끝난 순간이면
      손님이 앱을 보고 있다는 뜻이라 괜찮습니다. */
-AL.clearCallNotices = function(){
+AL.clearCallNotices = function(callId){
+  /* 🔴🔴 2026-09-12 — 자바 창구를 먼저 씁니다.
+
+     전에는 Capacitor 의 removeAllDeliveredNotifications() 만 썼습니다.
+     그런데 그건 **Capacitor 가 만든 알림만** 지웁니다. 우리 전화 알림은
+     우리 자바(CallMessagingService)가 만든 것이라 안 지워졌을 가능성이
+     큽니다. 지운 줄 알고 있었는데 안 지워졌던 것입니다.
+     2026-09-11 에 "받아도 소리가 안 난다" 던 사고의 원인으로 보입니다.
+
+     이제 MainActivity 가 연 창구로 확실하게 끕니다. */
+  try {
+    if (window.AliasNative) {
+      var id = callId || AL.call.callId;
+      if (id && AliasNative.cancelCall) AliasNative.cancelCall(String(id));
+      else if (AliasNative.cancelAllCalls) AliasNative.cancelAllCalls();
+      console.log('[push] 전화 알림을 껐습니다 (자바 창구)');
+      return;
+    }
+  } catch (e) { console.warn('[push] 자바 창구 실패', e); }
+
+  /* 창구가 없으면(옛 앱·브라우저) 예전 방식으로 해봅니다. */
   try {
     var P = window.Capacitor && window.Capacitor.Plugins &&
             window.Capacitor.Plugins.PushNotifications;
     if (!P || !P.removeAllDeliveredNotifications) return;
     P.removeAllDeliveredNotifications();
-    console.log('[push] 이 폰에 남은 알림을 지웠습니다');
+    console.log('[push] 이 폰에 남은 알림을 지웠습니다 (Capacitor)');
   } catch (e) { /* 못 지워도 통화에는 지장 없습니다 */ }
 };
 

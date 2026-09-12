@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260912c">
-<link rel="stylesheet" href="alias_theme.css?v=20260912c">
+<link rel="stylesheet" href="alias_common.css?v=20260910d">
+<link rel="stylesheet" href="alias_theme.css?v=20260910d">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260912c"></script>
-<script src="alias_media.js?v=20260912c"></script>
-<script src="alias_call.js?v=20260912c"></script>
+<script src="alias_common.js?v=20260910d"></script>
+<script src="alias_media.js?v=20260910d"></script>
+<script src="alias_call.js?v=20260910d"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -327,7 +327,7 @@ function endedQuietly(){
   AL.stopRinging();
   /* 🔴 2026-09-11 — 벨을 울리던 알림도 같이 지웁니다.
      알림이 남아 있으면 전화벨이 계속 반복됩니다. */
-  if (AL.clearCallNotices) AL.clearCallNotices();
+  if (AL.clearCallNotices) AL.clearCallNotices(callId);
   setStatus(AL.t('clEnded'));
   el('acts').innerHTML = '';
   goChat(1400);
@@ -397,7 +397,7 @@ async function answer(){
 async function decline(){
   AL.stopRinging();
   stopAliveWatch();
-  if (AL.clearCallNotices) AL.clearCallNotices();   // 🔴 2026-09-11 — 벨 끄기
+  if (AL.clearCallNotices) AL.clearCallNotices(callId);   // 🔴 벨 끄기
   await AL.declineCall(callId);
   goChat(0);
 }
@@ -449,19 +449,20 @@ async function decline(){
 
     if (once) burnTicket(once);
 
-    /* 🔴🔴 2026-09-12 — 통화화면이 열렸으니 안드로이드 알림을 끕니다.
+    /* 🔴🔴 2026-09-12 — 소리는 안드로이드에게 맡깁니다.
 
-       왜 여기서 끄나
-         전화벨은 알림이 떠 있는 동안만 울립니다(함정 65). 그대로 두면
-         알림 벨과 화면 벨이 겹치고(함정 59), 알림 벨이 "소리 우선권" 을
-         붙잡아 **받아도 통화 소리가 안 나옵니다.** 9/11 에 겪었습니다.
+       앱에서는 알림 채널의 진짜 벨소리가 울립니다. 잠금화면에서도,
+       앱이 잠들어 있어도 확실하게 울립니다.
+       화면은 **진동만** 냅니다. 둘 다 소리를 내면 겹칩니다(함정 59).
 
-       끄고 나면 소리를 낼 사람이 화면뿐입니다. 그래서 아래에서
-       quiet 없이 제대로 된 전화벨을 울립니다. */
-    if (AL.clearCallNotices) AL.clearCallNotices();
+       웹오디오로 울려봤는데 연속으로 걸면 세 번째부터 소리가 안 났습니다.
+       폰마다 다르고 믿을 수가 없습니다.
 
+       ⚠ 벨은 받거나 거절하거나 끝날 때 끕니다. 여기서 끄면 화면이 뜨는
+         순간 벨이 뚝 끊깁니다(함정 65).
+       ⚠ 브라우저에는 알림 채널이 없으므로 화면이 소리를 냅니다. */
     setStatus(AL.t('clRinging'));
-    AL.startRinging();   // 🔴 2026-09-12 — 소리 내어 울립니다
+    AL.startRinging({ quiet: AL.isNativeApp && AL.isNativeApp() });
     watchCallAlive();      // 🔴 A 가 끊었는지 지켜봅니다 (위 설명)
 
   } else {
