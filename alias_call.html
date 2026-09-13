@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260912w">
-<link rel="stylesheet" href="alias_theme.css?v=20260912w">
+<link rel="stylesheet" href="alias_common.css?v=20260913a">
+<link rel="stylesheet" href="alias_theme.css?v=20260913a">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260912w"></script>
-<script src="alias_media.js?v=20260912w"></script>
-<script src="alias_call.js?v=20260912w"></script>
+<script src="alias_common.js?v=20260913a"></script>
+<script src="alias_media.js?v=20260913a"></script>
+<script src="alias_call.js?v=20260913a"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -372,11 +372,17 @@ function onState(state, extra){
     /* 🔴 2026-09-12 — 소리가 실제로 흐르는지는 **음성통화에서도** 보여줍니다.
        "소리재생(3.4)" 의 숫자가 올라가야 소리가 스피커로 가고 있는 것입니다.
        0.0 에 머물면 안 오거나 못 틀고 있는 것입니다. */
+    /* 🔴 2026-09-13 — 소리 상태는 콘솔에만 남깁니다.
+       화면에 "소리재생(3.4)" 같은 글씨가 뜨면 손님이 불안해합니다.
+
+       ⚠ 소리가 안 들린다는 말을 들으면 여기를 보세요.
+         시계가 올라가면 소리가 스피커로 가고 있는 것이고,
+         0.0 에 머물면 소리가 아예 안 오는 것입니다.
+         2026-09-13 에 이 숫자 하나로 "코드가 아니라 폰" 임을 알았습니다. */
     const a0 = el('remoteA');
     if (a0) {
-      line += '\n소리' + (a0.paused ? '멈춤' : '재생') +
-              '(' + a0.currentTime.toFixed(1) + ')';
-      if (!a0.srcObject) line += ' · 소리가 아직 안 왔습니다';
+      console.log('[call] 소리 ' + (a0.paused ? '멈춤' : '재생') +
+                  '(' + a0.currentTime.toFixed(1) + ')');
     }
     el('bytes').style.whiteSpace = 'pre-line';
 
@@ -680,11 +686,10 @@ async function decline(){
   AL.paintText();
   /* 🔴 2026-09-12 — 영상통화면 제목도 영상으로. paintText 뒤에 덮어씁니다. */
   if (callType === 'video') document.title = AL.t('clVideo');
-  /* 🔴 2026-09-12 — 지금 폰이 어느 판을 쓰고 있는지 화면에 찍습니다.
-     오늘 ?v= 를 여러 번 올려서 어긋났을 수 있습니다.
-     이 글씨가 안 보이면 옛 파일이 돌고 있는 것입니다. */
-  console.log('[call] 화면 판: 20260912w');
-  el('bytes').textContent = '판 20260912w';
+  /* 🔴 2026-09-12 — 판 번호는 콘솔에만 남깁니다.
+     화면에 찍으면 손님이 볼 이유가 없는 글씨가 뜹니다.
+     ⚠ 무언가 안 될 때 "새 파일이 도는지" 확인하려면 여기를 보세요. */
+  console.log('[call] 화면 판: 20260913a');
   if (!await AL.requireLogin()) return;
   if (!linkId) { setStatus(AL.t('dtlNotFound')); return; }
 
