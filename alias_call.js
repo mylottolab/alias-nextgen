@@ -63,8 +63,8 @@ AL.call = {
   noAnswerTimer: null,
   dropTimer: null,     // 🔴 2026-09-10: 상대가 소리 없이 사라졌을 때
   endWatch: null,      // 🔴 2026-09-12: 상대가 거절했는지 지켜보는 시계
-  remoteA: null,       // 🔴 2026-09-12: 상대 소리만 담는 상자
   remoteV: null,       // 🔴 2026-09-12: 상대 영상만 담는 상자
+                       //   (소리는 서버가 준 상자를 그대로 씁니다)
   facing: 'user',      // 🔴 2026-09-12: 카메라 앞/뒤
   noCam: false,        // 🔴 2026-09-12: 카메라를 아예 안 켜고 받았는가
   statsTimer: null,    // 🔴 2026-09-11: 소리가 실제로 오가는지 재는 시계
@@ -320,15 +320,32 @@ async function buildPeer(iceServers){
 
        ⚠ 음성통화는 하나도 안 바뀝니다. 소리 상자만 쓰던 대로 갑니다. */
     var kind = (e.track && e.track.kind) || '';
-    if (!AL.call.remoteA) AL.call.remoteA = new MediaStream();
-    if (!AL.call.remoteV) AL.call.remoteV = new MediaStream();
 
-    var box = (kind === 'video') ? AL.call.remoteV : AL.call.remoteA;
-    try { box.addTrack(e.track); } catch (err) { /* 이미 들어 있으면 넘어갑니다 */ }
+    /* 🔴🔴 2026-09-12 고침 — **소리는 서버가 준 상자를 그대로 씁니다.**
+
+       영상이 첫 장면에서 굳는 것을 고치려고 소리와 영상을 각각 새 상자에
+       담았습니다. 영상은 그것으로 해결됐는데, **소리는 원래 잘 되던 것을
+       건드려서 망가뜨렸습니다.** 거는 쪽에서 소리가 아예 안 났습니다.
+
+       새로 만든 MediaStream 은 폰에 따라 소리가 안 나가는 일이 있습니다.
+       안 건드려도 될 것을 건드린 것입니다.
+
+         소리 ← e.streams[0]        원래대로 (영상 트랙이 섞여 있어도
+                                    <audio> 는 소리만 냅니다)
+         영상 ← 영상만 담은 새 상자  이건 꼭 필요합니다
+
+       ⚠ 고칠 것만 고치세요. 되던 것을 같이 옮기면 이런 일이 납니다. */
+    if (!AL.call.remoteV) AL.call.remoteV = new MediaStream();
+    if (kind === 'video') {
+      try { AL.call.remoteV.addTrack(e.track); } catch (err) {}
+    }
 
     AL.call.remote = e.streams[0];
     console.log('[call] 받은 것:', kind);
-    say('remote-stream', { stream: box, kind: kind });
+    say('remote-stream', {
+      stream: (kind === 'video') ? AL.call.remoteV : e.streams[0],
+      kind: kind,
+    });
   };
 
   pc.onconnectionstatechange = function(){
@@ -1015,8 +1032,7 @@ function cleanup(){
      안 끄면 통화가 끝난 뒤에도 3초마다 DB 를 들여다보고, 나중에 엉뚱한
      통화를 "거절됐다" 고 끝낼 수 있습니다. */
   if (AL.call.endWatch) { clearInterval(AL.call.endWatch); AL.call.endWatch = null; }
-  AL.call.remoteA = null;   // 🔴 2026-09-12
-  AL.call.remoteV = null;
+  AL.call.remoteV = null;   // 🔴 2026-09-12
   if (AL.call.local) {
     AL.call.local.getTracks().forEach(function(t){ try { t.stop(); } catch (e) {} });
     AL.call.local = null;
