@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260913f">
-<link rel="stylesheet" href="alias_theme.css?v=20260913f">
+<link rel="stylesheet" href="alias_common.css?v=20260913h">
+<link rel="stylesheet" href="alias_theme.css?v=20260913h">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260913f"></script>
+<script src="alias_common.js?v=20260913h"></script>
 <!-- 🔴 2026-09-13 — 사진 압축(AL.compressImage)이 여기 있습니다 -->
-<script src="alias_media.js?v=20260913f"></script>
+<script src="alias_media.js?v=20260913h"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -381,7 +381,9 @@ document.getElementById('facePick').addEventListener('change', async function(){
   document.getElementById('faceGo').addEventListener('click', async function(){
     this.disabled = true;
     try {
-      await AL.uploadFace(facePersona.id, facePicked);
+      /* 🔴 2026-09-13 — 옛 경로를 함께 넘겨 지우게 합니다.
+         안 넘기면 서랍에 옛 사진이 계속 쌓입니다. */
+      await AL.uploadFace(facePersona.id, facePicked, facePersona.avatar_url);
       faceSheet(false);
       showOk(AL.t('faceDone') + ' ' + AL.t('faceNote'));
       await reload();

@@ -1281,10 +1281,26 @@ AL.paintFaces = async function(root){
   }
 };
 
-/* 사진을 올립니다. 경로는 {내 계정번호}/{별칭번호}.jpg 입니다.
+/* 사진을 올립니다.
+   경로는 {내 계정번호}/{별칭번호}_{올린시각}.jpg 입니다.
    맨 앞 칸이 내 것인지만 보면 되므로 정책이 간단해집니다.
-   ⚠ 옛 사진은 지우고 새로 올립니다. 안 그러면 서랍에 쓰레기가 쌓입니다. */
-AL.uploadFace = async function(personaId, file){
+
+   🔴🔴 2026-09-13 — 왜 파일 이름에 시각을 붙이나
+
+     처음에는 {별칭번호}.jpg 로 **늘 같은 자리에 덮어썼습니다.**
+     그랬더니 **교체가 안 됐습니다.** 파일은 바뀌었는데 화면은 옛 사진이
+     그대로 나왔습니다.
+
+     주소가 같으면 폰도 서버도 "아까 받은 그 사진" 이라며 새로 안
+     가져옵니다. 그림·소리 같은 것은 원래 그렇게 아껴 씁니다.
+
+     → 올릴 때마다 이름을 다르게 합니다. 주소가 달라지니 반드시 새로
+       받아옵니다. 대신 **옛 파일은 손으로 지워야** 합니다. 안 그러면
+       서랍에 쓰레기가 쌓입니다.
+
+   ⚠ 옛것을 먼저 지우면 안 됩니다. 올리다 실패하면 사진이 통째로
+     사라집니다. **새것을 올리고 기록을 바꾼 뒤에** 옛것을 지웁니다. */
+AL.uploadFace = async function(personaId, file, oldPath){
   var sess = await AL.sb.auth.getSession();
   var uid = sess.data.session && sess.data.session.user.id;
   if (!uid) throw new Error(AL.t('errNotLoggedIn'));
@@ -1292,11 +1308,10 @@ AL.uploadFace = async function(personaId, file){
   var small = await AL.compressImage(file, 480, 0.85);   // 동그라미 크기면 충분합니다
   if (small.size > 2 * 1024 * 1024) throw new Error(AL.t('faceTooBig'));
 
-  var path = uid + '/' + personaId + '.jpg';
+  var path = uid + '/' + personaId + '_' + Date.now() + '.jpg';
 
-  /* 같은 자리에 덮어씁니다. upsert 를 쓰면 옛것이 저절로 사라집니다. */
   var up = await AL.sb.storage.from(AL.FACE_BUCKET)
-    .upload(path, small, { contentType: 'image/jpeg', upsert: true });
+    .upload(path, small, { contentType: 'image/jpeg', upsert: false });
   if (up.error) throw up.error;
 
   var res = await AL.sb.from('personas')
@@ -1304,8 +1319,14 @@ AL.uploadFace = async function(personaId, file){
   if (res.error) throw res.error;
   if (!res.data || !res.data.length) throw new Error(AL.t('errNoRows'));
 
-  delete AL._faceUrls[path];     // 옛 주소를 잊습니다
-  AL._faceMap = null;            // 이름→사진 표도 다시 읽게 합니다
+  /* 여기까지 왔으면 새 사진이 자리를 잡았습니다. 이제 옛것을 치웁니다. */
+  if (oldPath && oldPath !== path) {
+    try { await AL.sb.storage.from(AL.FACE_BUCKET).remove([oldPath]); }
+    catch (e) { console.warn('[face] 옛 사진을 못 지웠습니다', e); }
+    delete AL._faceUrls[oldPath];
+  }
+
+  AL._faceMap = null;            // 이름→사진 표를 다시 읽게 합니다
   return path;
 };
 
