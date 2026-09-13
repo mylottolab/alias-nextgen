@@ -4,11 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260913b">
-<link rel="stylesheet" href="alias_theme.css?v=20260913b">
+<link rel="stylesheet" href="alias_common.css?v=20260913c">
+<link rel="stylesheet" href="alias_theme.css?v=20260913c">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260913b"></script>
+<script src="alias_common.js?v=20260913c"></script>
+<!-- 🔴 2026-09-13 — 사진 압축(AL.compressImage)이 여기 있습니다 -->
+<script src="alias_media.js?v=20260913c"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -29,6 +31,29 @@ document.addEventListener("DOMContentLoaded", function(){
 });
 </script>
 <style>
+/* 🔴 2026-09-13 — 사진 넣기 창 */
+#faceBg{display:none;position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.6)}
+#faceBox{display:none;position:fixed;z-index:81;left:50%;top:50%;
+  transform:translate(-50%,-50%);width:min(420px,90vw);max-height:82vh;overflow:auto;
+  padding:20px;border-radius:18px;background:#1B2430;color:#DDE5F0;
+  border:1px solid rgba(255,255,255,.14);box-shadow:0 18px 44px rgba(0,0,0,.6)}
+#faceBox .fh{font-size:17px;font-weight:800;line-height:1.5;margin-bottom:12px;color:#F2C94C}
+#faceBox .fw{font-size:14.5px;line-height:1.7;margin:0 0 12px}
+#faceBox .fl{margin:0 0 14px;padding-left:20px;font-size:14px;line-height:1.75;opacity:.9}
+#faceBox .fl li{margin-bottom:7px}
+#faceBox .fa{font-size:14px;line-height:1.7;margin:0 0 18px;padding:11px 14px;
+  border-radius:11px;background:rgba(143,227,176,.14);color:#8FE3B0}
+#faceBox .fp{text-align:center;margin:0 0 16px}
+#faceBox .fp img{width:150px;height:150px;object-fit:cover;border-radius:50%;
+  border:2px solid rgba(255,255,255,.25)}
+#faceBox .fb{display:flex;gap:10px}
+#faceBox .fb button{flex:1;margin:0;padding:14px 0;border-radius:12px;font-size:15px;
+  font-weight:700;cursor:pointer;background:rgba(255,255,255,.08);color:inherit;
+  border:1px solid rgba(255,255,255,.18)}
+#faceBox .fb button.go{background:rgba(143,227,176,.22);color:#8FE3B0;
+  border-color:rgba(143,227,176,.45)}
+.facemark{background-repeat:no-repeat}
+
 /* 🔴 2026-09-13 — 별칭 목록의 얼굴표.
    공용 CSS 를 안 건드리려고 여기에 둡니다. */
 .facemark{display:inline-flex;align-items:center;justify-content:center;
@@ -57,6 +82,9 @@ document.addEventListener("DOMContentLoaded", function(){
   <button class="btn" id="make" data-t="aliasNew"></button>
 
   <div id="err" class="err"></div>
+<input type="file" id="facePick" accept="image/*" style="display:none">
+<div id="faceBg"></div>
+<div id="faceBox"></div>
   <div id="ok" class="ok"></div>
 
   <div class="dblock">
@@ -196,7 +224,10 @@ function paintList(){
       '<div class="row-main">' +
         /* 🔴 2026-09-13 — 별칭 앞에 얼굴표를 답니다.
            목록에서 색이 갈려 있어야 "여러 개의 나" 가 눈에 들어옵니다. */
-        '<span class="facemark"' + AL.faceAttr(a.display_name) + '>' +
+        /* 🔴 2026-09-13 — 사진이 있으면 사진을, 없으면 색 얼굴표를.
+           data-face 에 경로를 달아두면 AL.paintFaces() 가 찾아 칠합니다. */
+        '<span class="facemark"' + AL.faceAttr(a.display_name) +
+          (a.avatar_url ? ' data-face="' + AL.esc(a.avatar_url) + '"' : '') + '>' +
           AL.esc(AL.initial(a.display_name)) + '</span>' +
         '<span class="row-name">' + AL.esc(a.display_name) + '</span>' +
         (a.is_default ? '<span class="badge">' + AL.esc(AL.t('aliasDefault')) + '</span>' : '') +
@@ -204,6 +235,11 @@ function paintList(){
       '<div class="row-acts">' +
         '<a class="rowlink" href="alias_invite.html?face=' + encodeURIComponent(a.id) + '">' +
           AL.esc(AL.t('aliasUseForInvite')) + '</a>' +
+        '<button data-face-btn="' + AL.esc(a.id) + '">' +
+          AL.esc(AL.t(a.avatar_url ? 'faceChange' : 'faceAdd')) + '</button>' +
+        (a.avatar_url ?
+          '<button data-face-del="' + AL.esc(a.id) + '">' +
+            AL.esc(AL.t('faceRemove')) + '</button>' : '') +
         (a.is_default ? '' :
           '<button data-def="' + AL.esc(a.id) + '">' + AL.esc(AL.t('aliasMakeDef')) + '</button>') +
       '</div>' +
@@ -213,6 +249,117 @@ function paintList(){
   ul.querySelectorAll('[data-def]').forEach(function(b){
     b.addEventListener('click', function(){ makeDefault(b.getAttribute('data-def')); });
   });
+  ul.querySelectorAll('[data-face-btn]').forEach(function(b){
+    b.addEventListener('click', function(){ startFace(b.getAttribute('data-face-btn')); });
+  });
+  ul.querySelectorAll('[data-face-del]').forEach(function(b){
+    b.addEventListener('click', function(){ dropFace(b.getAttribute('data-face-del')); });
+  });
+
+  /* 🔴 2026-09-13 — 글자를 먼저 그려두고 사진은 오는 대로 덮어씁니다.
+     서랍이 비공개라 주소를 받아오는 데 잠깐 걸립니다.
+     기다렸다 그리면 화면이 비어 보입니다. */
+  AL.paintFaces(ul);
+}
+
+/* =====================================================================
+   🔴🔴 2026-09-13 신설 — 별칭 사진 넣기
+
+   순서가 셋입니다. 한 번에 올리지 않습니다.
+     ① 경고를 읽는다      — 얼굴 사진이 무엇을 뜻하는지
+     ② 사진을 고른다
+     ③ 몇 명이 보게 되는지 확인하고 올린다
+
+   ⚠ ①을 건너뛰게 만들지 마세요. 이 앱은 얼굴을 감추려고 쓰는 앱인데,
+     사진 한 장으로 그게 무너질 수 있습니다. 손님이 그걸 알고 고르셔야
+     합니다. 막는 게 아니라 알려드리는 것입니다.
+   ===================================================================== */
+let facePersona = null;
+let facePicked = null;
+
+function faceSheet(on){
+  document.getElementById('faceBg').style.display = on ? 'block' : 'none';
+  document.getElementById('faceBox').style.display = on ? 'block' : 'none';
+}
+document.getElementById('faceBg').addEventListener('click', function(){ faceSheet(false); });
+
+/* ① 경고 */
+function startFace(personaId){
+  facePersona = aliases.filter(function(a){ return a.id === personaId; })[0];
+  if (!facePersona) return;
+  facePicked = null;
+
+  document.getElementById('faceBox').innerHTML =
+    '<div class="fh">' + AL.esc(AL.t('faceWarnTtl')) + '</div>' +
+    '<p class="fw">' + AL.esc(AL.t('faceWarn1')) + '</p>' +
+    '<ul class="fl">' +
+      '<li>' + AL.esc(AL.t('faceWarn2')) + '</li>' +
+      '<li>' + AL.esc(AL.t('faceWarn3')) + '</li>' +
+      '<li>' + AL.esc(AL.t('faceWarn4')) + '</li>' +
+    '</ul>' +
+    '<p class="fa">' + AL.esc(AL.t('faceWarnAlt')) + '</p>' +
+    '<div class="fb">' +
+      '<button id="faceNo">' + AL.esc(AL.t('faceWarnNo')) + '</button>' +
+      '<button id="faceYes" class="go">' + AL.esc(AL.t('faceWarnYes')) + '</button>' +
+    '</div>';
+  faceSheet(true);
+
+  document.getElementById('faceNo').addEventListener('click', function(){ faceSheet(false); });
+  document.getElementById('faceYes').addEventListener('click', function(){
+    document.getElementById('facePick').click();      // ② 사진 고르기
+  });
+}
+
+/* ② 고르고 나면 ③ 확인 */
+document.getElementById('facePick').addEventListener('change', async function(){
+  const f = this.files && this.files[0];
+  this.value = '';
+  if (!f || !facePersona) return;
+  facePicked = f;
+
+  const n = await AL.faceAudience(facePersona.id);
+  const url = URL.createObjectURL(f);
+
+  document.getElementById('faceBox').innerHTML =
+    '<div class="fh">' + AL.esc(AL.t('faceConfirm', { face: facePersona.display_name })) + '</div>' +
+    '<div class="fp"><img src="' + url + '" alt=""></div>' +
+    '<p class="fw">' + AL.esc(n > 0 ? AL.t('faceAudience', { n: n }) : AL.t('faceAudience0')) + '</p>' +
+    '<div class="fb">' +
+      '<button id="faceAgain">' + AL.esc(AL.t('faceRetry')) + '</button>' +
+      '<button id="faceGo" class="go">' + AL.esc(AL.t('faceGo')) + '</button>' +
+    '</div>';
+  faceSheet(true);
+
+  document.getElementById('faceAgain').addEventListener('click', function(){
+    document.getElementById('facePick').click();
+  });
+  document.getElementById('faceGo').addEventListener('click', async function(){
+    this.disabled = true;
+    try {
+      await AL.uploadFace(facePersona.id, facePicked);
+      faceSheet(false);
+      showOk(AL.t('faceDone') + ' ' + AL.t('faceNote'));
+      await reload();
+    } catch (e) {
+      console.error(e);
+      faceSheet(false);
+      showErr(AL.t('errGeneric', { msg: e.message || String(e) }));
+    }
+  });
+});
+
+async function dropFace(personaId){
+  const a = aliases.filter(function(x){ return x.id === personaId; })[0];
+  if (!a) return;
+  if (!confirm(AL.t('faceRemove') + ' — ' + a.display_name)) return;
+  try {
+    await AL.removeFace(personaId, a.avatar_url);
+    showOk(AL.t('faceGone'));
+    await reload();
+  } catch (e) {
+    console.error(e);
+    showErr(AL.t('errGeneric', { msg: e.message || String(e) }));
+  }
 }
 
 async function reload(){

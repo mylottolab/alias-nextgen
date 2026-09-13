@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260913b">
-<link rel="stylesheet" href="alias_theme.css?v=20260913b">
+<link rel="stylesheet" href="alias_common.css?v=20260913c">
+<link rel="stylesheet" href="alias_theme.css?v=20260913c">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260913b"></script>
-<script src="alias_call.js?v=20260913b"></script>
+<script src="alias_common.js?v=20260913c"></script>
+<script src="alias_call.js?v=20260913c"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -81,7 +81,7 @@ document.addEventListener("DOMContentLoaded", function(){
 
 .prow{display:flex;align-items:center;gap:10px;padding:11px 4px;
   border-bottom:1px solid rgba(255,255,255,.06)}
-.prow .pav{width:38px;height:38px;flex:0 0 38px;border-radius:50%;
+.prow .pav{width:38px;height:38px;flex:0 0 38px;border-radius:50%;background-repeat:no-repeat;
   display:flex;align-items:center;justify-content:center;font-weight:700;
   background:rgba(255,255,255,.08)}
 .prow .pmid{flex:1;min-width:0;cursor:pointer}
@@ -194,6 +194,7 @@ document.addEventListener("DOMContentLoaded", function(){
 
 let rows = [];         // my_contacts() 가 준 줄들
 let extra = {};        // my_side_id → { starred, speed_dial, pin_order }
+let myFaces = {};      // 🔴 2026-09-13 — 내 별칭 이름 → 사진 경로
 let editing = false;   // 번호 바꾸기 모드
 let pickSlot = null;   // 지금 채우려는 번호
 
@@ -302,7 +303,8 @@ function paintList(){
     const room = isRoom(r);
     return '<div class="prow">' +
       /* 🔴 2026-09-13 — 별칭마다 다른 색·모양 */
-      '<div class="pav"' + AL.faceAttr(room ? (r.room_name || '') : (r.my_face || '')) + '>' +
+      '<div class="pav"' + AL.faceAttr(room ? (r.room_name || '') : (r.my_face || '')) +
+        (myFaces[r.my_face] ? ' data-face="' + AL.esc(myFaces[r.my_face]) + '"' : '') + '>' +
         AL.esc(room ? '👥' : AL.initial(r.my_face)) + '</div>' +
       '<div class="pmid" data-go="' + AL.esc(r.link_id) + '">' +
         '<div class="pname">' +
@@ -322,6 +324,8 @@ function paintList(){
         '" aria-label="' + AL.esc(AL.t('ariaMsg')) + '">💬</button>' +
     '</div>';
   }).join('');
+
+  AL.paintFaces(box);   // 🔴 2026-09-13
 
   box.querySelectorAll('[data-go]').forEach(function(el){
     el.addEventListener('click', function(){ chatTo(el.getAttribute('data-go')); });
@@ -437,6 +441,8 @@ async function reload(){
         console.warn('[phone] 별표를 못 읽었습니다', e2.error);
       }
     } catch (e) { console.warn('[phone] 별표를 못 읽었습니다', e); }
+
+    myFaces = await AL.myFaceMap();   // 🔴 2026-09-13
 
     paint();
   } catch (e) {

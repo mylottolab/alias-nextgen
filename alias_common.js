@@ -823,6 +823,38 @@ AL.STR = {
   cntMoveUp:    { kr:'▲ 한 칸 위로', en:'▲ Move up' },
   cntMoveDown:  { kr:'▼ 한 칸 아래로', en:'▼ Move down' },
 
+  /* 🔴 2026-09-13 신설 — 별칭 사진 */
+  faceChange:   { kr:'사진 바꾸기', en:'Change photo' },
+  faceAdd:      { kr:'사진 넣기', en:'Add photo' },
+  faceRemove:   { kr:'사진 지우기', en:'Remove photo' },
+  faceTooBig:   { kr:'사진이 너무 큽니다. 2MB 아래로 줄여 주세요.',
+                  en:'Photo too large. Please keep it under 2MB.' },
+  faceWarnTtl:  { kr:'⚠ 사진을 올리기 전에', en:'⚠ Before you upload' },
+  faceWarn1:    { kr:'얼굴 사진은 세상에서 가장 확실한 신분증입니다.',
+                  en:'A face photo is the strongest form of ID there is.' },
+  faceWarn2:    { kr:'다른 별칭에 같은 얼굴을 쓰면 두 관계가 같은 사람임이 드러납니다.',
+                  en:'Using the same face on two aliases reveals they are one person.' },
+  faceWarn3:    { kr:'한 번 보여준 사진은 상대가 내려받아 둘 수 있습니다.',
+                  en:'Once seen, the other person may have saved it.' },
+  faceWarn4:    { kr:'나중에 지워도 상대의 폰에 남은 것은 되돌릴 수 없습니다.',
+                  en:'Deleting later cannot undo what is already on their phone.' },
+  faceWarnAlt:  { kr:'얼굴 대신 그림·풍경·사물을 쓰셔도 충분히 구별됩니다.',
+                  en:'A drawing, landscape or object works just as well.' },
+  faceWarnNo:   { kr:'그만두기', en:'Cancel' },
+  faceWarnYes:  { kr:'알고 있습니다', en:'I understand' },
+  faceConfirm:  { kr:'이 사진을 "{face}" 의 얼굴로 씁니다.',
+                  en:'This becomes the face of "{face}".' },
+  faceAudience: { kr:'이 별칭으로 이어진 {n}명이 보게 됩니다.',
+                  en:'{n} people linked through this alias will see it.' },
+  faceAudience0:{ kr:'아직 이 별칭으로 이어진 사람은 없습니다.',
+                  en:'Nobody is linked through this alias yet.' },
+  faceRetry:    { kr:'다시 고르기', en:'Pick another' },
+  faceGo:       { kr:'올리기', en:'Upload' },
+  faceDone:     { kr:'사진을 바꿨습니다.', en:'Photo updated.' },
+  faceGone:     { kr:'사진을 지웠습니다.', en:'Photo removed.' },
+  faceNote:     { kr:'이 사진은 이 별칭으로 이어진 분들이 봅니다.',
+                  en:'People linked through this alias can see this photo.' },
+
   /* 🔴 2026-09-12 신설 — 부름 화면 (alias_phone.html)
      ⚠ 이름은 아직 정하는 중입니다. 여기 한 줄만 고치면 화면 제목이 바뀝니다.
        후보: 부름 · 드보크 · 여보세요 · 손짓 */
@@ -1182,6 +1214,137 @@ AL.faceAttr = function(name){
   var f = AL.faceStyle(name);
   return ' style="background:' + f.bg + ';color:' + f.fg +
          ';border:1px solid ' + f.line + ';border-radius:' + f.radius + '"';
+};
+
+/* =====================================================================
+   🔴🔴 2026-09-13 신설 — 별칭 사진 (프로필)
+
+   ⚠ 사진은 **별칭마다 따로**입니다. 계정에 하나가 아닙니다.
+     personas 표의 줄마다 avatar_url 칸이 따로 있습니다.
+       개인용 → 강아지 사진   (어머니가 봅니다)
+       업무용 → 넥타이 사진   (거래처가 봅니다)
+     같은 나인데 상대마다 다른 사진 — 이 제품의 핵심이 눈에 보이는 자리입니다.
+
+   ⚠ 서랍(버킷)이 비공개입니다. 그래서 볼 때마다 시한부 주소를 받아야
+     합니다. 같은 사진을 자꾸 받지 않게 50분 동안 기억해 둡니다.
+
+   ⚠ 정책이 "나와 이어진 사람의 것만" 으로 막고 있습니다.
+     관계를 끊으면 상대는 더 이상 못 봅니다.
+     다만 **이미 본 사진을 폰에 저장해뒀다면 어쩔 수 없습니다.**
+     그래서 올리기 전에 반드시 경고합니다.
+   ===================================================================== */
+AL.FACE_BUCKET = 'alias-faces';
+AL._faceUrls = {};
+
+/* 사진 주소를 받아옵니다. 없으면 null 을 돌려줍니다(그러면 색 얼굴표를 씁니다). */
+AL.faceUrl = async function(path){
+  if (!path) return null;
+  var now = Date.now();
+  var hit = AL._faceUrls[path];
+  if (hit && hit.until > now) return hit.url;
+  try {
+    var res = await AL.sb.storage.from(AL.FACE_BUCKET).createSignedUrl(path, 3600);
+    if (res.error) throw res.error;
+    AL._faceUrls[path] = { url: res.data.signedUrl, until: now + 50 * 60 * 1000 };
+    return res.data.signedUrl;
+  } catch (e) {
+    console.warn('[face] 사진 주소를 못 받았습니다', e);
+    return null;
+  }
+};
+
+/* 목록에 있는 사진 주소를 한꺼번에 받아 화면에 붙입니다.
+   ⚠ 요소에 data-face="경로" 를 달아두면 여기서 찾아 칠합니다.
+     글자를 먼저 그려두고 사진은 오는 대로 덮어씁니다. 그래야 화면이
+     비어 보이지 않습니다. */
+AL.paintFaces = async function(root){
+  var els = (root || document).querySelectorAll('[data-face]');
+  for (var i = 0; i < els.length; i++) {
+    var el = els[i];
+    var path = el.getAttribute('data-face');
+    if (!path) continue;
+    var url = await AL.faceUrl(path);
+    if (!url) continue;
+    el.style.backgroundImage = 'url("' + url + '")';
+    el.style.backgroundSize = 'cover';
+    el.style.backgroundPosition = 'center';
+    el.textContent = '';                  // 글자를 지웁니다
+  }
+};
+
+/* 사진을 올립니다. 경로는 {내 계정번호}/{별칭번호}.jpg 입니다.
+   맨 앞 칸이 내 것인지만 보면 되므로 정책이 간단해집니다.
+   ⚠ 옛 사진은 지우고 새로 올립니다. 안 그러면 서랍에 쓰레기가 쌓입니다. */
+AL.uploadFace = async function(personaId, file){
+  var sess = await AL.sb.auth.getSession();
+  var uid = sess.data.session && sess.data.session.user.id;
+  if (!uid) throw new Error(AL.t('errNotLoggedIn'));
+
+  var small = await AL.compressImage(file, 480, 0.85);   // 동그라미 크기면 충분합니다
+  if (small.size > 2 * 1024 * 1024) throw new Error(AL.t('faceTooBig'));
+
+  var path = uid + '/' + personaId + '.jpg';
+
+  /* 같은 자리에 덮어씁니다. upsert 를 쓰면 옛것이 저절로 사라집니다. */
+  var up = await AL.sb.storage.from(AL.FACE_BUCKET)
+    .upload(path, small, { contentType: 'image/jpeg', upsert: true });
+  if (up.error) throw up.error;
+
+  var res = await AL.sb.from('personas')
+    .update({ avatar_url: path }).eq('id', personaId).select('id');
+  if (res.error) throw res.error;
+  if (!res.data || !res.data.length) throw new Error(AL.t('errNoRows'));
+
+  delete AL._faceUrls[path];     // 옛 주소를 잊습니다
+  AL._faceMap = null;            // 이름→사진 표도 다시 읽게 합니다
+  return path;
+};
+
+AL.removeFace = async function(personaId, path){
+  try {
+    if (path) await AL.sb.storage.from(AL.FACE_BUCKET).remove([path]);
+  } catch (e) { /* 파일이 없어도 칸은 비웁니다 */ }
+  var res = await AL.sb.from('personas')
+    .update({ avatar_url: null }).eq('id', personaId).select('id');
+  if (res.error) throw res.error;
+  if (path) delete AL._faceUrls[path];
+  AL._faceMap = null;
+};
+
+/* 내 별칭 이름 → 사진 경로 표를 만듭니다.
+
+   ⚠ my_contacts() 는 **내 별칭의 사진을 안 실어 보냅니다.**
+     (상대 사진만 보냅니다.) 함수를 고치면 반환 모양이 바뀌어 다른 화면까지
+     영향을 받으므로, 별칭 목록을 따로 읽어 이름으로 짝을 맞춥니다.
+     별칭 이름은 계정 안에서 겹치지 않게 막혀 있어 이 방법이 통합니다.
+   ⚠ 별칭은 보통 두세 개라 값이 싸고, 한 번 읽어 기억해 둡니다. */
+AL._faceMap = null;
+
+AL.myFaceMap = async function(force){
+  if (AL._faceMap && !force) return AL._faceMap;
+  try {
+    var res = await AL.sb.from('personas').select('display_name, avatar_url');
+    var map = {};
+    (res.data || []).forEach(function(a){
+      if (a.avatar_url) map[a.display_name] = a.avatar_url;
+    });
+    AL._faceMap = map;
+    return map;
+  } catch (e) {
+    console.warn('[face] 별칭 사진을 못 읽었습니다', e);
+    return AL._faceMap || {};
+  }
+};
+
+/* 이 별칭으로 이어진 사람이 몇 명인가.
+   올리기 전에 "몇 명이 보게 되는지" 를 알려주려고 셉니다.
+   숫자로 보이면 무게가 달라집니다. */
+AL.faceAudience = async function(personaId){
+  try {
+    var res = await AL.sb.from('link_sides')
+      .select('link_id').eq('persona_id', personaId);
+    return (res.data || []).length;
+  } catch (e) { return 0; }
 };
 
 /* 이미 만들어진 요소에 칠할 때 씁니다. */
