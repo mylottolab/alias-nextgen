@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260913e">
-<link rel="stylesheet" href="alias_theme.css?v=20260913e">
+<link rel="stylesheet" href="alias_common.css?v=20260913f">
+<link rel="stylesheet" href="alias_theme.css?v=20260913f">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260913e"></script>
+<script src="alias_common.js?v=20260913f"></script>
 <!-- 🔴 2026-09-13 — 사진 압축(AL.compressImage)이 여기 있습니다 -->
-<script src="alias_media.js?v=20260913e"></script>
+<script src="alias_media.js?v=20260913f"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -43,11 +43,17 @@ document.addEventListener("DOMContentLoaded", function(){
 #faceBox .fl li{margin-bottom:7px}
 #faceBox .fa{font-size:14px;line-height:1.7;margin:0 0 18px;padding:11px 14px;
   border-radius:11px;background:rgba(143,227,176,.14);color:#8FE3B0}
+/* 🔴 2026-09-13 — "지금 사진" 자리. 경고문 위에 둡니다. */
+#faceBox .fnow{text-align:center;margin:0 0 18px;padding-bottom:16px;
+  border-bottom:1px solid rgba(255,255,255,.12)}
+#faceBox .fnow .fp{margin:0 0 8px}
+#faceBox .fn{margin:0;font-size:13.5px;opacity:.75}
 #faceBox .fp{text-align:center;margin:0 0 16px}
 #faceBox .fp img{width:150px;height:150px;object-fit:cover;border-radius:50%;
   border:2px solid rgba(255,255,255,.25)}
 #faceBox .fb{display:flex;gap:10px}
-#faceBox .fb button{flex:1;margin:0;padding:14px 0;border-radius:12px;font-size:15px;
+#faceBox .fb button{flex:1;margin:0;padding:14px 4px;border-radius:12px;font-size:14.5px;
+  white-space:nowrap;
   font-weight:700;cursor:pointer;background:rgba(255,255,255,.08);color:inherit;
   border:1px solid rgba(255,255,255,.18)}
 #faceBox .fb button.go{background:rgba(143,227,176,.22);color:#8FE3B0;
@@ -284,53 +290,33 @@ function faceSheet(on){
 }
 document.getElementById('faceBg').addEventListener('click', function(){ faceSheet(false); });
 
-/* 🔴 2026-09-13 — 사진이 이미 있으면 **지금 사진부터 보여줍니다.**
+/* =====================================================================
+   🔴🔴 2026-09-13 — 사진 넣기 · 교체 · 삭제를 한 창에
 
    무엇을 바꾸는지 안 보이면 손님이 손을 못 댑니다.
    "이게 맞나?" 싶은 순간 그만두게 됩니다.
+   그래서 **지금 쓰는 사진을 경고문 위에 먼저 보여줍니다.**
 
-   이 창 하나에 할 수 있는 일을 다 모읍니다.
-     지금 사진 보기 · 다른 사진으로 바꾸기 · 지우기 */
-function startFace(personaId){
+   창은 하나인데 사진이 있느냐 없느냐로 단추가 달라집니다.
+
+     사진 없음   [ 그만두기 ]  [ 알고 있습니다 ]
+     사진 있음   [ 취소하기 ]  [ 삭제하기 ]  [ 교체하기 ]
+
+   ⚠ 사진이 있어도 경고문은 그대로 보여줍니다. 교체도 결국 새로 올리는
+     일이고, 그때마다 무게를 다시 느끼시는 편이 낫습니다.
+   ===================================================================== */
+async function startFace(personaId){
   facePersona = aliases.filter(function(a){ return a.id === personaId; })[0];
   if (!facePersona) return;
   facePicked = null;
 
-  if (facePersona.avatar_url) { showCurrentFace(); return; }
-  warnFace();
-}
+  const has = !!facePersona.avatar_url;
 
-async function showCurrentFace(){
-  const box = document.getElementById('faceBox');
-  box.innerHTML =
-    '<div class="fh">' + AL.esc(facePersona.display_name) + '</div>' +
-    '<p class="fw">' + AL.esc(AL.t('faceNow')) + '</p>' +
-    '<div class="fp"><img id="faceNowImg" alt=""></div>' +
-    '<div class="fb">' +
-      '<button id="faceDel" class="bad">' + AL.esc(AL.t('faceRemove')) + '</button>' +
-      '<button id="faceSwap" class="go">' + AL.esc(AL.t('faceSwap')) + '</button>' +
-    '</div>' +
-    '<div class="fb" style="margin-top:10px">' +
-      '<button id="faceClose">' + AL.esc(AL.t('close')) + '</button>' +
-    '</div>';
-  faceSheet(true);
-
-  /* 서랍이 비공개라 주소를 받아와야 합니다. 잠깐 걸립니다. */
-  const url = await AL.faceUrl(facePersona.avatar_url);
-  const img = document.getElementById('faceNowImg');
-  if (img && url) img.src = url;
-
-  document.getElementById('faceClose').addEventListener('click', function(){ faceSheet(false); });
-  document.getElementById('faceSwap').addEventListener('click', function(){ warnFace(); });
-  document.getElementById('faceDel').addEventListener('click', function(){
-    faceSheet(false);
-    dropFace(facePersona.id);
-  });
-}
-
-/* ① 경고 */
-function warnFace(){
   document.getElementById('faceBox').innerHTML =
+    (has ? '<div class="fnow">' +
+             '<div class="fp"><img id="faceNowImg" alt=""></div>' +
+             '<p class="fn">' + AL.esc(AL.t('faceNow')) + '</p>' +
+           '</div>' : '') +
     '<div class="fh">' + AL.esc(AL.t('faceWarnTtl')) + '</div>' +
     '<p class="fw">' + AL.esc(AL.t('faceWarn1')) + '</p>' +
     '<ul class="fl">' +
@@ -339,16 +325,34 @@ function warnFace(){
       '<li>' + AL.esc(AL.t('faceWarn4')) + '</li>' +
     '</ul>' +
     '<p class="fa">' + AL.esc(AL.t('faceWarnAlt')) + '</p>' +
-    '<div class="fb">' +
-      '<button id="faceNo">' + AL.esc(AL.t('faceWarnNo')) + '</button>' +
-      '<button id="faceYes" class="go">' + AL.esc(AL.t('faceWarnYes')) + '</button>' +
-    '</div>';
+    (has
+      ? '<div class="fb">' +
+          '<button id="faceNo">' + AL.esc(AL.t('faceCancel')) + '</button>' +
+          '<button id="faceDel" class="bad">' + AL.esc(AL.t('faceDelBtn')) + '</button>' +
+          '<button id="faceYes" class="go">' + AL.esc(AL.t('faceSwap')) + '</button>' +
+        '</div>'
+      : '<div class="fb">' +
+          '<button id="faceNo">' + AL.esc(AL.t('faceWarnNo')) + '</button>' +
+          '<button id="faceYes" class="go">' + AL.esc(AL.t('faceWarnYes')) + '</button>' +
+        '</div>');
   faceSheet(true);
 
   document.getElementById('faceNo').addEventListener('click', function(){ faceSheet(false); });
   document.getElementById('faceYes').addEventListener('click', function(){
-    document.getElementById('facePick').click();      // ② 사진 고르기
+    document.getElementById('facePick').click();
   });
+  if (has) {
+    document.getElementById('faceDel').addEventListener('click', function(){
+      faceSheet(false);
+      dropFace(facePersona.id);
+    });
+    /* 서랍이 비공개라 주소를 받아와야 합니다. 창은 먼저 띄우고 사진은
+       오는 대로 채웁니다. 기다렸다 띄우면 느려 보입니다. */
+    AL.faceUrl(facePersona.avatar_url).then(function(url){
+      const img = document.getElementById('faceNowImg');
+      if (img && url) img.src = url;
+    });
+  }
 }
 
 /* ② 고르고 나면 ③ 확인 */

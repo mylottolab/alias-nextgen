@@ -853,7 +853,9 @@ AL.STR = {
   faceDone:     { kr:'사진을 바꿨습니다.', en:'Photo updated.' },
   faceGone:     { kr:'사진을 지웠습니다.', en:'Photo removed.' },
   faceNow:      { kr:'지금 이 사진을 쓰고 있습니다.', en:'This is the current photo.' },
-  faceSwap:     { kr:'다른 사진으로', en:'Change photo' },
+  faceSwap:     { kr:'교체하기', en:'Replace' },
+  faceDelBtn:   { kr:'삭제하기', en:'Delete' },
+  faceCancel:   { kr:'취소하기', en:'Cancel' },
   faceDelAsk:   { kr:'"{face}" 의 사진을 지웁니다.\n지우면 색 얼굴표로 돌아갑니다.',
                   en:'Remove the photo of "{face}". It will return to the colour mark.' },
   faceNote:     { kr:'이 사진은 이 별칭으로 이어진 분들이 봅니다.',
@@ -1052,14 +1054,17 @@ AL.createAlias = async function(name, existing){
 
   var res = await AL.sb.from('personas')
     .insert({ account_id: uid, display_name: n, is_default: have.length === 0 })
-    .select('id, display_name, is_default').single();
+    .select('id, display_name, is_default, avatar_url').single();
   if (res.error) throw res.error;
   return res.data;
 };
 
 AL.loadAliases = async function(){
   var res = await AL.sb.from('personas')
-    .select('id, display_name, is_default, created_at')
+    /* 🔴 2026-09-13 — avatar_url 을 같이 가져옵니다.
+       이게 빠져 있어서 "나" 화면 목록에만 사진이 안 나왔습니다.
+       연락처는 따로 읽어(AL.myFaceMap) 잘 나왔고요. */
+    .select('id, display_name, is_default, created_at, avatar_url')
     .order('is_default', { ascending: false })
     .order('created_at', { ascending: true });
   if (res.error) throw res.error;
