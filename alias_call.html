@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260912s">
-<link rel="stylesheet" href="alias_theme.css?v=20260912s">
+<link rel="stylesheet" href="alias_common.css?v=20260912u">
+<link rel="stylesheet" href="alias_theme.css?v=20260912u">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260912s"></script>
-<script src="alias_media.js?v=20260912s"></script>
-<script src="alias_call.js?v=20260912s"></script>
+<script src="alias_common.js?v=20260912u"></script>
+<script src="alias_media.js?v=20260912u"></script>
+<script src="alias_call.js?v=20260912u"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -209,6 +209,19 @@ function el(id){ return document.getElementById(id); }
 
 function setStatus(text){ el('st').textContent = text || ''; }
 
+/* 🔴 2026-09-12 — "눌러서 소리 켜기" 를 누르면 둘 다 다시 틉니다.
+   이 한 번의 손가락 터치가 브라우저에게 주는 허락입니다. */
+document.getElementById('tapSound').addEventListener('click', function(){
+  ['remoteA', 'remoteV'].forEach(function(id){
+    const m = el(id);
+    if (!m || !m.srcObject) return;
+    try { m.volume = 1.0; m.muted = false; } catch (e) {}
+    m.play().catch(function(e){ console.warn('[call] 다시 틀기 실패 ' + id, e); });
+  });
+  window.__stuck = {};
+  this.style.display = 'none';
+});
+
 /* 🔴 2026-09-12 — 영상 화면을 켭니다.
    body 에 표를 붙여야 위 CSS 가 살아납니다. */
 function showVideoMode(){
@@ -366,6 +379,7 @@ function onState(state, extra){
       const v = el('remoteV'), a = el('remoteA');
       line += ' · 영상' + (v && !v.paused ? '재생' : '멈춤');
       line += ' · 소리' + (a && !a.paused ? '재생' : '멈춤');
+      if (a) line += '(' + a.currentTime.toFixed(1) + ')';
     }
     el('bytes').style.whiteSpace = 'pre-line';
     el('bytes').textContent = line;
@@ -462,11 +476,41 @@ function onState(state, extra){
        2초마다 살펴보고 멈춰 있으면 다시 틀어줍니다.
        이미 나오고 있으면 아무 일도 안 합니다. */
     if (!window.__mediaNudge) {
+      window.__lastT = {};
+      window.__stuck = {};
       window.__mediaNudge = setInterval(function(){
         ['remoteA', 'remoteV'].forEach(function(id){
           const m = el(id);
           if (!m || !m.srcObject) return;
-          if (m.paused) m.play().catch(function(){});
+
+          if (m.paused) { m.play().catch(function(){}); return; }
+
+          /* 🔴🔴 2026-09-12 — "재생 중" 이라는 말을 믿지 않습니다.
+
+             거는 쪽에서 소리가 안 들렸습니다. 그런데 화면에는 `소리재생`
+             이라고 나왔습니다. 틀긴 틀었는데 **소리가 안 나가는 상태**입니다.
+
+             받는 쪽은 "받기" 를 이 화면에서 눌렀으니 브라우저가 소리를
+             허락합니다. 거는 쪽은 앞 화면에서 누르고 넘어와서 허락이
+             없습니다. 그때 이런 어정쩡한 상태가 됩니다.
+
+             그래서 **시계가 실제로 가는지**를 봅니다. 소리가 나가고 있으면
+             currentTime 이 계속 늘어납니다. 두 번 연속 제자리면 안 나가는
+             것이니 손님에게 한 번 눌러달라고 합니다. 그 한 번이 허락입니다. */
+          const t = m.currentTime;
+          if (window.__lastT[id] === t) {
+            window.__stuck[id] = (window.__stuck[id] || 0) + 1;
+            if (window.__stuck[id] >= 2) {
+              const b = el('tapSound');
+              if (b.style.display === 'none') {
+                console.warn('[call] ' + id + ' 이 재생 중이라는데 시계가 안 갑니다');
+                b.style.display = '';
+              }
+            }
+          } else {
+            window.__stuck[id] = 0;
+          }
+          window.__lastT[id] = t;
         });
       }, 2000);
     }
@@ -477,13 +521,7 @@ function onState(state, extra){
     if (p && p.catch) {
       p.catch(function(e){
         console.warn('[call] 재생이 막혔습니다 (' + (extra.kind || '?') + ')', e);
-        const b = el('tapSound');
-        b.style.display = '';
-        b.onclick = function(){
-          el('remoteA').play().catch(function(){});
-          el('remoteV').play().catch(function(){});
-          b.style.display = 'none';
-        };
+        el('tapSound').style.display = '';
       });
     }
   }
@@ -515,6 +553,11 @@ function bye(){
   stopAliveWatch();
   if (tick) { clearInterval(tick); tick = null; }
   el('acts').innerHTML = '';
+  /* 🔴 2026-09-12 — 끝난 뒤에도 "내 카메라가 나가는 중입니다" 가 남아
+     있었습니다. 이미 끝났는데 맞는 말이 아닙니다. 같이 치웁니다. */
+  const vw = document.querySelector('.vidwarn');
+  if (vw) vw.remove();
+  el('bytes').textContent = '';
   // 잠깐 보여준 뒤 대화로 돌아갑니다.
   goChat(1600);
 }
