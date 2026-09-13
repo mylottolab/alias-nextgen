@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260913h">
-<link rel="stylesheet" href="alias_theme.css?v=20260913h">
+<link rel="stylesheet" href="alias_common.css?v=20260914a">
+<link rel="stylesheet" href="alias_theme.css?v=20260914a">
 <script src="alias_qrlib.js"></script>
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260913h"></script>
-<script src="alias_qr.js?v=20260913h"></script>
+<script src="alias_common.js?v=20260914a"></script>
+<script src="alias_qr.js?v=20260914a"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -206,6 +206,9 @@ async function revoke(id){
 /* ── 만들기 ─────────────────────────────────────────────────────── */
 async function makeInvite(){
   clearErr();
+  /* 🔴 2026-09-14 — 새 초대는 이용권이 필요합니다.
+     이미 이어진 사이는 그대로 유지됩니다. */
+  if (!await AL.requirePlan()) return;
   if (!aliases.length) { showErr(AL.t('errNoAlias')); return; }
 
   const personaId = document.getElementById('faceId').value;
@@ -320,6 +323,7 @@ document.getElementById('again').addEventListener('click', function(){
   if (wanted) chosen = aliases.filter(function(a){ return a.id === wanted; })[0] || null;
   paintFaces();
   await reloadMine();
+  AL.showPlanBar();   // 🔴 2026-09-14
   AL.startAlerts();      // 어느 화면에 있든 새 메시지를 알려줍니다
 })();
 </script>

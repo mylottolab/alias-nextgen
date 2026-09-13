@@ -856,6 +856,18 @@ AL.STR = {
   faceSwap:     { kr:'교체하기', en:'Replace' },
   faceDelBtn:   { kr:'삭제하기', en:'Delete' },
   faceCancel:   { kr:'취소하기', en:'Cancel' },
+
+  /* 🔴 2026-09-14 신설 — 이용권 */
+  plTrialLeft:  { kr:'무료 체험 {n}일 남았습니다', en:'{n} days left in your trial' },
+  plBonus:      { kr:'지금 구매하면 1개월 더', en:'Buy now and get 1 extra month' },
+  plOver:       { kr:'이용권이 끝났습니다 · 받기만 됩니다',
+                  en:'Your plan has ended · you can still receive' },
+  plBuy:        { kr:'구매', en:'Buy' },
+  plNeedTtl:    { kr:'이용권이 필요합니다', en:'A plan is required' },
+  plNeed1:      { kr:'보내기와 걸기는 이용권이 있어야 합니다. 받기와 읽기는 그대로 됩니다.',
+                  en:'Sending and calling need a plan. Receiving and reading still work.' },
+  plNeed2:      { kr:'3개월 4,500원 · 6개월 7,500원 · 12개월 13,000원',
+                  en:'3 months ₩4,500 · 6 months ₩7,500 · 12 months ₩13,000' },
   faceDelAsk:   { kr:'"{face}" 의 사진을 지웁니다.\n지우면 색 얼굴표로 돌아갑니다.',
                   en:'Remove the photo of "{face}". It will return to the colour mark.' },
   faceNote:     { kr:'이 사진은 이 별칭으로 이어진 분들이 봅니다.',
@@ -1339,6 +1351,151 @@ AL.removeFace = async function(personaId, path){
   if (res.error) throw res.error;
   if (path) delete AL._faceUrls[path];
   AL._faceMap = null;
+};
+
+/* =====================================================================
+   🔴🔴 2026-09-14 신설 — 이용권 (구독)
+
+   손님이 지금 쓸 수 있는지 묻고, 안 되면 알려줍니다.
+
+     받기 · 읽기 · 끊기 · 차단     늘 됩니다   ← 돈과 상관없습니다
+     보내기 · 걸기 · 초대 · 별칭   이용권 필요
+
+   ⚠ 왜 받기는 늘 되게 두나
+     휴대폰 요금을 안 내면 발신은 막히지만 수신은 됩니다. 그래야 상대가
+     계속 말을 걸고, 손님은 답을 못 해 아쉬워집니다. 관계가 살아 있으니
+     돌아올 자리도 남습니다. 끊어버리면 그 사람이 초대한 상대까지 같이
+     사라집니다.
+
+   ⚠ 끊기와 차단은 절대 막지 마세요
+     이 앱이 파는 것이 "끊을 수 있는 연결" 입니다. 돈으로 그걸 막으면
+     약속을 어기는 것입니다. 안전에 관한 것도 마찬가지입니다.
+   ===================================================================== */
+AL._plan = null;
+
+AL.myPlan = async function(force){
+  if (AL._plan && !force) return AL._plan;
+  try {
+    var res = await AL.sb.rpc('my_plan');
+    if (res.error) throw res.error;
+    AL._plan = (res.data || [])[0] ||
+               { state: 'expired', active: false, bonus_ready: false };
+  } catch (e) {
+    /* ⚠ 못 읽으면 **쓸 수 있는 쪽**으로 둡니다.
+       서버가 잠깐 흔들렸다고 손님이 갑자기 말을 못 하게 되면 안 됩니다.
+       돈 몇 푼보다 신뢰가 큽니다. 진짜 막는 것은 나중에 서버가 합니다. */
+    console.warn('[plan] 이용권을 못 읽었습니다 — 일단 쓸 수 있게 둡니다', e);
+    AL._plan = { state: 'unknown', active: true, bonus_ready: false };
+  }
+  return AL._plan;
+};
+
+AL.planDaysLeft = function(p){
+  if (!p || !p.until) return 0;
+  var ms = new Date(p.until).getTime() - Date.now();
+  return Math.max(0, Math.ceil(ms / 86400000));
+};
+
+/* 쓸 수 있으면 true. 아니면 안내를 띄우고 false. */
+AL.requirePlan = async function(){
+  var p = await AL.myPlan();
+  if (p.active !== false) return true;
+  AL.needPlan();
+  return false;
+};
+
+/* ── 화면 위 띠 ──────────────────────────────────────────────────
+   ⚠ 이용권이 멀쩡하면 아무것도 안 보입니다. 평소에 화면을 차지하면 안 됩니다.
+   ⚠ 체험 중에는 **"지금 사면 1개월 더"** 를 계속 알립니다.
+     이게 손님이 만드신 장치의 핵심입니다. 체험이 끝난 뒤에 알리면 늦습니다. */
+AL._planCss = function(){
+  if (document.getElementById('planCss')) return;
+  var st = document.createElement('style');
+  st.id = 'planCss';
+  st.textContent =
+    '#planBar{display:flex;align-items:center;gap:10px;margin:0 0 12px;' +
+      'padding:11px 14px;border-radius:12px;font-size:13.5px;line-height:1.5;' +
+      'font-weight:600;word-break:keep-all}' +
+    '#planBar.trial{background:rgba(143,227,176,.14);color:#8FE3B0;' +
+      'border:1px solid rgba(143,227,176,.35)}' +
+    '#planBar.over{background:rgba(242,201,76,.15);color:#F2C94C;' +
+      'border:1px solid rgba(242,201,76,.4)}' +
+    '#planBar span{flex:1}' +
+    '#planBar a{flex:0 0 auto;padding:8px 14px;border-radius:999px;' +
+      'text-decoration:none;font-weight:700;font-size:13px;' +
+      'background:rgba(255,255,255,.14);color:inherit;' +
+      'border:1px solid currentColor}' +
+    '#planBg{display:none;position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.6)}' +
+    '#planBox{display:none;position:fixed;z-index:91;left:50%;top:50%;' +
+      'transform:translate(-50%,-50%);width:min(400px,88vw);padding:22px;' +
+      'border-radius:18px;background:#1B2430;color:#DDE5F0;' +
+      'border:1px solid rgba(255,255,255,.14);box-shadow:0 18px 44px rgba(0,0,0,.6)}' +
+    '#planBox h3{margin:0 0 12px;font-size:18px;font-weight:800}' +
+    '#planBox p{margin:0 0 10px;font-size:14.5px;line-height:1.75}' +
+    '#planBox .ok{margin:14px 0 18px;padding:11px 14px;border-radius:11px;' +
+      'font-size:13.5px;line-height:1.65;background:rgba(143,227,176,.14);color:#8FE3B0}' +
+    '#planBox .fb{display:flex;gap:10px}' +
+    '#planBox .fb button,#planBox .fb a{flex:1;margin:0;padding:14px 0;' +
+      'border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;' +
+      'text-align:center;text-decoration:none;' +
+      'background:rgba(255,255,255,.08);color:#DDE5F0;' +
+      'border:1px solid rgba(255,255,255,.18)}' +
+    '#planBox .fb a{background:rgba(143,227,176,.22);color:#8FE3B0;' +
+      'border-color:rgba(143,227,176,.45)}';
+  document.head.appendChild(st);
+};
+
+AL.showPlanBar = async function(){
+  var p = await AL.myPlan();
+  if (p.state === 'paid' || p.state === 'unknown') return;
+
+  AL._planCss();
+  var host = document.querySelector('.wrap') || document.body;
+  var old = document.getElementById('planBar');
+  if (old) old.remove();
+
+  var bar = document.createElement('div');
+  bar.id = 'planBar';
+  var msg;
+  if (p.state === 'trial') {
+    bar.className = 'trial';
+    var d = AL.planDaysLeft(p);
+    msg = AL.t('plTrialLeft', { n: d });
+    if (p.bonus_ready) msg += ' · ' + AL.t('plBonus');
+  } else {
+    bar.className = 'over';
+    msg = AL.t('plOver');
+  }
+  bar.innerHTML = '<span>' + AL.esc(msg) + '</span>' +
+    '<a href="alias_buy.html">' + AL.esc(AL.t('plBuy')) + '</a>';
+  host.insertBefore(bar, host.firstChild);
+};
+
+AL.needPlan = function(){
+  AL._planCss();
+  if (!document.getElementById('planBg')) {
+    var bg = document.createElement('div'); bg.id = 'planBg';
+    var box = document.createElement('div'); box.id = 'planBox';
+    document.body.appendChild(bg); document.body.appendChild(box);
+    bg.addEventListener('click', function(){
+      bg.style.display = 'none'; box.style.display = 'none';
+    });
+  }
+  var bg2 = document.getElementById('planBg');
+  var box2 = document.getElementById('planBox');
+  box2.innerHTML =
+    '<h3>' + AL.esc(AL.t('plNeedTtl')) + '</h3>' +
+    '<p>' + AL.esc(AL.t('plNeed1')) + '</p>' +
+    '<div class="ok">' + AL.esc(AL.t('plNeed2')) + '</div>' +
+    '<div class="fb">' +
+      '<button id="planNo">' + AL.esc(AL.t('close')) + '</button>' +
+      '<a href="alias_buy.html">' + AL.esc(AL.t('plBuy')) + '</a>' +
+    '</div>';
+  bg2.style.display = 'block';
+  box2.style.display = 'block';
+  document.getElementById('planNo').addEventListener('click', function(){
+    bg2.style.display = 'none'; box2.style.display = 'none';
+  });
 };
 
 /* 내 별칭 이름 → 사진 경로 표를 만듭니다.
