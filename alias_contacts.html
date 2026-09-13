@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260912w">
-<link rel="stylesheet" href="alias_theme.css?v=20260912w">
+<link rel="stylesheet" href="alias_common.css?v=20260913b">
+<link rel="stylesheet" href="alias_theme.css?v=20260913b">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260912w"></script>
-<script src="alias_call.js?v=20260912w"></script>
+<script src="alias_common.js?v=20260913b"></script>
+<script src="alias_call.js?v=20260913b"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -256,7 +256,11 @@ function rowHtml(r){
   const n = r.unread || 0;
   const isRoom = r.kind === 'group';
   return '<div class="crow' + (n ? ' hasnew' : '') + (isRoom ? ' room' : '') + '">' +
-    '<div class="cav" data-go="' + AL.esc(r.link_id) + '">' +
+    /* 🔴 2026-09-13 — 별칭마다 색과 모양이 다릅니다.
+       이 앱의 핵심(관계마다 다른 나)이 눈에 보이게 하는 자리입니다.
+       ⚠ 방은 상대가 여럿이라 방 이름으로 칠합니다. */
+    '<div class="cav" data-go="' + AL.esc(r.link_id) + '"' +
+      AL.faceAttr(isRoom ? (r.room_name || '') : (r.my_face || '')) + '>' +
       AL.esc(isRoom ? '👥' : AL.initial(r.my_face)) + '</div>' +
     '<div class="cmid" data-go="' + AL.esc(r.link_id) + '">' +
       '<div class="cname">' +
@@ -319,7 +323,7 @@ function paint(){
     box.innerHTML = order.map(function(k){
       const closed = !!closedGroups[k];
       return '<div class="grp' + (closed ? ' closed' : '') + '" data-grp="' + AL.esc(k) + '">' +
-          '<span class="gav">' + AL.esc(AL.initial(k)) + '</span>' +
+          '<span class="gav"' + AL.faceAttr(k) + '>' + AL.esc(AL.initial(k)) + '</span>' +
           '<span class="gname">' + AL.esc(k) + '</span>' +
           '<span class="gcount">' + AL.esc(AL.t('cntCount', { n: bag[k].length })) + '</span>' +
           '<span class="gcaret">▼</span>' +

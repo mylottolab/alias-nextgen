@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260912w">
-<link rel="stylesheet" href="alias_theme.css?v=20260912w">
+<link rel="stylesheet" href="alias_common.css?v=20260913b">
+<link rel="stylesheet" href="alias_theme.css?v=20260913b">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260912w"></script>
+<script src="alias_common.js?v=20260913b"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -28,6 +28,14 @@ document.addEventListener("DOMContentLoaded", function(){
   AL.bootTheme();
 });
 </script>
+<style>
+/* 🔴 2026-09-13 — 별칭 목록의 얼굴표.
+   공용 CSS 를 안 건드리려고 여기에 둡니다. */
+.facemark{display:inline-flex;align-items:center;justify-content:center;
+  width:30px;height:30px;margin-right:9px;flex:0 0 30px;
+  font-weight:800;font-size:14px;vertical-align:middle}
+.row-main{display:flex;align-items:center}
+</style>
 </head>
 <body class="tabbed" data-t-title="ttMe">
 <div class="wrap">
@@ -186,6 +194,10 @@ function paintList(){
   ul.innerHTML = aliases.map(function(a){
     return '<li class="row">' +
       '<div class="row-main">' +
+        /* 🔴 2026-09-13 — 별칭 앞에 얼굴표를 답니다.
+           목록에서 색이 갈려 있어야 "여러 개의 나" 가 눈에 들어옵니다. */
+        '<span class="facemark"' + AL.faceAttr(a.display_name) + '>' +
+          AL.esc(AL.initial(a.display_name)) + '</span>' +
         '<span class="row-name">' + AL.esc(a.display_name) + '</span>' +
         (a.is_default ? '<span class="badge">' + AL.esc(AL.t('aliasDefault')) + '</span>' : '') +
       '</div>' +

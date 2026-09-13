@@ -1117,6 +1117,83 @@ AL.initial = function(name){
   return (name || '?').trim().charAt(0) || '?';
 };
 
+/* =====================================================================
+   🔴🔴 2026-09-13 신설 — 별칭마다 다른 얼굴표
+
+   왜 필요한가
+     이 앱의 핵심은 **관계마다 다른 내가 된다**는 것입니다.
+     그런데 지금은 별칭이 글자 하나로만 구별됩니다.
+     "개인용" 은 개, "업무용" 은 업. 머리로는 알아도 눈에는 안 들어옵니다.
+
+     색과 모양이 갈리면 **설명 없이도** 이 앱이 무엇인지 전해집니다.
+     연락처를 열었을 때 색이 나뉘어 있으면 "아, 나를 여러 개로 쓰는구나"
+     가 한눈에 보입니다.
+
+   왜 사진이 아니라 색·모양이 먼저인가
+     ① 손님이 아무것도 안 해도 바로 됩니다
+     ② **얼굴 사진은 가장 확실한 신분증**입니다. 업무용과 개인용에 같은
+        얼굴을 넣으면 두 관계가 같은 사람임이 드러나, 별칭을 나눈 의미가
+        사라집니다. 사진은 "알고 고르는" 선택으로 두는 게 맞습니다.
+
+   어떻게 정하나
+     이름에서 숫자를 뽑아 색 12가지 · 모양 4가지 중에 고릅니다.
+     같은 이름이면 **언제 어느 폰에서 봐도 같은 얼굴표**가 나옵니다.
+     서버에 아무것도 저장하지 않습니다.
+
+   ⚠ 나중에 personas.avatar_url 에 사진이 들어오면 그것이 우선입니다.
+     이 얼굴표는 사진이 없을 때의 기본값입니다.
+   ===================================================================== */
+
+/* 이름 → 늘 같은 숫자. 짧고 빠르면 충분합니다. */
+AL._faceHash = function(name){
+  var s = String(name || '?'), h = 0;
+  for (var i = 0; i < s.length; i++) {
+    h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h);
+};
+
+/* 색 열둘 · 모양 넷 = 마흔여덟 가지.
+   ⚠ 어두운 테마와 밝은 테마 양쪽에서 읽혀야 해서
+     바탕은 옅게, 글씨는 진하게 같은 색조로 씁니다. */
+AL.FACE_HUES = [4, 28, 45, 72, 100, 145, 170, 195, 220, 260, 290, 325];
+AL.FACE_SHAPES = [
+  '50%',                    // 동그라미
+  '30%',                    // 둥근 네모
+  '50% 14% 50% 14%',        // 잎사귀
+  '14% 50% 14% 50%',        // 반대 잎사귀
+];
+
+AL.faceStyle = function(name){
+  var h = AL._faceHash(name);
+  var hue = AL.FACE_HUES[h % AL.FACE_HUES.length];
+  var shape = AL.FACE_SHAPES[(h >> 4) % AL.FACE_SHAPES.length];
+  return {
+    hue: hue,
+    bg: 'hsla(' + hue + ',62%,52%,.22)',
+    fg: 'hsl(' + hue + ',72%,68%)',
+    line: 'hsla(' + hue + ',62%,58%,.45)',
+    radius: shape,
+  };
+};
+
+/* HTML 문자열을 만들 때 쓰는 style="..." 조각입니다. */
+AL.faceAttr = function(name){
+  var f = AL.faceStyle(name);
+  return ' style="background:' + f.bg + ';color:' + f.fg +
+         ';border:1px solid ' + f.line + ';border-radius:' + f.radius + '"';
+};
+
+/* 이미 만들어진 요소에 칠할 때 씁니다. */
+AL.paintFace = function(el, name){
+  if (!el) return;
+  var f = AL.faceStyle(name);
+  el.style.background = f.bg;
+  el.style.color = f.fg;
+  el.style.border = '1px solid ' + f.line;
+  el.style.borderRadius = f.radius;
+};
+
 AL.copyText = async function(text, btn){
   try {
     await navigator.clipboard.writeText(text);
