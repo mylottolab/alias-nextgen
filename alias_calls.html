@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260913c">
-<link rel="stylesheet" href="alias_theme.css?v=20260913c">
+<link rel="stylesheet" href="alias_common.css?v=20260913e">
+<link rel="stylesheet" href="alias_theme.css?v=20260913e">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260913c"></script>
-<script src="alias_call.js?v=20260913c"></script>
+<script src="alias_common.js?v=20260913e"></script>
+<script src="alias_call.js?v=20260913e"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -62,6 +62,7 @@ document.addEventListener("DOMContentLoaded", function(){
 
 let rows = [];
 let grouped = false;
+let myFaces = {};   // 🔴 2026-09-13 — 내 별칭 이름 → 사진 경로
 
 function showErr(msg){
   const el = document.getElementById('err');
@@ -85,7 +86,11 @@ function rowHtml(r){
     ? Math.floor(r.duration_seconds / 60) + ':' + String(r.duration_seconds % 60).padStart(2, '0')
     : '';
   return '<div class="crow callrow" data-go="' + AL.esc(r.link_id) + '">' +
-    '<div class="cav">' + AL.esc(AL.initial(r.my_face)) + '</div>' +
+    /* 🔴 2026-09-13 — 어떤 나로 한 통화였는지가 색·모양·사진으로 보입니다.
+       기록을 되짚을 때 "내가 그때 누구였더라" 가 한눈에 풀립니다. */
+    '<div class="cav"' + AL.faceAttr(r.my_face || '') +
+      (myFaces[r.my_face] ? ' data-face="' + AL.esc(myFaces[r.my_face]) + '"' : '') + '>' +
+      AL.esc(AL.initial(r.my_face)) + '</div>' +
     '<div class="cmid">' +
       '<div class="cname">' + AL.esc(shown) + '</div>' +
       '<div class="csub"><span class="dir' + (missed ? ' missed' : '') + '">' +
@@ -115,12 +120,16 @@ function paint(){
     });
     box.innerHTML = order.map(function(k){
       return '<div class="grp">' +
-          '<span class="gav">' + AL.esc(AL.initial(k)) + '</span>' +
+          '<span class="gav"' + AL.faceAttr(k) +
+            (myFaces[k] ? ' data-face="' + AL.esc(myFaces[k]) + '"' : '') + '>' +
+            AL.esc(AL.initial(k)) + '</span>' +
           '<span class="gname">' + AL.esc(k) + '</span>' +
           '<span class="gcount">' + AL.esc(AL.t('cntCount', { n: bag[k].length })) + '</span>' +
         '</div>' + bag[k].map(rowHtml).join('');
     }).join('');
   }
+
+  AL.paintFaces(box);   // 🔴 2026-09-13 — 사진은 오는 대로 덮어씁니다
 
   box.querySelectorAll('[data-go]').forEach(function(el){
     el.addEventListener('click', function(){
@@ -134,6 +143,7 @@ async function reload(){
     const res = await AL.sb.rpc('my_calls', { p_limit: 100 });
     if (res.error) throw res.error;
     rows = res.data || [];
+    myFaces = await AL.myFaceMap();   // 🔴 2026-09-13
     paint();
   } catch (e) {
     console.error(e);

@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260913c">
-<link rel="stylesheet" href="alias_theme.css?v=20260913c">
+<link rel="stylesheet" href="alias_common.css?v=20260913e">
+<link rel="stylesheet" href="alias_theme.css?v=20260913e">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260913c"></script>
+<script src="alias_common.js?v=20260913e"></script>
 <!-- 🔴 2026-09-13 — 사진 압축(AL.compressImage)이 여기 있습니다 -->
-<script src="alias_media.js?v=20260913c"></script>
+<script src="alias_media.js?v=20260913e"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -52,6 +52,10 @@ document.addEventListener("DOMContentLoaded", function(){
   border:1px solid rgba(255,255,255,.18)}
 #faceBox .fb button.go{background:rgba(143,227,176,.22);color:#8FE3B0;
   border-color:rgba(143,227,176,.45)}
+/* 지우기는 되돌릴 수 없으니 색으로도 구별합니다. */
+#faceBox .fb button.bad{background:rgba(255,120,120,.16);color:#FFB4B4;
+  border-color:rgba(255,120,120,.4)}
+#faceBox .fp img{background:rgba(255,255,255,.06)}
 .facemark{background-repeat:no-repeat}
 
 /* 🔴 2026-09-13 — 별칭 목록의 얼굴표.
@@ -235,11 +239,11 @@ function paintList(){
       '<div class="row-acts">' +
         '<a class="rowlink" href="alias_invite.html?face=' + encodeURIComponent(a.id) + '">' +
           AL.esc(AL.t('aliasUseForInvite')) + '</a>' +
+        /* 🔴 2026-09-13 — 단추 하나로 모읍니다.
+           누르면 "지금 사진 · 바꾸기 · 지우기" 가 한 창에 다 나옵니다.
+           줄에 단추를 셋 넷 늘어놓으면 좁은 폰에서 찌그러집니다(함정 81). */
         '<button data-face-btn="' + AL.esc(a.id) + '">' +
           AL.esc(AL.t(a.avatar_url ? 'faceChange' : 'faceAdd')) + '</button>' +
-        (a.avatar_url ?
-          '<button data-face-del="' + AL.esc(a.id) + '">' +
-            AL.esc(AL.t('faceRemove')) + '</button>' : '') +
         (a.is_default ? '' :
           '<button data-def="' + AL.esc(a.id) + '">' + AL.esc(AL.t('aliasMakeDef')) + '</button>') +
       '</div>' +
@@ -251,9 +255,6 @@ function paintList(){
   });
   ul.querySelectorAll('[data-face-btn]').forEach(function(b){
     b.addEventListener('click', function(){ startFace(b.getAttribute('data-face-btn')); });
-  });
-  ul.querySelectorAll('[data-face-del]').forEach(function(b){
-    b.addEventListener('click', function(){ dropFace(b.getAttribute('data-face-del')); });
   });
 
   /* 🔴 2026-09-13 — 글자를 먼저 그려두고 사진은 오는 대로 덮어씁니다.
@@ -283,12 +284,52 @@ function faceSheet(on){
 }
 document.getElementById('faceBg').addEventListener('click', function(){ faceSheet(false); });
 
-/* ① 경고 */
+/* 🔴 2026-09-13 — 사진이 이미 있으면 **지금 사진부터 보여줍니다.**
+
+   무엇을 바꾸는지 안 보이면 손님이 손을 못 댑니다.
+   "이게 맞나?" 싶은 순간 그만두게 됩니다.
+
+   이 창 하나에 할 수 있는 일을 다 모읍니다.
+     지금 사진 보기 · 다른 사진으로 바꾸기 · 지우기 */
 function startFace(personaId){
   facePersona = aliases.filter(function(a){ return a.id === personaId; })[0];
   if (!facePersona) return;
   facePicked = null;
 
+  if (facePersona.avatar_url) { showCurrentFace(); return; }
+  warnFace();
+}
+
+async function showCurrentFace(){
+  const box = document.getElementById('faceBox');
+  box.innerHTML =
+    '<div class="fh">' + AL.esc(facePersona.display_name) + '</div>' +
+    '<p class="fw">' + AL.esc(AL.t('faceNow')) + '</p>' +
+    '<div class="fp"><img id="faceNowImg" alt=""></div>' +
+    '<div class="fb">' +
+      '<button id="faceDel" class="bad">' + AL.esc(AL.t('faceRemove')) + '</button>' +
+      '<button id="faceSwap" class="go">' + AL.esc(AL.t('faceSwap')) + '</button>' +
+    '</div>' +
+    '<div class="fb" style="margin-top:10px">' +
+      '<button id="faceClose">' + AL.esc(AL.t('close')) + '</button>' +
+    '</div>';
+  faceSheet(true);
+
+  /* 서랍이 비공개라 주소를 받아와야 합니다. 잠깐 걸립니다. */
+  const url = await AL.faceUrl(facePersona.avatar_url);
+  const img = document.getElementById('faceNowImg');
+  if (img && url) img.src = url;
+
+  document.getElementById('faceClose').addEventListener('click', function(){ faceSheet(false); });
+  document.getElementById('faceSwap').addEventListener('click', function(){ warnFace(); });
+  document.getElementById('faceDel').addEventListener('click', function(){
+    faceSheet(false);
+    dropFace(facePersona.id);
+  });
+}
+
+/* ① 경고 */
+function warnFace(){
   document.getElementById('faceBox').innerHTML =
     '<div class="fh">' + AL.esc(AL.t('faceWarnTtl')) + '</div>' +
     '<p class="fw">' + AL.esc(AL.t('faceWarn1')) + '</p>' +
@@ -351,7 +392,10 @@ document.getElementById('facePick').addEventListener('change', async function(){
 async function dropFace(personaId){
   const a = aliases.filter(function(x){ return x.id === personaId; })[0];
   if (!a) return;
-  if (!confirm(AL.t('faceRemove') + ' — ' + a.display_name)) return;
+  /* 🔴 2026-09-13 — 지우면 어떻게 되는지까지 말해줍니다.
+     "지울까요?" 만으로는 사진이 사라지는 건지 별칭이 사라지는 건지
+     헷갈립니다. */
+  if (!confirm(AL.t('faceDelAsk', { face: a.display_name }))) return;
   try {
     await AL.removeFace(personaId, a.avatar_url);
     showOk(AL.t('faceGone'));

@@ -852,6 +852,10 @@ AL.STR = {
   faceGo:       { kr:'올리기', en:'Upload' },
   faceDone:     { kr:'사진을 바꿨습니다.', en:'Photo updated.' },
   faceGone:     { kr:'사진을 지웠습니다.', en:'Photo removed.' },
+  faceNow:      { kr:'지금 이 사진을 쓰고 있습니다.', en:'This is the current photo.' },
+  faceSwap:     { kr:'다른 사진으로', en:'Change photo' },
+  faceDelAsk:   { kr:'"{face}" 의 사진을 지웁니다.\n지우면 색 얼굴표로 돌아갑니다.',
+                  en:'Remove the photo of "{face}". It will return to the colour mark.' },
   faceNote:     { kr:'이 사진은 이 별칭으로 이어진 분들이 봅니다.',
                   en:'People linked through this alias can see this photo.' },
 
