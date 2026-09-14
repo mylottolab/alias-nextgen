@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Alias</title>
+<link rel="stylesheet" href="alias_common.css?v=20260914b">
+<link rel="stylesheet" href="alias_theme.css?v=20260914b">
+<script src="alias_config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="alias_common.js?v=20260914b"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function(){
+  if (typeof AL === "undefined" || typeof AL.t !== "function") {
+    document.body.innerHTML =
+      '<div style="padding:26px;font-family:system-ui,sans-serif;line-height:1.8;' +
+      'color:#DDE5F0;background:#0E1621;min-height:100vh">' +
+      '<b style="font-size:17px">alias_common.js 를 못 읽었습니다.</b><br><br>' +
+      'alias_config.js 를 확인하세요.</div>';
+    return;
+  }
+  AL.bootTheme();
+});
+</script>
+
+<style>
+/* =====================================================================
+   🔴 2026-09-14 신설 — 이용권 구매
+
+   ⚠ 공용 CSS 를 안 건드리려고 여기에 다 적습니다.
+   ⚠ 값은 화면에 적지 않고 **서버 요금표에서 읽어** 그립니다.
+     화면에 박아두면 값을 고칠 때 두 곳을 고쳐야 하고, 반드시 어긋납니다.
+   ===================================================================== */
+.buywrap{padding:18px 16px 60px;max-width:520px;margin:0 auto}
+.buyhead{font-size:24px;font-weight:800;margin:0 0 6px}
+.buysub{color:#94A3B8;font-size:14px;line-height:1.7;margin:0 0 20px}
+
+.bonus{margin:0 0 18px;padding:13px 15px;border-radius:12px;font-size:14px;
+  line-height:1.7;font-weight:700;word-break:keep-all;
+  background:rgba(143,227,176,.15);color:#8FE3B0;
+  border:1px solid rgba(143,227,176,.38)}
+
+.plans{display:flex;flex-direction:column;gap:11px;margin:0 0 22px}
+.plan{display:flex;align-items:center;gap:12px;cursor:pointer;
+  padding:16px 16px;border-radius:15px;text-align:left;
+  background:rgba(255,255,255,.05);color:inherit;
+  border:1.5px solid rgba(255,255,255,.13)}
+.plan.on{background:rgba(143,227,176,.14);border-color:rgba(143,227,176,.55)}
+.plan .dot{width:20px;height:20px;flex:0 0 20px;border-radius:50%;
+  border:2px solid rgba(255,255,255,.3)}
+.plan.on .dot{border-color:#8FE3B0;background:#8FE3B0;
+  box-shadow:inset 0 0 0 4px #1B2430}
+.plan .mid{flex:1;min-width:0}
+.plan .ttl{font-size:16.5px;font-weight:800}
+.plan .sub{font-size:12.5px;opacity:.7;margin-top:3px}
+.plan .amt{text-align:right;font-size:17px;font-weight:800;white-space:nowrap}
+.plan .amt small{display:block;font-size:11.5px;font-weight:500;opacity:.65;margin-top:2px}
+.plan .gift{display:inline-block;margin-left:6px;padding:2px 8px;border-radius:999px;
+  font-size:11px;font-weight:700;background:rgba(143,227,176,.22);color:#8FE3B0}
+
+.sect{font-size:13px;font-weight:700;opacity:.65;margin:0 2px 10px}
+.pay{display:flex;flex-direction:column;gap:11px}
+.paybtn{width:100%;padding:16px 0;border-radius:14px;font-size:16px;font-weight:800;
+  cursor:pointer;background:rgba(255,255,255,.08);color:inherit;
+  border:1px solid rgba(255,255,255,.18)}
+.paybtn.main{background:rgba(143,227,176,.2);color:#8FE3B0;
+  border-color:rgba(143,227,176,.45)}
+.paybtn:disabled{opacity:.45;cursor:default}
+#ppBox{min-height:52px}
+
+.field{margin:0 0 12px}
+.field label{display:block;font-size:13px;opacity:.75;margin:0 0 6px}
+.field input{width:100%;box-sizing:border-box;padding:13px 14px;border-radius:11px;
+  font-size:15.5px;background:rgba(255,255,255,.06);color:inherit;
+  border:1px solid rgba(255,255,255,.14)}
+.privacy{margin:2px 0 16px;padding:11px 14px;border-radius:11px;font-size:12.5px;
+  line-height:1.7;background:rgba(255,255,255,.05);color:#94A3B8}
+
+.note{margin:22px 0 0;font-size:12.5px;line-height:1.8;color:#94A3B8}
+.err{display:none;margin:14px 0 0;padding:12px 14px;border-radius:11px;
+  background:rgba(255,90,90,.14);color:#FFB4B4;font-size:13.5px;line-height:1.6}
+.err.show{display:block}
+.back{display:inline-block;margin:0 0 14px;font-size:14px;color:#94A3B8;
+  text-decoration:none}
+</style>
+</head>
+
+<body data-t-title="plBuyTitle">
+<div class="buywrap">
+
+  <a class="back" href="alias_contacts.html" id="back"></a>
+
+  <h1 class="buyhead" data-t="plBuyTitle"></h1>
+  <p class="buysub" data-t="plBuySub"></p>
+
+  <div class="bonus" id="bonusBox" style="display:none"></div>
+
+  <div class="plans" id="plans"></div>
+
+  <div class="sect" data-t="plPayWay"></div>
+  <div class="pay">
+    <div id="ppBox"></div>
+    <button class="paybtn" id="cardBtn" style="display:none"></button>
+  </div>
+
+  <!-- 이니시스는 구매자 정보를 요구합니다. 카드 결제를 고를 때만 나옵니다. -->
+  <div id="buyer" style="display:none;margin-top:18px">
+    <div class="sect" data-t="plBuyerTtl"></div>
+    <div class="field">
+      <label data-t="plBuyerName"></label>
+      <input id="bname" type="text" maxlength="30" autocomplete="off">
+    </div>
+    <div class="field">
+      <label data-t="plBuyerTel"></label>
+      <input id="btel" type="tel" maxlength="20" autocomplete="off">
+    </div>
+    <div class="privacy" data-t="plPrivacy"></div>
+    <button class="paybtn main" id="goCard" data-t="plPayNow"></button>
+  </div>
+
+  <p class="note" data-t="plNote"></p>
+  <div id="err" class="err"></div>
+
+</div>
+
+<!-- 이니시스 결제창 (표준결제) -->
+<form id="iniForm" method="post" style="display:none">
+  <input type="hidden" name="P_INI_PAYMENT" value="CARD">
+  <input type="hidden" name="P_MID"       id="f_mid">
+  <input type="hidden" name="P_OID"       id="f_oid">
+  <input type="hidden" name="P_AMT"       id="f_amt">
+  <input type="hidden" name="P_GOODS"     id="f_goods">
+  <input type="hidden" name="P_UNAME"     id="f_uname">
+  <input type="hidden" name="P_MOBILE"    id="f_mobile">
+  <input type="hidden" name="P_EMAIL"     id="f_email">
+  <input type="hidden" name="P_NEXT_URL"  id="f_next">
+  <input type="hidden" name="P_NOTI_URL"  id="f_noti">
+  <input type="hidden" name="P_CLOSE_URL" id="f_close">
+  <input type="hidden" name="P_TIMESTAMP" id="f_ts">
+  <input type="hidden" name="P_CHKFAKE"   id="f_chk">
+  <input type="hidden" name="P_CHARSET"   value="utf8">
+  <input type="hidden" name="P_RESERVED"  value="below1000=Y&vbank_receipt=Y&centerCd=Y">
+</form>
+
+<script>
+/* =====================================================================
+   이용권 구매
+   2026-09-14
+
+   ⚠ 값은 여기 안 적습니다. alias_pricing_plans 에서 읽어 그립니다.
+     화면에 박아두면 값을 고칠 때 두 곳을 고쳐야 하고 반드시 어긋납니다.
+
+   ⚠ 결제는 서버가 금액을 다시 정합니다. 화면이 보낸 값은 안 믿습니다.
+
+   ⚠ 이니시스는 구매자 이름·전화를 요구합니다. 이 앱은 그런 걸 안 받으므로
+     **결제할 때만** 받고 저장하지 않습니다. 그 사실을 화면에 적습니다.
+   ===================================================================== */
+
+let plans = [];
+let picked = null;
+let plan = null;      // 내 이용권 상태
+
+function el(id){ return document.getElementById(id); }
+function showErr(msg){ const e = el('err'); e.textContent = msg; e.classList.add('show'); }
+function clearErr(){ el('err').classList.remove('show'); }
+
+function won(n){ return n.toLocaleString('ko-KR') + '원'; }
+
+function paintPlans(){
+  el('plans').innerHTML = plans.map(function(p){
+    const on = (picked === p.duration_months);
+    /* 덤은 상품에 붙은 게 아니라 **체험 중 첫 결제**에만 붙습니다.
+       그래서 bonus_ready 일 때만 표시합니다. */
+    const gift = (plan && plan.bonus_ready)
+      ? '<span class="gift">' + AL.esc(AL.t('plPlusOne')) + '</span>' : '';
+    const useMonths = p.duration_months + ((plan && plan.bonus_ready) ? 1 : 0);
+    return '<button class="plan' + (on ? ' on' : '') + '" data-m="' + p.duration_months + '">' +
+      '<span class="dot"></span>' +
+      '<span class="mid">' +
+        '<span class="ttl">' + AL.esc(AL.t('plMonths', { n: p.duration_months })) + gift + '</span>' +
+        '<span class="sub">' + AL.esc(AL.t('plUseFor', { n: useMonths })) + '</span>' +
+      '</span>' +
+      '<span class="amt">' + AL.esc(won(p.price_krw)) +
+        '<small>$' + AL.esc(Number(p.price_usd).toFixed(2)) + '</small></span>' +
+    '</button>';
+  }).join('');
+
+  el('plans').querySelectorAll('[data-m]').forEach(function(b){
+    b.addEventListener('click', function(){
+      picked = Number(b.getAttribute('data-m'));
+      paintPlans();
+      renderPayPal();
+    });
+  });
+
+  el('cardBtn').style.display = picked ? '' : 'none';
+  el('cardBtn').textContent = AL.t('plPayCard');
+}
+
+/* ── PayPal ─────────────────────────────────────────────────────────
+   ⚠ 단추는 상품을 고른 뒤에 그립니다. 미리 그려두면 손님이 상품을 바꿔도
+     옛 금액으로 결제됩니다. */
+let ppReady = false;
+
+async function loadPayPalSdk(){
+  if (window.paypal) return true;
+  try {
+    const out = await AL.callFn('alias-paypal-client-id', {});
+    if (!out || !out.clientId) throw new Error('clientId 없음');
+    await new Promise(function(res, rej){
+      const s = document.createElement('script');
+      s.src = 'https://www.paypal.com/sdk/js?client-id=' +
+              encodeURIComponent(out.clientId) + '&currency=USD';
+      s.onload = res; s.onerror = rej;
+      document.head.appendChild(s);
+    });
+    return true;
+  } catch (e) {
+    console.warn('[buy] PayPal 을 못 불렀습니다', e);
+    return false;
+  }
+}
+
+async function renderPayPal(){
+  if (!picked) return;
+  const box = el('ppBox');
+  box.innerHTML = '';
+  if (!await loadPayPalSdk()) {
+    box.innerHTML = '<div class="privacy">' + AL.esc(AL.t('plNoPaypal')) + '</div>';
+    return;
+  }
+  window.paypal.Buttons({
+    createOrder: async function(){
+      clearErr();
+      const out = await AL.callFn('alias-plan-paypal-create', { durationMonths: picked });
+      if (!out || !out.id) throw new Error(out && out.error ? out.error : 'create 실패');
+      return out.id;
+    },
+    onApprove: async function(data){
+      try {
+        const out = await AL.callFn('alias-plan-paypal-capture', { orderID: data.orderID });
+        if (out && out.status === 'success') {
+          location.href = 'alias_pay_result.html?status=success&orderId=' +
+                          encodeURIComponent(data.orderID);
+        } else {
+          showErr((out && out.error) || AL.t('plFailed'));
+        }
+      } catch (e) {
+        showErr(e.message || String(e));
+      }
+    },
+    onError: function(e){
+      console.error('[buy] PayPal 오류', e);
+      showErr(AL.t('plFailed'));
+    },
+  }).render('#ppBox');
+}
+
+/* ── 이니시스 ───────────────────────────────────────────────────── */
+el('cardBtn').addEventListener('click', function(){
+  el('buyer').style.display = '';
+  el('buyer').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+
+el('goCard').addEventListener('click', async function(){
+  clearErr();
+  const name = el('bname').value.trim();
+  if (!name) { showErr(AL.t('plNeedName')); return; }
+  if (!picked) { showErr(AL.t('plPickFirst')); return; }
+
+  this.disabled = true;
+  try {
+    const out = await AL.callFn('alias-plan-inicis-prepare', {
+      durationMonths: picked,
+      buyername: name,
+      buyertel: el('btel').value.trim(),
+      buyeremail: '',
+    });
+    if (!out || out.error) throw new Error((out && out.error) || AL.t('plFailed'));
+
+    el('f_mid').value    = out.mid;
+    el('f_oid').value    = out.oid;
+    el('f_amt').value    = out.amt;
+    el('f_goods').value  = out.goodname;
+    el('f_uname').value  = out.buyername;
+    el('f_mobile').value = out.buyertel;
+    el('f_email').value  = out.buyeremail;
+    el('f_next').value   = out.nextUrl;
+    el('f_noti').value   = out.notiUrl;
+    el('f_close').value  = out.closeUrl;
+    el('f_ts').value     = out.timestamp;
+    el('f_chk').value    = out.chkfake;
+
+    /* ⚠ 모바일이냐 PC냐에 따라 이니시스 주소가 다릅니다. */
+    const mobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    el('iniForm').action = mobile
+      ? 'https://mobile.inicis.com/smart/payment/'
+      : 'https://stdpay.inicis.com/stdjs/INIStdPay.js';
+
+    if (mobile) {
+      el('iniForm').submit();
+    } else {
+      /* PC 는 표준결제 스크립트를 불러 창을 띄웁니다. */
+      const s = document.createElement('script');
+      s.src = 'https://stdpay.inicis.com/stdjs/INIStdPay.js';
+      s.onload = function(){ window.INIStdPay.pay('iniForm'); };
+      document.head.appendChild(s);
+    }
+  } catch (e) {
+    console.error(e);
+    showErr(e.message || String(e));
+    this.disabled = false;
+  }
+});
+
+/* ── 시작 ───────────────────────────────────────────────────────── */
+(async function(){
+  AL.paintText();
+  el('back').textContent = '‹ ' + AL.t('navContacts');
+  if (!await AL.requireLogin()) return;
+
+  plan = await AL.myPlan(true);
+  if (plan && plan.bonus_ready) {
+    el('bonusBox').style.display = '';
+    el('bonusBox').textContent = AL.t('plBonusBig');
+  }
+
+  try {
+    const res = await AL.sb.from('alias_pricing_plans')
+      .select('duration_months, price_krw, price_usd')
+      .eq('tier', 'standard').eq('is_active', true)
+      .order('duration_months');
+    if (res.error) throw res.error;
+    plans = res.data || [];
+    if (!plans.length) throw new Error('요금표가 비어 있습니다');
+    picked = plans[plans.length - 1].duration_months;   // 가장 긴 것을 먼저 골라둡니다
+    paintPlans();
+    renderPayPal();
+  } catch (e) {
+    console.error(e);
+    showErr(AL.t('errGeneric', { msg: e.message || String(e) }));
+  }
+})();
+</script>
+</body>
+</html>
