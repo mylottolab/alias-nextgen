@@ -50,13 +50,19 @@ document.addEventListener("DOMContentLoaded", function(){
   border:2px solid rgba(255,255,255,.3)}
 .plan.on .dot{border-color:#8FE3B0;background:#8FE3B0;
   box-shadow:inset 0 0 0 4px #1B2430}
-.plan .mid{flex:1;min-width:0}
-.plan .ttl{font-size:16.5px;font-weight:800}
-.plan .sub{font-size:12.5px;opacity:.7;margin-top:3px}
-.plan .amt{text-align:right;font-size:17px;font-weight:800;white-space:nowrap}
+/* 🔴 2026-09-15 고침 — <span> 은 줄바꿈이 안 됩니다.
+   그래서 "+1개월" 과 "4개월 동안 쓰실 수 있습니다" 가 한 줄에 엉켜
+   흘러내렸습니다. block 으로 바꿔 각자 제 줄을 갖게 합니다. */
+.plan .mid{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.plan .ttl{display:flex;align-items:center;gap:7px;
+  font-size:16.5px;font-weight:800;line-height:1.25}
+.plan .sub{display:block;font-size:12.5px;opacity:.7;line-height:1.45;
+  word-break:keep-all}
+.plan .amt{flex:0 0 auto;text-align:right;font-size:17px;font-weight:800;white-space:nowrap}
 .plan .amt small{display:block;font-size:11.5px;font-weight:500;opacity:.65;margin-top:2px}
-.plan .gift{display:inline-block;margin-left:6px;padding:2px 8px;border-radius:999px;
-  font-size:11px;font-weight:700;background:rgba(143,227,176,.22);color:#8FE3B0}
+.plan .gift{flex:0 0 auto;padding:3px 9px;border-radius:999px;
+  font-size:11px;font-weight:700;line-height:1.3;white-space:nowrap;
+  background:rgba(143,227,176,.22);color:#8FE3B0}
 
 .sect{font-size:13px;font-weight:700;opacity:.65;margin:0 2px 10px}
 .pay{display:flex;flex-direction:column;gap:11px}
