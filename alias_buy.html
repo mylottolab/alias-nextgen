@@ -235,16 +235,35 @@ async function renderPayPal(){
     box.innerHTML = '<div class="privacy">' + AL.esc(AL.t('plNoPaypal')) + '</div>';
     return;
   }
+  /* 🔴 2026-09-15 — 진짜 원인을 화면에 적습니다.
+
+     전에는 무슨 일이 나든 "결제를 마치지 못했습니다" 만 떴습니다.
+     PayPal 은 createOrder 에서 난 오류를 onError 로 넘겨주는데, 거기서
+     뭉뚱그리면 함수 이름이 틀린 건지 값이 틀린 건지 알 수가 없습니다.
+     함정 (76) — 조용히 실패하지 마세요. */
+  let lastErr = '';
+
   window.paypal.Buttons({
     createOrder: async function(){
       clearErr();
-      const out = await AL.callFn('alias-plan-paypal-create', { durationMonths: picked });
-      if (!out || !out.id) throw new Error(out && out.error ? out.error : 'create 실패');
-      return out.id;
+      lastErr = '';
+      try {
+        const out = await AL.callFn('alias-plan-paypal-create', { durationMonths: picked });
+        if (!out) throw new Error('함수가 아무 것도 안 돌려줬습니다');
+        if (out.error) throw new Error(out.error);
+        if (!out.id) throw new Error('주문번호가 없습니다: ' + JSON.stringify(out).slice(0, 120));
+        return out.id;
+      } catch (e) {
+        lastErr = String((e && e.message) || e);
+        console.error('[buy] 주문 만들기 실패', e);
+        showErr(AL.t('plFailed') + ' — ' + lastErr);
+        throw e;
+      }
     },
     onApprove: async function(data){
       try {
         const out = await AL.callFn('alias-plan-paypal-capture', { orderID: data.orderID });
+        console.log('[buy] capture 결과', out);
         if (out && out.status === 'success') {
           location.href = 'alias_pay_result.html?status=success&orderId=' +
                           encodeURIComponent(data.orderID);
@@ -257,7 +276,10 @@ async function renderPayPal(){
     },
     onError: function(e){
       console.error('[buy] PayPal 오류', e);
-      showErr(AL.t('plFailed'));
+      /* createOrder 에서 이미 적어둔 게 있으면 그걸 살립니다.
+         PayPal 이 주는 메시지보다 우리 것이 더 정확합니다. */
+      showErr(AL.t('plFailed') + ' — ' +
+        (lastErr || String((e && e.message) || e).slice(0, 140)));
     },
   }).render('#ppBox');
 }
