@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260915d">
-<link rel="stylesheet" href="alias_theme.css?v=20260915d">
+<link rel="stylesheet" href="alias_common.css?v=20260915e">
+<link rel="stylesheet" href="alias_theme.css?v=20260915e">
 <script src="alias_qrlib.js"></script>
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260915d"></script>
-<script src="alias_qr.js?v=20260915d"></script>
+<script src="alias_common.js?v=20260915e"></script>
+<script src="alias_qr.js?v=20260915e"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -32,11 +32,14 @@ document.addEventListener("DOMContentLoaded", function(){
 </script>
 <style>
 /* =====================================================================
-   🔴 2026-09-15 신설 — 초대장 인쇄
+   🔴 2026-09-15 — 초대장 인쇄 · 미리보기
 
-   ⚠ 화면에서는 #prSheet 이 안 보입니다. 인쇄할 때만 나타납니다.
-   ⚠ 종이는 늘 흰 바탕에 검은 글씨입니다. 앱이 어두운 테마여도
-     종이까지 어두우면 잉크만 먹고 안 읽힙니다.
+   ⚠ 종이 모양(.card/.sq/.big)은 **화면과 인쇄에 같은 규칙**을 씁니다.
+     전에는 @media print 안에만 넣어서, 폰에서 뭐가 찍히는지 볼 수가
+     없었습니다. 이제 화면에서 A4 그대로 미리 봅니다.
+
+   ⚠ mm 단위는 화면에서도 씁니다. 210mm 가 화면에서 약 794px 입니다.
+     좁은 폰에서는 scale 로 줄여 보여줍니다.
    ===================================================================== */
 #prBg{display:none;position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.6)}
 #prBox{display:none;position:fixed;z-index:81;left:50%;top:50%;
@@ -44,7 +47,7 @@ document.addEventListener("DOMContentLoaded", function(){
   padding:22px;border-radius:18px;background:#1B2430;color:#DDE5F0;
   border:1px solid rgba(255,255,255,.14);box-shadow:0 18px 44px rgba(0,0,0,.6)}
 #prBox h3{margin:0 0 6px;font-size:18px;font-weight:800}
-#prBox .cap{margin:0 0 16px;font-size:13.5px;opacity:.7}
+#prBox .cap{margin:0 0 10px;font-size:13.5px;opacity:.72;line-height:1.55}
 #prBox .warn{margin:0 0 16px;padding:11px 14px;border-radius:11px;font-size:13px;
   line-height:1.65;background:rgba(242,201,76,.15);color:#F2C94C}
 #prBox .opt{display:flex;align-items:center;gap:12px;width:100%;cursor:pointer;
@@ -66,70 +69,105 @@ document.addEventListener("DOMContentLoaded", function(){
 #prBox .fb button.go{background:rgba(143,227,176,.22);color:#8FE3B0;
   border-color:rgba(143,227,176,.45)}
 
-#prSheet{display:none}
+/* ── 미리보기 ───────────────────────────────────────────────── */
+#prPvBg{display:none;position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.82)}
+#prPvBar{display:none;position:fixed;z-index:92;left:0;right:0;bottom:0;
+  padding:14px 16px calc(14px + env(safe-area-inset-bottom,0px));
+  background:#1B2430;border-top:1px solid rgba(255,255,255,.14);
+  display:none;gap:10px}
+#prPvBar.on{display:flex}
+#prPvBar button{flex:1;margin:0;padding:15px 0;border-radius:12px;font-size:15px;
+  font-weight:800;cursor:pointer;background:rgba(255,255,255,.08);color:#DDE5F0;
+  border:1px solid rgba(255,255,255,.18)}
+#prPvBar button.go{background:rgba(143,227,176,.22);color:#8FE3B0;
+  border-color:rgba(143,227,176,.45)}
+#prPvTip{display:none;position:fixed;z-index:92;left:0;right:0;top:0;
+  padding:calc(10px + env(safe-area-inset-top,0px)) 16px 10px;
+  font-size:12.5px;line-height:1.6;text-align:center;
+  background:rgba(27,36,48,.95);color:#94A3B8}
+
+/* ── 종이 ────────────────────────────────────────────────────
+   화면에서는 숨어 있다가, 미리보기나 인쇄 때만 나타납니다. */
+#prSheet{display:none;background:#fff;color:#000;
+  font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif}
+
+#prSheet.show{display:block;position:fixed;z-index:91;
+  left:50%;top:calc(50% - 16px);width:190mm;min-height:277mm;padding:0;
+  transform:translate(-50%,-50%) scale(var(--prz,1));
+  transform-origin:center center;
+  box-shadow:0 0 0 1px rgba(0,0,0,.2), 0 18px 50px rgba(0,0,0,.5)}
+
+/* A4 한 장 가득 — 가게 문·게시판용 */
+#prSheet.big .card{width:100%;height:265mm;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;box-sizing:border-box}
+#prSheet.big .qr{width:105mm}
+#prSheet.big .ttl{font-size:26pt;font-weight:800;margin-bottom:6mm}
+#prSheet.big .code{font-size:22pt;letter-spacing:.12em}
+#prSheet.big .cap{font-size:11pt}
+#prSheet.big .face{font-size:13pt}
+#prSheet.big .scan{font-size:13pt}
+#prSheet.big .tel{font-size:11pt}
+
+/* 명함 90×50mm · 2열 4행 = 8장
+   🔴 2026-09-15 — 가위질할 자리를 주려고 간격을 8mm 로 넓히고
+     한 줄을 덜어냈습니다. 빽빽하면 자르다 옆 것을 버립니다. */
+#prSheet.card{display:grid;
+  grid-template-columns:repeat(2, 90mm);
+  grid-auto-rows:50mm; gap:8mm; justify-content:center;
+  padding:6mm 0}
+#prSheet.card .card{display:flex;flex-direction:row;align-items:center;gap:3mm;
+  padding:3mm;box-sizing:border-box;text-align:left;
+  border:0.3mm dashed #999;break-inside:avoid;overflow:hidden}
+#prSheet.card .qr{width:38mm !important;height:38mm !important;flex:0 0 38mm}
+#prSheet.card .side{flex:1;min-width:0}
+#prSheet.card .ttl{font-size:9pt;font-weight:800;margin:0 0 1.5mm;line-height:1.25}
+#prSheet.card .scan{font-size:6pt;margin:0 0 1.5mm;font-weight:600;color:#444}
+#prSheet.card .code{font-size:11pt;margin:0;letter-spacing:.08em}
+#prSheet.card .cap{font-size:5.5pt;margin:.3mm 0 0;color:#666}
+#prSheet.card .face{font-size:6.5pt;margin:2mm 0 0;line-height:1.35;font-weight:700}
+#prSheet.card .tel{font-size:5.5pt;margin:.8mm 0 0;color:#666}
+
+/* 정사각 60×60mm · 3열 3행 = 9장 */
+#prSheet.sq{display:grid;
+  grid-template-columns:repeat(3, 56mm);
+  grid-auto-rows:56mm; gap:8mm; justify-content:center;
+  padding:6mm 0}
+#prSheet.sq .card{display:flex;flex-direction:column;align-items:center;
+  justify-content:center;text-align:center;padding:3mm;box-sizing:border-box;
+  border:0.3mm dashed #999;break-inside:avoid;overflow:hidden}
+#prSheet.sq .qr{width:30mm !important;height:30mm !important}
+#prSheet.sq .ttl{font-size:6.5pt;font-weight:800;margin:0 0 1mm;line-height:1.2}
+#prSheet.sq .scan{font-size:5pt;margin:1mm 0 0;color:#444}
+#prSheet.sq .code{font-size:8pt;margin:.8mm 0 0;letter-spacing:.06em}
+#prSheet.sq .cap{display:none}
+#prSheet.sq .face{font-size:5.5pt;margin:1.2mm 0 0;line-height:1.3;font-weight:700}
+#prSheet.sq .tel{display:none}
+
+/* 🔴🔴 2026-09-15 — QR 을 만드는 함수가 칸 크기를 **직접 박아넣습니다**.
+   그 값이 제가 정한 크기를 덮어써서, QR 이 명함보다 커지고 글씨가
+   그 위에 겹쳐 찍혔습니다.
+   ⚠ 그래서 !important 로 눌러야 합니다. 여기를 빼지 마세요. */
+#prSheet .qr{overflow:hidden}
+#prSheet .qr > *{width:100% !important;height:100% !important;
+  max-width:100% !important;max-height:100% !important;display:block !important}
+#prSheet .qr img, #prSheet .qr canvas{width:100% !important;height:100% !important;
+  display:block !important}
+
+#prSheet .ttl{word-break:keep-all}
+#prSheet .scan{font-weight:700}
+#prSheet .code{font-family:ui-monospace,monospace;font-weight:800}
+#prSheet .face{word-break:keep-all}
 
 @media print{
   html, body{margin:0 !important;padding:0 !important;height:auto !important;
     background:#fff !important}
   body > *:not(#prSheet){display:none !important}
-  #prSheet{display:block !important;margin:0;padding:0;color:#000;
-    font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif}
+  /* 미리보기로 띄운 상태 그대로 인쇄해도 되게, 화면용 배치를 되돌립니다. */
+  #prSheet, #prSheet.show{display:block !important;position:static !important;
+    transform:none !important;width:auto !important;min-height:0 !important;
+    box-shadow:none !important;margin:0 !important}
+  #prSheet.card, #prSheet.sq{display:grid !important;padding:0 !important}
   @page{size:A4;margin:10mm}
-
-  /* ── A4 한 장 가득 — 가게 문·게시판용 ────────────────────── */
-  #prSheet.big .card{width:100%;height:265mm;display:flex;flex-direction:column;
-    align-items:center;justify-content:center;text-align:center;box-sizing:border-box}
-  #prSheet.big .qr{width:105mm}
-  #prSheet.big .ttl{font-size:26pt;font-weight:800;margin-bottom:6mm}
-  #prSheet.big .code{font-size:22pt;letter-spacing:.12em}
-  #prSheet.big .cap{font-size:11pt}
-  #prSheet.big .face{font-size:13pt}
-  #prSheet.big .scan{font-size:13pt}
-  #prSheet.big .tel{font-size:11pt}
-
-  /* ── 명함 90×50mm · 2열 5행 = 10장 ──────────────────────────
-     ⚠ 얼굴 안내는 **어느 크기에도 반드시** 들어갑니다.
-       종이를 건네받은 분도, 건넨 저도 어떤 얼굴인지 알아야 합니다.
-     ⚠ 가로로 길어서 QR 을 왼쪽에 두고 글씨를 오른쪽에 둡니다.
-       위아래로 쌓으면 글씨가 한 줄도 안 들어갑니다. */
-  #prSheet.card{display:grid !important;
-    grid-template-columns:repeat(2, 90mm);
-    grid-auto-rows:50mm; gap:2mm; justify-content:center}
-  #prSheet.card .card{display:flex;flex-direction:row;align-items:center;gap:3mm;
-    padding:3mm;box-sizing:border-box;text-align:left;
-    border:0.3mm dashed #aaa;break-inside:avoid;overflow:hidden}
-  #prSheet.card .qr{width:38mm;flex:0 0 38mm}
-  #prSheet.card .side{flex:1;min-width:0}
-  #prSheet.card .ttl{font-size:9pt;font-weight:800;margin:0 0 1.5mm;line-height:1.25}
-  #prSheet.card .scan{font-size:6pt;margin:0 0 1.5mm;font-weight:600;color:#444}
-  #prSheet.card .code{font-size:11pt;margin:0;letter-spacing:.08em}
-  #prSheet.card .cap{font-size:5.5pt;margin:.3mm 0 0}
-  #prSheet.card .face{font-size:6.5pt;margin:2mm 0 0;line-height:1.35;font-weight:700}
-  #prSheet.card .tel{font-size:5.5pt;margin:.8mm 0 0}
-
-  /* ── 정사각 60×60mm · 3열 4행 = 12장 ────────────────────── */
-  #prSheet.sq{display:grid !important;
-    grid-template-columns:repeat(3, 60mm);
-    grid-auto-rows:60mm; gap:2mm; justify-content:center}
-  #prSheet.sq .card{display:flex;flex-direction:column;align-items:center;
-    justify-content:center;text-align:center;padding:2.5mm;box-sizing:border-box;
-    border:0.3mm dashed #aaa;break-inside:avoid;overflow:hidden}
-  #prSheet.sq .qr{width:34mm}
-  #prSheet.sq .ttl{font-size:6.5pt;font-weight:800;margin:0 0 1mm;line-height:1.2}
-  #prSheet.sq .scan{font-size:5pt;margin:1mm 0 0;color:#444}
-  #prSheet.sq .code{font-size:8pt;margin:.8mm 0 0;letter-spacing:.06em}
-  #prSheet.sq .cap{display:none}
-  #prSheet.sq .face{font-size:5.5pt;margin:1.2mm 0 0;line-height:1.3;font-weight:700}
-  #prSheet.sq .tel{display:none}
-
-  #prSheet .qr img, #prSheet .qr canvas{width:100% !important;height:auto !important;
-    display:block}
-  #prSheet .ttl{word-break:keep-all}
-  #prSheet .scan{margin-top:3mm;font-weight:700}
-  #prSheet .code{margin-top:2mm;font-family:ui-monospace,monospace;font-weight:800}
-  #prSheet .cap{margin-top:1mm;color:#555}
-  #prSheet .face{margin-top:3mm;color:#333;word-break:keep-all}
-  #prSheet .tel{margin-top:1.5mm;color:#666}
 }
 </style>
 </head>
@@ -215,6 +253,14 @@ document.addEventListener("DOMContentLoaded", function(){
 <div id="prBg"></div>
 <div id="prBox"></div>
 
+<!-- 미리보기 -->
+<div id="prPvBg"></div>
+<div id="prPvTip"></div>
+<div id="prPvBar">
+  <button id="prPvBack"></button>
+  <button id="prPvGo" class="go"></button>
+</div>
+
 <!-- 🔴🔴 인쇄할 때만 보이는 A4 종이
      ⚠ body 의 **직계 자식**이어야 합니다. 인쇄 CSS 가
        "body > *:not(#prSheet)" 로 나머지를 숨기는 방식이라,
@@ -278,12 +324,20 @@ async function reloadMine(){
 
     ul.innerHTML = invites.map(function(i){
       const n = used[i.id] || 0;
-      const dead = !!i.revoked_at || (i.expires_at && new Date(i.expires_at) <= new Date()) || n >= i.max_uses;
+      /* 🔴 2026-09-15 — 왜 못 쓰는지 알려줍니다.
+         전에는 단추만 사라져서 "날짜가 남았는데 왜 안 되지?" 했습니다.
+         대개는 **쓰임 횟수를 다 채운 것**입니다. */
+      const outOfUses = n >= i.max_uses;
+      const past = !!(i.expires_at && new Date(i.expires_at) <= new Date());
+      const dead = !!i.revoked_at || past || outOfUses;
+      const why = i.revoked_at ? AL.t('invRevoked')
+                : (outOfUses ? AL.t('invDead')
+                : (past ? AL.t('invExpired') : ''));
       const when = i.expires_at ? AL.t('invExpiredAt', { when: AL.fmtDate(i.expires_at) }) : AL.t('invNoExpiry');
       return '<li class="row' + (dead ? ' dim' : '') + '">' +
         '<div class="row-main">' +
           '<span class="row-name code small">' + AL.esc(i.code) + '</span>' +
-          (i.revoked_at ? '<span class="badge">' + AL.esc(AL.t('invRevoked')) + '</span>' : '') +
+          (why ? '<span class="badge">' + AL.esc(why) + '</span>' : '') +
         '</div>' +
         '<div class="row-sub">' +
           (i.memo ? AL.esc(i.memo) + '<br>' : '') +
@@ -446,8 +500,10 @@ document.getElementById('shareBtn').addEventListener('click', async function(){
    ⚠ A4(210×297) 에서 여백 10mm 를 빼면 190×277 입니다. 거기에
      3mm 간격으로 몇 장이 들어가는지 세어 둔 값입니다. */
 const PR_SIZES = [
-  { key: 'card', n: 10, label: '9×5cm', desc: 'prDCard', cls: 'card', qr: 340 },
-  { key: 'sq',   n: 12, label: '6×6cm', desc: 'prDSq',   cls: 'sq',   qr: 300 },
+  /* 🔴 2026-09-15 — 가위질할 자리를 주려고 한 줄씩 덜어냈습니다.
+     빽빽하면 자르다 옆 것을 버립니다. 간격은 8mm 입니다. */
+  { key: 'card', n: 8, label: '9×5cm', desc: 'prDCard', cls: 'card', qr: 420 },
+  { key: 'sq',   n: 9, label: '5.6×5.6cm', desc: 'prDSq', cls: 'sq', qr: 360 },
 ];
 
 /* ⚠ 얼굴 안내("상대는 저를 ○○로 봅니다")는 **어느 크기에도 반드시**
@@ -486,7 +542,7 @@ function prPaint(){
     '<p class="hint">' + AL.esc(AL.t('prHint')) + '</p>' +
     '<div class="fb">' +
       '<button id="prNo">' + AL.esc(AL.t('close')) + '</button>' +
-      '<button id="prYes" class="go">' + AL.esc(AL.t('prGo')) + '</button>' +
+      '<button id="prYes" class="go">' + AL.esc(AL.t('prPrev')) + '</button>' +
     '</div>';
 
   document.querySelectorAll('#prBox [data-pm]').forEach(function(b){
@@ -558,9 +614,60 @@ async function doPrint(){
   }
 
   prSheetShow(false);
-  /* 창이 닫히는 그림이 끝난 뒤에 인쇄 창을 엽니다. */
-  setTimeout(function(){ window.print(); }, 250);
+  showPreview();          // 🔴 2026-09-15 — 바로 인쇄하지 않고 먼저 보여드립니다
 }
+
+/* =====================================================================
+   🔴🔴 2026-09-15 신설 — 미리보기
+
+   왜 필요한가
+     폰에서 [인쇄] 를 누르면 무엇이 찍히는지 알 수가 없었습니다.
+     인쇄 창이 곧바로 떠서, 종이에 어떻게 놓이는지 못 보고 결정해야
+     했습니다. 잘못 뽑으면 종이와 잉크를 버립니다.
+
+   어떻게
+     같은 종이(#prSheet)를 화면에 그대로 띄웁니다. 별도 그림이 아니라
+     **인쇄될 바로 그것**입니다. 그래야 보이는 대로 찍힙니다.
+     좁은 화면에서는 줄여서 보여줍니다(scale).
+   ===================================================================== */
+function showPreview(){
+  const sheet = document.getElementById('prSheet');
+  sheet.classList.add('show');
+
+  /* 190mm 가 화면에서 몇 px 인지 재서, 화면에 맞게 줄입니다. */
+  const mm = 96 / 25.4;                      // 1mm 가 몇 px 인가
+  const wantW = 190 * mm;
+  const wantH = sheet.scrollHeight || (277 * mm);
+  const okW = window.innerWidth - 24;
+  const okH = window.innerHeight - 150;      // 위 안내와 아래 단추 자리
+  const z = Math.min(1, okW / wantW, okH / wantH);
+  sheet.style.setProperty('--prz', String(z));
+
+  document.getElementById('prPvBg').style.display = 'block';
+  document.getElementById('prPvTip').style.display = 'block';
+  document.getElementById('prPvTip').textContent =
+    AL.t('prPvTip') + ' ' + AL.t('prPdfTip');
+  document.getElementById('prPvBar').classList.add('on');
+}
+
+function hidePreview(){
+  document.getElementById('prSheet').classList.remove('show');
+  document.getElementById('prPvBg').style.display = 'none';
+  document.getElementById('prPvTip').style.display = 'none';
+  document.getElementById('prPvBar').classList.remove('on');
+}
+
+document.getElementById('prPvBack').addEventListener('click', function(){
+  hidePreview();
+  prPaint();
+  prSheetShow(true);
+});
+document.getElementById('prPvGo').addEventListener('click', function(){
+  /* ⚠ 미리보기를 켠 채로 인쇄합니다. 인쇄용 규칙이 화면용 배치를
+     되돌리므로 그대로 A4 에 놓입니다. */
+  window.print();
+});
+document.getElementById('prPvBg').addEventListener('click', hidePreview);
 
 /* 어느 초대든 뽑을 수 있게 창구를 하나로 모읍니다.
    ⚠ 전에는 방금 만든 초대만 뽑을 수 있었습니다. 이미 만든 것을 다시
@@ -581,6 +688,9 @@ document.getElementById('again').addEventListener('click', function(){
   document.getElementById('madePart').classList.remove('on');
   document.getElementById('formPart').style.display = '';
 });
+
+document.getElementById('prPvBack').textContent = AL.t('prBack');
+document.getElementById('prPvGo').textContent = AL.t('prDoIt');
 
 (async function(){
   AL.paintText();
