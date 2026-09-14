@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260915b">
-<link rel="stylesheet" href="alias_theme.css?v=20260915b">
+<link rel="stylesheet" href="alias_common.css?v=20260915d">
+<link rel="stylesheet" href="alias_theme.css?v=20260915d">
 <script src="alias_qrlib.js"></script>
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260915b"></script>
-<script src="alias_qr.js?v=20260915b"></script>
+<script src="alias_common.js?v=20260915d"></script>
+<script src="alias_qr.js?v=20260915d"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -76,37 +76,51 @@ document.addEventListener("DOMContentLoaded", function(){
     font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif}
   @page{size:A4;margin:10mm}
 
-  /* 한 장 가득 */
+  /* ── A4 한 장 가득 — 가게 문·게시판용 ────────────────────── */
   #prSheet.big .card{width:100%;height:265mm;display:flex;flex-direction:column;
     align-items:center;justify-content:center;text-align:center;box-sizing:border-box}
   #prSheet.big .qr{width:105mm}
   #prSheet.big .ttl{font-size:26pt;font-weight:800;margin-bottom:6mm}
   #prSheet.big .code{font-size:22pt;letter-spacing:.12em}
   #prSheet.big .cap{font-size:11pt}
-  #prSheet.big .face{font-size:12pt}
+  #prSheet.big .face{font-size:13pt}
   #prSheet.big .scan{font-size:13pt}
+  #prSheet.big .tel{font-size:11pt}
 
-  /* 여러 장 */
-  #prSheet.grid{display:grid !important;gap:0}
-  #prSheet.mid{grid-template-columns:repeat(2,1fr)}
-  #prSheet.sml{grid-template-columns:repeat(3,1fr)}
-  #prSheet.grid .card{display:flex;flex-direction:column;align-items:center;
-    justify-content:center;text-align:center;box-sizing:border-box;
-    border:0.3mm dashed #aaa;break-inside:avoid}
-  #prSheet.mid .card{height:138mm;padding:6mm}
-  #prSheet.sml .card{height:69mm;padding:3mm}
-  #prSheet.mid .qr{width:52mm}
-  #prSheet.sml .qr{width:27mm}
-  #prSheet.mid .ttl{font-size:13pt;font-weight:800;margin-bottom:3mm}
-  #prSheet.sml .ttl{font-size:8.5pt;font-weight:800;margin-bottom:1.5mm}
-  #prSheet.mid .code{font-size:13pt;letter-spacing:.1em}
-  #prSheet.sml .code{font-size:8pt;letter-spacing:.06em}
-  #prSheet.mid .cap{font-size:7.5pt}
-  #prSheet.sml .cap{font-size:5.5pt}
-  #prSheet.mid .face{font-size:8pt}
-  #prSheet.sml .face{font-size:6pt}
-  #prSheet.mid .scan{font-size:8.5pt}
-  #prSheet.sml .scan{font-size:6pt}
+  /* ── 명함 90×50mm · 2열 5행 = 10장 ──────────────────────────
+     ⚠ 얼굴 안내는 **어느 크기에도 반드시** 들어갑니다.
+       종이를 건네받은 분도, 건넨 저도 어떤 얼굴인지 알아야 합니다.
+     ⚠ 가로로 길어서 QR 을 왼쪽에 두고 글씨를 오른쪽에 둡니다.
+       위아래로 쌓으면 글씨가 한 줄도 안 들어갑니다. */
+  #prSheet.card{display:grid !important;
+    grid-template-columns:repeat(2, 90mm);
+    grid-auto-rows:50mm; gap:2mm; justify-content:center}
+  #prSheet.card .card{display:flex;flex-direction:row;align-items:center;gap:3mm;
+    padding:3mm;box-sizing:border-box;text-align:left;
+    border:0.3mm dashed #aaa;break-inside:avoid;overflow:hidden}
+  #prSheet.card .qr{width:38mm;flex:0 0 38mm}
+  #prSheet.card .side{flex:1;min-width:0}
+  #prSheet.card .ttl{font-size:9pt;font-weight:800;margin:0 0 1.5mm;line-height:1.25}
+  #prSheet.card .scan{font-size:6pt;margin:0 0 1.5mm;font-weight:600;color:#444}
+  #prSheet.card .code{font-size:11pt;margin:0;letter-spacing:.08em}
+  #prSheet.card .cap{font-size:5.5pt;margin:.3mm 0 0}
+  #prSheet.card .face{font-size:6.5pt;margin:2mm 0 0;line-height:1.35;font-weight:700}
+  #prSheet.card .tel{font-size:5.5pt;margin:.8mm 0 0}
+
+  /* ── 정사각 60×60mm · 3열 4행 = 12장 ────────────────────── */
+  #prSheet.sq{display:grid !important;
+    grid-template-columns:repeat(3, 60mm);
+    grid-auto-rows:60mm; gap:2mm; justify-content:center}
+  #prSheet.sq .card{display:flex;flex-direction:column;align-items:center;
+    justify-content:center;text-align:center;padding:2.5mm;box-sizing:border-box;
+    border:0.3mm dashed #aaa;break-inside:avoid;overflow:hidden}
+  #prSheet.sq .qr{width:34mm}
+  #prSheet.sq .ttl{font-size:6.5pt;font-weight:800;margin:0 0 1mm;line-height:1.2}
+  #prSheet.sq .scan{font-size:5pt;margin:1mm 0 0;color:#444}
+  #prSheet.sq .code{font-size:8pt;margin:.8mm 0 0;letter-spacing:.06em}
+  #prSheet.sq .cap{display:none}
+  #prSheet.sq .face{font-size:5.5pt;margin:1.2mm 0 0;line-height:1.3;font-weight:700}
+  #prSheet.sq .tel{display:none}
 
   #prSheet .qr img, #prSheet .qr canvas{width:100% !important;height:auto !important;
     display:block}
@@ -280,6 +294,10 @@ async function reloadMine(){
           '<div class="row-acts">' +
             '<button data-rev="' + AL.esc(i.id) + '">' + AL.esc(AL.t('invRevoke')) + '</button>' +
             '<button data-cp="' + AL.esc(i.code) + '">' + AL.esc(AL.t('copy')) + '</button>' +
+            /* 🔴 2026-09-15 — 이미 만든 초대를 그 별칭 그대로 다시 뽑습니다. */
+            '<button data-pr="' + AL.esc(i.code) + '" data-prf="' +
+              AL.esc(i.persona ? i.persona.display_name : '') + '">' +
+              AL.esc(AL.t('prRow')) + '</button>' +
           '</div>') +
       '</li>';
     }).join('');
@@ -289,6 +307,11 @@ async function reloadMine(){
     });
     ul.querySelectorAll('[data-cp]').forEach(function(b){
       b.addEventListener('click', function(){ AL.copyText(b.getAttribute('data-cp'), b); });
+    });
+    ul.querySelectorAll('[data-pr]').forEach(function(b){
+      b.addEventListener('click', function(){
+        openPrint(b.getAttribute('data-pr'), b.getAttribute('data-prf'));
+      });
     });
 
   } catch (e) {
@@ -418,7 +441,22 @@ document.getElementById('shareBtn').addEventListener('click', async function(){
    ⚠ 한 번만 쓸 수 있는 초대(max_uses = 1)를 종이로 뽑으면
      첫 사람만 들어오고 나머지는 헛걸음합니다. 미리 알려드립니다.
    ===================================================================== */
-let prMode = 'big';
+/* 크기표 — Aliascall 과 같은 값을 씁니다.
+   한 회사 물건이니 손님이 느끼는 크기 감각이 같아야 합니다.
+   ⚠ A4(210×297) 에서 여백 10mm 를 빼면 190×277 입니다. 거기에
+     3mm 간격으로 몇 장이 들어가는지 세어 둔 값입니다. */
+const PR_SIZES = [
+  { key: 'card', n: 10, label: '9×5cm', desc: 'prDCard', cls: 'card', qr: 340 },
+  { key: 'sq',   n: 12, label: '6×6cm', desc: 'prDSq',   cls: 'sq',   qr: 300 },
+];
+
+/* ⚠ 얼굴 안내("상대는 저를 ○○로 봅니다")는 **어느 크기에도 반드시**
+   들어갑니다. 그래서 그것이 안 들어갈 만큼 작은 크기는 아예 두지
+   않았습니다. 넣을 수 없으면 뽑지 않는 편이 낫습니다. */
+
+let prMode = 'card';      // 명함 크기를 기본으로 둡니다
+let prCode = null;        // 어느 초대를 뽑는가
+let prFace = '';          // 그 초대의 별칭
 
 function prSheetShow(on){
   document.getElementById('prBg').style.display = on ? 'block' : 'none';
@@ -427,16 +465,15 @@ function prSheetShow(on){
 document.getElementById('prBg').addEventListener('click', function(){ prSheetShow(false); });
 
 function prPaint(){
-  const opts = [
-    ['big', AL.t('prBig'), AL.t('prBigD')],
-    ['mid', AL.t('prMid'), AL.t('prMidD')],
-    ['sml', AL.t('prSml'), AL.t('prSmlD')],
-  ];
+  const opts = PR_SIZES.map(function(z){
+    return [z.key, AL.t('prSize', { s: z.label, n: z.n }), AL.t(z.desc)];
+  }).concat([['big', AL.t('prBig'), AL.t('prBigD')]]);
   /* 한 번만 쓰는 초대면 미리 알립니다. */
   const uses = parseInt(document.getElementById('uses').value, 10) || 1;
 
   document.getElementById('prBox').innerHTML =
     '<h3>' + AL.esc(AL.t('prTitle')) + '</h3>' +
+    '<p class="cap">' + AL.esc(AL.t('prFace', { face: prFace })) + '</p>' +
     '<p class="cap">' + AL.esc(AL.t('prPick')) + '</p>' +
     (uses <= 1 ? '<div class="warn">' + AL.esc(AL.t('prOnce')) + '</div>' : '') +
     opts.map(function(o){
@@ -460,34 +497,53 @@ function prPaint(){
 }
 
 /* 종이 한 칸을 만듭니다. */
-function prCard(){
-  const face = chosen ? chosen.display_name : '';
+function prCardEl(){
   const d = document.createElement('div');
   d.className = 'card';
-  d.innerHTML =
+  const txt =
     '<div class="ttl">' + AL.esc(AL.t('hlTitle')) + '</div>' +
-    '<div class="qr"></div>' +
     '<div class="scan">' + AL.esc(AL.t('prScan')) + '</div>' +
-    '<div class="code">' + AL.esc(lastCode || '') + '</div>' +
+    '<div class="code">' + AL.esc(prCode || '') + '</div>' +
     '<div class="cap">' + AL.esc(AL.t('prCodeCap')) + '</div>' +
-    '<div class="face">' + AL.esc(AL.t('prFace', { face: face })) + '</div>' +
+    '<div class="face">' + AL.esc(AL.t('prFace', { face: prFace })) + '</div>' +
     '<div class="tel">' + AL.esc(AL.t('prNoTel')) + '</div>';
+
+  if (prMode === 'card') {
+    /* 명함은 가로로 길어서 QR 을 왼쪽, 글씨를 오른쪽에 둡니다. */
+    d.innerHTML = '<div class="qr"></div><div class="side">' + txt + '</div>';
+  } else {
+    d.innerHTML = '<div class="ttl">' + AL.esc(AL.t('hlTitle')) + '</div>' +
+      '<div class="qr"></div>' +
+      '<div class="scan">' + AL.esc(AL.t('prScan')) + '</div>' +
+      '<div class="code">' + AL.esc(prCode || '') + '</div>' +
+      '<div class="face">' + AL.esc(AL.t('prFace', { face: prFace })) + '</div>' +
+      '<div class="tel">' + AL.esc(AL.t('prNoTel')) + '</div>';
+  }
   return d;
 }
 
 async function doPrint(){
-  if (!lastCode) return;
+  if (!prCode) return;
   const sheet = document.getElementById('prSheet');
   sheet.innerHTML = '';
-  sheet.className = (prMode === 'big') ? 'big' : ('grid ' + prMode);
 
-  const n = (prMode === 'big') ? 1 : (prMode === 'mid' ? 4 : 12);
-  const size = (prMode === 'big') ? 600 : (prMode === 'mid' ? 400 : 260);
-  const url = AL.inviteUrl(lastCode);
+  let n, size;
+  if (prMode === 'big') {
+    sheet.className = 'big';
+    n = 1; size = 600;
+  } else {
+    const z = PR_SIZES.filter(function(x){ return x.key === prMode; })[0] || PR_SIZES[0];
+    sheet.className = z.cls;
+    n = z.n;
+    /* ⚠ QR 그림은 실제 인쇄 크기보다 넉넉히 그립니다.
+       작게 그리면 종이에서 뭉개져 폰이 못 읽습니다. */
+    size = z.qr;
+  }
+  const url = AL.inviteUrl(prCode);
 
   const boxes = [];
   for (let i = 0; i < n; i++) {
-    const c = prCard();
+    const c = prCardEl();
     sheet.appendChild(c);
     boxes.push(c.querySelector('.qr'));
   }
@@ -506,10 +562,19 @@ async function doPrint(){
   setTimeout(function(){ window.print(); }, 250);
 }
 
-document.getElementById('printBtn').addEventListener('click', function(){
-  if (!lastCode) return;
+/* 어느 초대든 뽑을 수 있게 창구를 하나로 모읍니다.
+   ⚠ 전에는 방금 만든 초대만 뽑을 수 있었습니다. 이미 만든 것을 다시
+     뽑으려면 새로 만들어야 했는데, 그러면 초대가 쓸데없이 늘어납니다. */
+function openPrint(code, face){
+  if (!code) return;
+  prCode = code;
+  prFace = face || '';
   prPaint();
   prSheetShow(true);
+}
+
+document.getElementById('printBtn').addEventListener('click', function(){
+  openPrint(lastCode, chosen ? chosen.display_name : '');
 });
 
 document.getElementById('again').addEventListener('click', function(){
