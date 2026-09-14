@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260914b">
-<link rel="stylesheet" href="alias_theme.css?v=20260914b">
+<link rel="stylesheet" href="alias_common.css?v=20260915b">
+<link rel="stylesheet" href="alias_theme.css?v=20260915b">
 <script src="alias_qrlib.js"></script>
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260914b"></script>
-<script src="alias_qr.js?v=20260914b"></script>
+<script src="alias_common.js?v=20260915b"></script>
+<script src="alias_qr.js?v=20260915b"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -30,6 +30,94 @@ document.addEventListener("DOMContentLoaded", function(){
   AL.bootTheme();
 });
 </script>
+<style>
+/* =====================================================================
+   🔴 2026-09-15 신설 — 초대장 인쇄
+
+   ⚠ 화면에서는 #prSheet 이 안 보입니다. 인쇄할 때만 나타납니다.
+   ⚠ 종이는 늘 흰 바탕에 검은 글씨입니다. 앱이 어두운 테마여도
+     종이까지 어두우면 잉크만 먹고 안 읽힙니다.
+   ===================================================================== */
+#prBg{display:none;position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.6)}
+#prBox{display:none;position:fixed;z-index:81;left:50%;top:50%;
+  transform:translate(-50%,-50%);width:min(400px,90vw);max-height:84vh;overflow:auto;
+  padding:22px;border-radius:18px;background:#1B2430;color:#DDE5F0;
+  border:1px solid rgba(255,255,255,.14);box-shadow:0 18px 44px rgba(0,0,0,.6)}
+#prBox h3{margin:0 0 6px;font-size:18px;font-weight:800}
+#prBox .cap{margin:0 0 16px;font-size:13.5px;opacity:.7}
+#prBox .warn{margin:0 0 16px;padding:11px 14px;border-radius:11px;font-size:13px;
+  line-height:1.65;background:rgba(242,201,76,.15);color:#F2C94C}
+#prBox .opt{display:flex;align-items:center;gap:12px;width:100%;cursor:pointer;
+  margin:0 0 10px;padding:14px 15px;border-radius:14px;text-align:left;
+  background:rgba(255,255,255,.05);color:inherit;
+  border:1.5px solid rgba(255,255,255,.13)}
+#prBox .opt.on{background:rgba(143,227,176,.14);border-color:rgba(143,227,176,.55)}
+#prBox .opt .dot{width:18px;height:18px;flex:0 0 18px;border-radius:50%;
+  border:2px solid rgba(255,255,255,.3)}
+#prBox .opt.on .dot{border-color:#8FE3B0;background:#8FE3B0;
+  box-shadow:inset 0 0 0 4px #1B2430}
+#prBox .opt .t{font-size:15.5px;font-weight:700}
+#prBox .opt .d{font-size:12.5px;opacity:.68;margin-top:2px}
+#prBox .hint{margin:4px 0 16px;font-size:12.5px;line-height:1.7;opacity:.66}
+#prBox .fb{display:flex;gap:10px}
+#prBox .fb button{flex:1;margin:0;padding:14px 0;border-radius:12px;font-size:15px;
+  font-weight:700;cursor:pointer;background:rgba(255,255,255,.08);color:inherit;
+  border:1px solid rgba(255,255,255,.18)}
+#prBox .fb button.go{background:rgba(143,227,176,.22);color:#8FE3B0;
+  border-color:rgba(143,227,176,.45)}
+
+#prSheet{display:none}
+
+@media print{
+  html, body{margin:0 !important;padding:0 !important;height:auto !important;
+    background:#fff !important}
+  body > *:not(#prSheet){display:none !important}
+  #prSheet{display:block !important;margin:0;padding:0;color:#000;
+    font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif}
+  @page{size:A4;margin:10mm}
+
+  /* 한 장 가득 */
+  #prSheet.big .card{width:100%;height:265mm;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;text-align:center;box-sizing:border-box}
+  #prSheet.big .qr{width:105mm}
+  #prSheet.big .ttl{font-size:26pt;font-weight:800;margin-bottom:6mm}
+  #prSheet.big .code{font-size:22pt;letter-spacing:.12em}
+  #prSheet.big .cap{font-size:11pt}
+  #prSheet.big .face{font-size:12pt}
+  #prSheet.big .scan{font-size:13pt}
+
+  /* 여러 장 */
+  #prSheet.grid{display:grid !important;gap:0}
+  #prSheet.mid{grid-template-columns:repeat(2,1fr)}
+  #prSheet.sml{grid-template-columns:repeat(3,1fr)}
+  #prSheet.grid .card{display:flex;flex-direction:column;align-items:center;
+    justify-content:center;text-align:center;box-sizing:border-box;
+    border:0.3mm dashed #aaa;break-inside:avoid}
+  #prSheet.mid .card{height:138mm;padding:6mm}
+  #prSheet.sml .card{height:69mm;padding:3mm}
+  #prSheet.mid .qr{width:52mm}
+  #prSheet.sml .qr{width:27mm}
+  #prSheet.mid .ttl{font-size:13pt;font-weight:800;margin-bottom:3mm}
+  #prSheet.sml .ttl{font-size:8.5pt;font-weight:800;margin-bottom:1.5mm}
+  #prSheet.mid .code{font-size:13pt;letter-spacing:.1em}
+  #prSheet.sml .code{font-size:8pt;letter-spacing:.06em}
+  #prSheet.mid .cap{font-size:7.5pt}
+  #prSheet.sml .cap{font-size:5.5pt}
+  #prSheet.mid .face{font-size:8pt}
+  #prSheet.sml .face{font-size:6pt}
+  #prSheet.mid .scan{font-size:8.5pt}
+  #prSheet.sml .scan{font-size:6pt}
+
+  #prSheet .qr img, #prSheet .qr canvas{width:100% !important;height:auto !important;
+    display:block}
+  #prSheet .ttl{word-break:keep-all}
+  #prSheet .scan{margin-top:3mm;font-weight:700}
+  #prSheet .code{margin-top:2mm;font-family:ui-monospace,monospace;font-weight:800}
+  #prSheet .cap{margin-top:1mm;color:#555}
+  #prSheet .face{margin-top:3mm;color:#333;word-break:keep-all}
+  #prSheet .tel{margin-top:1.5mm;color:#666}
+}
+</style>
 </head>
 <body data-t-title="ttInvite">
 <div class="wrap">
@@ -98,6 +186,8 @@ document.addEventListener("DOMContentLoaded", function(){
       <button id="shareBtn" data-t="invShareSys"></button>
     </div>
     <p class="note" data-t="invShareNote"></p>
+    <!-- 🔴 2026-09-15 신설 — 종이로 뽑기 -->
+    <button class="btn ghost" id="printBtn" data-t="prBtn"></button>
     <button class="btn ghost" id="again" data-t="invMake"></button>
   </div>
 
@@ -106,6 +196,17 @@ document.addEventListener("DOMContentLoaded", function(){
   <ul class="list" id="mine"></ul>
 
 </div>
+
+<!-- 🔴 2026-09-15 — 인쇄 고르는 창 -->
+<div id="prBg"></div>
+<div id="prBox"></div>
+
+<!-- 🔴🔴 인쇄할 때만 보이는 A4 종이
+     ⚠ body 의 **직계 자식**이어야 합니다. 인쇄 CSS 가
+       "body > *:not(#prSheet)" 로 나머지를 숨기는 방식이라,
+       .wrap 안에 넣으면 같이 숨겨집니다.
+     (Aliascall 의 printSheet 와 같은 방식입니다) -->
+<div id="prSheet"></div>
 
 <script>
 /* =====================================================================
@@ -299,6 +400,116 @@ document.getElementById('shareBtn').addEventListener('click', async function(){
     try { await navigator.share({ text: url }); return; } catch (e) { /* 취소 */ }
   }
   AL.copyText(url, this);
+});
+
+/* =====================================================================
+   🔴🔴 2026-09-15 신설 — 초대장 인쇄 · PDF
+
+   중고거래 게시판, 가게 문, 명함처럼 나눠주기 위한 것입니다.
+
+   ⚠ 브라우저의 인쇄 기능을 씁니다. PDF 를 직접 만들지 않습니다.
+     한글 글꼴을 PDF 안에 넣으려면 큰 파일을 받아야 하는데,
+     인쇄 창의 "PDF 로 저장" 이 그 일을 공짜로 해줍니다.
+
+   ⚠ 종이에는 **어떤 얼굴로 나가는지**를 반드시 적습니다.
+     여기저기 붙여두면 어떤 별칭으로 만든 초대인지 잊어버립니다.
+     이 제품에서 가장 중요한 정보입니다.
+
+   ⚠ 한 번만 쓸 수 있는 초대(max_uses = 1)를 종이로 뽑으면
+     첫 사람만 들어오고 나머지는 헛걸음합니다. 미리 알려드립니다.
+   ===================================================================== */
+let prMode = 'big';
+
+function prSheetShow(on){
+  document.getElementById('prBg').style.display = on ? 'block' : 'none';
+  document.getElementById('prBox').style.display = on ? 'block' : 'none';
+}
+document.getElementById('prBg').addEventListener('click', function(){ prSheetShow(false); });
+
+function prPaint(){
+  const opts = [
+    ['big', AL.t('prBig'), AL.t('prBigD')],
+    ['mid', AL.t('prMid'), AL.t('prMidD')],
+    ['sml', AL.t('prSml'), AL.t('prSmlD')],
+  ];
+  /* 한 번만 쓰는 초대면 미리 알립니다. */
+  const uses = parseInt(document.getElementById('uses').value, 10) || 1;
+
+  document.getElementById('prBox').innerHTML =
+    '<h3>' + AL.esc(AL.t('prTitle')) + '</h3>' +
+    '<p class="cap">' + AL.esc(AL.t('prPick')) + '</p>' +
+    (uses <= 1 ? '<div class="warn">' + AL.esc(AL.t('prOnce')) + '</div>' : '') +
+    opts.map(function(o){
+      return '<button class="opt' + (prMode === o[0] ? ' on' : '') + '" data-pm="' + o[0] + '">' +
+        '<span class="dot"></span>' +
+        '<span><span class="t">' + AL.esc(o[1]) + '</span>' +
+        '<span class="d">' + AL.esc(o[2]) + '</span></span>' +
+      '</button>';
+    }).join('') +
+    '<p class="hint">' + AL.esc(AL.t('prHint')) + '</p>' +
+    '<div class="fb">' +
+      '<button id="prNo">' + AL.esc(AL.t('close')) + '</button>' +
+      '<button id="prYes" class="go">' + AL.esc(AL.t('prGo')) + '</button>' +
+    '</div>';
+
+  document.querySelectorAll('#prBox [data-pm]').forEach(function(b){
+    b.addEventListener('click', function(){ prMode = b.getAttribute('data-pm'); prPaint(); });
+  });
+  document.getElementById('prNo').addEventListener('click', function(){ prSheetShow(false); });
+  document.getElementById('prYes').addEventListener('click', doPrint);
+}
+
+/* 종이 한 칸을 만듭니다. */
+function prCard(){
+  const face = chosen ? chosen.display_name : '';
+  const d = document.createElement('div');
+  d.className = 'card';
+  d.innerHTML =
+    '<div class="ttl">' + AL.esc(AL.t('hlTitle')) + '</div>' +
+    '<div class="qr"></div>' +
+    '<div class="scan">' + AL.esc(AL.t('prScan')) + '</div>' +
+    '<div class="code">' + AL.esc(lastCode || '') + '</div>' +
+    '<div class="cap">' + AL.esc(AL.t('prCodeCap')) + '</div>' +
+    '<div class="face">' + AL.esc(AL.t('prFace', { face: face })) + '</div>' +
+    '<div class="tel">' + AL.esc(AL.t('prNoTel')) + '</div>';
+  return d;
+}
+
+async function doPrint(){
+  if (!lastCode) return;
+  const sheet = document.getElementById('prSheet');
+  sheet.innerHTML = '';
+  sheet.className = (prMode === 'big') ? 'big' : ('grid ' + prMode);
+
+  const n = (prMode === 'big') ? 1 : (prMode === 'mid' ? 4 : 12);
+  const size = (prMode === 'big') ? 600 : (prMode === 'mid' ? 400 : 260);
+  const url = AL.inviteUrl(lastCode);
+
+  const boxes = [];
+  for (let i = 0; i < n; i++) {
+    const c = prCard();
+    sheet.appendChild(c);
+    boxes.push(c.querySelector('.qr'));
+  }
+
+  /* ⚠ QR 을 다 그린 뒤에 인쇄해야 합니다. 먼저 인쇄하면 빈 네모가 찍힙니다. */
+  try {
+    for (const b of boxes) await AL.drawQr(b, url, size);
+  } catch (e) {
+    console.error('[print] QR 을 못 그렸습니다', e);
+    showErr(AL.t('qrFailed'));
+    return;
+  }
+
+  prSheetShow(false);
+  /* 창이 닫히는 그림이 끝난 뒤에 인쇄 창을 엽니다. */
+  setTimeout(function(){ window.print(); }, 250);
+}
+
+document.getElementById('printBtn').addEventListener('click', function(){
+  if (!lastCode) return;
+  prPaint();
+  prSheetShow(true);
 });
 
 document.getElementById('again').addEventListener('click', function(){

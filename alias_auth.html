@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260914a">
-<link rel="stylesheet" href="alias_theme.css?v=20260914a">
+<link rel="stylesheet" href="alias_common.css?v=20260915a">
+<link rel="stylesheet" href="alias_theme.css?v=20260915a">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260914a"></script>
+<script src="alias_common.js?v=20260915a"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -28,9 +28,65 @@ document.addEventListener("DOMContentLoaded", function(){
   AL.bootTheme();
 });
 </script>
+<style>
+/* 🔴 2026-09-15 신설 — 처음 오신 분께 보여드리는 화면
+   ⚠ 공용 CSS 를 안 건드리려고 여기에 둡니다. */
+#stepHello{text-align:left}
+.hl-t{font-size:28px;font-weight:800;line-height:1.35;margin:0 0 18px;
+  word-break:keep-all}
+.hl-l{font-size:15.5px;line-height:1.8;margin:0 0 6px;opacity:.82;
+  word-break:keep-all}
+.hl-l.strong{margin-top:14px;font-weight:700;opacity:1;font-size:16.5px}
+.hl-f{margin:26px 0 22px;display:flex;flex-direction:column;gap:18px}
+.hl-i{padding-left:14px;border-left:2px solid rgba(255,255,255,.18)}
+.hl-ft{font-size:16px;font-weight:800;margin-bottom:5px;word-break:keep-all}
+.hl-fb{font-size:14px;line-height:1.75;opacity:.72;word-break:keep-all}
+.hl-c{font-size:14.5px;line-height:1.8;margin:0 0 14px;opacity:.82;
+  word-break:keep-all}
+.hl-p{margin:0 0 24px;padding:12px 15px;border-radius:12px;font-size:14px;
+  font-weight:700;background:rgba(143,227,176,.14);color:#8FE3B0;
+  border:1px solid rgba(143,227,176,.34)}
+</style>
 </head>
 <body class="center" data-t-title="ttAuth">
 <div class="wrap">
+
+  <!-- ── 처음 오신 분께 ───────────────────────────────────
+       🔴 2026-09-15 신설
+       ⚠ 첫인상이 "가입하세요" 가 아니라 "이런 앱입니다" 여야 합니다.
+         모르는 앱에서 갑자기 닉네임과 비밀번호를 만나면 아무도 안 씁니다.
+       ⚠ 한 번 본 분께는 다시 안 보입니다. 다만 아래에 "소개 다시 보기" 를
+         남겨둡니다. 되돌아갈 길이 없으면 갇힌 느낌이 듭니다. -->
+  <div id="stepHello" class="step">
+    <h1 class="hl-t" data-t="hlTitle"></h1>
+    <p class="hl-l" data-t="hlLead1"></p>
+    <p class="hl-l" data-t="hlLead2"></p>
+    <p class="hl-l strong" data-t="hlLead3"></p>
+
+    <div class="hl-f">
+      <div class="hl-i">
+        <div class="hl-ft" data-t="hlF1T"></div>
+        <div class="hl-fb" data-t="hlF1B"></div>
+      </div>
+      <div class="hl-i">
+        <div class="hl-ft" data-t="hlF2T"></div>
+        <div class="hl-fb" data-t="hlF2B"></div>
+      </div>
+      <div class="hl-i">
+        <div class="hl-ft" data-t="hlF3T"></div>
+        <div class="hl-fb" data-t="hlF3B"></div>
+      </div>
+      <div class="hl-i">
+        <div class="hl-ft" data-t="hlF4T"></div>
+        <div class="hl-fb" data-t="hlF4B"></div>
+      </div>
+    </div>
+
+    <p class="hl-c" data-t="hlCall"></p>
+    <p class="hl-p" data-t="hlPrice"></p>
+
+    <button id="helloGo" class="btn" data-t="hlStart"></button>
+  </div>
 
   <!-- ── 로그인 / 가입 ────────────────────────────────── -->
   <div id="stepAuth" class="step on">
@@ -63,6 +119,8 @@ document.addEventListener("DOMContentLoaded", function(){
     <button id="go" class="btn" data-t="goBtn"></button>
     <div id="authErr" class="err"></div>
     <p class="note" data-t="firstTime"></p>
+    <!-- 🔴 2026-09-15 — 소개로 돌아갈 길을 남겨둡니다. -->
+    <p class="note"><a href="#" id="helloBack" style="color:inherit"></a></p>
   </div>
 
   <!-- ── 복구 코드 ────────────────────────────────────── -->
@@ -202,8 +260,33 @@ document.getElementById('cont').addEventListener('click', function(){
   goNext('alias_me.html');                        // 첫 별칭을 만들러 갑니다
 });
 
+/* ── 처음 오신 분께 ────────────────────────────────────
+   🔴 2026-09-15
+   ⚠ 한 번 본 분께는 다시 안 보입니다. 폰에만 적어둡니다(서버에 안 보냄).
+   ⚠ localStorage 를 못 쓰는 경우에도 앱이 멈추면 안 되므로 try 로 감쌉니다. */
+const HELLO_KEY = 'alias_seen_hello';
+
+function seenHello(){
+  try { return localStorage.getItem(HELLO_KEY) === '1'; } catch (e) { return false; }
+}
+function markHello(){
+  try { localStorage.setItem(HELLO_KEY, '1'); } catch (e) {}
+}
+
+document.getElementById('helloGo').addEventListener('click', function(){
+  markHello();
+  show('stepAuth');
+  window.scrollTo(0, 0);
+});
+document.getElementById('helloBack').addEventListener('click', function(e){
+  e.preventDefault();
+  show('stepHello');
+  window.scrollTo(0, 0);
+});
+
 /* ── 시작 ─────────────────────────────────────────────── */
 AL.paintText();
+document.getElementById('helloBack').textContent = AL.t('hlAgain');
 
 // 초대를 받고 처음 온 사람이면 이 앱이 무엇인지부터 알려줍니다.
 // ⚠ 모르는 앱에서 갑자기 "닉네임과 비밀번호" 를 만나면 아무도 안 씁니다.
@@ -215,7 +298,11 @@ if (AL.keyProblem) {
   showErr(AL.keyProblem);
 } else {
   AL.sb.auth.getSession().then(function(res){
-    if (res.data.session) goNext('alias_contacts.html');
+    if (res.data.session) { goNext('alias_contacts.html'); return; }
+    /* 🔴 2026-09-15 — 로그인 안 된 분이고 처음이면 소개부터.
+       ⚠ 로그인된 분께는 절대 안 보입니다. 이미 쓰고 계신 분께
+         광고를 보여주는 꼴이 됩니다. */
+    if (!seenHello()) show('stepHello');
   });
 }
 </script>

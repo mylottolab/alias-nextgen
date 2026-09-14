@@ -907,6 +907,65 @@ AL.STR = {
   plGoHome:     { kr:'연락처로 가기', en:'Go to contacts' },
   plTryAgain:   { kr:'다시 해보기', en:'Try again' },
   plOrderNo:    { kr:'주문번호 {id}', en:'Order {id}' },
+
+  /* 🔴 2026-09-15 신설 — 처음 오신 분께 보여드리는 첫 화면
+
+     ⚠ "메신저" 라는 말을 안 씁니다. 그 말을 쓰는 순간 카카오톡과
+       비교됩니다. **"번호를 안 줘도 되는 방법"** 으로 세웁니다.
+     ⚠ 기능(암호화·통화)을 먼저 말하지 않습니다. **손님이 겪은 불편**부터
+       말해야 읽힙니다.
+     ⚠ "보이스피싱을 막습니다" 는 쓰지 않습니다. 못 막는 경우가 있고,
+       그렇게 광고했다 피해가 나면 책임 문제가 됩니다.
+       대신 "모르는 사람은 걸 수 없습니다" 라는 사실만 적습니다. */
+  hlTitle:   { kr:'전화번호 없이 만납니다',
+               en:'Meet without a phone number' },
+  hlLead1:   { kr:'중고거래 한 번에 번호를 주면 평생 남습니다.',
+               en:'Sell one thing online and your number is out there forever.' },
+  hlLead2:   { kr:'연애가 끝나도, 퇴사를 해도, 번호는 그대로입니다.',
+               en:'Break up, quit your job — the number stays.' },
+  hlLead3:   { kr:'Alias 는 번호 대신 끊을 수 있는 이름을 줍니다.',
+               en:'Alias gives you a name you can cut off instead.' },
+
+  hlF1T:     { kr:'상대마다 다른 내가 됩니다', en:'A different you for each person' },
+  hlF1B:     { kr:'거래처에는 하나, 동창들에게는 다른 하나. 얼굴 사진도 따로 둡니다. 서로는 같은 사람인 줄 모릅니다.',
+               en:'One for clients, another for old friends — each with its own photo. They never know it is the same person.' },
+  hlF2T:     { kr:'끊으면 정말 끊깁니다', en:'Cut it and it is gone' },
+  hlF2B:     { kr:'관계를 끊으면 그 사람은 나에게 닿을 방법이 없어집니다. 차단이 아니라 소멸입니다.',
+               en:'End a link and they have no way to reach you. Not blocked — gone.' },
+  hlF3T:     { kr:'모르는 사람은 걸 수 없습니다', en:'Strangers cannot call you' },
+  hlF3B:     { kr:'초대로 이어지지 않은 사람은 연락할 길이 아예 없습니다. 스팸도 사칭 전화도 들어올 문이 없습니다.',
+               en:'Without an invite there is no way in. No spam, no impersonation calls.' },
+  hlF4T:     { kr:'대화는 우리 둘만 봅니다', en:'Only the two of you can read it' },
+  hlF4B:     { kr:'종단간 암호화. 회사도 못 읽습니다. 공짜입니다.',
+               en:'End-to-end encrypted. We cannot read it either. Free, always.' },
+
+  hlCall:    { kr:'전화도 영상통화도 됩니다. 영상통화는 카메라를 켜지 않고 받을 수도 있습니다.',
+               en:'Voice and video calls included — and you can answer a video call without turning your camera on.' },
+  hlPrice:   { kr:'14일 무료 체험 · 이후 월 1,000원대',
+               en:'14-day free trial · about $1 a month after' },
+  hlStart:   { kr:'시작하기', en:'Get started' },
+  hlAgain:   { kr:'소개 다시 보기', en:'About Alias' },
+
+  /* 🔴 2026-09-15 신설 — 초대장 인쇄 */
+  prBtn:     { kr:'🖨 인쇄 · PDF 로 받기', en:'🖨 Print / Save as PDF' },
+  prTitle:   { kr:'초대장 인쇄', en:'Print invitation' },
+  prPick:    { kr:'어떻게 뽑을까요?', en:'Choose a layout' },
+  prBig:     { kr:'A4 한 장 가득', en:'Full A4 page' },
+  prBigD:    { kr:'가게 문·게시판에 붙이기', en:'For a door or notice board' },
+  prMid:     { kr:'A4 에 4장', en:'4 per A4' },
+  prMidD:    { kr:'잘라서 건네주기', en:'Cut out and hand over' },
+  prSml:     { kr:'A4 에 12장', en:'12 per A4' },
+  prSmlD:    { kr:'명함처럼 나눠주기', en:'Like business cards' },
+  prGo:      { kr:'인쇄하기', en:'Print' },
+  prHint:    { kr:'인쇄 창에서 "PDF 로 저장" 을 고르시면 파일로 받으실 수 있습니다.',
+               en:'Choose "Save as PDF" in the print dialog to get a file.' },
+  prOnce:    { kr:'⚠ 이 초대는 한 사람만 쓸 수 있습니다. 여럿에게 나눠주시려면 쓰임 횟수를 늘려 새로 만드세요.',
+               en:'⚠ This invite is single-use. Make a new one with more uses to hand out.' },
+  prFace:    { kr:'이 초대로 이어지면 상대는 저를 "{face}" 로 봅니다',
+               en:'They will see me as "{face}"' },
+  prScan:    { kr:'찍으면 앱이 없어도 열립니다', en:'Scan — works even without the app' },
+  prNoTel:   { kr:'전화번호를 주고받지 않습니다', en:'No phone numbers exchanged' },
+  prCodeCap: { kr:'초대 코드', en:'Invite code' },
   faceDelAsk:   { kr:'"{face}" 의 사진을 지웁니다.\n지우면 색 얼굴표로 돌아갑니다.',
                   en:'Remove the photo of "{face}". It will return to the colour mark.' },
   faceNote:     { kr:'이 사진은 이 별칭으로 이어진 분들이 봅니다.',
