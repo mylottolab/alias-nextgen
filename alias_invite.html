@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260915n">
-<link rel="stylesheet" href="alias_theme.css?v=20260915n">
+<link rel="stylesheet" href="alias_common.css?v=20260915p">
+<link rel="stylesheet" href="alias_theme.css?v=20260915p">
 <script src="alias_qrlib.js"></script>
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260915n"></script>
-<script src="alias_qr.js?v=20260915n"></script>
+<script src="alias_common.js?v=20260915p"></script>
+<script src="alias_qr.js?v=20260915p"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -661,9 +661,10 @@ function showPreview(){
 
   document.getElementById('prPvBg').style.display = 'block';
   document.getElementById('prPvTip').style.display = 'block';
-  document.getElementById('prPvTip').textContent = IN_APP
-    ? (AL.t('prPvTip') + ' ' + AL.t('prNoApp1'))
-    : (AL.t('prPvTip') + ' ' + AL.t('prPdfTip'));
+  document.getElementById('prPvTip').textContent =
+    (IN_APP && !appCanPrint())
+      ? (AL.t('prPvTip') + ' ' + AL.t('prNoApp1'))
+      : (AL.t('prPvTip') + ' ' + AL.t('prPdfTip'));
   document.getElementById('prPvBar').classList.add('on');
 }
 
@@ -694,8 +695,36 @@ const IN_APP = !!(window.AliasNative ||
   (window.Capacitor && window.Capacitor.isNativePlatform &&
    window.Capacitor.isNativePlatform()));
 
+/* 🔴🔴 2026-09-15 — 앱에서도 인쇄가 됩니다 (자바 창구)
+
+   안드로이드에는 인쇄 기능이 이미 들어 있습니다(PrintManager).
+   웹뷰를 통째로 넘기면 알아서 A4 로 나눠줍니다. @media print 규칙도
+   그대로 적용되고, 인쇄 창에 "PDF 로 저장" 도 들어 있습니다.
+
+   ⚠ 옛 APK 에는 이 창구가 없습니다. **있는지부터 확인**하고,
+     없으면 예전처럼 브라우저로 안내합니다. 새 APK 를 안 깐 손님도
+     있을 테니까요. */
+function appCanPrint(){
+  try {
+    return !!(window.AliasNative &&
+              typeof AliasNative.printPage === 'function' &&
+              (typeof AliasNative.canPrint !== 'function' || AliasNative.canPrint()));
+  } catch (e) { return false; }
+}
+
 document.getElementById('prPvGo').addEventListener('click', function(){
-  if (IN_APP) { tellNoPrint(); return; }
+  if (IN_APP) {
+    if (appCanPrint()) {
+      try {
+        AliasNative.printPage('Alias 초대장');
+        return;
+      } catch (e) {
+        console.error('[print] 자바 창구 실패', e);
+      }
+    }
+    tellNoPrint();
+    return;
+  }
   /* ⚠ 미리보기를 켠 채로 인쇄합니다. 인쇄용 규칙이 화면용 배치를
      되돌리므로 그대로 A4 에 놓입니다. */
   window.print();
