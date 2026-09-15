@@ -1001,6 +1001,8 @@ AL.STR = {
                en:'It may take a moment. Reopen this screen shortly.' },
   pshDenied: { kr:'알림이 꺼져 있습니다.\n설정 → 애플리케이션 → Alias → 알림 을 켜주세요.',
                en:'Notifications are off.\nSettings → Apps → Alias → Notifications.' },
+  pshWhy:    { kr:'전화를 받을 준비가 안 됐습니다. 이유는 이렇습니다.',
+               en:'Could not get ready to receive calls. Reason:' },
   prGo:      { kr:'인쇄하기', en:'Print' },
   prHint:    { kr:'인쇄 창에서 "PDF 로 저장" 을 고르시면 파일로 받으실 수 있습니다.',
                en:'Choose "Save as PDF" in the print dialog to get a file.' },
@@ -1654,17 +1656,31 @@ AL.showPushBar = async function(){
   a.addEventListener('click', async function(e){
     e.preventDefault();
     a.textContent = AL.t('pshTrying');
+    AL._pushErr = '';
+
+    /* 🔴 2026-09-15 — 옛 기억을 지우고 새로 받습니다.
+       지워진 줄을 가리키는 옛 id 가 남아 있으면 그 줄을 고치려다
+       아무 일도 안 일어납니다. */
+    try { localStorage.removeItem(AL.DEVICE_ID_KEY); } catch (e2) {}
+
     var ok = await AL.registerPush();
-    /* 번호가 오는 데 잠깐 걸립니다. 조금 기다렸다 다시 봅니다. */
+
+    /* 번호가 오는 데 잠깐 걸립니다. 넉넉히 기다렸다 다시 봅니다. */
     setTimeout(async function(){
       if (await AL.pushReady()) {
         bar.remove();
         alert(AL.t('pshOk'));
+        return;
+      }
+      a.textContent = AL.t('pshFix');
+      /* ⚠ 이유가 있으면 그대로 보여줍니다. "조금 더 걸립니다" 만
+         되풀이하면 손님도 저도 영영 원인을 모릅니다(함정 76). */
+      if (AL._pushErr) {
+        alert(AL.t('pshWhy') + '\n\n' + AL._pushErr);
       } else {
-        a.textContent = AL.t('pshFix');
         alert(AL.t(ok ? 'pshSlow' : 'pshDenied'));
       }
-    }, 2500);
+    }, 4000);
   });
 };
 
@@ -2980,8 +2996,13 @@ AL.DEVICE_ID_KEY = 'alias_device_row_id';
 /* Firebase 가 준 기기 번호를 devices 표에 담습니다.
    ⚠ 기기 번호는 앱을 지웠다 깔거나 한참 안 쓰면 바뀝니다.
      그래서 켤 때마다 저장합니다. 같은 줄을 고쳐 쓰므로 쌓이지 않습니다. */
+/* 🔴 2026-09-15 — 마지막 실패 이유를 적어둡니다.
+   콘솔에만 남기면 USB 를 꽂아야 알 수 있습니다. 화면에 보여주려면
+   어딘가에 남겨야 합니다(함정 76·89). */
+AL._pushErr = '';
+
 AL.savePushToken = async function(token, platform){
-  if (!token) return false;
+  if (!token) { AL._pushErr = '기기 번호가 비어 있습니다'; return false; }
   try {
     var sess = await AL.sb.auth.getSession();
     if (!sess.data.session) return false;
@@ -3016,7 +3037,14 @@ AL.savePushToken = async function(token, platform){
       account_id: uid, platform: platform, push_token: token,
       last_seen_at: now,
     }).select('id').single();
-    if (ins.error) throw ins.error;
+    if (ins.error) {
+      /* 🔴 2026-09-15 — 여기서 막히면 전화를 영영 못 받습니다.
+         권한(RLS·GRANT) 문제면 이 글씨에 그대로 나옵니다. */
+      AL._pushErr = '기기 줄 저장 실패: ' +
+        (ins.error.message || ins.error.code || '알 수 없음');
+      console.error('[push] 🔴', AL._pushErr);
+      throw ins.error;
+    }
     try { localStorage.setItem(AL.DEVICE_ID_KEY, ins.data.id); } catch (e) {}
 
     /* 🔴🔴 2026-09-11 신설 — 옛 줄 치우기
@@ -3074,7 +3102,11 @@ AL.registerPush = async function(){
   try {
     PN = window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications;
   } catch (e) {}
-  if (!PN) { console.warn('[push] 푸시 플러그인이 없습니다'); return false; }
+  if (!PN) {
+    AL._pushErr = '푸시 플러그인이 없습니다 (APK 를 다시 만들어야 할 수 있습니다)';
+    console.warn('[push] 🔴', AL._pushErr);
+    return false;
+  }
 
   try {
     /* 알림을 받아도 되는지 먼저 묻습니다. */
@@ -3083,7 +3115,8 @@ AL.registerPush = async function(){
       perm = await PN.requestPermissions();
     }
     if (perm.receive !== 'granted') {
-      console.warn('[push] 알림이 거부되었습니다');
+      AL._pushErr = '알림 권한이 거부되었습니다 (' + String(perm.receive) + ')';
+      console.warn('[push] 🔴', AL._pushErr);
       return false;
     }
 
@@ -3092,12 +3125,18 @@ AL.registerPush = async function(){
          순서가 바뀌면 번호가 와도 못 받습니다. */
     PN.addListener('registration', function(t){
       var tok = t && (t.value || t.token);
-      console.log('[push] 기기 번호를 받았습니다');
+      console.log('[push] 기기 번호를 받았습니다 (' + String(tok).slice(0, 12) + '…)');
+      AL._pushErr = '';
       AL.savePushToken(tok, AL.pushPlatform());
     });
 
     PN.addListener('registrationError', function(err){
-      console.error('[push] 기기 번호를 못 받았습니다', err);
+      /* 🔴 2026-09-15 — 구글이 번호를 안 준 이유를 남깁니다.
+         google-services.json 이 안 맞거나, 구글 서비스가 없는 폰이면
+         여기로 옵니다. */
+      AL._pushErr = 'Firebase 가 번호를 안 줍니다: ' +
+        String((err && (err.error || err.message)) || JSON.stringify(err)).slice(0, 160);
+      console.error('[push] 🔴', AL._pushErr);
     });
 
     /* 앱이 켜져 있을 때 알림이 오면 여기로 옵니다. */
