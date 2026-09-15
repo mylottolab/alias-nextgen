@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260915e">
-<link rel="stylesheet" href="alias_theme.css?v=20260915e">
+<link rel="stylesheet" href="alias_common.css?v=20260915f">
+<link rel="stylesheet" href="alias_theme.css?v=20260915f">
 <script src="alias_qrlib.js"></script>
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260915e"></script>
-<script src="alias_qr.js?v=20260915e"></script>
+<script src="alias_common.js?v=20260915f"></script>
+<script src="alias_qr.js?v=20260915f"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -278,6 +278,7 @@ document.addEventListener("DOMContentLoaded", function(){
 let me = null;
 let aliases = [];
 let lastCode = null;
+let myInvites = [];   // 🔴 2026-09-15
 
 function showErr(msg){
   const el = document.getElementById('err');
@@ -304,11 +305,12 @@ async function reloadMine(){
     // 초대와, 그 초대로 실제로 생긴 링크 수를 함께 읽습니다.
     // links.via_invite_id 를 세는 것이 곧 "몇 명이 썼나" 입니다.
     const res = await AL.sb.from('invites')
-      .select('id, code, memo, max_uses, expires_at, revoked_at, created_at, persona:personas!invites_issuer_persona_id_fkey(display_name)')
+      .select('id, code, memo, max_uses, expires_at, revoked_at, created_at, issuer_persona_id, persona:personas!invites_issuer_persona_id_fkey(display_name)')
       .order('created_at', { ascending: false });
     if (res.error) throw res.error;
 
     const invites = res.data || [];
+    myInvites = invites;   // 🔴 2026-09-15 — 바로 인쇄하러 올 때 쓰려고 남겨둡니다
     if (!invites.length) {
       ul.innerHTML = '<li class="empty">' + AL.esc(AL.t('invMineNone')) + '</li>';
       return;
@@ -379,6 +381,16 @@ async function revoke(id){
   const res = await AL.sb.from('invites').update({ revoked_at: new Date().toISOString() }).eq('id', id);
   if (res.error) { showErr(AL.t('errGeneric', { msg: res.error.message })); return; }
   await reloadMine();
+}
+
+/* 🔴 2026-09-15 — 아직 쓸 수 있는 초대인가.
+   목록에서도 쓰고, "바로 인쇄" 에서도 씁니다. 판단이 한 곳에 있어야
+   목록에는 되는데 인쇄는 안 되는 일이 안 생깁니다. */
+function inviteAlive(i, usedCount){
+  if (i.revoked_at) return false;
+  if (i.expires_at && new Date(i.expires_at) <= new Date()) return false;
+  if ((usedCount || 0) >= i.max_uses) return false;
+  return true;
 }
 
 /* ── 만들기 ─────────────────────────────────────────────────────── */
@@ -669,6 +681,41 @@ document.getElementById('prPvGo').addEventListener('click', function(){
 });
 document.getElementById('prPvBg').addEventListener('click', hidePreview);
 
+/* 🔴🔴 2026-09-15 — 인쇄 창이 닫힌 뒤
+
+   ⚠ 웹 화면은 **저장했는지 취소했는지 알 수 없습니다.**
+     인쇄 창은 안드로이드(또는 PC)가 띄우는 것이고, 거기서 무슨 일이
+     있었는지 우리에게 알려주지 않습니다. 파일을 열거나 공유할 수도
+     없습니다.
+     그래서 "저장되었습니다" 라고 단정하지 않습니다. 거짓말이 될 수
+     있습니다. 대신 **어디를 보시면 되는지**만 알려드립니다.
+
+   ⚠ 진짜로 "저장했습니다 · 열기 · 공유" 를 하려면 앱(자바)에 파일을
+     만들고 넘겨주는 창구가 필요합니다. APK 를 다시 만들어야 합니다. */
+window.addEventListener('afterprint', function(){
+  if (!document.getElementById('prSheet').classList.contains('show')) return;
+  const box = document.getElementById('prBox');
+  hidePreview();
+  box.innerHTML =
+    '<h3>' + AL.esc(AL.t('prDoneTtl')) + '</h3>' +
+    '<p class="cap">' + AL.esc(AL.t('prDone1')) + '</p>' +
+    '<p class="cap">' + AL.esc(AL.t('prDone2')) + '</p>' +
+    '<div class="fb">' +
+      '<button id="prDoneNo">' + AL.esc(AL.t('close')) + '</button>' +
+      (navigator.share
+        ? '<button id="prDoneShare" class="go">' + AL.esc(AL.t('prShare')) + '</button>'
+        : '') +
+    '</div>';
+  prSheetShow(true);
+  document.getElementById('prDoneNo').addEventListener('click', function(){
+    prSheetShow(false);
+  });
+  const sh = document.getElementById('prDoneShare');
+  if (sh) sh.addEventListener('click', async function(){
+    try { await navigator.share({ text: AL.inviteUrl(prCode) }); } catch (e) {}
+  });
+});
+
 /* 어느 초대든 뽑을 수 있게 창구를 하나로 모읍니다.
    ⚠ 전에는 방금 만든 초대만 뽑을 수 있었습니다. 이미 만든 것을 다시
      뽑으려면 새로 만들어야 했는데, 그러면 초대가 쓸데없이 늘어납니다. */
@@ -705,10 +752,35 @@ document.getElementById('prPvGo').textContent = AL.t('prDoIt');
   }
   // 별칭 화면에서 "이 별칭으로 초대 만들기"로 넘어오면 그 별칭이 골라집니다.
   paintFaces();
-  var wanted = new URLSearchParams(location.search).get('face');
+  var qs = new URLSearchParams(location.search);
+  var wanted = qs.get('face');
   if (wanted) chosen = aliases.filter(function(a){ return a.id === wanted; })[0] || null;
   paintFaces();
   await reloadMine();
+
+  /* 🔴 2026-09-15 — "나" 화면에서 [QR 인쇄] 로 바로 온 경우.
+     그 별칭의 **아직 쓸 수 있는 가장 최근 초대**를 찾아 바로 엽니다.
+     없으면 하나 만들라고 알려드립니다. */
+  if (qs.get('print') === '1' && wanted) {
+    const face = chosen ? chosen.display_name : '';
+    const ids = myInvites.map(function(i){ return i.id; });
+    let used = {};
+    try {
+      const lr = await AL.sb.from('links').select('via_invite_id').in('via_invite_id', ids);
+      (lr.data || []).forEach(function(l){
+        used[l.via_invite_id] = (used[l.via_invite_id] || 0) + 1;
+      });
+    } catch (e) {}
+
+    const mine = myInvites.filter(function(i){
+      return i.issuer_persona_id === wanted && inviteAlive(i, used[i.id]);
+    });
+    if (mine.length) {
+      openPrint(mine[0].code, face);        // 목록이 최신순이라 첫 줄이 가장 최근
+    } else {
+      showErr(AL.t('prNoInvite'));
+    }
+  }
   AL.showPlanBar();   // 🔴 2026-09-14
   AL.startAlerts();      // 어느 화면에 있든 새 메시지를 알려줍니다
 })();
