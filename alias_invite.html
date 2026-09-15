@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260915p">
-<link rel="stylesheet" href="alias_theme.css?v=20260915p">
+<link rel="stylesheet" href="alias_common.css?v=20260916a">
+<link rel="stylesheet" href="alias_theme.css?v=20260916a">
 <script src="alias_qrlib.js"></script>
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260915p"></script>
-<script src="alias_qr.js?v=20260915p"></script>
+<script src="alias_common.js?v=20260916a"></script>
+<script src="alias_qr.js?v=20260916a"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -704,6 +704,29 @@ const IN_APP = !!(window.AliasNative ||
    ⚠ 옛 APK 에는 이 창구가 없습니다. **있는지부터 확인**하고,
      없으면 예전처럼 브라우저로 안내합니다. 새 APK 를 안 깐 손님도
      있을 테니까요. */
+/* 🔴 2026-09-15 — 저장될 파일 이름.
+
+   ⚠ **폴더는 우리가 못 정합니다.** 안드로이드의 PDF 저장 기능이
+     어디에 넣을지 정하고, 손님이 저장 화면에서 고릅니다. 지금 "0" 폴더에
+     들어가는 것도 그쪽이 정한 것입니다.
+
+   ⚠ 우리가 정할 수 있는 건 **파일 이름 하나**입니다. 그래서 이름에
+     별칭과 날짜를 넣습니다. 여러 장 뽑아도 뭐가 뭔지 알 수 있게요.
+
+   ⚠ 앱 이름이 정해지면 APP_NAME 만 바꾸면 됩니다.
+     (매니페스트 android:label · alias_common.js 의 phTitle 과 함께) */
+const APP_NAME = 'Alias';
+
+function printName(){
+  const d = new Date();
+  const ymd = d.getFullYear() +
+    String(d.getMonth() + 1).padStart(2, '0') +
+    String(d.getDate()).padStart(2, '0');
+  /* 파일 이름에 못 쓰는 글자를 걸러냅니다. */
+  const face = String(prFace || '').replace(/[\\/:*?"<>|]/g, '').trim();
+  return APP_NAME + '_초대장' + (face ? '_' + face : '') + '_' + ymd;
+}
+
 function appCanPrint(){
   try {
     return !!(window.AliasNative &&
@@ -716,7 +739,7 @@ document.getElementById('prPvGo').addEventListener('click', function(){
   if (IN_APP) {
     if (appCanPrint()) {
       try {
-        AliasNative.printPage('Alias 초대장');
+        AliasNative.printPage(printName());
         return;
       } catch (e) {
         console.error('[print] 자바 창구 실패', e);

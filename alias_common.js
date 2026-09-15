@@ -69,7 +69,16 @@ AL.STR = {
   /* 어디서나 돌아가는 길 */
   goHome:     { kr:'연락처', en:'Contacts' },
   goMe:       { kr:'나', en:'You' },
-  outAsk:     { kr:'로그아웃 하시겠습니까?\n다시 들어오시려면 닉네임과 비밀번호가 필요합니다.',
+  /* 🔴 2026-09-16 — 로그아웃하면 이 폰으로 전화를 못 받습니다.
+
+     기기 번호는 계정이 아니라 **폰에 붙습니다**(함정 96). 폰 하나는
+     한 계정의 전화만 받습니다. 다른 계정으로 로그인하면 그 계정으로
+     넘어가고, 옛 계정은 못 받게 됩니다.
+
+     ⚠ 이걸 안 알리면 손님은 **전화가 안 오는 줄도 모릅니다.**
+       상대는 계속 걸고, 손님은 왜 연락이 없나 싶습니다.
+       기능을 막는 게 아니라 알려드리는 것입니다. */
+  outAsk:     { kr:'로그아웃 하시겠습니까?\n\n⚠ 로그아웃하면 이 폰으로 전화를 받을 수 없습니다. 다시 로그인하시면 그대로 받습니다.\n\n다시 들어오시려면 닉네임과 비밀번호가 필요합니다.',
                 en:'Sign out?\nYou will need your nickname and password to return.' },
 
   /* 하단 탭 */
@@ -1005,6 +1014,10 @@ AL.STR = {
                en:'Notifications are off.\nSettings → Apps → Alias → Notifications.' },
   pshWhy:    { kr:'전화를 받을 준비가 안 됐습니다. 이유는 이렇습니다.',
                en:'Could not get ready to receive calls. Reason:' },
+
+  /* 🔴 2026-09-16 — 계정을 바꿨을 때 */
+  pshTook:   { kr:'이제 이 폰은 "{who}" 의 전화를 받습니다.\n한 폰은 한 계정의 전화만 받습니다.',
+               en:'This phone now receives calls for "{who}".\nOne phone receives for one account.' },
   prGo:      { kr:'인쇄하기', en:'Print' },
   prHint:    { kr:'인쇄 창에서 "PDF 로 저장" 을 고르시면 파일로 받으실 수 있습니다.',
                en:'Choose "Save as PDF" in the print dialog to get a file.' },
@@ -3050,6 +3063,33 @@ AL.savePushToken = async function(token, platform){
     AL._pushErr = '';
     try { localStorage.setItem(AL.DEVICE_ID_KEY, res.data); } catch (e) {}
     console.log('[push] 기기 줄을 저장했습니다');
+
+    /* 🔴🔴 2026-09-16 — 계정이 바뀌었으면 한 번만 알려드립니다.
+
+       기기 번호는 폰에 붙습니다. 계정을 바꾸면 전화도 따라옵니다.
+       그러면 **옛 계정은 이 폰으로 전화를 못 받습니다.**
+
+       ⚠ 이걸 안 알리면 손님은 옛 계정의 전화가 안 오는 줄도 모릅니다.
+       ⚠ 같은 계정으로 다시 열 때마다 뜨면 귀찮습니다. 바뀔 때만 한 번. */
+    try {
+      var lastKey = 'alias_last_push_account';
+      var last = localStorage.getItem(lastKey);
+      var nowId = sess.data.session.user.id;
+      if (last && last !== nowId) {
+        var who = '';
+        try {
+          var me = await AL.sb.from('personas')
+            .select('display_name').eq('is_default', true).maybeSingle();
+          /* 기본 별칭이 있으면 그걸 쓰고, 없으면 닉네임을 씁니다.
+             ⚠ 이 앱은 닉네임을 이메일 모양으로 바꿔 저장합니다.
+               앞부분만 떼어내면 손님이 아는 이름이 됩니다. */
+          var mail = (sess.data.session.user.email || '');
+          who = (me.data && me.data.display_name) || mail.split('@')[0] || '';
+        } catch (e) {}
+        setTimeout(function(){ alert(AL.t('pshTook', { who: who })); }, 600);
+      }
+      localStorage.setItem(lastKey, nowId);
+    } catch (e) {}
 
     /* 옛 줄 치우기는 그대로 둡니다. 30일 넘게 안 쓴 것과, 이 계정에
        너무 많이 쌓인 것을 정리합니다. 실패해도 그냥 넘어갑니다. */
