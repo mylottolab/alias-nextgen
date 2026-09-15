@@ -3006,92 +3006,83 @@ AL.savePushToken = async function(token, platform){
   try {
     var sess = await AL.sb.auth.getSession();
     if (!sess.data.session) return false;
-    var uid = sess.data.session.user.id;
-    var now = new Date().toISOString();
 
-    /* 이 계정에 이미 같은 번호가 있으면 그 줄을 씁니다. */
-    var found = await AL.sb.from('devices')
-      .select('id').eq('account_id', uid).eq('push_token', token).maybeSingle();
+    /* 🔴🔴 2026-09-15 — claim_device() 하나로 끝냅니다.
 
-    if (found.data && found.data.id) {
-      await AL.sb.from('devices')
-        .update({ last_seen_at: now, platform: platform })
-        .eq('id', found.data.id);
-      try { localStorage.setItem(AL.DEVICE_ID_KEY, found.data.id); } catch (e) {}
-      return true;
-    }
+       왜 서버 함수로 옮겼나
+         기기 번호는 **계정이 아니라 폰에 붙습니다.** 폰 하나로 계정을
+         바꾸면, 그 번호는 옛 계정 줄에 물려 있습니다. 새 계정으로
+         같은 번호를 넣으려 하면 표가 거절합니다.
 
-    /* 이 기기가 전에 쓰던 줄이 있으면 번호만 갈아끼웁니다.
-       ⚠ 이게 없으면 번호가 바뀔 때마다 줄이 하나씩 늘어나
-         죽은 번호로 푸시를 쏘게 됩니다. */
-    var oldId = null;
-    try { oldId = localStorage.getItem(AL.DEVICE_ID_KEY); } catch (e) {}
-    if (oldId) {
-      var upd = await AL.sb.from('devices')
-        .update({ push_token: token, platform: platform, last_seen_at: now })
-        .eq('id', oldId).eq('account_id', uid).select('id');
-      if (upd.data && upd.data.length) return true;
-    }
+           duplicate key value violates unique constraint
+           "devices_push_token_uq"
 
-    var ins = await AL.sb.from('devices').insert({
-      account_id: uid, platform: platform, push_token: token,
-      last_seen_at: now,
-    }).select('id').single();
-    if (ins.error) {
-      /* 🔴 2026-09-15 — 여기서 막히면 전화를 영영 못 받습니다.
-         권한(RLS·GRANT) 문제면 이 글씨에 그대로 나옵니다. */
+         그러면 **새 계정은 영영 전화를 못 받습니다.** 조용히요.
+         2026-09-15 에 실제로 났습니다.
+
+         남의 줄을 고치는 일이라 손님 권한으로는 못 합니다. 정책이
+         "내 줄만" 으로 막고 있고, 그게 맞습니다. 그래서 서버 함수가
+         대신 합니다(security definer).
+
+       함수가 하는 일
+         그 번호를 가진 줄이 있으면 → 주인을 나로 바꿉니다
+         없으면                    → 새로 만듭니다
+
+       ⚠ 옛 주인은 더 이상 그 폰을 안 씁니다. 가져오는 것이 맞습니다.
+       ⚠ 이 함수 하나로 "찾기 · 고치기 · 넣기" 가 다 됩니다. 화면에서
+         여러 갈래로 나누면 그 사이에 또 구멍이 생깁니다. */
+    var res = await AL.sb.rpc('claim_device', {
+      p_token: token,
+      p_platform: platform || 'web',
+    });
+    if (res.error) {
       AL._pushErr = '기기 줄 저장 실패: ' +
-        (ins.error.message || ins.error.code || '알 수 없음');
+        (res.error.message || res.error.code || '알 수 없음');
       console.error('[push] 🔴', AL._pushErr);
-      throw ins.error;
-    }
-    try { localStorage.setItem(AL.DEVICE_ID_KEY, ins.data.id); } catch (e) {}
-
-    /* 🔴🔴 2026-09-11 신설 — 옛 줄 치우기
-
-       왜 필요한가
-         위의 "전에 쓰던 줄 재활용" 은 localStorage 를 단서로 씁니다.
-         그런데 **앱을 지웠다 깔면 그 기억이 통째로 사라집니다.**
-         FCM 번호도 새로 생깁니다. 그러면 단서가 하나도 없어
-         새 줄이 만들어집니다.
-
-         2026-09-11 에 실제로 이 일이 났습니다. 폰은 세 대인데
-         기기 줄이 **열두 개**였습니다. 한 대는 일곱 개였습니다.
-         그러면 한 번 걸 때 푸시가 일곱 번 나갑니다. 죽은 번호로 간
-         것들이 **뒤늦게 배달되면서** 끊은 뒤에 벨이 다시 울렸습니다.
-
-       무엇을 하는가
-         새 줄을 만든 김에, 이 계정의 옛 줄을 치웁니다.
-           ① 30일 넘게 안 쓴 줄은 지웁니다
-           ② 그러고도 다섯 개가 넘으면 오래된 것부터 지웁니다
-         다섯 개면 폰·태블릿을 여러 대 쓰는 분도 넉넉합니다.
-
-       ⚠ 실패해도 조용히 넘어갑니다. 등록 자체는 이미 끝났습니다. */
-    try {
-      var cut = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-      await AL.sb.from('devices')
-        .delete().eq('account_id', uid).lt('last_seen_at', cut);
-
-      var mine = await AL.sb.from('devices')
-        .select('id').eq('account_id', uid)
-        .order('last_seen_at', { ascending: false });
-
-      var rows = (mine && mine.data) || [];
-      if (rows.length > 5) {
-        var doomed = rows.slice(5).map(function(r){ return r.id; });
-        await AL.sb.from('devices').delete().in('id', doomed);
-        console.log('[push] 안 쓰는 기기 줄 ' + doomed.length + '개를 치웠습니다');
-      }
-    } catch (e) {
-      console.warn('[push] 옛 기기 줄 치우기 실패 — 등록은 됐습니다', e);
+      return false;
     }
 
+    AL._pushErr = '';
+    try { localStorage.setItem(AL.DEVICE_ID_KEY, res.data); } catch (e) {}
+    console.log('[push] 기기 줄을 저장했습니다');
+
+    /* 옛 줄 치우기는 그대로 둡니다. 30일 넘게 안 쓴 것과, 이 계정에
+       너무 많이 쌓인 것을 정리합니다. 실패해도 그냥 넘어갑니다. */
+    try { await AL.sweepDevices(); } catch (e) {}
     return true;
 
   } catch (e) {
-    console.warn('[push] 기기 등록 실패 — 앱은 그대로 씁니다', e);
+    AL._pushErr = '기기 줄 저장 실패: ' + (e.message || String(e));
+    console.error('[push] 🔴', AL._pushErr);
     return false;
   }
+};
+
+/* 🔴 2026-09-15 — 옛 줄 치우기를 따로 뺐습니다.
+   ⚠ 실패해도 통화에는 지장이 없습니다. 조용히 넘어갑니다.
+   ⚠ DELETE 정책과 권한이 있어야 실제로 지워집니다. 없으면 아무 일도
+     안 일어나는데, 오류도 안 납니다(함정 ⑦). */
+AL.sweepDevices = async function(){
+  try {
+    var sess = await AL.sb.auth.getSession();
+    if (!sess.data.session) return;
+    var uid = sess.data.session.user.id;
+
+    /* ① 30일 넘게 안 쓴 줄 */
+    var old = new Date(Date.now() - 30 * 86400000).toISOString();
+    await AL.sb.from('devices').delete()
+      .eq('account_id', uid).lt('last_seen_at', old);
+
+    /* ② 그래도 많으면 최근 다섯 줄만 남깁니다.
+       폰을 다섯 대 넘게 쓰는 분은 거의 없습니다. */
+    var mine = await AL.sb.from('devices')
+      .select('id').eq('account_id', uid).order('last_seen_at', { ascending: false });
+    var rows = mine.data || [];
+    if (rows.length > 5) {
+      var doomed = rows.slice(5).map(function(r){ return r.id; });
+      await AL.sb.from('devices').delete().in('id', doomed);
+    }
+  } catch (e) { /* 못 치워도 통화는 됩니다 */ }
 };
 
 /* 앱이 켜질 때 한 번 부릅니다. 브라우저면 아무 일도 안 합니다. */
