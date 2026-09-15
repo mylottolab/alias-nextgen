@@ -3036,7 +3036,10 @@ AL.savePushToken = async function(token, platform){
       p_platform: platform || 'web',
     });
     if (res.error) {
-      AL._pushErr = '기기 줄 저장 실패: ' +
+      /* 🔴 2026-09-15 — 어느 코드가 도는지 구별되게 표를 붙입니다.
+         옛 판과 새 판의 오류 문구가 똑같아서, 파일이 안 올라간 건지
+         함수가 실패한 건지 알 수가 없었습니다. */
+      AL._pushErr = '[claim] 기기 줄 저장 실패: ' +
         (res.error.message || res.error.code || '알 수 없음');
       console.error('[push] 🔴', AL._pushErr);
       return false;
