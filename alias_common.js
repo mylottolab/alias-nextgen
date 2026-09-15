@@ -890,6 +890,8 @@ AL.STR = {
                   en:'Could not load PayPal. Please use card payment.' },
   plNeedName:   { kr:'이름을 적어주세요.', en:'Please enter your name.' },
   plPickFirst:  { kr:'먼저 기간을 골라주세요.', en:'Please choose a period first.' },
+  plIniSdk:     { kr:'결제 모듈을 불러오지 못했습니다. 잠시 뒤 다시 해주세요.',
+                  en:'Could not load the payment module. Please try again shortly.' },
   plFailed:     { kr:'결제를 마치지 못했습니다.', en:'Payment could not be completed.' },
   plNote:       { kr:'· 기간이 끝나도 받기와 읽기는 그대로 됩니다.\n· 남은 기간이 있으면 이어서 더해집니다.\n· 자동으로 다시 결제되지 않습니다.',
                   en:'· Receiving and reading keep working after it ends.\n· Remaining time is added on.\n· It does not renew automatically.' },
