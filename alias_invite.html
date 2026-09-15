@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260915f">
-<link rel="stylesheet" href="alias_theme.css?v=20260915f">
+<link rel="stylesheet" href="alias_common.css?v=20260915h">
+<link rel="stylesheet" href="alias_theme.css?v=20260915h">
 <script src="alias_qrlib.js"></script>
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260915f"></script>
-<script src="alias_qr.js?v=20260915f"></script>
+<script src="alias_common.js?v=20260915h"></script>
+<script src="alias_qr.js?v=20260915h"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -544,6 +544,10 @@ function prPaint(){
     '<p class="cap">' + AL.esc(AL.t('prFace', { face: prFace })) + '</p>' +
     '<p class="cap">' + AL.esc(AL.t('prPick')) + '</p>' +
     (uses <= 1 ? '<div class="warn">' + AL.esc(AL.t('prOnce')) + '</div>' : '') +
+    /* 🔴 2026-09-15 — 종이는 통제가 안 됩니다. 반드시 알려드립니다.
+       사진 한 장 찍히면 단톡방으로 퍼집니다. 쓰임 횟수가 열이면
+       낯선 아홉 명이 들어옵니다. */
+    '<div class="warn">' + AL.esc(AL.t('prPaperWarn')) + '</div>' +
     opts.map(function(o){
       return '<button class="opt' + (prMode === o[0] ? ' on' : '') + '" data-pm="' + o[0] + '">' +
         '<span class="dot"></span>' +
@@ -657,8 +661,9 @@ function showPreview(){
 
   document.getElementById('prPvBg').style.display = 'block';
   document.getElementById('prPvTip').style.display = 'block';
-  document.getElementById('prPvTip').textContent =
-    AL.t('prPvTip') + ' ' + AL.t('prPdfTip');
+  document.getElementById('prPvTip').textContent = IN_APP
+    ? (AL.t('prPvTip') + ' ' + AL.t('prNoApp1'))
+    : (AL.t('prPvTip') + ' ' + AL.t('prPdfTip'));
   document.getElementById('prPvBar').classList.add('on');
 }
 
@@ -674,11 +679,47 @@ document.getElementById('prPvBack').addEventListener('click', function(){
   prPaint();
   prSheetShow(true);
 });
+/* 🔴🔴 2026-09-15 — 안드로이드 앱 화면(웹뷰)은 인쇄를 못 합니다.
+
+   window.print() 를 불러도 **아무 일도 안 일어납니다.** 오류도 안 납니다.
+   안드로이드 웹뷰가 그 기능을 아예 안 갖고 있기 때문입니다.
+   브라우저(삼성 인터넷·크롬)와 PC 에서는 멀쩡히 됩니다.
+
+   ⚠ 조용히 아무 일도 안 하는 것이 제일 나쁩니다. 손님은 단추가
+     고장난 줄 압니다. 그래서 미리 갈라 말씀드립니다(함정 76).
+
+   ⚠ 앱에서도 되게 하려면 자바에 인쇄 창구를 내야 합니다(PrintManager).
+     APK 를 다시 만들어야 하는 일이라 나중에 합니다. */
+const IN_APP = !!(window.AliasNative ||
+  (window.Capacitor && window.Capacitor.isNativePlatform &&
+   window.Capacitor.isNativePlatform()));
+
 document.getElementById('prPvGo').addEventListener('click', function(){
+  if (IN_APP) { tellNoPrint(); return; }
   /* ⚠ 미리보기를 켠 채로 인쇄합니다. 인쇄용 규칙이 화면용 배치를
      되돌리므로 그대로 A4 에 놓입니다. */
   window.print();
 });
+
+function tellNoPrint(){
+  const url = location.origin + location.pathname;
+  hidePreview();
+  document.getElementById('prBox').innerHTML =
+    '<h3>' + AL.esc(AL.t('prNoApp')) + '</h3>' +
+    '<p class="cap">' + AL.esc(AL.t('prNoApp1')) + '</p>' +
+    '<p class="cap">' + AL.esc(AL.t('prNoApp2')) + '</p>' +
+    '<div class="warn" style="word-break:break-all;font-size:12px">' +
+      AL.esc(url) + '</div>' +
+    '<div class="fb">' +
+      '<button id="npNo">' + AL.esc(AL.t('close')) + '</button>' +
+      '<button id="npCopy" class="go">' + AL.esc(AL.t('prCopyUrl')) + '</button>' +
+    '</div>';
+  prSheetShow(true);
+  document.getElementById('npNo').addEventListener('click', function(){ prSheetShow(false); });
+  document.getElementById('npCopy').addEventListener('click', function(){
+    AL.copyText(url, this);
+  });
+}
 document.getElementById('prPvBg').addEventListener('click', hidePreview);
 
 /* 🔴🔴 2026-09-15 — 인쇄 창이 닫힌 뒤

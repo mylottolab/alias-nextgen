@@ -977,6 +977,30 @@ AL.STR = {
                en:'If you sent it to a printer, you are done.' },
   prShare:   { kr:'초대 링크 공유하기', en:'Share invite link' },
   qrPrint:   { kr:'QR 인쇄', en:'Print QR' },
+
+  /* 🔴 2026-09-15 — 종이로 뿌릴 때의 경고 */
+  prPaperWarn:{ kr:'⚠ 종이는 사진 찍혀 퍼질 수 있습니다. 만료 날짜를 짧게 잡고, 쓰임 횟수는 나눠줄 장수만큼만 두세요.',
+               en:'⚠ Paper can be photographed and passed around. Set a short expiry and only as many uses as sheets you hand out.' },
+
+  /* 앱 안에서는 인쇄가 안 됩니다 */
+  prNoApp:   { kr:'앱에서는 인쇄가 안 됩니다', en:'Printing does not work inside the app' },
+  prNoApp1:  { kr:'안드로이드 앱 화면은 인쇄 기능을 갖고 있지 않습니다. 브라우저나 PC 에서 열면 인쇄와 PDF 저장이 됩니다.',
+               en:'The app view has no print support. Open it in a browser or on a PC to print or save a PDF.' },
+  prNoApp2:  { kr:'아래 주소를 눌러 복사한 뒤, 삼성 인터넷이나 크롬에서 열어주세요.',
+               en:'Copy the link below and open it in Samsung Internet or Chrome.' },
+  prCopyUrl: { kr:'주소 복사하기', en:'Copy link' },
+
+  /* 🔴 2026-09-15 — 전화를 받을 수 없는 상태 알림 */
+  pshNone:   { kr:'이 폰은 지금 전화를 받을 수 없습니다',
+               en:'This phone cannot receive calls right now' },
+  pshFix:    { kr:'고치기', en:'Fix' },
+  pshTrying: { kr:'하는 중…', en:'Working…' },
+  pshOk:     { kr:'됐습니다. 이제 전화를 받을 수 있습니다.',
+               en:'Done. You can receive calls now.' },
+  pshSlow:   { kr:'조금 더 걸릴 수 있습니다. 잠시 뒤 화면을 새로 열어보세요.',
+               en:'It may take a moment. Reopen this screen shortly.' },
+  pshDenied: { kr:'알림이 꺼져 있습니다.\n설정 → 애플리케이션 → Alias → 알림 을 켜주세요.',
+               en:'Notifications are off.\nSettings → Apps → Alias → Notifications.' },
   prGo:      { kr:'인쇄하기', en:'Print' },
   prHint:    { kr:'인쇄 창에서 "PDF 로 저장" 을 고르시면 파일로 받으실 수 있습니다.',
                en:'Choose "Save as PDF" in the print dialog to get a file.' },
@@ -1562,6 +1586,86 @@ AL._planCss = function(){
     '#planBox .fb a{background:rgba(143,227,176,.22);color:#8FE3B0;' +
       'border-color:rgba(143,227,176,.45)}';
   document.head.appendChild(st);
+};
+
+/* =====================================================================
+   🔴🔴 2026-09-15 신설 — "이 폰은 전화를 받을 수 있는가"
+
+   무슨 일이 났나
+     B 폰이 기기 번호를 안 올려서 전화가 안 왔습니다. 그런데 화면에는
+     아무 표시도 없었습니다. 콘솔에만 남아서 USB 를 꽂아야 알 수 있었죠.
+
+   ⚠ 손님은 더 심합니다. 전화를 못 받는 줄도 모르고 지냅니다.
+     상대는 계속 걸고, 손님은 왜 연락이 없나 싶습니다.
+     **못 받는 상태라면 반드시 알려야 합니다.**
+
+   무엇을 보는가
+     내 계정에 push_token 이 있는 기기 줄이 하나라도 있는가.
+     없으면 띠를 띄우고 [다시 시도] 를 줍니다.
+
+   ⚠ 브라우저에서는 아무것도 안 합니다. PC 로 쓰는 분에게는
+     원래 푸시가 없습니다.
+   ===================================================================== */
+AL.pushReady = async function(){
+  if (!AL.isNativeApp()) return true;          // 브라우저는 볼 것 없습니다
+  try {
+    var sess = await AL.sb.auth.getSession();
+    if (!sess.data.session) return true;
+    var uid = sess.data.session.user.id;
+    var res = await AL.sb.from('devices')
+      .select('id').eq('account_id', uid).not('push_token', 'is', null).limit(1);
+    if (res.error) throw res.error;
+    return !!(res.data && res.data.length);
+  } catch (e) {
+    console.warn('[push] 기기 줄을 못 읽었습니다', e);
+    return true;   // 모르면 조용히 둡니다. 헛경고가 더 나쁩니다.
+  }
+};
+
+AL.showPushBar = async function(){
+  if (await AL.pushReady()) {
+    var old = document.getElementById('pushBar');
+    if (old) old.remove();
+    return;
+  }
+  AL._planCss();
+  var host = document.querySelector('.wrap') || document.body;
+  var old2 = document.getElementById('pushBar');
+  if (old2) old2.remove();
+
+  var bar = document.createElement('div');
+  bar.id = 'pushBar';
+  bar.className = 'over';
+  bar.innerHTML = '<span>' + AL.esc(AL.t('pshNone')) + '</span>' +
+    '<a href="#" id="pshFix">' + AL.esc(AL.t('pshFix')) + '</a>';
+  bar.style.cssText =
+    'display:flex;align-items:center;gap:10px;margin:0 0 12px;padding:11px 14px;' +
+    'border-radius:12px;font-size:13.5px;line-height:1.5;font-weight:600;' +
+    'word-break:keep-all;background:rgba(255,120,120,.15);color:#FFB4B4;' +
+    'border:1px solid rgba(255,120,120,.4)';
+  var span = bar.querySelector('span'); span.style.flex = '1';
+  var a = bar.querySelector('a');
+  a.style.cssText = 'flex:0 0 auto;padding:8px 14px;border-radius:999px;' +
+    'text-decoration:none;font-weight:700;font-size:13px;' +
+    'background:rgba(255,255,255,.14);color:inherit;border:1px solid currentColor';
+
+  host.insertBefore(bar, host.firstChild);
+
+  a.addEventListener('click', async function(e){
+    e.preventDefault();
+    a.textContent = AL.t('pshTrying');
+    var ok = await AL.registerPush();
+    /* 번호가 오는 데 잠깐 걸립니다. 조금 기다렸다 다시 봅니다. */
+    setTimeout(async function(){
+      if (await AL.pushReady()) {
+        bar.remove();
+        alert(AL.t('pshOk'));
+      } else {
+        a.textContent = AL.t('pshFix');
+        alert(AL.t(ok ? 'pshSlow' : 'pshDenied'));
+      }
+    }, 2500);
+  });
 };
 
 AL.showPlanBar = async function(){
