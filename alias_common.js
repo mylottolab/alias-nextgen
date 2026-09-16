@@ -1422,14 +1422,37 @@ AL.faceUrl = async function(path){
   if (!path) return null;
   var now = Date.now();
   var hit = AL._faceUrls[path];
-  if (hit && hit.until > now) return hit.url;
+  if (hit && hit.until > now) return hit.url;   // url 이 null 이면 "없음" 을 기억한 것
   try {
     var res = await AL.sb.storage.from(AL.FACE_BUCKET).createSignedUrl(path, 3600);
     if (res.error) throw res.error;
     AL._faceUrls[path] = { url: res.data.signedUrl, until: now + 50 * 60 * 1000 };
     return res.data.signedUrl;
   } catch (e) {
-    console.warn('[face] 사진 주소를 못 받았습니다', e);
+    /* 🔴 2026-09-16 — 이유를 그대로 남깁니다.
+       "이어진 사람의 얼굴만 봅니다" 정책에 막히면 여기로 옵니다.
+       그때는 관계가 끊겼거나(status='closed') 정책이 잘못된 것입니다. */
+    var msg = (e && e.message) || String(e);
+    console.warn('[face] 사진 주소를 못 받았습니다: ' + path + ' — ' + msg);
+
+    /* 🔴🔴 2026-09-17 — 파일이 없으면 **더 묻지 않습니다.**
+
+       무슨 일이 났나
+         DB(personas.avatar_url)에는 경로가 적혀 있는데 서랍에는 파일이
+         없었습니다. 경로 형식을 바꾸면서 옛 파일이 사라진 것입니다.
+         화면은 그것도 모르고 **줄을 그릴 때마다 서버에 물었습니다.**
+           StorageApiError: Object not found
+
+       ⚠ 없는 파일을 열 줄마다 매번 물으면 헛걸음이 쌓입니다.
+         연락처에 스무 명이면 스무 번입니다.
+
+       → 없다고 답한 경로는 잠시 기억해 두고 다시 안 묻습니다.
+       ⚠ 지우지는 않습니다. 잠깐 서버가 흔들린 것일 수도 있으니까요.
+         화면을 새로 열면 다시 물어봅니다. */
+    if (String(msg).indexOf('not found') >= 0 ||
+        String(msg).indexOf('Not Found') >= 0) {
+      AL._faceUrls[path] = { url: null, until: now + 10 * 60 * 1000 };
+    }
     return null;
   }
 };
@@ -1440,17 +1463,22 @@ AL.faceUrl = async function(path){
      비어 보이지 않습니다. */
 AL.paintFaces = async function(root){
   var els = (root || document).querySelectorAll('[data-face]');
+  var fail = 0;
   for (var i = 0; i < els.length; i++) {
     var el = els[i];
     var path = el.getAttribute('data-face');
     if (!path) continue;
     var url = await AL.faceUrl(path);
-    if (!url) continue;
+    if (!url) { fail++; continue; }
     el.style.backgroundImage = 'url("' + url + '")';
     el.style.backgroundSize = 'cover';
     el.style.backgroundPosition = 'center';
     el.textContent = '';                  // 글자를 지웁니다
   }
+  /* 🔴 2026-09-16 — 못 가져온 게 있으면 남깁니다.
+     사진이 안 보이는데 아무 말도 없으면 "사진이 없는 건지 못 가져온
+     건지" 알 수가 없습니다(함정 76). */
+  if (fail) console.warn('[face] 사진 ' + fail + '장을 못 가져왔습니다');
 };
 
 /* 사진을 올립니다.
