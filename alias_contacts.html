@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260916a">
-<link rel="stylesheet" href="alias_theme.css?v=20260916a">
+<link rel="stylesheet" href="alias_common.css?v=20260916c">
+<link rel="stylesheet" href="alias_theme.css?v=20260916c">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260916a"></script>
-<script src="alias_call.js?v=20260916a"></script>
+<script src="alias_common.js?v=20260916c"></script>
+<script src="alias_call.js?v=20260916c"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -77,6 +77,14 @@ document.addEventListener("DOMContentLoaded", function(){
 #popmenu .spdgrid button.used{opacity:.6}
 #popmenu .spdgrid button small{display:block;font-size:10.5px;font-weight:400;
   opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+</style>
+<style>
+/* 🔴 2026-09-16 — 이름 옆 작은 내 얼굴표
+   ⚠ 공용 CSS 를 안 건드리려고 여기에 둡니다. */
+.cname .mymark{display:inline-flex;align-items:center;justify-content:center;
+  width:19px;height:19px;flex:0 0 19px;margin-left:7px;vertical-align:middle;
+  font-size:10px;font-weight:800;line-height:1;
+  background-repeat:no-repeat;background-size:cover;background-position:center}
 </style>
 </head>
 <body class="tabbed" data-t-title="ttContacts">
@@ -260,18 +268,41 @@ function rowHtml(r){
     /* 🔴 2026-09-13 — 별칭마다 색과 모양이 다릅니다.
        이 앱의 핵심(관계마다 다른 나)이 눈에 보이게 하는 자리입니다.
        ⚠ 방은 상대가 여럿이라 방 이름으로 칠합니다. */
-    /* ⚠ 여기 동그라미는 **내가 이 관계에서 쓰는 별칭** 입니다.
-       상대 얼굴이 아닙니다. "내가 지금 누구인가" 가 이 앱의 핵심이니까요.
-       🔴 2026-09-13 — 사진이 있으면 사진을, 없으면 색 얼굴표를. */
+    /* 🔴🔴 2026-09-16 — 큰 것은 **상대**, 작은 것은 **나**.
+
+       무엇이 잘못돼 있었나
+         여기 동그라미가 "내가 이 관계에서 쓰는 별칭" 이었습니다.
+         그래서 같은 별칭을 쓰는 관계가 **전부 같은 사진**이었습니다.
+           개인용 · 24시편의점 · YoungMen  → 모두 아기 사진
+         **손님이 상대를 못 고릅니다.** 고장에 가까웠습니다.
+
+       다른 메신저는 상대 얼굴을 보고 누르는 데 익숙합니다. 그 습관을
+       거스를 이유가 없습니다. 상대를 찾는 것이 이 목록의 일이니까요.
+
+       그러면 "내가 지금 누구인가" 는 어디로 가나
+         → 이름 오른쪽에 **작은 얼굴표**로 둡니다. 색과 모양이 다르므로
+           작아도 구별됩니다. 확인하는 용도라 작아도 됩니다.
+
+       ⚠ 방은 상대가 여럿이라 상대 사진이 없습니다. 방 이름으로 칠합니다. */
     '<div class="cav" data-go="' + AL.esc(r.link_id) + '"' +
-      AL.faceAttr(isRoom ? (r.room_name || '') : (r.my_face || '')) +
-      (myFaces[r.my_face] ? ' data-face="' + AL.esc(myFaces[r.my_face]) + '"' : '') + '>' +
-      AL.esc(isRoom ? '👥' : AL.initial(r.my_face)) + '</div>' +
+      AL.faceAttr(isRoom ? (r.room_name || '') : (shown || '')) +
+      (!isRoom && r.peer_avatar
+        ? ' data-face="' + AL.esc(r.peer_avatar) + '"' : '') + '>' +
+      AL.esc(isRoom ? '👥' : AL.initial(shown)) + '</div>' +
     '<div class="cmid" data-go="' + AL.esc(r.link_id) + '">' +
       '<div class="cname">' +
         (e.speed_dial ? '<span class="spd">' + AL.esc(e.speed_dial) + '</span>' : '') +
         (e.starred ? '<span class="star">★</span>' : '') +
         (r.pinned ? '▲ ' : '') + AL.esc(shown) +
+        /* 🔴 2026-09-16 — 이 관계에서 **내가 쓰는 얼굴**.
+           작지만 색과 모양이 달라 한눈에 갈립니다.
+           ⚠ 방은 내 얼굴이 하나라 굳이 안 보여줍니다. */
+        (!isRoom
+          ? '<span class="mymark"' + AL.faceAttr(r.my_face || '') +
+            (myFaces[r.my_face] ? ' data-face="' + AL.esc(myFaces[r.my_face]) + '"' : '') +
+            ' title="' + AL.esc(r.my_face || '') + '">' +
+            AL.esc(AL.initial(r.my_face)) + '</span>'
+          : '') +
         (n ? '<span class="unread">' + AL.esc(n > 99 ? '99+' : n) + '</span>' : '') +
       '</div>' +
       (sub ? '<div class="csub">' + AL.esc(sub) + '</div>' : '') +

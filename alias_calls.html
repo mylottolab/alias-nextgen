@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260916a">
-<link rel="stylesheet" href="alias_theme.css?v=20260916a">
+<link rel="stylesheet" href="alias_common.css?v=20260916c">
+<link rel="stylesheet" href="alias_theme.css?v=20260916c">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260916a"></script>
-<script src="alias_call.js?v=20260916a"></script>
+<script src="alias_common.js?v=20260916c"></script>
+<script src="alias_call.js?v=20260916c"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -29,6 +29,13 @@ document.addEventListener("DOMContentLoaded", function(){
   AL.bootTheme();
 });
 </script>
+<style>
+/* 🔴 2026-09-16 — 이름 옆 작은 내 얼굴표 (연락처·부름과 같은 모양) */
+.cname .mymark{display:inline-flex;align-items:center;justify-content:center;
+  width:18px;height:18px;flex:0 0 18px;margin-left:7px;vertical-align:middle;
+  font-size:9.5px;font-weight:800;line-height:1;
+  background-repeat:no-repeat;background-size:cover;background-position:center}
+</style>
 </head>
 <body class="tabbed" data-t-title="clHistory">
 <div class="wrap">
@@ -86,13 +93,30 @@ function rowHtml(r){
     ? Math.floor(r.duration_seconds / 60) + ':' + String(r.duration_seconds % 60).padStart(2, '0')
     : '';
   return '<div class="crow callrow" data-go="' + AL.esc(r.link_id) + '">' +
-    /* 🔴 2026-09-13 — 어떤 나로 한 통화였는지가 색·모양·사진으로 보입니다.
-       기록을 되짚을 때 "내가 그때 누구였더라" 가 한눈에 풀립니다. */
-    '<div class="cav"' + AL.faceAttr(r.my_face || '') +
-      (myFaces[r.my_face] ? ' data-face="' + AL.esc(myFaces[r.my_face]) + '"' : '') + '>' +
-      AL.esc(AL.initial(r.my_face)) + '</div>' +
+    /* 🔴🔴 2026-09-16 — **큰 쪽이 상대**로 통일했습니다.
+
+       사진도 글자도 큰 쪽이 상대를 가리킵니다. 연락처·부름 화면과
+       같은 규칙입니다. 규칙이 하나여야 손님이 안 헷갈립니다.
+
+       전에는 큰 동그라미가 **내 얼굴**이었습니다. "내가 그때 누구였더라"
+       를 중히 본 것인데, 정작 통화기록에서 제일 흔한 일은
+       **"이 사람에게 다시 걸자"** 입니다. 그러려면 상대가 보여야 합니다.
+
+       "내가 그때 누구였나" 는 이름 옆 작은 얼굴표로 남습니다.
+
+       ⚠ my_calls() 가 상대 사진을 안 줄 수도 있습니다. 그때는 상대
+         이름의 첫 글자와 색이 나옵니다. 그것만으로도 줄마다 갈립니다. */
+    '<div class="cav"' + AL.faceAttr(shown || '') +
+      (r.peer_avatar ? ' data-face="' + AL.esc(r.peer_avatar) + '"' : '') + '>' +
+      AL.esc(AL.initial(shown)) + '</div>' +
     '<div class="cmid">' +
-      '<div class="cname">' + AL.esc(shown) + '</div>' +
+      '<div class="cname">' + AL.esc(shown) +
+        /* 이 통화에서 내가 쓴 얼굴 */
+        '<span class="mymark"' + AL.faceAttr(r.my_face || '') +
+          (myFaces[r.my_face] ? ' data-face="' + AL.esc(myFaces[r.my_face]) + '"' : '') +
+          ' title="' + AL.esc(r.my_face || '') + '">' +
+          AL.esc(AL.initial(r.my_face)) + '</span>' +
+      '</div>' +
       '<div class="csub"><span class="dir' + (missed ? ' missed' : '') + '">' +
         AL.esc(dirLabel(r)) + '</span>' +
         (dur ? ' · ' + AL.esc(dur) : '') +

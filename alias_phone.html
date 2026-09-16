@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260916a">
-<link rel="stylesheet" href="alias_theme.css?v=20260916a">
+<link rel="stylesheet" href="alias_common.css?v=20260916c">
+<link rel="stylesheet" href="alias_theme.css?v=20260916c">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260916a"></script>
-<script src="alias_call.js?v=20260916a"></script>
+<script src="alias_common.js?v=20260916c"></script>
+<script src="alias_call.js?v=20260916c"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -93,6 +93,12 @@ document.addEventListener("DOMContentLoaded", function(){
   border-radius:.5em;text-align:center;font-weight:700;font-size:12.5px;
   background:rgba(120,200,150,.18);color:#8FE3B0}
 .prow .star{margin-right:.3em;color:#F2C94C}
+/* 🔴 2026-09-16 — 이름 옆 작은 내 얼굴표 */
+.pname .mymark{display:inline-flex;align-items:center;justify-content:center;
+  width:18px;height:18px;flex:0 0 18px;margin-left:6px;vertical-align:middle;
+  font-size:9.5px;font-weight:800;line-height:1;
+  background-repeat:no-repeat;background-size:cover;background-position:center}
+
 /* 🔴 2026-09-12 — 단추가 셋(☏ 📹 💬)이 되어 조금 줄였습니다.
    좁은 폰에서 이름이 밀리지 않게 합니다. */
 .prow{gap:7px}
@@ -303,15 +309,25 @@ function paintList(){
     const e = ex(r);
     const room = isRoom(r);
     return '<div class="prow">' +
-      /* 🔴 2026-09-13 — 별칭마다 다른 색·모양 */
-      '<div class="pav"' + AL.faceAttr(room ? (r.room_name || '') : (r.my_face || '')) +
-        (myFaces[r.my_face] ? ' data-face="' + AL.esc(myFaces[r.my_face]) + '"' : '') + '>' +
-        AL.esc(room ? '👥' : AL.initial(r.my_face)) + '</div>' +
+      /* 🔴🔴 2026-09-16 — 큰 것은 **상대**, 작은 것은 **나**.
+         여기도 상대를 고르는 자리입니다. 상대 얼굴이 보여야 고릅니다.
+         (연락처와 같은 이유 — 그쪽 주석을 읽어주세요) */
+      '<div class="pav"' + AL.faceAttr(room ? (r.room_name || '') : (nameOf(r) || '')) +
+        (!room && r.peer_avatar
+          ? ' data-face="' + AL.esc(r.peer_avatar) + '"' : '') + '>' +
+        AL.esc(room ? '👥' : AL.initial(nameOf(r))) + '</div>' +
       '<div class="pmid" data-go="' + AL.esc(r.link_id) + '">' +
         '<div class="pname">' +
           (e.speed_dial ? '<span class="spd">' + AL.esc(e.speed_dial) + '</span>' : '') +
           (e.starred ? '<span class="star">★</span>' : '') +
           AL.esc(nameOf(r)) +
+          /* 🔴 2026-09-16 — 이 관계에서 내가 쓰는 얼굴 */
+          (!room
+            ? '<span class="mymark"' + AL.faceAttr(r.my_face || '') +
+              (myFaces[r.my_face] ? ' data-face="' + AL.esc(myFaces[r.my_face]) + '"' : '') +
+              ' title="' + AL.esc(r.my_face || '') + '">' +
+              AL.esc(AL.initial(r.my_face)) + '</span>'
+            : '') +
         '</div>' +
         '<div class="psub">' + AL.esc(AL.fmtWhen(r.last_activity_at)) +
           (room ? ' · ' + AL.esc(AL.t('phRoomOnly')) : '') + '</div>' +
