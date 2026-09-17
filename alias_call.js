@@ -10,6 +10,7 @@
    2026-09-11  🔴 중계(TURN)가 없으면 콘솔에 크게 알림
    2026-09-11  🔴 소리가 오가는 양을 재서 화면에 보여줌 (bytes)
    2026-09-11  🔴 붙는 과정을 화면에 단계별로 보여줌 (ice-state)
+   2026-09-19  🔴 통화 녹음 — 양쪽 동의와 보관 기간 협의
    2026-09-12  🔴 영상 화질·보내는 양에 상한 (700kbps · 20장/초 · 640x480)
    2026-09-12  🔴 거는 과정을 다섯 단계로 화면에 보여줌 (어디서 멈추는지)
    2026-09-12  🔴 영상통화 — 카메라 끄고 받기 · 앞뒤 전환
@@ -354,6 +355,12 @@ async function buildPeer(iceServers){
     if (s === 'connected') {
       if (AL.call.dropTimer) { clearTimeout(AL.call.dropTimer); AL.call.dropTimer = null; }
   if (AL.call.endWatch) { clearInterval(AL.call.endWatch); AL.call.endWatch = null; }
+  /* 🔴 2026-09-19 — 녹음 중에 통화가 끝나면 그릇을 닫습니다.
+     ⚠ 저장은 화면이 합니다. 여기서는 치우기만 합니다. */
+  if (AL._rec) {
+    try { AL._rec.mr.stop(); } catch (e) {}
+    try { AL._rec.ctx.close(); } catch (e) {}
+  }
       capVideo();            // 🔴 2026-09-12 — 붙은 뒤 한 번 더 확실히
       startStats();          // 🔴 2026-09-11 — 소리가 오가는지 재기 시작
       say('connected');
@@ -681,6 +688,23 @@ AL.answerCall = async function(opts){
 /* ── 신호 처리 ───────────────────────────────────────────────────── */
 async function handleSignal(m){
   if (!m || !m.kind) return;
+
+  /* 🔴🔴 2026-09-19 — 녹음 협의는 이 길로 오갑니다.
+
+     rec-ask   "녹음합시다. ○일 보관"        신청
+     rec-yes   "그대로 좋습니다"              허락
+     rec-cut   "○일이면 허락하겠습니다"       줄여서 허락
+     rec-go    "그렇게 합시다. 시작합니다"     신청한 쪽의 마지막 확인
+     rec-no    "거절합니다"
+     rec-stop  "멈춥시다"                     누구든
+
+     ⚠ 여기서는 전달만 합니다. 판단은 화면이 합니다.
+     ⚠ 통화가 붙은 뒤에만 오갑니다. 채널이 살아 있어야 하니까요. */
+  if (m.kind.indexOf('rec-') === 0) {
+    console.log('[rec] 신호:', m.kind);
+    say('rec', { kind: m.kind, days: m.days, who: m.who });
+    return;
+  }
 
   if (m.kind === 'offer') {
     if (!AL.call.pc) return;
@@ -1115,6 +1139,136 @@ AL.switchCamera = async function(){
     return AL.call.local;
   } catch (e) {
     console.warn('[call] 카메라 전환 실패', e);
+    return null;
+  }
+};
+
+/* =====================================================================
+   🔴🔴 2026-09-19 신설 — 통화 녹음
+
+   원칙 (회사 결정 2026-09-17)
+     ① 시작하면 양쪽 화면에 크게 · 통화 내내
+     ② 상대가 동의하지 않으면 시작되지 않습니다
+     ③ 상대는 언제든 중단을 요구할 수 있습니다
+     ④ 보관 기간에 상한 — 최장 90일, 두 사람이 정합니다
+
+   ⚠ ②를 빼지 마세요. **몰래 녹음할 수 있는 앱이 되면 이 제품이
+     쌓아온 것이 무너집니다.** 반대로 "알리고 녹음하는 앱" 이라면
+     자랑거리가 됩니다.
+
+   ⚠ 누가 걸었는지는 상관없습니다. **통화 중 누구든** 신청할 수
+     있습니다. 상담을 받는 쪽이 기록을 남기고 싶을 때가 더 많습니다.
+   ===================================================================== */
+AL.sendRec = function(kind, data){
+  try {
+    var msg = Object.assign({ kind: kind }, data || {});
+    AL.call.channel && AL.call.channel.send({
+      type: 'broadcast', event: 'sig', payload: msg,
+    });
+  } catch (e) { console.warn('[rec] 신호를 못 보냈습니다', e); }
+};
+
+/* 내 소리와 상대 소리를 한 파일에 담습니다.
+
+   ⚠ 한쪽만 담으면 쓸모가 없습니다. 대화는 두 사람이 하는 것이니까요.
+   ⚠ 두 소리를 섞으려면 AudioContext 로 한 줄기로 모아야 합니다.
+     그냥 두 스트림을 넘기면 첫 번째 것만 담깁니다.
+   ⚠ 브라우저마다 담을 수 있는 그릇이 다릅니다. 되는 것을 찾아 씁니다. */
+AL._rec = null;
+
+AL.recSupported = function(){
+  return !!(window.MediaRecorder && (window.AudioContext || window.webkitAudioContext));
+};
+
+AL.startRecording = async function(){
+  if (!AL.recSupported()) throw new Error(AL.t('rcNoSupport'));
+  if (AL._rec) return;                       // 이미 담는 중
+
+  var Ctx = window.AudioContext || window.webkitAudioContext;
+  var ctx = new Ctx();
+  var dest = ctx.createMediaStreamDestination();
+  var n = 0;
+
+  if (AL.call.local && AL.call.local.getAudioTracks().length) {
+    ctx.createMediaStreamSource(AL.call.local).connect(dest); n++;
+  }
+  if (AL.call.remote && AL.call.remote.getAudioTracks().length) {
+    ctx.createMediaStreamSource(AL.call.remote).connect(dest); n++;
+  }
+  if (!n) { try { ctx.close(); } catch (e) {} throw new Error(AL.t('rcNoSupport')); }
+
+  var types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', ''];
+  var mime = '';
+  for (var i = 0; i < types.length; i++) {
+    if (!types[i] || MediaRecorder.isTypeSupported(types[i])) { mime = types[i]; break; }
+  }
+
+  var chunks = [];
+  var mr = new MediaRecorder(dest.stream, mime ? { mimeType: mime } : undefined);
+  mr.ondataavailable = function(e){ if (e.data && e.data.size) chunks.push(e.data); };
+
+  AL._rec = { ctx: ctx, mr: mr, chunks: chunks, mime: mime, startedAt: Date.now() };
+  mr.start(1000);                            // 1초마다 토막을 받아둡니다
+  console.log('[rec] 녹음을 시작했습니다:', mime || '기본', '· 소리 ' + n + '줄기');
+};
+
+AL.stopRecording = function(){
+  return new Promise(function(done){
+    var r = AL._rec;
+    if (!r) { done(null); return; }
+    AL._rec = null;
+    r.mr.onstop = function(){
+      try { r.ctx.close(); } catch (e) {}
+      var blob = new Blob(r.chunks, { type: r.mime || 'audio/webm' });
+      done({ blob: blob, ms: Date.now() - r.startedAt });
+    };
+    try { r.mr.stop(); }
+    catch (e) {
+      try { r.ctx.close(); } catch (e2) {}
+      done(null);
+    }
+  });
+};
+
+AL.recording = function(){ return !!AL._rec; };
+
+/* 녹음 파일을 서랍에 올리고 표에 적습니다.
+   경로는 {link_id}/{call_id}.webm — 첫 칸이 관계 번호라 정책이
+   "그 관계에 내가 있는가" 를 바로 봅니다. 경로가 곧 권한입니다. */
+AL.saveRecording = async function(opts){
+  var sess = await AL.sb.auth.getSession();
+  if (!sess.data.session) throw new Error(AL.t('errNotLoggedIn'));
+
+  var ext = (opts.blob.type.indexOf('mp4') >= 0) ? 'mp4' : 'webm';
+  var path = opts.linkId + '/' + opts.callId + '.' + ext;
+
+  var up = await AL.sb.storage.from('alias-records')
+    .upload(path, opts.blob, { contentType: opts.blob.type, upsert: true });
+  if (up.error) throw up.error;
+
+  var ins = await AL.sb.from('call_records').insert({
+    call_id: opts.callId, link_id: opts.linkId,
+    kind: 'audio', path: path,
+    bytes: opts.blob.size, duration_ms: opts.ms,
+    started_by: sess.data.session.user.id,
+    keep_days: opts.days, asked_days: opts.asked || opts.days,
+    purge_on: new Date().toISOString(),   // ⚠ 서버 트리거가 다시 계산합니다
+  }).select('id').single();
+  if (ins.error) {
+    /* 표에 못 넣었으면 올린 파일도 치웁니다. */
+    try { await AL.sb.storage.from('alias-records').remove([path]); } catch (e) {}
+    throw ins.error;
+  }
+  return ins.data.id;
+};
+
+AL.recordUrl = async function(path){
+  try {
+    var res = await AL.sb.storage.from('alias-records').createSignedUrl(path, 3600);
+    if (res.error) throw res.error;
+    return res.data.signedUrl;
+  } catch (e) {
+    console.warn('[rec] 주소를 못 받았습니다', e);
     return null;
   }
 };

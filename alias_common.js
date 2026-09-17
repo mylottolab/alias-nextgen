@@ -1034,6 +1034,62 @@ AL.STR = {
   glPlay:     { kr:'♪ 소리 켜기', en:'♪ Play music' },
   glStop:     { kr:'♪ 소리 끄기', en:'♪ Stop music' },
   glVisit:    { kr:'갤러리 보기', en:'See gallery' },
+
+  /* 🔴 2026-09-19 신설 — 통화 녹음·녹화
+
+     ⚠ 글씨 하나하나가 **무슨 일이 일어나는지** 말해야 합니다.
+       "15일이면" 처럼 줄여 쓰면 허락인지 거절인지 모호합니다.
+       상대에게 영향을 주는 기능이라 특히 그렇습니다. */
+  rcBtn:      { kr:'🔴 녹음', en:'🔴 Record' },
+  rcAskTtl:   { kr:'이 통화를 녹음합니다', en:'Record this call' },
+  rcAskNote:  { kr:'상대에게 알리고 허락을 받습니다. 몰래 녹음할 수 없습니다.',
+                en:'The other person is told and must agree. Silent recording is not possible.' },
+  rcHowLong:  { kr:'얼마나 보관할까요?', en:'How long should it be kept?' },
+  rcDays:     { kr:'{n}일', en:'{n} days' },
+  rcSend:     { kr:'녹음 신청하기', en:'Ask to record' },
+  rcCancel:   { kr:'그만두기', en:'Cancel' },
+
+  /* 받는 쪽 */
+  rcGotTtl:   { kr:'🔴 녹음 요청', en:'🔴 Recording request' },
+  rcGotBody:  { kr:'{who}님이 이 통화를 녹음하려고 합니다.\n{n}일 동안 보관됩니다.',
+                en:'{who} wants to record this call.\nIt would be kept for {n} days.' },
+  rcGot1:     { kr:'녹음은 두 분 다 들을 수 있습니다',
+                en:'Both of you can listen to it' },
+  rcGot2:     { kr:'두 분 다 언제든 지울 수 있습니다',
+                en:'Either of you can delete it at any time' },
+  rcGot3:     { kr:'보관 기간은 줄이실 수 있습니다',
+                en:'You may shorten how long it is kept' },
+  rcYes:      { kr:'{who}님의 녹음 신청 허락', en:'Allow {who} to record' },
+  rcYesShort: { kr:'보관 기간 {n}일이면 허락', en:'Allow, but keep only {n} days' },
+  rcNo:       { kr:'녹음 거절', en:'Refuse recording' },
+
+  /* 줄여서 왔을 때 — 신청한 쪽에 다시 묻습니다 */
+  rcCutTtl:   { kr:'{n}일로 하시겠답니다', en:'They propose {n} days' },
+  rcCutBody:  { kr:'{who}님이 보관 기간을 {n}일로 줄여 허락하셨습니다. 그렇게 할까요?',
+                en:'{who} agreed but wants it kept for only {n} days. Go ahead?' },
+  rcCutYes:   { kr:'그렇게 합시다', en:'Agreed' },
+  rcCutNo:    { kr:'그만두겠습니다', en:'Never mind' },
+
+  /* 결과 */
+  rcRefused:  { kr:'상대가 녹음을 거절했습니다.', en:'They refused the recording.' },
+  rcGaveUp:   { kr:'녹음을 그만두었습니다.', en:'Recording was called off.' },
+  rcOn:       { kr:'🔴 녹음 중 · {n}일 뒤 지워집니다',
+                en:'🔴 Recording · deleted after {n} days' },
+  rcStop:     { kr:'녹음 멈추기', en:'Stop recording' },
+  rcStopped:  { kr:'녹음을 멈췄습니다.', en:'Recording stopped.' },
+  rcSaved:    { kr:'녹음을 저장했습니다. 통화기록에서 들으실 수 있습니다.',
+                en:'Saved. You can listen from the call log.' },
+  rcFailed:   { kr:'녹음을 저장하지 못했습니다.', en:'Could not save the recording.' },
+  rcWaiting:  { kr:'상대의 답을 기다리는 중…', en:'Waiting for their answer…' },
+  rcNoSupport:{ kr:'이 폰에서는 녹음을 쓸 수 없습니다.',
+                en:'Recording is not available on this device.' },
+
+  /* 통화기록에서 */
+  rcPlay:     { kr:'🔴 녹음 듣기', en:'🔴 Play recording' },
+  rcLeft:     { kr:'{n}일 뒤 지워집니다', en:'Deleted in {n} days' },
+  rcDel:      { kr:'녹음 지우기', en:'Delete recording' },
+  rcDelAsk:   { kr:'이 녹음을 지울까요?\n두 분 모두에게서 사라지고 되돌릴 수 없습니다.',
+                en:'Delete this recording?\nIt disappears for both of you and cannot be undone.' },
   glNone:     { kr:'이 분은 아직 갤러리를 만들지 않았습니다.',
                 en:'This person has not set up a gallery yet.' },
 
