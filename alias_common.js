@@ -995,6 +995,42 @@ AL.STR = {
   prShare:   { kr:'초대 링크 공유하기', en:'Share invite link' },
   qrPrint:   { kr:'QR 인쇄', en:'Print QR' },
 
+  /* 🔴 2026-09-18 신설 — 갤러리 */
+  glTitle:    { kr:'갤러리', en:'Gallery' },
+  glMine:     { kr:'내 갤러리', en:'My gallery' },
+  glEdit:     { kr:'꾸미기', en:'Edit' },
+  glDone:     { kr:'다 됐습니다', en:'Done' },
+  glEmpty:    { kr:'아직 아무것도 없습니다.', en:'Nothing here yet.' },
+  glEmptyMine:{ kr:'사진이나 영상을 올려 이 별칭의 공간을 꾸며보세요.',
+                en:'Add photos or videos to make this alias your own.' },
+  glHeadline: { kr:'대문글', en:'Headline' },
+  glHeadPh:   { kr:'한 줄로 남기고 싶은 말', en:'A line you want to leave' },
+  glAdd:      { kr:'＋ 사진·영상 넣기', en:'＋ Add photo or video' },
+  glMusic:    { kr:'배경음', en:'Background music' },
+  glMusicNo:  { kr:'없음', en:'None' },
+  glYoutube:  { kr:'유튜브 영상', en:'YouTube video' },
+  glYtPh:     { kr:'유튜브 주소를 붙여넣으세요', en:'Paste a YouTube link' },
+  glYtBad:    { kr:'유튜브 주소가 아닙니다.', en:'That is not a YouTube link.' },
+  glOpen:     { kr:'이어진 분들에게 보이기', en:'Visible to people linked here' },
+  glClosed:   { kr:'지금은 닫아두었습니다', en:'Closed for now' },
+  glDel:      { kr:'지우기', en:'Delete' },
+  glDelAsk:   { kr:'이것을 지울까요? 되돌릴 수 없습니다.',
+                en:'Delete this? It cannot be undone.' },
+  glUsed:     { kr:'{used} / {cap} 썼습니다', en:'{used} of {cap} used' },
+  glFull:     { kr:'저장 공간이 찼습니다. ({used} / {cap})\n지우신 만큼 다시 쓸 수 있습니다.',
+                en:'Storage is full. ({used} / {cap})\nDelete something to free up space.' },
+  glUploading:{ kr:'올리는 중…', en:'Uploading…' },
+  glSquashing:{ kr:'줄이는 중…', en:'Compressing…' },
+  glSaved:    { kr:'저장했습니다.', en:'Saved.' },
+  glNoSee:    { kr:'이 갤러리를 볼 수 없습니다.', en:'You cannot see this gallery.' },
+  glWhoSees:  { kr:'이 별칭으로 이어진 분들만 봅니다.',
+                en:'Only people linked through this alias can see it.' },
+  glPlay:     { kr:'♪ 소리 켜기', en:'♪ Play music' },
+  glStop:     { kr:'♪ 소리 끄기', en:'♪ Stop music' },
+  glVisit:    { kr:'갤러리 보기', en:'See gallery' },
+  glNone:     { kr:'이 분은 아직 갤러리를 만들지 않았습니다.',
+                en:'This person has not set up a gallery yet.' },
+
   /* 🔴 2026-09-17 — 연락처에 최근 대화 보이기 */
   pvTitle:   { kr:'연락처에 최근 대화 보이기', en:'Show recent messages in contacts' },
   pvNote:    { kr:'끄면 이름만 보입니다. 옆 사람이 볼 수 있는 곳에서는 꺼두세요.',
@@ -1863,6 +1899,198 @@ AL.previewText = function(m, mySideId){
   if (!body) return '';
   var mine = (mySideId && m.sender_side_id === mySideId);
   return (mine ? AL.t('pvMine') : '') + body;
+};
+
+/* =====================================================================
+   🔴🔴 2026-09-18 신설 — 갤러리
+
+   무엇인가
+     별칭마다 하나씩 있는 "내 공간" 입니다.
+     대문글 · 사진·영상 · 배경음 · 유튜브를 담습니다.
+
+   ⚠ 왜 별칭마다인가
+     거래처에 보이는 나와 동창에게 보이는 나가 달라야 합니다.
+     계정에 하나만 두면 이 앱의 약속이 깨집니다.
+
+   ⚠ 누가 보나
+     **그 별칭으로 이어진 사람만** 봅니다. 정책이 막습니다.
+     거래처는 "업무용" 갤러리만 보고 "개인용" 은 있는 줄도 모릅니다.
+   ===================================================================== */
+AL.GALLERY_BUCKET = 'alias-gallery';
+AL.MUSIC_BUCKET = 'alias-music';
+
+/* 갤러리 한 채를 읽어옵니다. 없으면 빈 것을 돌려줍니다. */
+AL.loadGallery = async function(personaId){
+  var out = { headline: '', music_id: null, youtube_id: null,
+              is_open: true, items: [] };
+  try {
+    var g = await AL.sb.from('galleries')
+      .select('headline, music_id, youtube_id, is_open')
+      .eq('persona_id', personaId).maybeSingle();
+    if (g.data) Object.assign(out, g.data);
+
+    var it = await AL.sb.from('gallery_items')
+      .select('id, kind, path, caption, bytes, w, h, sort')
+      .eq('persona_id', personaId)
+      .order('sort').order('created_at');
+    out.items = it.data || [];
+  } catch (e) {
+    console.warn('[gallery] 못 읽었습니다', e);
+  }
+  return out;
+};
+
+/* 갤러리 설정을 저장합니다. 줄이 없으면 만듭니다. */
+AL.saveGallery = async function(personaId, patch){
+  var sess = await AL.sb.auth.getSession();
+  if (!sess.data.session) return false;
+  var row = Object.assign({
+    persona_id: personaId,
+    account_id: sess.data.session.user.id,
+    updated_at: new Date().toISOString(),
+  }, patch);
+  var res = await AL.sb.from('galleries')
+    .upsert(row, { onConflict: 'persona_id' }).select('persona_id');
+  if (res.error) { console.error('[gallery] 저장 실패', res.error); return false; }
+  return true;
+};
+
+/* 사진·영상 올리기.
+   경로는 {계정}/{별칭번호}/{시각}_{무작위}.{확장자} 입니다.
+   ⚠ 두 번째 칸이 별칭 번호라, 서랍 정책이 "그 별칭과 이어졌는가" 를
+     바로 볼 수 있습니다. 경로가 곧 권한입니다. */
+AL.uploadGalleryItem = async function(personaId, file, onStep){
+  var sess = await AL.sb.auth.getSession();
+  if (!sess.data.session) throw new Error(AL.t('errNotLoggedIn'));
+  var uid = sess.data.session.user.id;
+
+  var kind = (file.type || '').indexOf('video/') === 0 ? 'video' : 'photo';
+  var use = file;
+  if (kind === 'photo') {
+    if (onStep) onStep('compress');
+    use = await AL.compressImage(file, 1600, 0.85);
+  }
+
+  /* ⚠ 저장 한도를 먼저 봅니다. 올리고 나서 막으면 헛수고입니다. */
+  var used = await AL.storageUsed();
+  var cap = await AL.storageCap();
+  if (cap && used + use.size > cap) {
+    throw new Error(AL.t('glFull', {
+      used: AL.fmtBytes(used), cap: AL.fmtBytes(cap),
+    }));
+  }
+
+  var dim = await AL.measureImage(use);
+  var ext = (use.name.match(/\.([a-zA-Z0-9]+)$/) || [, 'bin'])[1].toLowerCase();
+  var path = uid + '/' + personaId + '/' + Date.now() + '_' +
+             Math.random().toString(36).slice(2, 8) + '.' + ext;
+
+  if (onStep) onStep('upload');
+  var up = await AL.sb.storage.from(AL.GALLERY_BUCKET)
+    .upload(path, use, { contentType: use.type || 'application/octet-stream' });
+  if (up.error) throw up.error;
+
+  var ins = await AL.sb.from('gallery_items').insert({
+    persona_id: personaId, account_id: uid,
+    kind: kind, path: path, bytes: use.size,
+    w: dim.w || null, h: dim.h || null,
+    sort: Date.now() % 100000,
+  }).select('id').single();
+  if (ins.error) {
+    /* ⚠ 표에 못 넣었으면 올린 파일도 치웁니다. 안 그러면 아무도
+       모르는 파일이 서랍에 쌓입니다. */
+    try { await AL.sb.storage.from(AL.GALLERY_BUCKET).remove([path]); } catch (e) {}
+    throw ins.error;
+  }
+  return ins.data.id;
+};
+
+AL.deleteGalleryItem = async function(id, path){
+  try { await AL.sb.storage.from(AL.GALLERY_BUCKET).remove([path]); } catch (e) {}
+  var res = await AL.sb.from('gallery_items').delete().eq('id', id);
+  if (res.error) throw res.error;
+};
+
+/* 갤러리 사진의 시한부 주소. 얼굴 사진과 같은 방식입니다. */
+AL._galUrls = {};
+AL.galleryUrl = async function(path){
+  if (!path) return null;
+  var now = Date.now();
+  var hit = AL._galUrls[path];
+  if (hit && hit.until > now) return hit.url;
+  try {
+    var res = await AL.sb.storage.from(AL.GALLERY_BUCKET).createSignedUrl(path, 3600);
+    if (res.error) throw res.error;
+    AL._galUrls[path] = { url: res.data.signedUrl, until: now + 50 * 60 * 1000 };
+    return res.data.signedUrl;
+  } catch (e) {
+    console.warn('[gallery] 주소를 못 받았습니다: ' + path + ' — ' +
+      ((e && e.message) || String(e)));
+    AL._galUrls[path] = { url: null, until: now + 10 * 60 * 1000 };
+    return null;
+  }
+};
+
+/* 배경음은 공개 서랍이라 주소가 고정입니다. 받아올 필요가 없습니다. */
+AL.musicUrl = function(path){
+  if (!path) return null;
+  var res = AL.sb.storage.from(AL.MUSIC_BUCKET).getPublicUrl(path);
+  return res && res.data ? res.data.publicUrl : null;
+};
+
+AL.loadMusicList = async function(){
+  try {
+    var res = await AL.sb.from('gallery_music')
+      .select('id, title, artist, path, mood, seconds')
+      .eq('is_active', true).order('sort').order('title');
+    return res.data || [];
+  } catch (e) { return []; }
+};
+
+/* ── 저장 한도 ──────────────────────────────────────────────────
+   ⚠ 이용권에 3GB 가 붙어 있습니다. 다 차면 더 못 올립니다.
+     "오래된 것부터 자동 삭제" 는 안 합니다. 손님이 놀랍니다. */
+AL.storageUsed = async function(){
+  try {
+    var res = await AL.sb.rpc('my_storage_used');
+    return Number(res.data || 0);
+  } catch (e) { return 0; }
+};
+
+AL._cap = null;
+AL.storageCap = async function(){
+  if (AL._cap !== null) return AL._cap;
+  try {
+    var res = await AL.sb.from('alias_pricing_plans')
+      .select('storage_gb').eq('tier', 'standard').limit(1).maybeSingle();
+    AL._cap = res.data ? Number(res.data.storage_gb) * 1024 * 1024 * 1024 : 0;
+  } catch (e) { AL._cap = 0; }
+  return AL._cap;
+};
+
+/* 이 관계에서 상대가 쓰는 별칭. 갤러리로 가려면 필요합니다.
+   ⚠ link_sides 정책이 남의 줄을 막고 있어 화면에서는 못 읽습니다.
+     서버 함수가 "내가 그 링크에 있는가" 를 보고 알려줍니다. */
+AL.peerPersona = async function(linkId){
+  try {
+    var res = await AL.sb.rpc('peer_persona', { p_link_id: linkId });
+    var row = (res.data || [])[0];
+    return row || null;
+  } catch (e) {
+    console.warn('[gallery] 상대 별칭을 못 찾았습니다', e);
+    return null;
+  }
+};
+
+/* 유튜브 주소에서 영상 번호만 떼어냅니다.
+   ⚠ 주소 전체를 저장하면 안 됩니다. 여러 모양이 있고, 추적용 꼬리표가
+     붙어 오기도 합니다. 번호만 남깁니다. */
+AL.youtubeId = function(url){
+  if (!url) return null;
+  var s = String(url).trim();
+  if (/^[\w-]{11}$/.test(s)) return s;          // 번호를 바로 넣은 경우
+  var m = s.match(/(?:youtu\.be\/|v=|\/embed\/|\/shorts\/)([\w-]{11})/);
+  return m ? m[1] : null;
 };
 
 /* 내 별칭 이름 → 사진 경로 표를 만듭니다.

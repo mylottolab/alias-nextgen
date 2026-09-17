@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260917e">
-<link rel="stylesheet" href="alias_theme.css?v=20260917e">
+<link rel="stylesheet" href="alias_common.css?v=20260918a">
+<link rel="stylesheet" href="alias_theme.css?v=20260918a">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260917e"></script>
+<script src="alias_common.js?v=20260918a"></script>
 <!-- 🔴 2026-09-13 — 사진 압축(AL.compressImage)이 여기 있습니다 -->
-<script src="alias_media.js?v=20260917e"></script>
+<script src="alias_media.js?v=20260918a"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -260,6 +260,9 @@ function paintList(){
            초대 화면까지 가서 다시 찾는 수고를 덜어줍니다. */
         '<button data-qr="' + AL.esc(a.id) + '">' +
           AL.esc(AL.t('qrPrint')) + '</button>' +
+        /* 🔴 2026-09-18 — 이 별칭의 갤러리를 꾸미러 갑니다. */
+        '<button data-gal="' + AL.esc(a.id) + '">' +
+          AL.esc(AL.t('glTitle')) + '</button>' +
         (a.is_default ? '' :
           '<button data-def="' + AL.esc(a.id) + '">' + AL.esc(AL.t('aliasMakeDef')) + '</button>') +
       '</div>' +
@@ -268,6 +271,12 @@ function paintList(){
 
   ul.querySelectorAll('[data-def]').forEach(function(b){
     b.addEventListener('click', function(){ makeDefault(b.getAttribute('data-def')); });
+  });
+  ul.querySelectorAll('[data-gal]').forEach(function(b){
+    b.addEventListener('click', function(){
+      location.href = 'alias_gallery.html?p=' +
+        encodeURIComponent(b.getAttribute('data-gal')) + '&edit=1';
+    });
   });
   ul.querySelectorAll('[data-qr]').forEach(function(b){
     b.addEventListener('click', function(){

@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Alias</title>
+<link rel="stylesheet" href="alias_common.css?v=20260918a">
+<link rel="stylesheet" href="alias_theme.css?v=20260918a">
+<script src="alias_config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="alias_common.js?v=20260918a"></script>
+<script src="alias_media.js?v=20260918a"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function(){
+  if (typeof AL === "undefined" || typeof AL.t !== "function") {
+    document.body.innerHTML =
+      '<div style="padding:26px;font-family:system-ui,sans-serif;line-height:1.8;' +
+      'color:#DDE5F0;background:#0E1621;min-height:100vh">' +
+      '<b style="font-size:17px">alias_common.js 를 못 읽었습니다.</b><br><br>' +
+      'alias_config.js 를 확인하세요.</div>';
+    return;
+  }
+  AL.bootTheme();
+});
+</script>
+
+<style>
+/* =====================================================================
+   🔴 2026-09-18 신설 — 갤러리
+
+   ⚠ 공용 CSS 를 안 건드리려고 여기에 다 적습니다.
+   ⚠ 보는 화면과 꾸미는 화면이 **같은 화면**입니다. 꾸미면서 손님에게
+     어떻게 보이는지 바로 알 수 있어야 합니다. 따로 두면 오가며
+     확인해야 합니다.
+   ===================================================================== */
+.gwrap{padding:16px 16px 70px;max-width:560px;margin:0 auto}
+
+.ghead{display:flex;align-items:center;gap:12px;margin:6px 0 18px}
+.ghead .gav{width:58px;height:58px;flex:0 0 58px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;font-weight:800;
+  background-repeat:no-repeat;background-size:cover;background-position:center}
+.ghead .gnm{flex:1;min-width:0}
+.ghead .gnm b{display:block;font-size:19px;font-weight:800}
+.ghead .gnm span{display:block;font-size:12.5px;opacity:.6;margin-top:3px}
+.ghead .gbtn{flex:0 0 auto;padding:9px 15px;border-radius:999px;cursor:pointer;
+  font-size:13.5px;font-weight:700;background:rgba(255,255,255,.08);color:inherit;
+  border:1px solid rgba(255,255,255,.18)}
+
+.gline{margin:0 0 18px;padding:14px 16px;border-radius:14px;font-size:16px;
+  line-height:1.7;word-break:keep-all;background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.1)}
+.gline.empty{opacity:.45;font-size:14px}
+
+.gmusic{display:flex;align-items:center;gap:10px;margin:0 0 18px;
+  padding:11px 14px;border-radius:12px;font-size:13.5px;
+  background:rgba(143,227,176,.12);color:#8FE3B0;
+  border:1px solid rgba(143,227,176,.3)}
+.gmusic span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap}
+.gmusic button{flex:0 0 auto;padding:7px 13px;border-radius:999px;cursor:pointer;
+  font-size:12.5px;font-weight:700;background:rgba(255,255,255,.12);
+  color:inherit;border:1px solid currentColor}
+
+/* 사진·영상 — 두 칸씩 */
+.ggrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:0 0 20px}
+.gcell{position:relative;aspect-ratio:1/1;border-radius:14px;overflow:hidden;
+  background:rgba(255,255,255,.06);cursor:pointer}
+.gcell img, .gcell video{width:100%;height:100%;object-fit:cover;display:block}
+.gcell .vmark{position:absolute;left:8px;bottom:8px;padding:3px 8px;
+  border-radius:999px;font-size:11px;font-weight:700;
+  background:rgba(0,0,0,.6);color:#fff}
+.gcell .gdel{position:absolute;right:6px;top:6px;width:28px;height:28px;
+  border-radius:50%;cursor:pointer;font-size:14px;line-height:1;
+  background:rgba(0,0,0,.6);color:#fff;border:0}
+
+.gempty{padding:40px 20px;text-align:center;border-radius:16px;
+  border:1px dashed rgba(255,255,255,.18);opacity:.6;font-size:14px;
+  line-height:1.8;word-break:keep-all}
+
+/* 🔴 유튜브는 **맨 아래**에 둡니다 (사장님 요청).
+   ⚠ 작게 숨기지 않습니다. 유튜브 약관이 금지합니다. 영상과 광고가
+     제대로 보여야 저작권자에게 수익이 갑니다. */
+.gyt{margin:22px 0 0}
+.gyt .gytt{font-size:13px;font-weight:700;opacity:.65;margin:0 2px 8px}
+.gyt .box{position:relative;width:100%;aspect-ratio:16/9;border-radius:14px;
+  overflow:hidden;background:#000}
+.gyt iframe{width:100%;height:100%;border:0;display:block}
+
+/* 꾸미기 */
+.gsect{font-size:13px;font-weight:700;opacity:.65;margin:22px 2px 9px}
+.gfield{margin:0 0 14px}
+.gfield input, .gfield textarea, .gfield select{width:100%;box-sizing:border-box;
+  padding:13px 14px;border-radius:12px;font-size:15px;font-family:inherit;
+  background:rgba(255,255,255,.06);color:inherit;
+  border:1px solid rgba(255,255,255,.14)}
+.gfield textarea{min-height:76px;resize:vertical;line-height:1.7}
+.gbig{width:100%;margin:0 0 12px;padding:16px 0;border-radius:14px;cursor:pointer;
+  font-size:15.5px;font-weight:800;background:rgba(255,255,255,.08);color:inherit;
+  border:1px dashed rgba(255,255,255,.24)}
+.gsave{width:100%;padding:16px 0;border-radius:14px;cursor:pointer;
+  font-size:16px;font-weight:800;background:rgba(143,227,176,.2);color:#8FE3B0;
+  border:1px solid rgba(143,227,176,.45)}
+.gused{margin:10px 2px 0;font-size:12.5px;opacity:.6}
+.gnote{margin:8px 2px 0;font-size:12.5px;line-height:1.7;opacity:.6;
+  word-break:keep-all}
+
+.err{display:none;margin:14px 0 0;padding:12px 14px;border-radius:11px;
+  background:rgba(255,90,90,.14);color:#FFB4B4;font-size:13.5px;line-height:1.6}
+.err.show{display:block}
+.ok{display:none;margin:14px 0 0;padding:12px 14px;border-radius:11px;
+  background:rgba(143,227,176,.15);color:#8FE3B0;font-size:13.5px}
+.ok.show{display:block}
+.back{display:inline-block;margin:0 0 10px;font-size:14px;color:#94A3B8;
+  text-decoration:none}
+
+/* 크게 보기 */
+#gvBg{display:none;position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.92)}
+#gvBox{display:none;position:fixed;inset:0;z-index:91;
+  align-items:center;justify-content:center;padding:16px}
+#gvBox.on{display:flex}
+#gvBox img, #gvBox video{max-width:100%;max-height:82vh;border-radius:12px}
+#gvClose{position:fixed;right:16px;top:calc(16px + env(safe-area-inset-top,0px));
+  z-index:92;width:42px;height:42px;border-radius:50%;cursor:pointer;
+  font-size:19px;background:rgba(255,255,255,.16);color:#fff;border:0;display:none}
+#gvClose.on{display:block}
+</style>
+</head>
+
+<body data-t-title="glTitle">
+<div class="gwrap">
+
+  <a class="back" href="alias_contacts.html" id="back"></a>
+
+  <div class="ghead">
+    <div class="gav" id="gav"></div>
+    <div class="gnm">
+      <b id="gname"></b>
+      <span id="gwho"></span>
+    </div>
+    <button class="gbtn" id="gedit" style="display:none"></button>
+  </div>
+
+  <!-- ── 보는 화면 ── -->
+  <div id="view">
+    <div class="gline" id="vline"></div>
+    <div class="gmusic" id="vmusic" style="display:none">
+      <span id="vmname"></span>
+      <button id="vmbtn"></button>
+    </div>
+    <div class="ggrid" id="vgrid"></div>
+    <div class="gempty" id="vempty" style="display:none"></div>
+
+    <!-- 🔴 유튜브는 맨 아래 -->
+    <div class="gyt" id="vyt" style="display:none">
+      <div class="gytt" data-t="glYoutube"></div>
+      <div class="box" id="vytbox"></div>
+    </div>
+  </div>
+
+  <!-- ── 꾸미는 화면 ── -->
+  <div id="edit" style="display:none">
+    <div class="gsect" data-t="glHeadline"></div>
+    <div class="gfield">
+      <textarea id="eline" maxlength="120" data-t-ph="glHeadPh"></textarea>
+    </div>
+
+    <div class="gsect" data-t="glTitle"></div>
+    <div class="ggrid" id="egrid"></div>
+    <button class="gbig" id="eadd" data-t="glAdd"></button>
+    <input type="file" id="epick" accept="image/*,video/*" multiple style="display:none">
+    <div class="gused" id="eused"></div>
+
+    <div class="gsect" data-t="glMusic"></div>
+    <div class="gfield">
+      <select id="emusic"></select>
+    </div>
+
+    <div class="gsect" data-t="glYoutube"></div>
+    <div class="gfield">
+      <input id="eyt" type="url" data-t-ph="glYtPh" autocomplete="off">
+    </div>
+    <p class="gnote" data-t="glWhoSees"></p>
+
+    <div style="margin-top:22px">
+      <button class="gsave" id="esave" data-t="glDone"></button>
+    </div>
+  </div>
+
+  <div id="err" class="err"></div>
+  <div id="ok" class="ok"></div>
+</div>
+
+<div id="gvBg"></div>
+<div id="gvBox"></div>
+<button id="gvClose">✕</button>
+<audio id="bgm" loop></audio>
+
+<script>
+/* =====================================================================
+   갤러리
+   2026-09-18
+
+     alias_gallery.html?p={별칭번호}          남의 갤러리 보기
+     alias_gallery.html?p={별칭번호}&edit=1   내 갤러리 꾸미기
+
+   ⚠ 보는 화면과 꾸미는 화면이 하나입니다. 꾸미면서 "손님에게 어떻게
+     보이나" 를 바로 볼 수 있어야 합니다.
+
+   ⚠ 누가 볼 수 있는지는 **정책이 막습니다.** 화면이 아니라 서버가
+     판단합니다. 주소를 알아도 이어진 사이가 아니면 아무것도 안 옵니다.
+   ===================================================================== */
+const P = new URLSearchParams(location.search);
+const personaId = P.get('p');
+let mine = false;
+let data = null;
+let music = [];
+let editing = (P.get('edit') === '1');
+
+function el(id){ return document.getElementById(id); }
+function showErr(m){ const e = el('err'); e.textContent = m; e.classList.add('show');
+  el('ok').classList.remove('show'); }
+function showOk(m){ const e = el('ok'); e.textContent = m; e.classList.add('show');
+  el('err').classList.remove('show'); }
+function clearMsg(){ el('err').classList.remove('show'); el('ok').classList.remove('show'); }
+
+/* ── 크게 보기 ───────────────────────────────────────────────── */
+function openViewer(url, kind){
+  const box = el('gvBox');
+  box.innerHTML = (kind === 'video')
+    ? '<video src="' + url + '" controls autoplay playsinline></video>'
+    : '<img src="' + url + '" alt="">';
+  el('gvBg').style.display = 'block';
+  box.classList.add('on');
+  el('gvClose').classList.add('on');
+}
+function closeViewer(){
+  el('gvBox').classList.remove('on');
+  el('gvBox').innerHTML = '';
+  el('gvBg').style.display = 'none';
+  el('gvClose').classList.remove('on');
+}
+el('gvBg').addEventListener('click', closeViewer);
+el('gvClose').addEventListener('click', closeViewer);
+
+/* ── 보는 화면 그리기 ────────────────────────────────────────── */
+async function paintView(){
+  el('vline').textContent = data.headline || AL.t('glEmpty');
+  el('vline').classList.toggle('empty', !data.headline);
+
+  /* 배경음 — 손님이 눌러야 납니다.
+     ⚠ 들어가자마자 소리가 나면 놀랍니다. 그리고 브라우저가 막습니다. */
+  const m = music.filter(function(x){ return x.id === data.music_id; })[0];
+  if (m) {
+    el('vmusic').style.display = '';
+    el('vmname').textContent = m.title + (m.artist ? ' · ' + m.artist : '');
+    el('bgm').src = AL.musicUrl(m.path) || '';
+    el('vmbtn').textContent = AL.t('glPlay');
+  } else {
+    el('vmusic').style.display = 'none';
+  }
+
+  /* 사진·영상 */
+  const grid = el('vgrid');
+  grid.innerHTML = '';
+  if (!data.items.length) {
+    el('vempty').style.display = '';
+    el('vempty').textContent = mine ? AL.t('glEmptyMine') : AL.t('glEmpty');
+  } else {
+    el('vempty').style.display = 'none';
+    for (const it of data.items) {
+      const url = await AL.galleryUrl(it.path);
+      if (!url) continue;
+      const c = document.createElement('div');
+      c.className = 'gcell';
+      c.innerHTML = (it.kind === 'video')
+        ? '<video src="' + url + '" muted playsinline preload="metadata"></video>' +
+          '<span class="vmark">▶</span>'
+        : '<img src="' + url + '" alt="" loading="lazy">';
+      c.addEventListener('click', function(){ openViewer(url, it.kind); });
+      grid.appendChild(c);
+    }
+  }
+
+  /* 🔴 유튜브는 맨 아래.
+     ⚠ 작게 숨기지 않습니다. 유튜브 약관이 금지합니다. */
+  if (data.youtube_id) {
+    el('vyt').style.display = '';
+    el('vytbox').innerHTML =
+      '<iframe src="https://www.youtube.com/embed/' + AL.esc(data.youtube_id) + '" ' +
+      'title="YouTube" allowfullscreen ' +
+      'allow="accelerometer; clipboard-write; encrypted-media; picture-in-picture"></iframe>';
+  } else {
+    el('vyt').style.display = 'none';
+    el('vytbox').innerHTML = '';
+  }
+}
+
+el('vmbtn').addEventListener('click', function(){
+  const a = el('bgm');
+  if (a.paused) { a.play().catch(function(){}); this.textContent = AL.t('glStop'); }
+  else { a.pause(); this.textContent = AL.t('glPlay'); }
+});
+
+/* ── 꾸미는 화면 ─────────────────────────────────────────────── */
+async function paintEdit(){
+  el('eline').value = data.headline || '';
+  el('eyt').value = data.youtube_id
+    ? ('https://youtu.be/' + data.youtube_id) : '';
+
+  el('emusic').innerHTML =
+    '<option value="">' + AL.esc(AL.t('glMusicNo')) + '</option>' +
+    music.map(function(m){
+      return '<option value="' + AL.esc(m.id) + '"' +
+        (m.id === data.music_id ? ' selected' : '') + '>' +
+        AL.esc(m.title + (m.artist ? ' · ' + m.artist : '')) + '</option>';
+    }).join('');
+
+  const grid = el('egrid');
+  grid.innerHTML = '';
+  for (const it of data.items) {
+    const url = await AL.galleryUrl(it.path);
+    const c = document.createElement('div');
+    c.className = 'gcell';
+    c.innerHTML =
+      (it.kind === 'video'
+        ? '<video src="' + (url || '') + '" muted playsinline preload="metadata"></video>' +
+          '<span class="vmark">▶</span>'
+        : '<img src="' + (url || '') + '" alt="">') +
+      '<button class="gdel" data-del="' + AL.esc(it.id) + '">✕</button>';
+    grid.appendChild(c);
+  }
+  grid.querySelectorAll('[data-del]').forEach(function(b){
+    b.addEventListener('click', async function(ev){
+      ev.stopPropagation();
+      if (!confirm(AL.t('glDelAsk'))) return;
+      const id = b.getAttribute('data-del');
+      const it = data.items.filter(function(x){ return x.id === id; })[0];
+      try {
+        await AL.deleteGalleryItem(id, it ? it.path : null);
+        data = await AL.loadGallery(personaId);
+        await paintEdit();
+        await paintUsed();
+      } catch (e) {
+        showErr(AL.t('errGeneric', { msg: e.message || String(e) }));
+      }
+    });
+  });
+}
+
+async function paintUsed(){
+  const used = await AL.storageUsed();
+  const cap = await AL.storageCap();
+  el('eused').textContent = AL.t('glUsed', {
+    used: AL.fmtBytes(used), cap: AL.fmtBytes(cap),
+  });
+}
+
+el('eadd').addEventListener('click', function(){ el('epick').click(); });
+
+el('epick').addEventListener('change', async function(){
+  const files = Array.from(this.files || []);
+  this.value = '';
+  if (!files.length) return;
+  clearMsg();
+  const btn = el('eadd');
+  btn.disabled = true;
+  try {
+    for (const f of files) {
+      btn.textContent = AL.t('glUploading');
+      await AL.uploadGalleryItem(personaId, f, function(step){
+        btn.textContent = AL.t(step === 'compress' ? 'glSquashing' : 'glUploading');
+      });
+    }
+    data = await AL.loadGallery(personaId);
+    await paintEdit();
+    await paintUsed();
+    showOk(AL.t('glSaved'));
+  } catch (e) {
+    console.error(e);
+    showErr(e.message || String(e));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = AL.t('glAdd');
+  }
+});
+
+el('esave').addEventListener('click', async function(){
+  clearMsg();
+  const raw = el('eyt').value.trim();
+  let yt = null;
+  if (raw) {
+    yt = AL.youtubeId(raw);
+    if (!yt) { showErr(AL.t('glYtBad')); return; }
+  }
+  this.disabled = true;
+  try {
+    const ok = await AL.saveGallery(personaId, {
+      headline: el('eline').value.trim() || null,
+      music_id: el('emusic').value || null,
+      youtube_id: yt,
+    });
+    if (!ok) throw new Error('저장하지 못했습니다');
+    data = await AL.loadGallery(personaId);
+    editing = false;
+    await paintAll();
+    showOk(AL.t('glSaved'));
+    window.scrollTo(0, 0);
+  } catch (e) {
+    showErr(e.message || String(e));
+  } finally {
+    this.disabled = false;
+  }
+});
+
+el('gedit').addEventListener('click', async function(){
+  editing = !editing;
+  clearMsg();
+  await paintAll();
+  window.scrollTo(0, 0);
+});
+
+/* ── 그리기 ──────────────────────────────────────────────────── */
+async function paintAll(){
+  el('view').style.display = editing ? 'none' : '';
+  el('edit').style.display = editing ? '' : 'none';
+  el('gedit').textContent = AL.t(editing ? 'glDone' : 'glEdit');
+  if (editing) { await paintEdit(); await paintUsed(); }
+  else { await paintView(); el('bgm').pause(); }
+}
+
+/* ── 시작 ────────────────────────────────────────────────────── */
+(async function(){
+  AL.paintText();
+  el('back').textContent = '‹ ' + AL.t('navContacts');
+  if (!await AL.requireLogin()) return;
+  if (!personaId) { showErr(AL.t('dtlNotFound')); return; }
+
+  /* 이 별칭이 내 것인가.
+     ⚠ 내 것이 아니면 personas 정책이 막아 아무것도 안 옵니다.
+       그것만으로 "남의 것" 임을 알 수 있습니다. */
+  let face = '';
+  try {
+    const me = await AL.sb.from('personas')
+      .select('display_name, avatar_url').eq('id', personaId).maybeSingle();
+    if (me.data) { mine = true; face = me.data.display_name || ''; }
+  } catch (e) {}
+
+  /* 남의 갤러리면 이름을 연락처에서 찾습니다. */
+  if (!mine) {
+    try {
+      const cs = await AL.sb.rpc('my_contacts');
+      const hit = (cs.data || []).filter(function(r){
+        return r.peer_display && r.peer_avatar !== undefined;
+      });
+      const nm = P.get('n');
+      face = nm ? decodeURIComponent(nm) : AL.t('glTitle');
+    } catch (e) { face = AL.t('glTitle'); }
+  }
+
+  el('gname').textContent = face;
+  el('gav').textContent = AL.initial(face);
+  AL.paintFace(el('gav'), face);
+  el('gwho').textContent = mine ? AL.t('glWhoSees') : '';
+  el('gedit').style.display = mine ? '' : 'none';
+
+  music = await AL.loadMusicList();
+  data = await AL.loadGallery(personaId);
+
+  /* 남의 갤러리인데 아무것도 못 읽었으면 볼 수 없는 것입니다. */
+  if (!mine && !data.headline && !data.items.length && !data.youtube_id) {
+    el('view').innerHTML = '<div class="gempty">' + AL.esc(AL.t('glNoSee')) + '</div>';
+    return;
+  }
+
+  await paintAll();
+})();
+</script>
+</body>
+</html>

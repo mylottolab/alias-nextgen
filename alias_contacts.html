@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260917e">
-<link rel="stylesheet" href="alias_theme.css?v=20260917e">
+<link rel="stylesheet" href="alias_common.css?v=20260918a">
+<link rel="stylesheet" href="alias_theme.css?v=20260918a">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260917e"></script>
-<script src="alias_call.js?v=20260917e"></script>
+<script src="alias_common.js?v=20260918a"></script>
+<script src="alias_call.js?v=20260918a"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -495,6 +495,9 @@ function openRowMenu(btn){
      ⚠ 전체가 꺼져 있어도 보여줍니다. "나중에 켤 텐데 이 사람만은 미리
        막아두고 싶다" 를 할 수 있어야 하니까요. */
   if (!isRoom) {
+    /* 🔴 2026-09-18 — 상대 갤러리로 갑니다.
+       ⚠ 방은 상대가 여럿이라 갤러리를 고를 수 없습니다. */
+    html += b('gal', AL.t('glVisit'));
     html += b('prev', AL.t(hidden[linkId] ? 'pvShowOne' : 'pvHideOne'));
   }
   html += '<div class="sep"></div>';
@@ -552,6 +555,12 @@ async function rowAction(act){
     } else if (act === 'vcall') {
       location.href = 'alias_call.html?link=' + encodeURIComponent(id) +
         '&type=video&once=' + newTicket();
+    } else if (act === 'gal') {
+      /* 상대가 이 관계에서 쓰는 별칭을 찾아 그 갤러리로 갑니다. */
+      var pp = await AL.peerPersona(id);
+      if (!pp) { alert(AL.t('glNone')); return; }
+      location.href = 'alias_gallery.html?p=' + encodeURIComponent(pp.persona_id) +
+        '&n=' + encodeURIComponent(pp.display_name || '');
     } else if (act === 'prev') {
       /* 🔴 2026-09-17 — 내 줄에만 적습니다. 상대는 모릅니다. */
       var side = (rows.filter(function(x){ return x.link_id === id; })[0] || {}).my_side_id;
