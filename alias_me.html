@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260917b">
-<link rel="stylesheet" href="alias_theme.css?v=20260917b">
+<link rel="stylesheet" href="alias_common.css?v=20260917d">
+<link rel="stylesheet" href="alias_theme.css?v=20260917d">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260917b"></script>
+<script src="alias_common.js?v=20260917d"></script>
 <!-- 🔴 2026-09-13 — 사진 압축(AL.compressImage)이 여기 있습니다 -->
-<script src="alias_media.js?v=20260917b"></script>
+<script src="alias_media.js?v=20260917d"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -174,6 +174,12 @@ document.addEventListener("DOMContentLoaded", function(){
       <span class="pl" data-t="prefVibrate"></span>
       <button id="pVib"></button>
     </div>
+    <!-- 🔴 2026-09-17 신설 — 연락처에 최근 대화 보이기 -->
+    <div class="prefrow">
+      <span class="pl" data-t="pvTitle"></span>
+      <button id="pPrev"></button>
+    </div>
+    <p class="hint" data-t="pvNote" style="margin:8px 2px 0"></p>
   </div>
 
   <div class="sect" data-t="meAccount"></div>
@@ -617,8 +623,35 @@ document.getElementById('out').addEventListener('click', function(){
   if (confirm(AL.t('outAsk'))) AL.signOut();
 });
 
+/* 🔴🔴 2026-09-17 — 연락처에 최근 대화 보이기
+
+   ⚠ 기본은 꺼져 있습니다. 이 앱은 번호를 감추려고 쓰는 앱이라,
+     목록에 대화가 드러나면 버스나 사무실에서 옆 사람이 읽습니다.
+     켜고 끄는 것을 손님이 정하게 합니다.
+
+   ⚠ 암호화를 켠 관계는 켜도 내용이 안 보입니다. 서버가 못 읽으니까요.
+     그런 줄에는 "🔒 잠긴 대화" 라고 나옵니다.
+
+   ⚠ 관계마다 따로 가릴 수도 있습니다. 연락처의 ⋯ 메뉴에 있습니다. */
+async function paintPrevBtn(){
+  const on = await AL.previewOn();
+  const b = document.getElementById('pPrev');
+  if (!b) return;
+  b.textContent = AL.t(on ? 'pvOn' : 'pvOff');
+  b.classList.toggle('on', on);
+}
+
+document.getElementById('pPrev').addEventListener('click', async function(){
+  const now = await AL.previewOn();
+  const ok = await AL.setPreview(!now);
+  if (!ok) { showErr(AL.t('errGeneric', { msg: '설정을 저장하지 못했습니다' })); return; }
+  await paintPrevBtn();
+  showOk(AL.t('thSaved'));
+});
+
 (async function(){
   AL.paintText();
+  paintPrevBtn();
   me = await AL.requireLogin();
   if (!me) return;
   document.getElementById('uid').textContent = me.id.slice(0, 8);

@@ -995,6 +995,21 @@ AL.STR = {
   prShare:   { kr:'초대 링크 공유하기', en:'Share invite link' },
   qrPrint:   { kr:'QR 인쇄', en:'Print QR' },
 
+  /* 🔴 2026-09-17 — 연락처에 최근 대화 보이기 */
+  pvTitle:   { kr:'연락처에 최근 대화 보이기', en:'Show recent messages in contacts' },
+  pvNote:    { kr:'끄면 이름만 보입니다. 옆 사람이 볼 수 있는 곳에서는 꺼두세요.',
+               en:'When off, only names are shown. Keep it off where others can see your screen.' },
+  pvOn:      { kr:'보이기', en:'Show' },
+  pvOff:     { kr:'숨기기', en:'Hide' },
+  pvLocked:  { kr:'🔒 잠긴 대화', en:'🔒 Encrypted' },
+  pvMine:    { kr:'나: ', en:'You: ' },
+  pvPhoto:   { kr:'📷 사진', en:'📷 Photo' },
+  pvVideo:   { kr:'🎬 영상', en:'🎬 Video' },
+  pvAudio:   { kr:'🎤 음성', en:'🎤 Voice' },
+  pvFile:    { kr:'📎 파일', en:'📎 File' },
+  pvHideOne: { kr:'이 사이만 가리기', en:'Hide for this contact' },
+  pvShowOne: { kr:'이 사이도 보이기', en:'Show for this contact' },
+
   /* 🔴 2026-09-15 — 종이로 뿌릴 때의 경고 */
   prPaperWarn:{ kr:'⚠ 종이는 사진 찍혀 퍼질 수 있습니다. 만료 날짜를 짧게 잡고, 쓰임 횟수는 나눠줄 장수만큼만 두세요.',
                en:'⚠ Paper can be photographed and passed around. Set a short expiry and only as many uses as sheets you hand out.' },
@@ -1784,6 +1799,70 @@ AL.needPlan = function(){
   document.getElementById('planNo').addEventListener('click', function(){
     bg2.style.display = 'none'; box2.style.display = 'none';
   });
+};
+
+/* =====================================================================
+   🔴🔴 2026-09-17 신설 — 연락처의 최근 대화 한 줄
+
+   ⚠ 기본은 꺼져 있습니다. 이 앱은 번호를 감추려고 쓰는 앱이라,
+     목록에 대화가 드러나면 옆 사람이 읽습니다.
+     손님이 "나" 화면에서 켜야 보입니다.
+
+   ⚠ 암호화된 관계는 내용을 못 가져옵니다. 서버가 못 읽으니까요.
+     그런 줄은 "🔒 잠긴 대화" 로 그립니다.
+   ===================================================================== */
+AL.previewOn = async function(){
+  try {
+    var res = await AL.sb.from('account_settings').select('show_preview').maybeSingle();
+    return !!(res.data && res.data.show_preview);
+  } catch (e) { return false; }
+};
+
+AL.setPreview = async function(on){
+  var sess = await AL.sb.auth.getSession();
+  if (!sess.data.session) return false;
+  var uid = sess.data.session.user.id;
+  /* 줄이 없을 수도 있어 넣기와 고치기를 함께 합니다. */
+  var res = await AL.sb.from('account_settings')
+    .upsert({ account_id: uid, show_preview: !!on }, { onConflict: 'account_id' })
+    .select('show_preview');
+  if (res.error) { console.warn('[preview] 저장 실패', res.error); return false; }
+  return true;
+};
+
+/* link_id → 한 줄. 한 번에 받아옵니다. */
+AL.loadPreviews = async function(){
+  try {
+    var res = await AL.sb.rpc('my_last_messages');
+    if (res.error) throw res.error;
+    var map = {};
+    (res.data || []).forEach(function(m){ map[m.link_id] = m; });
+    return map;
+  } catch (e) {
+    console.warn('[preview] 최근 대화를 못 읽었습니다', e);
+    return {};
+  }
+};
+
+/* 한 줄을 사람이 읽을 글로 바꿉니다.
+   ⚠ 사진·영상은 내용이 없으므로 종류로 적습니다.
+   ⚠ 내가 보낸 것이면 앞에 "나: " 를 붙입니다. 누가 한 말인지 알아야
+     쓸모가 있습니다. */
+AL.previewText = function(m, mySideId){
+  if (!m) return '';
+  if (m.is_locked) return AL.t('pvLocked');
+
+  var body = '';
+  var t = m.message_type || 'text';
+  if (t === 'photo') body = AL.t('pvPhoto');
+  else if (t === 'video') body = AL.t('pvVideo');
+  else if (t === 'audio') body = AL.t('pvAudio');
+  else if (t === 'file') body = m.media_name || AL.t('pvFile');
+  else body = (m.content || '').replace(/\s+/g, ' ').trim();
+
+  if (!body) return '';
+  var mine = (mySideId && m.sender_side_id === mySideId);
+  return (mine ? AL.t('pvMine') : '') + body;
 };
 
 /* 내 별칭 이름 → 사진 경로 표를 만듭니다.

@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260917b">
-<link rel="stylesheet" href="alias_theme.css?v=20260917b">
+<link rel="stylesheet" href="alias_common.css?v=20260917d">
+<link rel="stylesheet" href="alias_theme.css?v=20260917d">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260917b"></script>
-<script src="alias_call.js?v=20260917b"></script>
+<script src="alias_common.js?v=20260917d"></script>
+<script src="alias_call.js?v=20260917d"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -81,7 +81,22 @@ document.addEventListener("DOMContentLoaded", function(){
 <style>
 /* 🔴 2026-09-16 — 이름 옆 작은 내 얼굴표
    ⚠ 공용 CSS 를 안 건드리려고 여기에 둡니다. */
-.cname .mymark{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;flex:0 0 24px;margin-left:8px;vertical-align:middle;font-size:11.5px;font-weight:800;line-height:1;background-repeat:no-repeat;background-size:cover;background-position:center}
+/* 🔴 2026-09-17 — 최근 대화 한 줄
+   ⚠ 두 줄까지만 보여줍니다. 길면 잘립니다. 목록이지 대화창이 아닙니다. */
+.cprev{margin-top:3px;font-size:13px;line-height:1.45;opacity:.72;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  overflow:hidden;word-break:break-word}
+
+/* 🔴 2026-09-17 — 사진을 키웠습니다.
+   줄 높이 안에 여유가 있어 키우면 시원해 보입니다.
+   ⚠ 왼쪽(상대)이 늘 더 커야 합니다. "큰 쪽이 상대" 규칙입니다. */
+.crow .cav{width:56px !important;height:56px !important;flex:0 0 56px !important;
+  font-size:21px !important;
+  background-repeat:no-repeat;background-size:cover;background-position:center}
+.cname .mymark{display:inline-flex;align-items:center;justify-content:center;
+  width:30px;height:30px;flex:0 0 30px;margin-left:9px;vertical-align:middle;
+  font-size:13px;font-weight:800;line-height:1;
+  background-repeat:no-repeat;background-size:cover;background-position:center}
 </style>
 </head>
 <body class="tabbed" data-t-title="ttContacts">
@@ -178,6 +193,9 @@ let menuRow = null;    // ⋯ 를 누른 줄
      그것으로 짝을 맞춥니다. */
 let extra = {};        // my_side_id → { starred, speed_dial, pin_order }
 let myFaces = {};      // 🔴 2026-09-13 — 내 별칭 이름 → 사진 경로
+let previews = {};     // 🔴 2026-09-17 — link_id → 마지막 메시지 한 줄
+let previewOn = false; // 🔴 2026-09-17 — 손님이 켜뒀는가
+let hidden = {};       // 🔴 2026-09-17 — link_id → 이 사이만 가렸는가
 
 const SORT_KEY = 'alias_contacts_sort_v1';
 let sortBy = 'recent'; // recent · name · star · speed
@@ -302,6 +320,14 @@ function rowHtml(r){
           : '') +
         (n ? '<span class="unread">' + AL.esc(n > 99 ? '99+' : n) + '</span>' : '') +
       '</div>' +
+      /* 🔴 2026-09-17 — 최근 대화 한 줄. **켜뒀을 때만** 나옵니다.
+         ⚠ 기본은 꺼져 있습니다. 옆 사람이 읽으면 안 되니까요. */
+      (previewOn
+        ? (function(){
+            var t = AL.previewText(previews[r.link_id], r.my_side_id);
+            return t ? '<div class="cprev">' + AL.esc(t) + '</div>' : '';
+          })()
+        : '') +
       (sub ? '<div class="csub">' + AL.esc(sub) + '</div>' : '') +
     '</div>' +
     /* 🔴 2026-09-12 — "어제" 가 아니라 월일 시분까지 보여줍니다.
@@ -460,6 +486,8 @@ function openRowMenu(btn){
     html += b('vcall', AL.t('clVideoCall'));
   }
   html += b('msg', AL.t('cntMsgNow'));
+  /* 🔴 2026-09-17 — 전체를 켜뒀어도 **민감한 사이만** 가릴 수 있어야 합니다. */
+  if (previewOn) html += b('prev', AL.t(hidden[id] ? 'pvShowOne' : 'pvHideOne'));
   html += '<div class="sep"></div>';
 
   /* 이 사람을 어떻게 둘지 */
@@ -515,6 +543,19 @@ async function rowAction(act){
     } else if (act === 'vcall') {
       location.href = 'alias_call.html?link=' + encodeURIComponent(id) +
         '&type=video&once=' + newTicket();
+    } else if (act === 'prev') {
+      /* 🔴 2026-09-17 — 내 줄에만 적습니다. 상대는 모릅니다. */
+      var side = (rows.filter(function(x){ return x.link_id === id; })[0] || {}).my_side_id;
+      if (side) {
+        var want = !hidden[id];
+        var up = await AL.sb.from('link_sides')
+          .update({ hide_preview: want }).eq('id', side).select('id');
+        if (!up.error && up.data && up.data.length) {
+          hidden[id] = want;
+          previews = await AL.loadPreviews();
+          paint();
+        }
+      }
     } else if (act === 'msg') {
       location.href = 'alias_chat.html?link=' + encodeURIComponent(id);
     } else if (act === 'open') {
@@ -665,6 +706,21 @@ async function reload(){
     } catch (e) { console.warn('[contacts] 별표를 못 읽었습니다', e); }
 
     myFaces = await AL.myFaceMap();   // 🔴 2026-09-13 — 내 별칭 사진
+
+    /* 🔴 2026-09-17 — 켜져 있을 때만 읽습니다.
+       꺼져 있으면 서버에 묻지도 않습니다. 안 볼 것을 왜 가져옵니까. */
+    previewOn = await AL.previewOn();
+    previews = previewOn ? await AL.loadPreviews() : {};
+
+    /* 가린 관계를 기억해 둡니다. ⋯ 메뉴의 글씨가 갈립니다. */
+    hidden = {};
+    rows.forEach(function(r){ hidden[r.link_id] = false; });
+    try {
+      var hs = await AL.sb.from('link_sides').select('link_id, hide_preview');
+      (hs.data || []).forEach(function(x){
+        if (x.hide_preview) hidden[x.link_id] = true;
+      });
+    } catch (e) {}
 
     paint();
   } catch (e) {

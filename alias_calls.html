@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260917b">
-<link rel="stylesheet" href="alias_theme.css?v=20260917b">
+<link rel="stylesheet" href="alias_common.css?v=20260917d">
+<link rel="stylesheet" href="alias_theme.css?v=20260917d">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260917b"></script>
-<script src="alias_call.js?v=20260917b"></script>
+<script src="alias_common.js?v=20260917d"></script>
+<script src="alias_call.js?v=20260917d"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -31,7 +31,14 @@ document.addEventListener("DOMContentLoaded", function(){
 </script>
 <style>
 /* 🔴 2026-09-16 — 이름 옆 작은 내 얼굴표 (연락처·부름과 같은 모양) */
-.cname .mymark{display:inline-flex;align-items:center;justify-content:center;width:23px;height:23px;flex:0 0 23px;margin-left:8px;vertical-align:middle;font-size:11px;font-weight:800;line-height:1;background-repeat:no-repeat;background-size:cover;background-position:center}
+/* 🔴 2026-09-17 — 사진을 키웠습니다. */
+.callrow .cav{width:52px !important;height:52px !important;flex:0 0 52px !important;
+  font-size:20px !important;
+  background-repeat:no-repeat;background-size:cover;background-position:center}
+.cname .mymark{display:inline-flex;align-items:center;justify-content:center;
+  width:28px;height:28px;flex:0 0 28px;margin-left:9px;vertical-align:middle;
+  font-size:12px;font-weight:800;line-height:1;
+  background-repeat:no-repeat;background-size:cover;background-position:center}
 </style>
 </head>
 <body class="tabbed" data-t-title="clHistory">
