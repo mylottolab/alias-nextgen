@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260919h">
-<link rel="stylesheet" href="alias_theme.css?v=20260919h">
+<link rel="stylesheet" href="alias_common.css?v=20260919i">
+<link rel="stylesheet" href="alias_theme.css?v=20260919i">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260919h"></script>
-<script src="alias_call.js?v=20260919h"></script>
+<script src="alias_common.js?v=20260919i"></script>
+<script src="alias_call.js?v=20260919i"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -160,10 +160,37 @@ function closePlayer(){
 
 el('rpBg').addEventListener('click', closePlayer);
 el('rpClose').addEventListener('click', closePlayer);
+/* 🔴🔴 2026-09-19 — 앱에서는 자바 창구로 내려받습니다.
+
+   앱 화면(웹뷰)은 <a download> 를 눌러도 **아무 일도 안 일어납니다.**
+   오류도 안 납니다. 인쇄와 같은 자리입니다(함정 98).
+
+   ⚠ 옛 APK 에는 창구가 없습니다. 있는지부터 보고, 없으면 브라우저로
+     열라고 알려드립니다. */
+function appCanDownload(){
+  try {
+    return !!(window.AliasNative &&
+              typeof AliasNative.download === 'function' &&
+              (typeof AliasNative.canDownload !== 'function' || AliasNative.canDownload()));
+  } catch (e) { return false; }
+}
+
 el('rpSave').addEventListener('click', function(){
   if (!rpUrl) return;
-  /* ⚠ 앱 화면(웹뷰)에서는 내려받기가 막힐 수 있습니다. 그때는 브라우저로
-     열라고 알려드립니다(함정 98 과 같은 갈래). */
+
+  if (appCanDownload()) {
+    try {
+      AliasNative.download(rpUrl, rpName);
+      alert(AL.t('rcDownStarted'));
+      return;
+    } catch (e) { console.error('[rec] 자바 창구 실패', e); }
+  }
+
+  var inApp = !!(window.AliasNative ||
+    (window.Capacitor && window.Capacitor.isNativePlatform &&
+     window.Capacitor.isNativePlatform()));
+  if (inApp) { alert(AL.t('rcDownNoApp')); return; }
+
   var a = document.createElement('a');
   a.href = rpUrl; a.download = rpName; a.target = '_blank';
   document.body.appendChild(a); a.click(); a.remove();
