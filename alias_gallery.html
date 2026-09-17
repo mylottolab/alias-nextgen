@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260918b">
-<link rel="stylesheet" href="alias_theme.css?v=20260918b">
+<link rel="stylesheet" href="alias_common.css?v=20260918d">
+<link rel="stylesheet" href="alias_theme.css?v=20260918d">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260918b"></script>
-<script src="alias_media.js?v=20260918b"></script>
+<script src="alias_common.js?v=20260918d"></script>
+<script src="alias_media.js?v=20260918d"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function(){
   if (typeof AL === "undefined" || typeof AL.t !== "function") {
@@ -33,7 +33,7 @@ document.addEventListener("DOMContentLoaded", function(){
      어떻게 보이는지 바로 알 수 있어야 합니다. 따로 두면 오가며
      확인해야 합니다.
    ===================================================================== */
-.gwrap{padding:16px 16px 70px;max-width:560px;margin:0 auto}
+.gwrap{padding:16px 16px 96px;max-width:560px;margin:0 auto}
 
 .ghead{display:flex;align-items:center;gap:12px;margin:6px 0 18px}
 .ghead .gav{width:58px;height:58px;flex:0 0 58px;
@@ -127,7 +127,7 @@ document.addEventListener("DOMContentLoaded", function(){
 </style>
 </head>
 
-<body data-t-title="glTitle">
+<body class="tabbed" data-t-title="glTitle">
 <div class="gwrap">
 
   <a class="back" href="alias_contacts.html" id="back"></a>
@@ -190,6 +190,15 @@ document.addEventListener("DOMContentLoaded", function(){
   <div id="err" class="err"></div>
   <div id="ok" class="ok"></div>
 </div>
+
+<!-- 🔴 2026-09-18 — 나가는 길.
+     갤러리만 탭이 없어서 저장한 뒤 갈 곳이 없었습니다.
+     다른 화면과 같은 탭을 씁니다. 손님이 익힌 자리를 바꾸면 안 됩니다. -->
+<nav class="tabbar">
+  <a href="alias_contacts.html" data-t="navContacts"></a>
+  <a href="alias_calls.html" data-t="navCalls"></a>
+  <a href="alias_me.html" data-t="navMe"></a>
+</nav>
 
 <div id="gvBg"></div>
 <div id="gvBox"></div>
@@ -407,7 +416,10 @@ el('esave').addEventListener('click', async function(){
     data = await AL.loadGallery(personaId);
     editing = false;
     await paintAll();
-    showOk(AL.t('glSaved'));
+    /* 🔴 2026-09-18 — 저장하면 보기 화면으로 돌아갑니다.
+       손님에게 어떻게 보이는지 바로 확인하실 수 있게요.
+       다른 곳으로 가시려면 아래 탭을 쓰시면 됩니다. */
+    showOk(AL.t('glSavedGo'));
     window.scrollTo(0, 0);
   } catch (e) {
     showErr(e.message || String(e));
@@ -434,10 +446,60 @@ async function paintAll(){
   else { await paintView(); el('bgm').pause(); }
 }
 
+/* =====================================================================
+   🔴🔴 2026-09-18 신설 — 뒤로 가기
+
+   무슨 일이 났나
+     갤러리에서 안드로이드 뒤로 가기(◁)를 누르면 **앱이 통째로 나가**
+     바탕화면으로 갔습니다.
+
+   왜 그런가
+     앱은 화면을 옮길 때 대개 location.replace 를 씁니다. 뒤로 갈
+     기록을 안 남기는 방식입니다. 통화화면에서는 그게 맞았습니다 —
+     끊은 전화가 뒤로 가기로 되살아나면 안 되니까요.
+     그런데 갤러리는 **되돌아갈 수 있어야** 합니다.
+
+   ⚠ 손님들은 화면 아래 ◁ 로 돌아가는 데 익숙합니다. 그 버릇을
+     거스르면 안 됩니다. 화면 안에 뒤로 단추를 두는 것만으로는
+     부족합니다.
+
+   어떻게
+     화면이 열릴 때 기록을 하나 심어둡니다(pushState). 뒤로 가기를
+     누르면 그 기록이 빠지면서 popstate 가 불리고, 그때 우리가
+     원하는 곳으로 보냅니다.
+
+   ⚠ 꾸미는 중이면 먼저 보기 화면으로 돌아갑니다. 한 번에 나가면
+     쓰던 것이 날아갑니다.
+   ===================================================================== */
+(function(){
+  try { history.pushState({ gal: 1 }, ''); } catch (e) {}
+
+  window.addEventListener('popstate', function(){
+    /* 꾸미는 중이면 보기 화면으로 한 걸음만 */
+    if (editing) {
+      editing = false;
+      paintAll();
+      window.scrollTo(0, 0);
+      try { history.pushState({ gal: 1 }, ''); } catch (e) {}
+      return;
+    }
+    /* 크게 보기가 열려 있으면 그것부터 닫습니다 */
+    if (document.getElementById('gvBox').classList.contains('on')) {
+      closeViewer();
+      try { history.pushState({ gal: 1 }, ''); } catch (e) {}
+      return;
+    }
+    /* 어디서 왔는지에 따라 돌아갑니다.
+       ⚠ 내 갤러리는 "나" 에서, 남의 갤러리는 연락처에서 옵니다. */
+    location.replace(mine ? 'alias_me.html' : 'alias_contacts.html');
+  });
+})();
+
 /* ── 시작 ────────────────────────────────────────────────────── */
 (async function(){
   AL.paintText();
-  el('back').textContent = '‹ ' + AL.t('navContacts');
+  /* 🔴 2026-09-18 — 어디서 왔는지에 맞춰 돌아갑니다.
+     내 갤러리는 "나" 에서, 남의 갤러리는 연락처에서 옵니다. */
   if (!await AL.requireLogin()) return;
   if (!personaId) { showErr(AL.t('dtlNotFound')); return; }
 
@@ -462,6 +524,9 @@ async function paintAll(){
       face = nm ? decodeURIComponent(nm) : AL.t('glTitle');
     } catch (e) { face = AL.t('glTitle'); }
   }
+
+  el('back').textContent = '‹ ' + AL.t(mine ? 'navMe' : 'navContacts');
+  el('back').setAttribute('href', mine ? 'alias_me.html' : 'alias_contacts.html');
 
   el('gname').textContent = face;
   el('gav').textContent = AL.initial(face);

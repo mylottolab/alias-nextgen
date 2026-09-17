@@ -1026,6 +1026,8 @@ AL.STR = {
   glUploading:{ kr:'올리는 중…', en:'Uploading…' },
   glSquashing:{ kr:'줄이는 중…', en:'Compressing…' },
   glSaved:    { kr:'저장했습니다.', en:'Saved.' },
+  glSavedGo:  { kr:'저장했습니다. 지금 보이는 모습이 상대에게 보이는 모습입니다.',
+                en:'Saved. This is exactly what others will see.' },
   glNoSee:    { kr:'이 갤러리를 볼 수 없습니다.', en:'You cannot see this gallery.' },
   glWhoSees:  { kr:'이 별칭으로 이어진 분들만 봅니다.',
                 en:'Only people linked through this alias can see it.' },
