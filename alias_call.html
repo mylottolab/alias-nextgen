@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260919d">
-<link rel="stylesheet" href="alias_theme.css?v=20260919d">
+<link rel="stylesheet" href="alias_common.css?v=20260919f">
+<link rel="stylesheet" href="alias_theme.css?v=20260919f">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260919d"></script>
-<script src="alias_media.js?v=20260919d"></script>
-<script src="alias_call.js?v=20260919d"></script>
+<script src="alias_common.js?v=20260919f"></script>
+<script src="alias_media.js?v=20260919f"></script>
+<script src="alias_call.js?v=20260919f"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -960,7 +960,7 @@ async function recFinish(){
 
   const out = await AL.stopRecording();
   try { paintActs(); } catch (e) {}
-  if (!out || !out.blob || out.blob.size < 2000) { setStatus(AL.t('rcStopped')); return; }
+  if (!out || !out.blob || out.blob.size < 2000) { recSay(AL.t('rcStopped'), false); return; }
 
   try {
     /* 🔴🔴 2026-09-19 — 통화 번호는 엔진에게 물어봅니다.
@@ -979,11 +979,31 @@ async function recFinish(){
       linkId: linkId, callId: cid,
       blob: out.blob, ms: out.ms, days: days, asked: recAskDays,
     });
-    setStatus(AL.t('rcSaved'));
+    recSay(AL.t('rcSaved'), true);
   } catch (e) {
     console.error('[rec] 저장 실패', e);
-    setStatus(AL.t('rcFailed') + ' — ' + (e.message || ''));
+    recSay(AL.t('rcFailed') + ' — ' + (e.message || ''), false);
   }
+}
+
+/* 🔴🔴 2026-09-19 — 녹음 결과는 **따로** 보여줍니다.
+
+   전에는 setStatus 로 가운데 글씨에 썼는데, 통화가 끝나면 곧바로
+   "통화가 끝났습니다" 가 덮어써서 **성공했는지 실패했는지 못 봤습니다.**
+   실패 쪽만 눈에 남아 "양쪽 다 실패" 로 보였습니다.
+
+   ⚠ 결과는 통화 종료와 상관없이 남아 있어야 합니다. 녹음 띠 자리를
+     그대로 써서 색만 바꿉니다. */
+function recSay(msg, ok){
+  const bar = el('recBar');
+  if (!bar) { setStatus(msg); return; }
+  bar.querySelector('span').textContent = msg;
+  const sb = el('recStop');
+  if (sb) sb.style.display = 'none';
+  bar.style.background = ok ? 'rgba(143,227,176,.16)' : 'rgba(255,90,90,.16)';
+  bar.style.color = ok ? '#8FE3B0' : '#FFB4B4';
+  bar.style.borderColor = ok ? 'rgba(143,227,176,.45)' : 'rgba(255,90,90,.45)';
+  bar.classList.add('on');
 }
 
 /* ── 신호 받기 ───────────────────────────────────────────── */
@@ -1009,7 +1029,7 @@ function onRecSignal(kind, days, who){
   /* 🔴 2026-09-12 — 판 번호는 콘솔에만 남깁니다.
      화면에 찍으면 손님이 볼 이유가 없는 글씨가 뜹니다.
      ⚠ 무언가 안 될 때 "새 파일이 도는지" 확인하려면 여기를 보세요. */
-  console.log('[call] 화면 판: 20260919d');
+  console.log('[call] 화면 판: 20260919f');
   if (!await AL.requireLogin()) return;
   if (!linkId) { setStatus(AL.t('dtlNotFound')); return; }
 

@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260919d">
-<link rel="stylesheet" href="alias_theme.css?v=20260919d">
+<link rel="stylesheet" href="alias_common.css?v=20260919f">
+<link rel="stylesheet" href="alias_theme.css?v=20260919f">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260919d"></script>
-<script src="alias_call.js?v=20260919d"></script>
+<script src="alias_common.js?v=20260919f"></script>
+<script src="alias_call.js?v=20260919f"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -90,6 +90,7 @@ let rows = [];
 let grouped = false;
 let myFaces = {};   // 🔴 2026-09-13 — 내 별칭 이름 → 사진 경로
 let recs = {};      // 🔴 2026-09-19 — call_id → 녹음 한 줄
+let peerPics = {};  // 🔴 2026-09-19 — link_id → 상대 사진 경로
 
 function showErr(msg){
   const el = document.getElementById('err');
@@ -134,7 +135,8 @@ function rowHtml(r){
        ⚠ my_calls() 가 상대 사진을 안 줄 수도 있습니다. 그때는 상대
          이름의 첫 글자와 색이 나옵니다. 그것만으로도 줄마다 갈립니다. */
     '<div class="cav"' + AL.faceAttr(shown || '') +
-      (r.peer_avatar ? ' data-face="' + AL.esc(r.peer_avatar) + '"' : '') + '>' +
+      (peerPics[r.link_id]
+        ? ' data-face="' + AL.esc(peerPics[r.link_id]) + '"' : '') + '>' +
       AL.esc(AL.initial(shown)) + '</div>' +
     '<div class="cmid">' +
       '<div class="cname">' + AL.esc(shown) +
@@ -192,8 +194,13 @@ function paint(){
   }
 
   /* 🔴 2026-09-19 — 녹음 듣기·지우기 */
+  /* ⚠ 줄 전체에 "대화로 가기" 가 걸려 있습니다. 단추 누름이 줄까지
+     번지면 소리를 듣기도 전에 대화창으로 넘어갑니다.
+     stopPropagation 으로 여기서 끊습니다. */
   box.querySelectorAll('[data-play]').forEach(function(b){
-    b.addEventListener('click', async function(){
+    b.addEventListener('click', async function(ev){
+      ev.preventDefault();
+      ev.stopPropagation();
       var rec = recs[b.getAttribute('data-play')];
       if (!rec) return;
       var url = await AL.recordUrl(rec.path);
@@ -205,7 +212,9 @@ function paint(){
     });
   });
   box.querySelectorAll('[data-rdel]').forEach(function(b){
-    b.addEventListener('click', async function(){
+    b.addEventListener('click', async function(ev){
+      ev.preventDefault();
+      ev.stopPropagation();
       if (!confirm(AL.t('rcDelAsk'))) return;
       var id = b.getAttribute('data-rdel');
       var path = b.getAttribute('data-rpath');
@@ -236,6 +245,17 @@ async function reload(){
 
     /* 🔴 2026-09-19 — 이 통화들에 녹음이 있는지 한 번에 읽습니다.
        ⚠ 줄마다 따로 물으면 스무 통이면 스무 번입니다. */
+    /* 🔴 2026-09-19 — 상대 사진.
+       ⚠ my_calls() 는 상대 사진을 안 줍니다. 그래서 연락처(my_contacts)에서
+         link_id 로 짝을 맞춰 가져옵니다. 함수를 고치는 것보다 안전합니다. */
+    peerPics = {};
+    try {
+      var cs = await AL.sb.rpc('my_contacts');
+      (cs.data || []).forEach(function(c){
+        if (c.peer_avatar) peerPics[c.link_id] = c.peer_avatar;
+      });
+    } catch (e) { console.warn('[calls] 상대 사진을 못 읽었습니다', e); }
+
     recs = {};
     try {
       var ids = rows.map(function(r){ return r.call_id; }).filter(Boolean);
