@@ -875,8 +875,11 @@ AL.STR = {
   plNeedTtl:    { kr:'이용권이 필요합니다', en:'A plan is required' },
   plNeed1:      { kr:'보내기와 걸기는 이용권이 있어야 합니다. 받기와 읽기는 그대로 됩니다.',
                   en:'Sending and calling need a plan. Receiving and reading still work.' },
-  plNeed2:      { kr:'3개월 4,500원 · 6개월 7,500원 · 12개월 13,000원',
-                  en:'3 months ₩4,500 · 6 months ₩7,500 · 12 months ₩13,000' },
+  /* 🔴 2026-09-17 — 값 개편. 갤러리와 녹음·녹화가 들어왔습니다.
+     ⚠ 값을 고치면 여기와 alias_pricing_plans 표 **둘 다** 고쳐야 합니다.
+       화면은 표에서 읽지만 이 안내문만은 글씨로 박혀 있습니다. */
+  plNeed2:      { kr:'3개월 5,500원 · 6개월 9,500원 · 12개월 16,000원',
+                  en:'3 months ₩5,500 · 6 months ₩9,500 · 12 months ₩16,000' },
 
   /* 🔴 2026-09-14 — 구매 화면 */
   plBuyTitle:   { kr:'이용권', en:'Plan' },
@@ -902,8 +905,11 @@ AL.STR = {
   plIniSdk:     { kr:'결제 모듈을 불러오지 못했습니다. 잠시 뒤 다시 해주세요.',
                   en:'Could not load the payment module. Please try again shortly.' },
   plFailed:     { kr:'결제를 마치지 못했습니다.', en:'Payment could not be completed.' },
-  plNote:       { kr:'· 기간이 끝나도 받기와 읽기는 그대로 됩니다.\n· 남은 기간이 있으면 이어서 더해집니다.\n· 자동으로 다시 결제되지 않습니다.',
-                  en:'· Receiving and reading keep working after it ends.\n· Remaining time is added on.\n· It does not renew automatically.' },
+  /* 🔴 2026-09-17 — 저장 정리 규칙을 반드시 알립니다.
+     ⚠ 말없이 지우면 손님이 잃은 줄도 모릅니다. 사는 자리에서 미리
+       적어두어야 나중에 지울 수 있습니다. 약관에도 넣으세요. */
+  plNote:       { kr:'· 기간이 끝나도 받기와 읽기는 그대로 됩니다.\n· 남은 기간이 있으면 이어서 더해집니다.\n· 자동으로 다시 결제되지 않습니다.\n· 저장 공간 3GB. 다 차면 지우신 만큼 다시 쓸 수 있습니다.\n· 기간이 끝나고 3개월이 지나면 저장하신 사진·영상이 지워집니다. 미리 알려드립니다.',
+                  en:'· Receiving and reading keep working after it ends.\n· Remaining time is added on.\n· It does not renew automatically.\n· 3GB of storage. Free up space by deleting.\n· Stored photos and videos are removed 3 months after your plan ends. We will remind you first.' },
 
   /* 결제 결과 */
   plResultTitle:{ kr:'결제 결과', en:'Payment' },
@@ -952,8 +958,8 @@ AL.STR = {
 
   hlCall:    { kr:'전화도 영상통화도 됩니다. 영상통화는 카메라를 켜지 않고 받을 수도 있습니다.',
                en:'Voice and video calls included — and you can answer a video call without turning your camera on.' },
-  hlPrice:   { kr:'14일 무료 체험 · 이후 월 1,000원대',
-               en:'14-day free trial · about $1 a month after' },
+  hlPrice:   { kr:'14일 무료 체험 · 이후 월 1,300원대',
+               en:'14-day free trial · about $1.3 a month after' },
   hlStart:   { kr:'시작하기', en:'Get started' },
   hlAgain:   { kr:'소개 다시 보기', en:'About Alias' },
 
