@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260919g">
-<link rel="stylesheet" href="alias_theme.css?v=20260919g">
+<link rel="stylesheet" href="alias_common.css?v=20260919h">
+<link rel="stylesheet" href="alias_theme.css?v=20260919h">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260919g"></script>
-<script src="alias_call.js?v=20260919g"></script>
+<script src="alias_common.js?v=20260919h"></script>
+<script src="alias_call.js?v=20260919h"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -41,8 +41,6 @@ document.addEventListener("DOMContentLoaded", function(){
   background-repeat:no-repeat;background-size:cover;background-position:center}
 </style>
 <style>
-function el(id){ return document.getElementById(id); }
-
 /* 🔴 2026-09-19 — 녹음 듣기 창 */
 #rpBg{display:none;position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.72)}
 #rpBox{display:none;position:fixed;z-index:71;left:50%;top:50%;
@@ -124,6 +122,11 @@ function showErr(msg){
   const el = document.getElementById('err');
   el.textContent = msg; el.classList.add('show');
 }
+
+/* ⚠ 2026-09-19 — 이 도우미가 없으면 아래 줄들이 그 자리에서 멈추고
+   화면이 통째로 빕니다. 반드시 **스크립트 안**에 있어야 합니다.
+   한 번 <style> 안에 잘못 넣어 통화기록이 먹통이 됐습니다. */
+function el(id){ return document.getElementById(id); }
 
 /* 🔴 2026-09-19 — 녹음 듣기 창
 
