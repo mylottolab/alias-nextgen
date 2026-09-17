@@ -998,8 +998,12 @@ AL.STR = {
   /* 🔴 2026-09-18 신설 — 갤러리 */
   glTitle:    { kr:'갤러리', en:'Gallery' },
   glMine:     { kr:'내 갤러리', en:'My gallery' },
+  /* 🔴 2026-09-18 고침 — 같은 글씨를 두 자리에 썼다가 손님이
+     헷갈렸습니다. 위는 오가는 단추, 아래는 저장하는 단추입니다.
+     하는 일이 다르면 글씨도 달라야 합니다. */
   glEdit:     { kr:'꾸미기', en:'Edit' },
-  glDone:     { kr:'다 됐습니다', en:'Done' },
+  glDone:     { kr:'그만두기', en:'Cancel' },
+  glSave:     { kr:'저장하기', en:'Save' },
   glEmpty:    { kr:'아직 아무것도 없습니다.', en:'Nothing here yet.' },
   glEmptyMine:{ kr:'사진이나 영상을 올려 이 별칭의 공간을 꾸며보세요.',
                 en:'Add photos or videos to make this alias your own.' },
@@ -1943,7 +1947,7 @@ AL.loadGallery = async function(personaId){
 /* 갤러리 설정을 저장합니다. 줄이 없으면 만듭니다. */
 AL.saveGallery = async function(personaId, patch){
   var sess = await AL.sb.auth.getSession();
-  if (!sess.data.session) return false;
+  if (!sess.data.session) return '로그인이 풀렸습니다';
   var row = Object.assign({
     persona_id: personaId,
     account_id: sess.data.session.user.id,
@@ -1951,7 +1955,16 @@ AL.saveGallery = async function(personaId, patch){
   }, patch);
   var res = await AL.sb.from('galleries')
     .upsert(row, { onConflict: 'persona_id' }).select('persona_id');
-  if (res.error) { console.error('[gallery] 저장 실패', res.error); return false; }
+  if (res.error) {
+    /* 🔴 2026-09-18 — 이유를 그대로 올려보냅니다.
+       권한인지 칸 이름인지 화면에서 알 수 있어야 합니다. */
+    console.error('[gallery] 저장 실패', res.error);
+    return '저장 실패: ' + (res.error.message || res.error.code || '알 수 없음');
+  }
+  if (!res.data || !res.data.length) {
+    /* ⚠ 정책이 막으면 오류 없이 0줄이 바뀝니다(함정 ⑦). */
+    return '저장 실패: 아무 줄도 바뀌지 않았습니다 (정책 확인 필요)';
+  }
   return true;
 };
 

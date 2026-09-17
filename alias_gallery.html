@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260918a">
-<link rel="stylesheet" href="alias_theme.css?v=20260918a">
+<link rel="stylesheet" href="alias_common.css?v=20260918b">
+<link rel="stylesheet" href="alias_theme.css?v=20260918b">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260918a"></script>
-<script src="alias_media.js?v=20260918a"></script>
+<script src="alias_common.js?v=20260918b"></script>
+<script src="alias_media.js?v=20260918b"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function(){
   if (typeof AL === "undefined" || typeof AL.t !== "function") {
@@ -183,7 +183,7 @@ document.addEventListener("DOMContentLoaded", function(){
     <p class="gnote" data-t="glWhoSees"></p>
 
     <div style="margin-top:22px">
-      <button class="gsave" id="esave" data-t="glDone"></button>
+      <button class="gsave" id="esave" data-t="glSave"></button>
     </div>
   </div>
 
@@ -395,12 +395,15 @@ el('esave').addEventListener('click', async function(){
   }
   this.disabled = true;
   try {
-    const ok = await AL.saveGallery(personaId, {
+    /* 🔴 2026-09-18 — 왜 못 저장했는지 그대로 보여줍니다.
+       "저장하지 못했습니다" 만으로는 권한인지 칸 이름인지 알 수가
+       없습니다(함정 76). */
+    const out = await AL.saveGallery(personaId, {
       headline: el('eline').value.trim() || null,
       music_id: el('emusic').value || null,
       youtube_id: yt,
     });
-    if (!ok) throw new Error('저장하지 못했습니다');
+    if (out !== true) throw new Error(String(out || '저장하지 못했습니다'));
     data = await AL.loadGallery(personaId);
     editing = false;
     await paintAll();
@@ -425,6 +428,8 @@ async function paintAll(){
   el('view').style.display = editing ? 'none' : '';
   el('edit').style.display = editing ? '' : 'none';
   el('gedit').textContent = AL.t(editing ? 'glDone' : 'glEdit');
+  /* ⚠ 꾸미는 중에 이 단추를 누르면 **저장 없이** 돌아갑니다.
+     아래 [저장하기] 와 다릅니다. 글씨로 갈라 두었습니다. */
   if (editing) { await paintEdit(); await paintUsed(); }
   else { await paintView(); el('bgm').pause(); }
 }
