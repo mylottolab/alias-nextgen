@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260917d">
-<link rel="stylesheet" href="alias_theme.css?v=20260917d">
+<link rel="stylesheet" href="alias_common.css?v=20260917e">
+<link rel="stylesheet" href="alias_theme.css?v=20260917e">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260917d"></script>
-<script src="alias_call.js?v=20260917d"></script>
+<script src="alias_common.js?v=20260917e"></script>
+<script src="alias_call.js?v=20260917e"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -486,8 +486,17 @@ function openRowMenu(btn){
     html += b('vcall', AL.t('clVideoCall'));
   }
   html += b('msg', AL.t('cntMsgNow'));
-  /* 🔴 2026-09-17 — 전체를 켜뒀어도 **민감한 사이만** 가릴 수 있어야 합니다. */
-  if (previewOn) html += b('prev', AL.t(hidden[id] ? 'pvShowOne' : 'pvHideOne'));
+  /* 🔴 2026-09-17 — 민감한 사이만 가릴 수 있어야 합니다.
+
+     ⚠ 이 함수 안에서 관계 번호는 **linkId** 입니다. 다른 함수의 이름(id)을
+       그대로 가져다 썼다가 메뉴가 통째로 안 열렸습니다. 없는 이름을 읽으면
+       그 자리에서 멈추고, 그 뒤 줄들이 아예 안 그려집니다.
+
+     ⚠ 전체가 꺼져 있어도 보여줍니다. "나중에 켤 텐데 이 사람만은 미리
+       막아두고 싶다" 를 할 수 있어야 하니까요. */
+  if (!isRoom) {
+    html += b('prev', AL.t(hidden[linkId] ? 'pvShowOne' : 'pvHideOne'));
+  }
   html += '<div class="sep"></div>';
 
   /* 이 사람을 어떻게 둘지 */
@@ -554,6 +563,8 @@ async function rowAction(act){
           hidden[id] = want;
           previews = await AL.loadPreviews();
           paint();
+        } else {
+          console.warn('[preview] 가리기 저장 실패', up.error);
         }
       }
     } else if (act === 'msg') {
