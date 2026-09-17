@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260918d">
-<link rel="stylesheet" href="alias_theme.css?v=20260918d">
+<link rel="stylesheet" href="alias_common.css?v=20260918e">
+<link rel="stylesheet" href="alias_theme.css?v=20260918e">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260918d"></script>
-<script src="alias_media.js?v=20260918d"></script>
+<script src="alias_common.js?v=20260918e"></script>
+<script src="alias_media.js?v=20260918e"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function(){
   if (typeof AL === "undefined" || typeof AL.t !== "function") {
@@ -471,29 +471,25 @@ async function paintAll(){
    ⚠ 꾸미는 중이면 먼저 보기 화면으로 돌아갑니다. 한 번에 나가면
      쓰던 것이 날아갑니다.
    ===================================================================== */
-(function(){
-  try { history.pushState({ gal: 1 }, ''); } catch (e) {}
-
-  window.addEventListener('popstate', function(){
-    /* 꾸미는 중이면 보기 화면으로 한 걸음만 */
-    if (editing) {
-      editing = false;
-      paintAll();
-      window.scrollTo(0, 0);
-      try { history.pushState({ gal: 1 }, ''); } catch (e) {}
-      return;
-    }
-    /* 크게 보기가 열려 있으면 그것부터 닫습니다 */
-    if (document.getElementById('gvBox').classList.contains('on')) {
-      closeViewer();
-      try { history.pushState({ gal: 1 }, ''); } catch (e) {}
-      return;
-    }
-    /* 어디서 왔는지에 따라 돌아갑니다.
-       ⚠ 내 갤러리는 "나" 에서, 남의 갤러리는 연락처에서 옵니다. */
-    location.replace(mine ? 'alias_me.html' : 'alias_contacts.html');
-  });
-})();
+/* 🔴 2026-09-18 — 폰의 ◁ 로 한 걸음씩 물러납니다.
+   ⚠ 한 번에 나가면 꾸미던 것이 날아갑니다. */
+AL.setBack('alias_contacts.html', function(){
+  /* 크게 보기가 열려 있으면 그것부터 */
+  if (document.getElementById('gvBox').classList.contains('on')) {
+    closeViewer();
+    return true;
+  }
+  /* 꾸미는 중이면 보기 화면으로 */
+  if (editing) {
+    editing = false;
+    paintAll();
+    window.scrollTo(0, 0);
+    return true;
+  }
+  /* 내 갤러리는 "나" 로 돌아갑니다 */
+  if (mine) { location.replace('alias_me.html'); return true; }
+  return false;
+});
 
 /* ── 시작 ────────────────────────────────────────────────────── */
 (async function(){

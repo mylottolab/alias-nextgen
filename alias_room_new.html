@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260918d">
-<link rel="stylesheet" href="alias_theme.css?v=20260918d">
+<link rel="stylesheet" href="alias_common.css?v=20260918e">
+<link rel="stylesheet" href="alias_theme.css?v=20260918e">
 <script src="alias_qrlib.js"></script>
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260918d"></script>
-<script src="alias_qr.js?v=20260918d"></script>
+<script src="alias_common.js?v=20260918e"></script>
+<script src="alias_qr.js?v=20260918e"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function(){
   if (typeof AL === "undefined" || typeof AL.t !== "function") {
@@ -277,6 +277,8 @@ el('goRoom').addEventListener('click', function(){
 
 (async function(){
   AL.paintText();
+  /* 🔴 2026-09-18 — 폰의 ◁ 를 누르면 앱이 나가지 않고 돌아갑니다. */
+  AL.setBack('alias_contacts.html');
   if (!await AL.requireLogin()) return;
 
   // 이미 있는 방에 사람을 더 부르러 온 경우입니다.

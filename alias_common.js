@@ -2083,6 +2083,56 @@ AL.storageCap = async function(){
   return AL._cap;
 };
 
+/* =====================================================================
+   🔴🔴 2026-09-18 신설 — 뒤로 가기
+
+   무슨 일이 났나
+     대화 · 관계 상세 · 초대 만들기 어디서든 폰의 뒤로 가기(◁)를
+     누르면 **앱이 통째로 나가** 바탕화면으로 갔습니다.
+
+   왜 그런가
+     앱 화면(웹뷰)은 뒤로 갈 기록을 제대로 안 쌓습니다. 기록이 없으면
+     안드로이드는 "더 갈 데가 없다" 고 보고 앱을 닫습니다.
+
+   ⚠ 손님들은 화면 안 단추보다 폰의 ◁ 를 훨씬 많이 씁니다.
+     만드는 쪽은 자기가 만든 단추를 누르니 잘 모르고 지나갑니다.
+
+   어떻게
+     화면이 열릴 때 기록을 하나 심어둡니다(pushState). ◁ 를 누르면
+     그 기록이 빠지면서 popstate 가 불리고, 그때 원하는 곳으로 보냅니다.
+
+   쓰는 법
+     AL.setBack('alias_contacts.html');
+
+     창이나 덮개가 열려 있을 때 그것부터 닫으려면
+     AL.setBack('alias_contacts.html', function(){
+       if (창이 열려 있음) { 닫기(); return true; }   // true = 내가 처리했다
+       return false;                                  // false = 그냥 나가라
+     });
+
+   ⚠ 통화화면에는 달지 마세요. 거기서 뒤로 가면 끊은 전화가
+     되살아납니다. 일부러 기록을 안 남기게 해둔 자리입니다(2026-09-10).
+   ===================================================================== */
+AL.setBack = function(url, handler){
+  try { history.pushState({ al: 1 }, ''); } catch (e) {}
+
+  window.addEventListener('popstate', function(){
+    /* 화면이 먼저 처리할 일이 있으면 맡깁니다. */
+    if (typeof handler === 'function') {
+      var handled = false;
+      try { handled = handler(); } catch (e) { console.warn('[back] 처리 중 문제', e); }
+      if (handled) {
+        /* 한 걸음만 물러났으니 기록을 다시 심어둡니다. */
+        try { history.pushState({ al: 1 }, ''); } catch (e) {}
+        return;
+      }
+    }
+    /* ⚠ replace 를 씁니다. href 로 가면 기록이 쌓여 뒤로 가기가
+       제자리를 맴돕니다. */
+    location.replace(url);
+  });
+};
+
 /* 이 관계에서 상대가 쓰는 별칭. 갤러리로 가려면 필요합니다.
    ⚠ link_sides 정책이 남의 줄을 막고 있어 화면에서는 못 읽습니다.
      서버 함수가 "내가 그 링크에 있는가" 를 보고 알려줍니다. */
