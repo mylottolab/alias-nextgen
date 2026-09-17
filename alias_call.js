@@ -1246,14 +1246,22 @@ AL.saveRecording = async function(opts){
     .upload(path, opts.blob, { contentType: opts.blob.type, upsert: true });
   if (up.error) throw up.error;
 
-  var ins = await AL.sb.from('call_records').insert({
+  /* 🔴 2026-09-19 — 한 통화에 **한 줄만** 남깁니다.
+
+     양쪽이 각자 담고 각자 올립니다. 한쪽 폰이 꺼지거나 앱이 죽어도
+     다른 쪽 것이 남게 하려는 것입니다. 다만 줄이 둘이 되면 통화기록에
+     같은 녹음이 두 개로 보입니다.
+
+     ⚠ 나중에 끝난 쪽이 덮어씁니다. 같은 대화이니 괜찮습니다.
+     ⚠ call_id 에 unique 가 걸려 있어야 이게 됩니다(alias_record_fix.sql). */
+  var ins = await AL.sb.from('call_records').upsert({
     call_id: opts.callId, link_id: opts.linkId,
     kind: 'audio', path: path,
     bytes: opts.blob.size, duration_ms: opts.ms,
     started_by: sess.data.session.user.id,
     keep_days: opts.days, asked_days: opts.asked || opts.days,
     purge_on: new Date().toISOString(),   // ⚠ 서버 트리거가 다시 계산합니다
-  }).select('id').single();
+  }, { onConflict: 'call_id' }).select('id').single();
   if (ins.error) {
     /* 표에 못 넣었으면 올린 파일도 치웁니다. */
     try { await AL.sb.storage.from('alias-records').remove([path]); } catch (e) {}

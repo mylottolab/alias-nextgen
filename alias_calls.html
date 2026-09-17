@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260919c">
-<link rel="stylesheet" href="alias_theme.css?v=20260919c">
+<link rel="stylesheet" href="alias_common.css?v=20260919d">
+<link rel="stylesheet" href="alias_theme.css?v=20260919d">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260919c"></script>
-<script src="alias_call.js?v=20260919c"></script>
+<script src="alias_common.js?v=20260919d"></script>
+<script src="alias_call.js?v=20260919d"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -40,6 +40,16 @@ document.addEventListener("DOMContentLoaded", function(){
   font-size:12px;font-weight:800;line-height:1;
   background-repeat:no-repeat;background-size:cover;background-position:center}
 </style>
+<style>
+/* 🔴 2026-09-19 — 통화기록의 녹음 줄 */
+.crec{display:flex;align-items:center;gap:8px;margin-top:7px}
+.crec button{padding:6px 11px;border-radius:999px;cursor:pointer;
+  font-size:12px;font-weight:700;background:rgba(255,90,90,.15);color:#FFB4B4;
+  border:1px solid rgba(255,90,90,.38)}
+.crec button[data-rdel]{background:rgba(255,255,255,.07);color:inherit;
+  border-color:rgba(255,255,255,.16);padding:6px 9px}
+.crec span{flex:1;font-size:11.5px;opacity:.6}
+</style>
 </head>
 <body class="tabbed" data-t-title="clHistory">
 <div class="wrap">
@@ -54,6 +64,11 @@ document.addEventListener("DOMContentLoaded", function(){
   <div id="err" class="err"></div>
 
 </div>
+
+<!-- 🔴 2026-09-19 — 녹음 듣기 -->
+<audio id="recPlay" controls preload="none"
+  style="display:none;position:fixed;left:12px;right:12px;
+         bottom:calc(64px + env(safe-area-inset-bottom,0px));z-index:40;width:auto"></audio>
 
 <nav class="tabbar">
   <a href="alias_contacts.html" data-t="navContacts"></a>
@@ -74,10 +89,18 @@ document.addEventListener("DOMContentLoaded", function(){
 let rows = [];
 let grouped = false;
 let myFaces = {};   // 🔴 2026-09-13 — 내 별칭 이름 → 사진 경로
+let recs = {};      // 🔴 2026-09-19 — call_id → 녹음 한 줄
 
 function showErr(msg){
   const el = document.getElementById('err');
   el.textContent = msg; el.classList.add('show');
+}
+
+/* 🔴 2026-09-19 — 며칠 남았나 */
+function daysLeft(rec){
+  if (!rec || !rec.purge_on) return 0;
+  var ms = new Date(rec.purge_on).getTime() - Date.now();
+  return Math.max(0, Math.ceil(ms / 86400000));
 }
 
 function dirLabel(r){
@@ -125,6 +148,17 @@ function rowHtml(r){
         AL.esc(dirLabel(r)) + '</span>' +
         (dur ? ' · ' + AL.esc(dur) : '') +
         ' · ' + AL.esc(r.my_face || '') + '</div>' +
+      /* 🔴 2026-09-19 — 녹음이 있으면 듣는 자리를 냅니다.
+         ⚠ 언제 지워지는지 함께 적습니다. 모르고 있다 잃으면 안 됩니다. */
+      (recs[r.call_id]
+        ? '<div class="crec">' +
+            '<button data-play="' + AL.esc(r.call_id) + '">' +
+              AL.esc(AL.t('rcPlay')) + '</button>' +
+            '<span>' + AL.esc(AL.t('rcLeft', { n: daysLeft(recs[r.call_id]) })) + '</span>' +
+            '<button data-rdel="' + AL.esc(recs[r.call_id].id) + '" ' +
+              'data-rpath="' + AL.esc(recs[r.call_id].path) + '">✕</button>' +
+          '</div>'
+        : '') +
     '</div>' +
     '<div class="ctime">' + AL.esc(AL.fmtShort(r.created_at)) + '</div>' +
   '</div>';
@@ -157,6 +191,33 @@ function paint(){
     }).join('');
   }
 
+  /* 🔴 2026-09-19 — 녹음 듣기·지우기 */
+  box.querySelectorAll('[data-play]').forEach(function(b){
+    b.addEventListener('click', async function(){
+      var rec = recs[b.getAttribute('data-play')];
+      if (!rec) return;
+      var url = await AL.recordUrl(rec.path);
+      if (!url) { alert(AL.t('rcFailed')); return; }
+      var a = document.getElementById('recPlay');
+      a.src = url;
+      a.style.display = '';
+      a.play().catch(function(){});
+    });
+  });
+  box.querySelectorAll('[data-rdel]').forEach(function(b){
+    b.addEventListener('click', async function(){
+      if (!confirm(AL.t('rcDelAsk'))) return;
+      var id = b.getAttribute('data-rdel');
+      var path = b.getAttribute('data-rpath');
+      try {
+        await AL.sb.storage.from('alias-records').remove([path]);
+      } catch (e) {}
+      var res = await AL.sb.from('call_records').delete().eq('id', id);
+      if (res.error) { alert(AL.t('rcFailed')); return; }
+      await reload();
+    });
+  });
+
   AL.paintFaces(box);   // 🔴 2026-09-13 — 사진은 오는 대로 덮어씁니다
 
   box.querySelectorAll('[data-go]').forEach(function(el){
@@ -172,6 +233,20 @@ async function reload(){
     if (res.error) throw res.error;
     rows = res.data || [];
     myFaces = await AL.myFaceMap();   // 🔴 2026-09-13
+
+    /* 🔴 2026-09-19 — 이 통화들에 녹음이 있는지 한 번에 읽습니다.
+       ⚠ 줄마다 따로 물으면 스무 통이면 스무 번입니다. */
+    recs = {};
+    try {
+      var ids = rows.map(function(r){ return r.call_id; }).filter(Boolean);
+      if (ids.length) {
+        var rr = await AL.sb.from('call_records')
+          .select('id, call_id, path, duration_ms, keep_days, purge_on')
+          .in('call_id', ids);
+        (rr.data || []).forEach(function(x){ recs[x.call_id] = x; });
+      }
+    } catch (e) { console.warn('[rec] 녹음 목록을 못 읽었습니다', e); }
+
     paint();
   } catch (e) {
     console.error(e);
