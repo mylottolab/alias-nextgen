@@ -1088,6 +1088,7 @@ AL.STR = {
   rcPlay:     { kr:'🔴 녹음 듣기', en:'🔴 Play recording' },
   rcLeft:     { kr:'{n}일 뒤 지워집니다', en:'Deleted in {n} days' },
   rcDel:      { kr:'녹음 지우기', en:'Delete recording' },
+  rcDownload: { kr:'폰에 내려받기', en:'Save to phone' },
   rcDelAsk:   { kr:'이 녹음을 지울까요?\n두 분 모두에게서 사라지고 되돌릴 수 없습니다.',
                 en:'Delete this recording?\nIt disappears for both of you and cannot be undone.' },
   glNone:     { kr:'이 분은 아직 갤러리를 만들지 않았습니다.',
