@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260919j">
-<link rel="stylesheet" href="alias_theme.css?v=20260919j">
+<link rel="stylesheet" href="alias_common.css?v=20260919k">
+<link rel="stylesheet" href="alias_theme.css?v=20260919k">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260919j"></script>
-<script src="alias_media.js?v=20260919j"></script>
-<script src="alias_call.js?v=20260919j"></script>
+<script src="alias_common.js?v=20260919k"></script>
+<script src="alias_media.js?v=20260919k"></script>
+<script src="alias_call.js?v=20260919k"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -253,10 +253,30 @@ function burnTicket(t){
 function leaveTo(url){
   location.replace(url);
 }
+/* 🔴🔴 2026-09-19 — 녹음·녹화가 있었으면 **통화기록으로** 갑니다.
+
+   무슨 일이 났나
+     녹음을 멈추면 통화가 끝나고, 곧장 대화창으로 넘어가 버렸습니다.
+     그래서 "녹음을 저장했습니다" 를 볼 새가 없었습니다.
+
+   왜 통화기록인가
+     방금 담은 것을 **바로 듣거나 볼 수 있어야** 합니다. 대화창으로
+     가면 손님이 다시 통화기록을 찾아 들어가야 합니다.
+
+   ⚠ 글씨를 볼 시간을 드립니다. 저장 결과를 확인하지도 못하고 화면이
+     바뀌면 됐는지 안 됐는지 모릅니다.
+   ⚠ 녹음이 없었으면 예전처럼 대화창으로 갑니다. 바꿀 이유가 없습니다. */
+let recDone = false;        // 이번 통화에서 녹음·녹화를 했는가
+
 function goChat(delayMs){
-  setTimeout(function(){
-    leaveTo('alias_chat.html?link=' + encodeURIComponent(linkId));
-  }, delayMs || 0);
+  var wait = delayMs || 0;
+  var where = 'alias_chat.html?link=' + encodeURIComponent(linkId);
+
+  if (recDone) {
+    where = 'alias_calls.html';
+    wait = Math.max(wait, 2200);   // 초록 글씨를 읽을 시간
+  }
+  setTimeout(function(){ leaveTo(where); }, wait);
 }
 
 let me = null, view = null;
@@ -959,6 +979,8 @@ function paintRecBar(){
   var b = el('recStop');
   if (!b) { console.warn('[rec] recStop 이 없습니다'); return; }
   b.addEventListener('click', function(){
+    /* ⚠ 멈추기는 **통화를 끊는 게 아닙니다.** 담는 것만 멈춥니다.
+       통화는 이어집니다. 끊으시려면 빨간 단추를 누르셔야 합니다. */
     AL.sendRec('rec-stop', {});
     recFinish();
   });
@@ -995,6 +1017,7 @@ async function recFinish(){
       linkId: linkId, callId: cid, kind: out.video ? 'video' : 'audio',
       blob: out.blob, ms: out.ms, days: days, asked: recAskDays,
     });
+    recDone = true;              // 🔴 통화기록으로 보냅니다
     recSay(AL.t('rcSaved'), true);
   } catch (e) {
     console.error('[rec] 저장 실패', e);
@@ -1045,7 +1068,7 @@ function onRecSignal(kind, days, who, vid){
   /* 🔴 2026-09-12 — 판 번호는 콘솔에만 남깁니다.
      화면에 찍으면 손님이 볼 이유가 없는 글씨가 뜹니다.
      ⚠ 무언가 안 될 때 "새 파일이 도는지" 확인하려면 여기를 보세요. */
-  console.log('[call] 화면 판: 20260919j');
+  console.log('[call] 화면 판: 20260919k');
   if (!await AL.requireLogin()) return;
   if (!linkId) { setStatus(AL.t('dtlNotFound')); return; }
 
