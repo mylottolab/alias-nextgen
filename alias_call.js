@@ -1180,9 +1180,33 @@ AL.recSupported = function(){
   return !!(window.MediaRecorder && (window.AudioContext || window.webkitAudioContext));
 };
 
-AL.startRecording = async function(){
+/* 🔴🔴 2026-09-19 — 영상 녹화
+
+   무엇을 담나
+     **상대 얼굴만** 담습니다. 소리는 양쪽 다 담습니다.
+     녹화하는 목적이 대개 "상대가 뭐라고 했나" 이고, 내 얼굴까지
+     합치려면 그림을 다시 그려야 해서(canvas) 폰이 뜨거워집니다.
+     통화 중에 그 일을 하면 통화 자체가 끊길 수 있습니다.
+
+   크기를 왜 안 줄이나
+     파일 크기를 정하는 건 화면 크기가 아니라 **초당 담는 양**입니다.
+     640×480 그대로 두고 400kbps 로 낮추면, 320×240 으로 줄이는 것과
+     비슷한 크기가 나오면서 화면은 훨씬 낫습니다.
+
+   ⚠ 한도에 닿으면 **스스로 멈추고 저장**합니다. 그냥 두면 한 시간
+     녹화하고 저장이 통째로 실패합니다. 서랍 상한이 50MB 입니다. */
+AL.REC_VIDEO_BPS = 400000;        // 400kbps · 약 14분이면 45MB
+AL.REC_AUDIO_BPS = 48000;
+AL.REC_MAX_BYTES = 45 * 1024 * 1024;
+
+AL.startRecording = async function(opts){
   if (!AL.recSupported()) throw new Error(AL.t('rcNoSupport'));
   if (AL._rec) return;                       // 이미 담는 중
+
+  opts = opts || {};
+  /* 영상통화이고 상대 영상이 오고 있으면 영상으로 담습니다. */
+  var wantVideo = !!(opts.video && AL.call.remote &&
+                     AL.call.remote.getVideoTracks().length);
 
   var Ctx = window.AudioContext || window.webkitAudioContext;
   var ctx = new Ctx();
@@ -1197,19 +1221,51 @@ AL.startRecording = async function(){
   }
   if (!n) { try { ctx.close(); } catch (e) {} throw new Error(AL.t('rcNoSupport')); }
 
-  var types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', ''];
+  /* 담을 줄기를 꾸립니다 — 섞은 소리 + (영상이면) 상대 화면 */
+  var stream = new MediaStream();
+  dest.stream.getAudioTracks().forEach(function(t){ stream.addTrack(t); });
+  if (wantVideo) {
+    AL.call.remote.getVideoTracks().forEach(function(t){ stream.addTrack(t); });
+  }
+
+  var types = wantVideo
+    ? ['video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4', '']
+    : ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', ''];
   var mime = '';
   for (var i = 0; i < types.length; i++) {
     if (!types[i] || MediaRecorder.isTypeSupported(types[i])) { mime = types[i]; break; }
   }
 
-  var chunks = [];
-  var mr = new MediaRecorder(dest.stream, mime ? { mimeType: mime } : undefined);
-  mr.ondataavailable = function(e){ if (e.data && e.data.size) chunks.push(e.data); };
+  var conf = {};
+  if (mime) conf.mimeType = mime;
+  conf.audioBitsPerSecond = AL.REC_AUDIO_BPS;
+  if (wantVideo) conf.videoBitsPerSecond = AL.REC_VIDEO_BPS;
 
-  AL._rec = { ctx: ctx, mr: mr, chunks: chunks, mime: mime, startedAt: Date.now() };
+  var chunks = [];
+  var got = 0;
+  var mr = new MediaRecorder(stream, conf);
+
+  mr.ondataavailable = function(e){
+    if (!e.data || !e.data.size) return;
+    chunks.push(e.data);
+    got += e.data.size;
+    /* 🔴 한도에 닿으면 스스로 멈춥니다.
+       ⚠ 저장은 화면이 합니다. 여기서는 알려만 주고 멈춥니다. */
+    if (got >= AL.REC_MAX_BYTES && AL._rec) {
+      console.warn('[rec] 한도에 닿았습니다. 멈춥니다: ' + got + '바이트');
+      if (typeof AL._rec.onFull === 'function') {
+        try { AL._rec.onFull(); } catch (e2) {}
+      }
+    }
+  };
+
+  AL._rec = {
+    ctx: ctx, mr: mr, chunks: chunks, mime: mime,
+    video: wantVideo, startedAt: Date.now(), onFull: opts.onFull || null,
+  };
   mr.start(1000);                            // 1초마다 토막을 받아둡니다
-  console.log('[rec] 녹음을 시작했습니다:', mime || '기본', '· 소리 ' + n + '줄기');
+  console.log('[rec] ' + (wantVideo ? '녹화' : '녹음') + '를 시작했습니다:',
+    mime || '기본', '· 소리 ' + n + '줄기');
 };
 
 AL.stopRecording = function(){
@@ -1219,8 +1275,8 @@ AL.stopRecording = function(){
     AL._rec = null;
     r.mr.onstop = function(){
       try { r.ctx.close(); } catch (e) {}
-      var blob = new Blob(r.chunks, { type: r.mime || 'audio/webm' });
-      done({ blob: blob, ms: Date.now() - r.startedAt });
+      var blob = new Blob(r.chunks, { type: r.mime || (r.video ? 'video/webm' : 'audio/webm') });
+      done({ blob: blob, ms: Date.now() - r.startedAt, video: r.video });
     };
     try { r.mr.stop(); }
     catch (e) {
@@ -1231,6 +1287,7 @@ AL.stopRecording = function(){
 };
 
 AL.recording = function(){ return !!AL._rec; };
+AL.recordingVideo = function(){ return !!(AL._rec && AL._rec.video); };
 
 /* 녹음 파일을 서랍에 올리고 표에 적습니다.
    경로는 {link_id}/{call_id}.webm — 첫 칸이 관계 번호라 정책이
@@ -1239,6 +1296,8 @@ AL.saveRecording = async function(opts){
   var sess = await AL.sb.auth.getSession();
   if (!sess.data.session) throw new Error(AL.t('errNotLoggedIn'));
 
+  /* 🔴 2026-09-19 — 영상이면 파일 이름도 영상답게 */
+  var isVid = (opts.kind === 'video') || (opts.blob.type.indexOf('video') >= 0);
   var ext = (opts.blob.type.indexOf('mp4') >= 0) ? 'mp4' : 'webm';
   var path = opts.linkId + '/' + opts.callId + '.' + ext;
 
@@ -1256,7 +1315,7 @@ AL.saveRecording = async function(opts){
      ⚠ call_id 에 unique 가 걸려 있어야 이게 됩니다(alias_record_fix.sql). */
   var ins = await AL.sb.from('call_records').upsert({
     call_id: opts.callId, link_id: opts.linkId,
-    kind: 'audio', path: path,
+    kind: isVid ? 'video' : 'audio', path: path,
     bytes: opts.blob.size, duration_ms: opts.ms,
     started_by: sess.data.session.user.id,
     keep_days: opts.days, asked_days: opts.asked || opts.days,

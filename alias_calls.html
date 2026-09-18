@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260919i">
-<link rel="stylesheet" href="alias_theme.css?v=20260919i">
+<link rel="stylesheet" href="alias_common.css?v=20260919j">
+<link rel="stylesheet" href="alias_theme.css?v=20260919j">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260919i"></script>
-<script src="alias_call.js?v=20260919i"></script>
+<script src="alias_common.js?v=20260919j"></script>
+<script src="alias_call.js?v=20260919j"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -52,6 +52,10 @@ document.addEventListener("DOMContentLoaded", function(){
 #rpBox .rpt{font-size:15.5px;font-weight:800;margin:0 0 14px;line-height:1.5;
   word-break:keep-all}
 #rpBox audio{width:100%;display:block}
+#rpBox video{width:100%;display:none;border-radius:12px;background:#000;
+  max-height:52vh}
+#rpBox.vid audio{display:none}
+#rpBox.vid video{display:block}
 #rpBox .rpb{display:flex;gap:9px;margin-top:16px}
 #rpBox .rpb button{flex:1;padding:13px 0;border-radius:12px;cursor:pointer;
   font-size:14.5px;font-weight:700;background:rgba(255,255,255,.08);color:inherit;
@@ -90,6 +94,8 @@ document.addEventListener("DOMContentLoaded", function(){
 <div id="rpBox">
   <div class="rpt" id="rpTitle"></div>
   <audio id="recPlay" controls preload="none"></audio>
+  <!-- 🔴 2026-09-19 — 영상 녹화는 여기서 봅니다 -->
+  <video id="recPlayV" controls playsinline preload="none"></video>
   <div class="rpb">
     <button id="rpSave"></button>
     <button id="rpClose"></button>
@@ -138,22 +144,31 @@ let rpUrl = null, rpName = 'alias-record.webm';
 
 function openPlayer(url, rec){
   rpUrl = url;
+  var vid = (rec.kind === 'video');
   var ext = (rec.path || '').split('.').pop() || 'webm';
-  rpName = 'Alias_녹음_' + (rec.purge_on || '').slice(0, 10) + '.' + ext;
+  rpName = 'Alias_' + (vid ? '녹화_' : '녹음_') +
+           (rec.purge_on || '').slice(0, 10) + '.' + ext;
 
   el('rpTitle').textContent = AL.t('rcLeft', { n: daysLeft(rec) });
   el('rpSave').textContent = AL.t('rcDownload');
   el('rpClose').textContent = AL.t('close');
-  var a = el('recPlay');
-  a.src = url;
+
+  /* 🔴 2026-09-19 — 영상이면 영상 자리로, 소리면 소리 자리로 */
+  el('rpBox').classList.toggle('vid', vid);
+  var pl = el(vid ? 'recPlayV' : 'recPlay');
+  pl.src = url;
+
   el('rpBg').classList.add('on');
   el('rpBox').classList.add('on');
-  a.play().catch(function(){});
+  pl.play().catch(function(){});
 }
 
 function closePlayer(){
-  var a = el('recPlay');
-  try { a.pause(); a.removeAttribute('src'); a.load(); } catch (e) {}
+  ['recPlay', 'recPlayV'].forEach(function(id){
+    var p = el(id);
+    if (!p) return;
+    try { p.pause(); p.removeAttribute('src'); p.load(); } catch (e) {}
+  });
   el('rpBg').classList.remove('on');
   el('rpBox').classList.remove('on');
 }
@@ -254,7 +269,8 @@ function rowHtml(r){
       (recs[r.call_id]
         ? '<div class="crec">' +
             '<button data-play="' + AL.esc(r.call_id) + '">' +
-              AL.esc(AL.t('rcPlay')) + '</button>' +
+              AL.esc(AL.t(recs[r.call_id].kind === 'video' ? 'rcPlayVid' : 'rcPlay')) +
+              '</button>' +
             '<span>' + AL.esc(AL.t('rcLeft', { n: daysLeft(recs[r.call_id]) })) + '</span>' +
             '<button data-rdel="' + AL.esc(recs[r.call_id].id) + '" ' +
               'data-rpath="' + AL.esc(recs[r.call_id].path) + '">✕</button>' +
@@ -357,7 +373,7 @@ async function reload(){
       var ids = rows.map(function(r){ return r.call_id; }).filter(Boolean);
       if (ids.length) {
         var rr = await AL.sb.from('call_records')
-          .select('id, call_id, path, duration_ms, keep_days, purge_on')
+          .select('id, call_id, kind, path, duration_ms, keep_days, purge_on')
           .in('call_id', ids);
         (rr.data || []).forEach(function(x){ recs[x.call_id] = x; });
       }

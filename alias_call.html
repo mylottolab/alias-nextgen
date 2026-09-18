@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260919i">
-<link rel="stylesheet" href="alias_theme.css?v=20260919i">
+<link rel="stylesheet" href="alias_common.css?v=20260919j">
+<link rel="stylesheet" href="alias_theme.css?v=20260919j">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260919i"></script>
-<script src="alias_media.js?v=20260919i"></script>
-<script src="alias_call.js?v=20260919i"></script>
+<script src="alias_common.js?v=20260919j"></script>
+<script src="alias_media.js?v=20260919j"></script>
+<script src="alias_call.js?v=20260919j"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -372,7 +372,8 @@ function paintActs(){
   /* 🔴 2026-09-19 — 녹음. **통화 중 누구든** 누를 수 있습니다.
      ⚠ 담는 중이면 안 보여줍니다. 멈추기는 위 띠에 있습니다. */
   if (AL.recSupported && AL.recSupported() && !AL.recording()) {
-    box.appendChild(btn('rbtn plain', '🔴', AL.t('rcBtn'), rcAsk));
+    box.appendChild(btn('rbtn plain', '🔴',
+      AL.t(callType === 'video' ? 'rcAskVid' : 'rcBtn'), rcAsk));
   }
 
   /* 🔴 2026-09-12 — 카메라 단추는 **카메라가 실제로 있을 때만** 냅니다.
@@ -539,7 +540,7 @@ function onState(state, extra){
     el('localV').srcObject = extra.stream;
   }
   /* 🔴 2026-09-19 — 녹음 협의 신호 */
-  if (state === 'rec') { onRecSignal(extra.kind, extra.days, extra.who); return; }
+  if (state === 'rec') { onRecSignal(extra.kind, extra.days, extra.who, extra.vid); return; }
 
   if (state === 'remote-stream') {
     /* 🔴🔴 2026-09-12 — 소리와 영상을 갈라 받습니다.
@@ -809,9 +810,14 @@ function peerName(){
 function rcAsk(){
   if (!AL.recSupported()) { setStatus(AL.t('rcNoSupport')); return; }
   recAskDays = 90;
+  /* 🔴 2026-09-19 — 영상통화면 녹화라고 분명히 적습니다.
+     ⚠ "녹음" 인 줄 알았는데 얼굴이 담기면 손님이 놀랍니다. */
+  const isVid = (callType === 'video');
   el('rcBox').innerHTML =
-    '<h3>' + AL.esc(AL.t('rcAskTtl')) + '</h3>' +
+    '<h3>' + AL.esc(AL.t(isVid ? 'rcAskVid' : 'rcAskTtl')) + '</h3>' +
     '<p>' + AL.esc(AL.t('rcAskNote')) + '</p>' +
+    (isVid ? '<p style="opacity:.8;font-size:13.5px">' +
+      AL.esc(AL.t('rcAskVidN')) + '</p>' : '') +
     '<p style="opacity:.75;font-size:13.5px">' + AL.esc(AL.t('rcHowLong')) + '</p>' +
     '<div class="days">' +
       REC_DAYS.map(function(d){
@@ -836,22 +842,25 @@ function rcAsk(){
   el('rcNo2').addEventListener('click', function(){ rcShow(false); });
   el('rcGo').addEventListener('click', function(){
     recAsking = true;
-    AL.sendRec('rec-ask', { days: recAskDays, who: (view && view.my_face) || '' });
+    AL.sendRec('rec-ask', { days: recAskDays, who: (view && view.my_face) || '',
+                            vid: (callType === 'video') ? 1 : 0 });
     el('rcBox').innerHTML = '<div class="wait">' + AL.esc(AL.t('rcWaiting')) + '</div>';
   });
 }
 
 /* ── ② 상대가 신청해 왔을 때 ──────────────────────────────── */
-function rcGot(days, who){
+function rcGot(days, who, vid){
   const name = who || peerName();
+  const isVid = !!vid || (callType === 'video');
   /* 제안보다 **짧은 것만** 보여줍니다. 늘리는 길은 없습니다. */
   const shorter = REC_DAYS.filter(function(d){ return d < days; })
                           .sort(function(a, b){ return b - a; });
 
   el('rcBox').innerHTML =
     '<h3>' + AL.esc(AL.t('rcGotTtl')) + '</h3>' +
-    '<p>' + AL.esc(AL.t('rcGotBody', { who: name, n: days })) + '</p>' +
+    '<p>' + AL.esc(AL.t(isVid ? 'rcGotVid' : 'rcGotBody', { who: name, n: days })) + '</p>' +
     '<ul>' +
+      (isVid ? '<li>' + AL.esc(AL.t('rcGotV1')) + '</li>' : '') +
       '<li>' + AL.esc(AL.t('rcGot1')) + '</li>' +
       '<li>' + AL.esc(AL.t('rcGot2')) + '</li>' +
       '<li>' + AL.esc(AL.t('rcGot3')) + '</li>' +
@@ -916,7 +925,13 @@ function rcCut(days){
 /* ── ④ 담기 시작·멈추기 ──────────────────────────────────── */
 async function recStart(days){
   try {
-    await AL.startRecording();
+    /* 🔴 2026-09-19 — 영상통화면 상대 얼굴까지 담습니다.
+       ⚠ 한도(45MB · 약 14분)에 닿으면 스스로 멈추고 저장합니다.
+         그냥 두면 한 시간 녹화하고 저장이 통째로 실패합니다. */
+    await AL.startRecording({
+      video: (callType === 'video'),
+      onFull: function(){ recSay(AL.t('rcFull'), true); recFinish(); },
+    });
     recDays = days;
     paintRecBar();
     paintActs();
@@ -930,7 +945,8 @@ function paintRecBar(){
   const bar = el('recBar');
   if (!bar) return;
   if (!AL.recording()) { bar.classList.remove('on'); return; }
-  bar.querySelector('span').textContent = AL.t('rcOn', { n: recDays });
+  bar.querySelector('span').textContent =
+    AL.t(AL.recordingVideo() ? 'rcOnVid' : 'rcOn', { n: recDays });
   const sb = el('recStop');
   if (sb) sb.textContent = AL.t('rcStop');
   bar.classList.add('on');
@@ -976,7 +992,7 @@ async function recFinish(){
     if (!cid) throw new Error('통화 번호를 찾지 못했습니다');
 
     await AL.saveRecording({
-      linkId: linkId, callId: cid,
+      linkId: linkId, callId: cid, kind: out.video ? 'video' : 'audio',
       blob: out.blob, ms: out.ms, days: days, asked: recAskDays,
     });
     recSay(AL.t('rcSaved'), true);
@@ -1007,8 +1023,8 @@ function recSay(msg, ok){
 }
 
 /* ── 신호 받기 ───────────────────────────────────────────── */
-function onRecSignal(kind, days, who){
-  if (kind === 'rec-ask') { rcGot(Number(days) || 90, who); return; }
+function onRecSignal(kind, days, who, vid){
+  if (kind === 'rec-ask') { rcGot(Number(days) || 90, who, vid); return; }
   if (kind === 'rec-yes') {
     recAsking = false; rcShow(false);
     recStart(Number(days) || recAskDays); return;
@@ -1029,7 +1045,7 @@ function onRecSignal(kind, days, who){
   /* 🔴 2026-09-12 — 판 번호는 콘솔에만 남깁니다.
      화면에 찍으면 손님이 볼 이유가 없는 글씨가 뜹니다.
      ⚠ 무언가 안 될 때 "새 파일이 도는지" 확인하려면 여기를 보세요. */
-  console.log('[call] 화면 판: 20260919i');
+  console.log('[call] 화면 판: 20260919j');
   if (!await AL.requireLogin()) return;
   if (!linkId) { setStatus(AL.t('dtlNotFound')); return; }
 
