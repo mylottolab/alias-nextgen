@@ -1046,6 +1046,22 @@ AL.STR = {
   glRight:    { kr:'뒤로', en:'Move later' },
   glOrder:    { kr:'화살표로 순서를 바꾸실 수 있습니다. 맨 앞엣것이 크게 보입니다.',
                 en:'Use the arrows to reorder. The first one shows largest.' },
+
+  /* 🔴 2026-09-19 — 갤러리 배경 사진 */
+  cvTitle:    { kr:'배경 사진', en:'Background' },
+  cvAdd:      { kr:'＋ 배경 사진 넣기', en:'＋ Add a background' },
+  cvChange:   { kr:'배경 바꾸기', en:'Change background' },
+  cvRemove:   { kr:'배경 없애기', en:'Remove background' },
+  cvNote:     { kr:'화면 전체에 깔립니다. 이 갤러리에서만 보이고 다른 화면은 그대로입니다.',
+                en:'Fills this gallery only. Other screens stay as they are.' },
+  cvDim:      { kr:'글씨가 잘 보이게', en:'Keep text readable' },
+  cvDimNote:  { kr:'배경이 밝으면 글씨가 안 읽힙니다. 진하게 할수록 글씨가 또렷해집니다.',
+                en:'A bright photo hides text. Darker keeps it readable.' },
+  cvDim0:     { kr:'막 없음', en:'None' },
+  cvDim35:    { kr:'연하게', en:'Light' },
+  cvDim55:    { kr:'보통', en:'Medium' },
+  cvDim75:    { kr:'진하게', en:'Dark' },
+  cvRemoveAsk:{ kr:'배경 사진을 없앨까요?', en:'Remove the background?' },
   glDelAsk:   { kr:'이것을 지울까요? 되돌릴 수 없습니다.',
                 en:'Delete this? It cannot be undone.' },
   glUsed:     { kr:'{used} / {cap} 썼습니다', en:'{used} of {cap} used' },
@@ -2091,10 +2107,10 @@ AL.MUSIC_BUCKET = 'alias-music';
 /* 갤러리 한 채를 읽어옵니다. 없으면 빈 것을 돌려줍니다. */
 AL.loadGallery = async function(personaId){
   var out = { headline: '', music_id: null, youtube_id: null,
-              is_open: true, items: [] };
+              is_open: true, cover_path: null, cover_dim: 55, items: [] };
   try {
     var g = await AL.sb.from('galleries')
-      .select('headline, music_id, youtube_id, is_open')
+      .select('headline, music_id, youtube_id, is_open, cover_path, cover_dim')
       .eq('persona_id', personaId).maybeSingle();
     if (g.data) Object.assign(out, g.data);
 
@@ -2235,6 +2251,65 @@ AL.renumberGallery = async function(personaId){
       if (up.error) throw up.error;
     }
   } catch (e) { console.warn('[gallery] 순서 고르기 실패', e); }
+};
+
+/* =====================================================================
+   🔴🔴 2026-09-19 신설 — 갤러리 배경 사진
+
+   ⚠ **갤러리 화면에서만** 깔립니다. 다른 화면은 설정한 색 그대로입니다.
+     대화창이나 연락처까지 바뀌면 글을 읽기 어려워집니다.
+
+   ⚠ 배경은 크게 보이므로 조금 큼직하게 줄입니다(1600). 갤러리 안의
+     작은 사진들(1600)과 같은 크기지만, 배경은 화면을 꽉 채우니
+     더 줄이면 뭉개집니다.
+
+   ⚠ 옛 배경을 지우는 순서 — 새것 올리기 → 기록 바꾸기 → 옛것 지우기.
+     역순이면 새것이 실패했을 때 배경이 통째로 날아갑니다(함정 92).
+   ===================================================================== */
+AL.uploadCover = async function(personaId, file, oldPath){
+  var sess = await AL.sb.auth.getSession();
+  if (!sess.data.session) throw new Error(AL.t('errNotLoggedIn'));
+  var uid = sess.data.session.user.id;
+
+  var use = await AL.compressImage(file, 1600, 0.82);
+
+  /* 한도를 먼저 봅니다. 올리고 나서 막으면 헛수고입니다. */
+  var used = await AL.storageUsed();
+  var cap = await AL.storageCap();
+  if (cap && used + use.size > cap) {
+    throw new Error(AL.t('glFull', {
+      used: AL.fmtBytes(used), cap: AL.fmtBytes(cap),
+    }));
+  }
+
+  /* ⚠ 이름에 시각을 붙입니다. 같은 이름에 덮어쓰면 캐시 때문에
+     바뀐 줄 모릅니다(함정 91). */
+  var ext = (use.name.match(/\.([a-zA-Z0-9]+)$/) || [, 'jpg'])[1].toLowerCase();
+  var path = uid + '/' + personaId + '/cover_' + Date.now() + '.' + ext;
+
+  var up = await AL.sb.storage.from(AL.GALLERY_BUCKET)
+    .upload(path, use, { contentType: use.type || 'image/jpeg' });
+  if (up.error) throw up.error;
+
+  var ok = await AL.saveGallery(personaId, { cover_path: path });
+  if (ok !== true) {
+    try { await AL.sb.storage.from(AL.GALLERY_BUCKET).remove([path]); } catch (e) {}
+    throw new Error(String(ok));
+  }
+
+  /* 기록을 바꾼 **뒤에** 옛것을 지웁니다. */
+  if (oldPath && oldPath !== path) {
+    try { await AL.sb.storage.from(AL.GALLERY_BUCKET).remove([oldPath]); } catch (e) {}
+  }
+  return path;
+};
+
+AL.removeCover = async function(personaId, path){
+  var ok = await AL.saveGallery(personaId, { cover_path: null });
+  if (ok !== true) throw new Error(String(ok));
+  if (path) {
+    try { await AL.sb.storage.from(AL.GALLERY_BUCKET).remove([path]); } catch (e) {}
+  }
 };
 
 AL.deleteGalleryItem = async function(id, path){

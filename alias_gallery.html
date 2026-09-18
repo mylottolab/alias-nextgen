@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260919t">
-<link rel="stylesheet" href="alias_theme.css?v=20260919t">
+<link rel="stylesheet" href="alias_common.css?v=20260919u">
+<link rel="stylesheet" href="alias_theme.css?v=20260919u">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260919t"></script>
-<script src="alias_media.js?v=20260919t"></script>
+<script src="alias_common.js?v=20260919u"></script>
+<script src="alias_media.js?v=20260919u"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function(){
   if (typeof AL === "undefined" || typeof AL.t !== "function") {
@@ -25,6 +25,25 @@ document.addEventListener("DOMContentLoaded", function(){
 </script>
 
 <style>
+/* 🔴 2026-09-19 — 배경 사진과 어둠막 */
+/* 배경 미리보기와 진하기 고르개 */
+.cvprev{width:100%;height:120px;border-radius:14px;margin:0 0 12px;
+  background-size:cover;background-position:center;
+  border:1px solid rgba(255,255,255,.14)}
+.cvdims{display:flex;gap:8px}
+.cvdims button{flex:1;padding:12px 0;border-radius:12px;cursor:pointer;
+  font-size:14px;font-weight:700;background:rgba(255,255,255,.07);color:inherit;
+  border:1.5px solid rgba(255,255,255,.14)}
+.cvdims button.on{background:rgba(143,227,176,.18);color:#8FE3B0;
+  border-color:rgba(143,227,176,.55)}
+
+#cvBg{position:fixed;inset:0;z-index:0;display:none;
+  background-size:cover;background-position:center;background-repeat:no-repeat}
+#cvDim{position:fixed;inset:0;z-index:0;display:none;background:#000}
+#cvBg.on, #cvDim.on{display:block}
+/* ⚠ 내용이 배경 위에 와야 합니다. 안 그러면 배경에 덮여 안 보입니다. */
+body > .gwrap, body > nav.tabbar{position:relative;z-index:1}
+
 /* =====================================================================
    🔴 2026-09-18 신설 — 갤러리
 
@@ -140,6 +159,14 @@ document.addEventListener("DOMContentLoaded", function(){
 </head>
 
 <body class="tabbed" data-t-title="glTitle">
+<!-- 🔴 2026-09-19 신설 — 배경 사진
+     ⚠ 화면 맨 뒤에 깔립니다. 위아래로 꽉 차고 스크롤해도 안 움직입니다.
+     ⚠ 그 위에 어둠막을 한 겹 덮습니다. 밝은 사진에서 글씨가 안 읽히는
+       것을 막습니다. 막이 없으면 "예쁜데 아무것도 안 보이는 화면" 이
+       됩니다. -->
+<div id="cvBg"></div>
+<div id="cvDim"></div>
+
 <div class="gwrap">
 
   <a class="back" href="alias_contacts.html" id="back"></a>
@@ -183,6 +210,20 @@ document.addEventListener("DOMContentLoaded", function(){
     <p class="gnote" data-t="glOrder"></p>
     <input type="file" id="epick" accept="image/*,video/*" multiple style="display:none">
     <div class="gused" id="eused"></div>
+
+    <!-- 🔴 2026-09-19 신설 — 배경 사진 -->
+    <div class="gsect" data-t="cvTitle"></div>
+    <div id="cvPreview" class="cvprev" style="display:none"></div>
+    <button class="gbig" id="cvPick"></button>
+    <input type="file" id="cvFile" accept="image/*" style="display:none">
+    <button class="gbig" id="cvDel" style="display:none"></button>
+    <p class="gnote" data-t="cvNote"></p>
+
+    <div class="gsect" data-t="cvDim"></div>
+    <div class="gfield">
+      <div class="cvdims" id="cvDims"></div>
+    </div>
+    <p class="gnote" data-t="cvDimNote"></p>
 
     <div class="gsect" data-t="glMusic"></div>
     <div class="gfield">
@@ -322,6 +363,103 @@ el('vmbtn').addEventListener('click', function(){
   const a = el('bgm');
   if (a.paused) { a.play().catch(function(){}); this.textContent = AL.t('glStop'); }
   else { a.pause(); this.textContent = AL.t('glPlay'); }
+});
+
+/* =====================================================================
+   🔴🔴 2026-09-19 신설 — 배경 사진
+
+   ⚠ 이 갤러리에서만 깔립니다. 다른 화면은 설정한 색 그대로입니다.
+   ⚠ 어둠막이 반드시 함께 갑니다. 밝은 사진 위에 글씨를 얹으면
+     안 읽힙니다. 막이 없으면 "예쁜데 아무것도 안 보이는 화면" 이
+     됩니다.
+   ===================================================================== */
+const DIMS = [[0, 'cvDim0'], [35, 'cvDim35'], [55, 'cvDim55'], [75, 'cvDim75']];
+
+async function paintCover(){
+  const bg = el('cvBg'), dm = el('cvDim');
+  if (!data.cover_path) {
+    bg.classList.remove('on');
+    dm.classList.remove('on');
+    return;
+  }
+  const url = await AL.galleryUrl(data.cover_path);
+  if (!url) { bg.classList.remove('on'); dm.classList.remove('on'); return; }
+
+  bg.style.backgroundImage = 'url("' + url + '")';
+  bg.classList.add('on');
+  /* 진하기는 0~85 입니다. 그 이상이면 사진이 안 보여 뜻이 없습니다. */
+  dm.style.opacity = String((data.cover_dim == null ? 55 : data.cover_dim) / 100);
+  dm.classList.add('on');
+}
+
+async function paintCoverEdit(){
+  const pv = el('cvPreview');
+  if (data.cover_path) {
+    const url = await AL.galleryUrl(data.cover_path);
+    if (url) { pv.style.backgroundImage = 'url("' + url + '")'; pv.style.display = ''; }
+    el('cvPick').textContent = AL.t('cvChange');
+    el('cvDel').style.display = '';
+    el('cvDel').textContent = AL.t('cvRemove');
+  } else {
+    pv.style.display = 'none';
+    el('cvPick').textContent = AL.t('cvAdd');
+    el('cvDel').style.display = 'none';
+  }
+
+  const now = (data.cover_dim == null ? 55 : data.cover_dim);
+  el('cvDims').innerHTML = DIMS.map(function(d){
+    return '<button data-dim="' + d[0] + '"' + (d[0] === now ? ' class="on"' : '') + '>' +
+      AL.esc(AL.t(d[1])) + '</button>';
+  }).join('');
+  el('cvDims').querySelectorAll('[data-dim]').forEach(function(b){
+    b.addEventListener('click', async function(){
+      const v = Number(b.getAttribute('data-dim'));
+      data.cover_dim = v;
+      await paintCoverEdit();
+      await paintCover();          // 바로 보이게
+      const ok = await AL.saveGallery(personaId, { cover_dim: v });
+      if (ok !== true) showErr(String(ok));
+    });
+  });
+}
+
+el('cvPick').addEventListener('click', function(){ el('cvFile').click(); });
+
+el('cvFile').addEventListener('change', async function(){
+  const f = (this.files || [])[0];
+  this.value = '';
+  if (!f) return;
+  clearMsg();
+  const btn = el('cvPick');
+  btn.disabled = true;
+  btn.textContent = AL.t('glUploading');
+  try {
+    await AL.uploadCover(personaId, f, data.cover_path);
+    data = await AL.loadGallery(personaId);
+    await paintCoverEdit();
+    await paintCover();
+    await paintUsed();
+    showOk(AL.t('glSaved'));
+  } catch (e) {
+    console.error('[cover] 실패', e);
+    showErr(e.message || String(e));
+  } finally {
+    btn.disabled = false;
+    await paintCoverEdit();
+  }
+});
+
+el('cvDel').addEventListener('click', async function(){
+  if (!confirm(AL.t('cvRemoveAsk'))) return;
+  try {
+    await AL.removeCover(personaId, data.cover_path);
+    data = await AL.loadGallery(personaId);
+    await paintCoverEdit();
+    await paintCover();
+    await paintUsed();
+  } catch (e) {
+    showErr(e.message || String(e));
+  }
 });
 
 /* ── 꾸미는 화면 ─────────────────────────────────────────────── */
@@ -494,7 +632,8 @@ async function paintAll(){
   el('gedit').textContent = AL.t(editing ? 'glDone' : 'glEdit');
   /* ⚠ 꾸미는 중에 이 단추를 누르면 **저장 없이** 돌아갑니다.
      아래 [저장하기] 와 다릅니다. 글씨로 갈라 두었습니다. */
-  if (editing) { await paintEdit(); await paintUsed(); }
+  await paintCover();          // 🔴 보기·꾸미기 둘 다 배경이 깔립니다
+  if (editing) { await paintEdit(); await paintCoverEdit(); await paintUsed(); }
   else { await paintView(); el('bgm').pause(); }
 }
 
