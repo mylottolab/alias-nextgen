@@ -474,3 +474,64 @@ html[data-fw="bold"] strong,
 html[data-fw="bold"] .cname,
 html[data-fw="bold"] h1, html[data-fw="bold"] h2,
 html[data-fw="bold"] h3{ font-weight:800; }
+
+/* =====================================================================
+   글씨체
+   2026-09-19
+
+   🔴 **폰에 이미 있는 글꼴만** 씁니다. 받아오지 않습니다.
+
+   왜 안 받아오나
+     한글 글꼴은 글자 수가 많아 파일이 1~5MB 입니다. 영어 글꼴의 오십
+     배가 넘습니다. 서너 가지를 준비하면 손님이 처음 켤 때 10MB 를
+     받아야 하고, 느린 데서는 한참 글씨가 안 보입니다.
+     그리고 글꼴마다 "앱에 넣어 배포해도 되는가" 를 따로 확인해야
+     합니다. "무료" 라고 적혀 있어도 그건 별개인 경우가 많습니다.
+
+   ⚠ 폰마다 있는 글꼴이 다릅니다. 갤럭시에서 곱게 보이는 것이 다른
+     폰에서는 안 보일 수 있습니다. 그래서 **여러 이름을 줄줄이 적어**
+     되는 것을 쓰게 합니다. 맨 뒤의 sans-serif 는 무슨 폰이든 있습니다.
+
+   ⚠ 기본(system)은 아무것도 지정하지 않습니다. 손님이 **폰 설정에서
+     고른 글씨체**를 그대로 따르는 것이 가장 편합니다. 눈이 불편하신
+     분은 대개 폰 전체를 이미 맞춰두셨습니다.
+   ===================================================================== */
+
+/* 고딕 — 각지고 또렷합니다. 작은 글씨에서 제일 잘 읽힙니다. */
+html[data-font="gothic"] body{
+  font-family:
+    'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic',
+    'Nanum Gothic', 'Droid Sans Fallback', 'Roboto',
+    system-ui, sans-serif;
+}
+
+/* 명조 — 획이 가늘고 단정합니다. 긴 글을 읽기 좋습니다.
+   ⚠ 작은 글씨에서는 흐려 보입니다. 크기를 함께 키우시길 권합니다. */
+html[data-font="myeongjo"] body{
+  font-family:
+    'Noto Serif KR', 'Nanum Myeongjo', 'Apple SD Gothic Neo',
+    'Batang', 'Serif', serif;
+}
+
+/* 돋움 — 옛 한글 화면 글꼴. 익숙한 분들이 계십니다. */
+html[data-font="dotum"] body{
+  font-family:
+    'Dotum', '돋움', 'Gulim', '굴림', 'Malgun Gothic',
+    system-ui, sans-serif;
+}
+
+/* 손글씨 — 대화창을 부드럽게. 폰에 없으면 기본으로 돌아갑니다.
+   ⚠ 읽기 편하려고 쓰는 게 아닙니다. 눈이 불편하시면 고딕을 쓰세요. */
+html[data-font="hand"] body{
+  font-family:
+    'Nanum Pen Script', 'Gaegu', 'Cute Font',
+    'Comic Sans MS', cursive, system-ui, sans-serif;
+}
+
+/* ⚠ 숫자와 코드는 글씨체를 안 바꿉니다. 초대 코드에서 0 과 O,
+   1 과 l 이 헷갈리면 못 씁니다. */
+html[data-font] .code,
+html[data-font] .mono,
+html[data-font] code{
+  font-family: ui-monospace, 'Courier New', monospace !important;
+}
