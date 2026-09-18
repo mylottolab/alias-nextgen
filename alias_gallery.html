@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260919s">
-<link rel="stylesheet" href="alias_theme.css?v=20260919s">
+<link rel="stylesheet" href="alias_common.css?v=20260919t">
+<link rel="stylesheet" href="alias_theme.css?v=20260919t">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260919s"></script>
-<script src="alias_media.js?v=20260919s"></script>
+<script src="alias_common.js?v=20260919t"></script>
+<script src="alias_media.js?v=20260919t"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function(){
   if (typeof AL === "undefined" || typeof AL.t !== "function") {
@@ -76,6 +76,8 @@ document.addEventListener("DOMContentLoaded", function(){
 
 /* 🔴 2026-09-19 — 순서 바꾸는 화살표
    ⚠ 끌어다 놓기는 폰에서 스크롤과 헷갈립니다. 화살표가 확실합니다. */
+/* ⚠ 칸을 눌렀을 때 번쩍이는 효과를 화살표 위에서는 끕니다. */
+.gcell .gmove button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .gcell .gmove{position:absolute;left:0;right:0;bottom:0;
   display:flex;justify-content:space-between;padding:6px;
   background:linear-gradient(transparent, rgba(0,0,0,.55))}
@@ -366,6 +368,8 @@ async function paintEdit(){
   /* 순서 바꾸기 */
   grid.querySelectorAll('[data-mv]').forEach(function(b){
     b.addEventListener('click', async function(ev){
+      /* ⚠ 칸 전체가 눌린 것처럼 번쩍이는 것을 막습니다. */
+      ev.preventDefault();
       ev.stopPropagation();
       const i = Number(b.getAttribute('data-mv'));
       const j = i + Number(b.getAttribute('data-dir'));
@@ -382,6 +386,8 @@ async function paintEdit(){
       } catch (e) {
         console.error('[gallery] 순서 바꾸기 실패', e);
         showErr(e.message || String(e));
+      } finally {
+        b.disabled = false;
       }
     });
   });

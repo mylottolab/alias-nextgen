@@ -2192,12 +2192,27 @@ AL.uploadGalleryItem = async function(personaId, file, onStep){
    ⚠ 두 줄의 sort 값을 맞바꿉니다. 한 줄만 고치면 값이 겹쳐
      순서가 뒤죽박죽이 됩니다. */
 AL.swapGalleryOrder = async function(a, b){
-  var res = await AL.sb.from('gallery_items')
-    .upsert([
-      { id: a.id, sort: b.sort },
-      { id: b.id, sort: a.sort },
-    ], { onConflict: 'id' }).select('id');
-  if (res.error) throw res.error;
+  /* 🔴🔴 2026-09-19 고침 — upsert 로는 안 됩니다.
+
+     순서만 담아 upsert 를 하면 DB 가 **새 줄을 만들려고** 합니다.
+     그런데 persona_id · account_id · path 는 비울 수 없는 칸이라
+     거기서 막힙니다. 그래서 조용히 아무 일도 안 일어났습니다.
+
+     ⚠ **있는 줄을 고치는 것**이니 update 를 써야 합니다.
+       upsert 는 "없으면 만들고 있으면 고친다" 인데, 만들 재료가
+       없으면 만들 수가 없습니다. */
+  var r1 = await AL.sb.from('gallery_items')
+    .update({ sort: b.sort }).eq('id', a.id).select('id');
+  if (r1.error) throw r1.error;
+
+  var r2 = await AL.sb.from('gallery_items')
+    .update({ sort: a.sort }).eq('id', b.id).select('id');
+  if (r2.error) throw r2.error;
+
+  /* ⚠ 정책이 막으면 오류 없이 0줄이 바뀝니다(함정 ⑦). 그것도 봅니다. */
+  if (!r1.data.length || !r2.data.length) {
+    throw new Error('순서를 못 바꿨습니다 (권한이나 정책을 확인하세요)');
+  }
   return true;
 };
 
@@ -2210,9 +2225,15 @@ AL.renumberGallery = async function(personaId){
       .select('id, sort').eq('persona_id', personaId)
       .order('sort').order('created_at');
     var rows = res.data || [];
-    var rows2 = rows.map(function(r, i){ return { id: r.id, sort: i }; });
-    if (!rows2.length) return;
-    await AL.sb.from('gallery_items').upsert(rows2, { onConflict: 'id' });
+    if (!rows.length) return;
+
+    /* ⚠ 여기도 update 여야 합니다. upsert 는 만들 재료가 없어 막힙니다. */
+    for (var i = 0; i < rows.length; i++) {
+      if (rows[i].sort === i) continue;          // 이미 맞으면 건너뜁니다
+      var up = await AL.sb.from('gallery_items')
+        .update({ sort: i }).eq('id', rows[i].id);
+      if (up.error) throw up.error;
+    }
   } catch (e) { console.warn('[gallery] 순서 고르기 실패', e); }
 };
 
