@@ -1010,6 +1010,14 @@ AL.STR = {
   fwBold:    { kr:'굵게', en:'Bold' },
   fsNote:    { kr:'읽기 불편하시면 크기를 키우고 굵기를 굵게 해보세요. 색보다 효과가 큽니다.',
                en:'If it is hard to read, try a larger, bolder text. It helps more than colour.' },
+  ffTitle:   { kr:'글씨체', en:'Typeface' },
+  ffSystem:  { kr:'폰 설정 따름', en:'Phone default' },
+  ffGothic:  { kr:'고딕', en:'Gothic' },
+  ffMyeongjo:{ kr:'명조', en:'Serif' },
+  ffDotum:   { kr:'돋움', en:'Dotum' },
+  ffHand:    { kr:'손글씨', en:'Handwriting' },
+  ffNote:    { kr:'폰에 이미 있는 글씨체만 씁니다. 폰에 없으면 기본 글씨로 보입니다.',
+               en:'Only typefaces already on your phone. If missing, the default is used.' },
 
   /* 🔴 2026-09-18 신설 — 갤러리 */
   glTitle:    { kr:'갤러리', en:'Gallery' },
@@ -2976,7 +2984,7 @@ AL.THEME_KEY = 'alias_theme_v1';
 /* 🔴 2026-09-19 — fs(글씨 크기) · fw(글씨 굵기) 를 더했습니다.
    ⚠ 여기 없으면 화면이 고르개를 그릴 때 아무것도 안 켜진 채로 나옵니다. */
 AL.THEME_DEFAULT = { mode:'dark', color:'midnight', bubble:'round', scene:'none',
-                     fs:'md', fw:'normal' };
+                     fs:'md', fw:'normal', ff:'system' };
 
 AL.readThemeCache = function(){
   try {
@@ -3002,6 +3010,11 @@ AL.applyTheme = function(t){
        크기와 굵기가 더 크게 듣습니다. 색과 함께 고르게 둡니다. */
   el.setAttribute('data-fs', t.fs || 'md');
   el.setAttribute('data-fw', t.fw || 'normal');
+  /* 🔴 2026-09-19 — 글씨체.
+     ⚠ system 이면 표를 아예 안 붙입니다. 손님이 폰 설정에서 고른
+       글씨체를 그대로 따르게 두는 것이 가장 편합니다. */
+  if (t.ff && t.ff !== 'system') el.setAttribute('data-font', t.ff);
+  else el.removeAttribute('data-font');
   AL.paintScene(t.scene);
   return t;
 };
@@ -3123,7 +3136,8 @@ AL.bootTheme = function(){
 AL.loadTheme = async function(){
   try {
     var res = await AL.sb.from('account_settings')
-      .select('theme_mode, theme_color, bubble_style, scene, lang, font_scale, font_weight')
+      .select('theme_mode, theme_color, bubble_style, scene, lang, ' +
+              'font_scale, font_weight, font_face')
       .maybeSingle();
     if (res.error || !res.data) return AL.readThemeCache();
 
@@ -3139,6 +3153,7 @@ AL.loadTheme = async function(){
       bubble: res.data.bubble_style, scene: res.data.scene,
       fs: res.data.font_scale || 'md',
       fw: res.data.font_weight || 'normal',
+      ff: res.data.font_face || 'system',
     };
     try { localStorage.setItem(AL.THEME_KEY, JSON.stringify(t)); } catch (e) {}
     return AL.applyTheme(t);
@@ -3156,6 +3171,7 @@ AL.saveTheme = async function(t){
     theme_mode: t.mode, theme_color: t.color,
     bubble_style: t.bubble, scene: t.scene,
     font_scale: t.fs || 'md', font_weight: t.fw || 'normal',
+    font_face: t.ff || 'system',
     updated_at: new Date().toISOString(),
   }, { onConflict: 'account_id' });
   if (res.error) throw res.error;
@@ -3199,6 +3215,8 @@ AL.THEME_OPTS = {
   /* 🔴 2026-09-19 — 글씨 크기와 굵기 */
   fs:     [['md','fsMd'], ['lg','fsLg'], ['xl','fsXl']],
   fw:     [['normal','fwNormal'], ['bold','fwBold']],
+  ff:     [['system','ffSystem'], ['gothic','ffGothic'],
+           ['myeongjo','ffMyeongjo'], ['dotum','ffDotum'], ['hand','ffHand']],
   scene:  [['none','thNone'], ['snow','thSnow'], ['rain','thRain'],
            ['petals','thPetals'], ['stars','thStars']],
 };
