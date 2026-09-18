@@ -1042,6 +1042,10 @@ AL.STR = {
   glOpen:     { kr:'이어진 분들에게 보이기', en:'Visible to people linked here' },
   glClosed:   { kr:'지금은 닫아두었습니다', en:'Closed for now' },
   glDel:      { kr:'지우기', en:'Delete' },
+  glLeft:     { kr:'앞으로', en:'Move earlier' },
+  glRight:    { kr:'뒤로', en:'Move later' },
+  glOrder:    { kr:'화살표로 순서를 바꾸실 수 있습니다. 맨 앞엣것이 크게 보입니다.',
+                en:'Use the arrows to reorder. The first one shows largest.' },
   glDelAsk:   { kr:'이것을 지울까요? 되돌릴 수 없습니다.',
                 en:'Delete this? It cannot be undone.' },
   glUsed:     { kr:'{used} / {cap} 썼습니다', en:'{used} of {cap} used' },
@@ -2177,6 +2181,39 @@ AL.uploadGalleryItem = async function(personaId, file, onStep){
     throw ins.error;
   }
   return ins.data.id;
+};
+
+/* 🔴🔴 2026-09-19 신설 — 갤러리 사진 순서 바꾸기
+
+   ⚠ 끌어다 놓기(드래그)는 폰에서 잘 안 됩니다. 스크롤과 헷갈려서
+     사진이 딸려 움직이거나 화면이 같이 굴러갑니다. 어르신은 더
+     어려우시고요. **화살표 두 개**가 확실합니다.
+
+   ⚠ 두 줄의 sort 값을 맞바꿉니다. 한 줄만 고치면 값이 겹쳐
+     순서가 뒤죽박죽이 됩니다. */
+AL.swapGalleryOrder = async function(a, b){
+  var res = await AL.sb.from('gallery_items')
+    .upsert([
+      { id: a.id, sort: b.sort },
+      { id: b.id, sort: a.sort },
+    ], { onConflict: 'id' }).select('id');
+  if (res.error) throw res.error;
+  return true;
+};
+
+/* 순서 값이 겹치거나 비어 있으면 0,1,2… 로 다시 매깁니다.
+   ⚠ 올린 시각을 sort 로 쓰고 있어 값이 크고 들쭉날쭉합니다.
+     맞바꾸기 전에 한 번 고르게 해두면 뒤탈이 없습니다. */
+AL.renumberGallery = async function(personaId){
+  try {
+    var res = await AL.sb.from('gallery_items')
+      .select('id, sort').eq('persona_id', personaId)
+      .order('sort').order('created_at');
+    var rows = res.data || [];
+    var rows2 = rows.map(function(r, i){ return { id: r.id, sort: i }; });
+    if (!rows2.length) return;
+    await AL.sb.from('gallery_items').upsert(rows2, { onConflict: 'id' });
+  } catch (e) { console.warn('[gallery] 순서 고르기 실패', e); }
 };
 
 AL.deleteGalleryItem = async function(id, path){

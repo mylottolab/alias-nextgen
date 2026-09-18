@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260919q">
-<link rel="stylesheet" href="alias_theme.css?v=20260919q">
+<link rel="stylesheet" href="alias_common.css?v=20260919s">
+<link rel="stylesheet" href="alias_theme.css?v=20260919s">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260919q"></script>
-<script src="alias_media.js?v=20260919q"></script>
+<script src="alias_common.js?v=20260919s"></script>
+<script src="alias_media.js?v=20260919s"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function(){
   if (typeof AL === "undefined" || typeof AL.t !== "function") {
@@ -73,6 +73,16 @@ document.addEventListener("DOMContentLoaded", function(){
 .gcell .gdel{position:absolute;right:6px;top:6px;width:28px;height:28px;
   border-radius:50%;cursor:pointer;font-size:14px;line-height:1;
   background:rgba(0,0,0,.6);color:#fff;border:0}
+
+/* 🔴 2026-09-19 — 순서 바꾸는 화살표
+   ⚠ 끌어다 놓기는 폰에서 스크롤과 헷갈립니다. 화살표가 확실합니다. */
+.gcell .gmove{position:absolute;left:0;right:0;bottom:0;
+  display:flex;justify-content:space-between;padding:6px;
+  background:linear-gradient(transparent, rgba(0,0,0,.55))}
+.gcell .gmove button{width:32px;height:32px;border-radius:50%;cursor:pointer;
+  font-size:13px;line-height:1;background:rgba(0,0,0,.62);color:#fff;border:0}
+.gcell .gmove button:disabled{opacity:.4}
+.gcell .gmove span{width:32px}
 
 .gempty{padding:40px 20px;text-align:center;border-radius:16px;
   border:1px dashed rgba(255,255,255,.18);opacity:.6;font-size:14px;
@@ -168,6 +178,7 @@ document.addEventListener("DOMContentLoaded", function(){
     <div class="gsect" data-t="glTitle"></div>
     <div class="ggrid" id="egrid"></div>
     <button class="gbig" id="eadd" data-t="glAdd"></button>
+    <p class="gnote" data-t="glOrder"></p>
     <input type="file" id="epick" accept="image/*,video/*" multiple style="display:none">
     <div class="gused" id="eused"></div>
 
@@ -331,14 +342,49 @@ async function paintEdit(){
     const url = await AL.galleryUrl(it.path);
     const c = document.createElement('div');
     c.className = 'gcell';
+    /* 🔴 2026-09-19 — 화살표로 순서를 바꿉니다.
+       ⚠ 맨 앞엣것에는 ◀ 를, 맨 뒤엣것에는 ▶ 를 안 보여줍니다.
+         눌러도 아무 일이 없으면 고장인 줄 압니다. */
+    const idx = data.items.indexOf(it);
     c.innerHTML =
       (it.kind === 'video'
         ? '<video src="' + (url || '') + '" muted playsinline preload="metadata"></video>' +
           '<span class="vmark">▶</span>'
         : '<img src="' + (url || '') + '" alt="">') +
-      '<button class="gdel" data-del="' + AL.esc(it.id) + '">✕</button>';
+      '<button class="gdel" data-del="' + AL.esc(it.id) + '">✕</button>' +
+      '<div class="gmove">' +
+        (idx > 0
+          ? '<button data-mv="' + idx + '" data-dir="-1" title="' +
+            AL.esc(AL.t('glLeft')) + '">◀</button>' : '<span></span>') +
+        (idx < data.items.length - 1
+          ? '<button data-mv="' + idx + '" data-dir="1" title="' +
+            AL.esc(AL.t('glRight')) + '">▶</button>' : '<span></span>') +
+      '</div>';
     grid.appendChild(c);
   }
+
+  /* 순서 바꾸기 */
+  grid.querySelectorAll('[data-mv]').forEach(function(b){
+    b.addEventListener('click', async function(ev){
+      ev.stopPropagation();
+      const i = Number(b.getAttribute('data-mv'));
+      const j = i + Number(b.getAttribute('data-dir'));
+      if (j < 0 || j >= data.items.length) return;
+      b.disabled = true;
+      try {
+        /* ⚠ 값이 겹쳐 있으면 맞바꿔도 순서가 안 바뀝니다.
+           먼저 0,1,2… 로 고르게 해둡니다. */
+        await AL.renumberGallery(personaId);
+        data = await AL.loadGallery(personaId);
+        await AL.swapGalleryOrder(data.items[i], data.items[j]);
+        data = await AL.loadGallery(personaId);
+        await paintEdit();
+      } catch (e) {
+        console.error('[gallery] 순서 바꾸기 실패', e);
+        showErr(e.message || String(e));
+      }
+    });
+  });
   grid.querySelectorAll('[data-del]').forEach(function(b){
     b.addEventListener('click', async function(ev){
       ev.stopPropagation();

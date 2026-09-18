@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260919q">
-<link rel="stylesheet" href="alias_theme.css?v=20260919q">
+<link rel="stylesheet" href="alias_common.css?v=20260919s">
+<link rel="stylesheet" href="alias_theme.css?v=20260919s">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260919q"></script>
-<script src="alias_call.js?v=20260919q"></script>
+<script src="alias_common.js?v=20260919s"></script>
+<script src="alias_call.js?v=20260919s"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -249,8 +249,9 @@ function rowHtml(r){
        ⚠ my_calls() 가 상대 사진을 안 줄 수도 있습니다. 그때는 상대
          이름의 첫 글자와 색이 나옵니다. 그것만으로도 줄마다 갈립니다. */
     '<div class="cav"' + AL.faceAttr(shown || '') +
-      (peerPics[r.link_id]
-        ? ' data-face="' + AL.esc(peerPics[r.link_id]) + '"' : '') + '>' +
+      /* 함수가 준 것이 먼저, 없으면 연락처에서 빌린 것 */
+      ((r.peer_avatar || peerPics[r.link_id])
+        ? ' data-face="' + AL.esc(r.peer_avatar || peerPics[r.link_id]) + '"' : '') + '>' +
       AL.esc(AL.initial(shown)) + '</div>' +
     '<div class="cmid">' +
       '<div class="cname">' + AL.esc(shown) +
@@ -358,15 +359,23 @@ async function reload(){
     /* 🔴 2026-09-19 — 이 통화들에 녹음이 있는지 한 번에 읽습니다.
        ⚠ 줄마다 따로 물으면 스무 통이면 스무 번입니다. */
     /* 🔴 2026-09-19 — 상대 사진.
-       ⚠ my_calls() 는 상대 사진을 안 줍니다. 그래서 연락처(my_contacts)에서
-         link_id 로 짝을 맞춰 가져옵니다. 함수를 고치는 것보다 안전합니다. */
+
+       my_calls() 가 peer_avatar 를 돌려줍니다(alias_mycalls_v2.sql).
+       ⚠ 옛 함수를 쓰는 동안에는 그 칸이 비어 옵니다. 그때는 예전처럼
+         연락처에서 빌려 씁니다. 함수를 고치기 전에도 화면이 멀쩡하게
+         돌아야 하니까요.
+       ⚠ 연락처에서 빌리는 길은 **끊긴 관계의 통화**에서는 안 통합니다.
+         연락처에 그 줄이 없으니까요. 함수를 고치면 그것도 나옵니다. */
     peerPics = {};
-    try {
-      var cs = await AL.sb.rpc('my_contacts');
-      (cs.data || []).forEach(function(c){
-        if (c.peer_avatar) peerPics[c.link_id] = c.peer_avatar;
-      });
-    } catch (e) { console.warn('[calls] 상대 사진을 못 읽었습니다', e); }
+    var needBorrow = rows.some(function(r){ return r.peer_avatar === undefined; });
+    if (needBorrow) {
+      try {
+        var cs = await AL.sb.rpc('my_contacts');
+        (cs.data || []).forEach(function(c){
+          if (c.peer_avatar) peerPics[c.link_id] = c.peer_avatar;
+        });
+      } catch (e) { console.warn('[calls] 상대 사진을 못 읽었습니다', e); }
+    }
 
     recs = {};
     try {
