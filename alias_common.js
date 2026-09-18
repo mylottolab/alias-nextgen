@@ -1129,6 +1129,12 @@ AL.STR = {
                   en:'Downloading. You will get a notification, and the file lands in Downloads.' },
   rcDownNoApp:{ kr:'이 앱 판에서는 내려받기가 안 됩니다.\n브라우저(삼성 인터넷·크롬)에서 열면 받으실 수 있습니다.',
                 en:'This app version cannot download.\nOpen it in a browser instead.' },
+
+  /* 🔴 2026-09-19 — 곧 지워질 녹음 */
+  exBar1:     { kr:'녹음이 {d}일 뒤 지워집니다', en:'A recording is deleted in {d} days' },
+  exBarN:     { kr:'녹음 {n}건이 곧 지워집니다 (가장 빠른 것 {d}일)',
+                en:'{n} recordings are being deleted soon (soonest in {d} days)' },
+  exSee:      { kr:'보기', en:'View' },
   rcDelAsk:   { kr:'이 녹음을 지울까요?\n두 분 모두에게서 사라지고 되돌릴 수 없습니다.',
                 en:'Delete this recording?\nIt disappears for both of you and cannot be undone.' },
   glNone:     { kr:'이 분은 아직 갤러리를 만들지 않았습니다.',
@@ -1885,6 +1891,62 @@ AL.showPushBar = async function(){
       }
     }, 4000);
   });
+};
+
+/* =====================================================================
+   🔴🔴 2026-09-19 신설 — 곧 지워질 녹음 알리기
+
+   왜 필요한가
+     녹음은 90일이면 사라집니다. **말없이 지우면 손님이 잃은 줄도
+     모릅니다.** 미리 알리고 내려받을 기회를 드려야 90일이 야박하지
+     않습니다.
+
+   ⚠ 푸시로도 보냅니다(alias-sweep). 다만 알림을 끄신 분은 못 보니
+     앱을 열었을 때도 보이게 합니다. 두 겹입니다.
+
+   ⚠ 3일 안쪽이면 **빨간색**으로 바뀝니다. 색이 바뀌면 "이제 정말
+     얼마 안 남았구나" 를 압니다.
+   ===================================================================== */
+AL.showExpiringBar = async function(){
+  var old = document.getElementById('expBar');
+  if (old) old.remove();
+  try {
+    var res = await AL.sb.rpc('my_records_expiring');
+    if (res.error) throw res.error;
+    var rows = res.data || [];
+    if (!rows.length) return;
+
+    var min = rows.reduce(function(a, r){
+      return Math.min(a, r.days_left == null ? 99 : r.days_left);
+    }, 99);
+    var urgent = (min <= 3);
+
+    AL._planCss();
+    var host = document.querySelector('.wrap') || document.body;
+    var bar = document.createElement('div');
+    bar.id = 'expBar';
+    bar.innerHTML =
+      '<span>' + AL.esc(AL.t(rows.length > 1 ? 'exBarN' : 'exBar1',
+        { n: rows.length, d: min })) + '</span>' +
+      '<a href="alias_calls.html">' + AL.esc(AL.t('exSee')) + '</a>';
+    bar.style.cssText =
+      'display:flex;align-items:center;gap:10px;margin:0 0 12px;padding:11px 14px;' +
+      'border-radius:12px;font-size:13.5px;line-height:1.5;font-weight:600;' +
+      'word-break:keep-all;' +
+      (urgent
+        ? 'background:rgba(255,90,90,.15);color:#FFB4B4;border:1px solid rgba(255,90,90,.42)'
+        : 'background:rgba(242,201,76,.14);color:#F2C94C;border:1px solid rgba(242,201,76,.38)');
+    bar.querySelector('span').style.flex = '1';
+    var a = bar.querySelector('a');
+    a.style.cssText = 'flex:0 0 auto;padding:8px 14px;border-radius:999px;' +
+      'text-decoration:none;font-weight:700;font-size:13px;' +
+      'background:rgba(255,255,255,.14);color:inherit;border:1px solid currentColor';
+
+    host.insertBefore(bar, host.firstChild);
+  } catch (e) {
+    /* ⚠ 못 읽어도 조용히 넘어갑니다. 헛경고가 더 나쁩니다. */
+    console.warn('[exp] 곧 지워질 녹음을 못 읽었습니다', e);
+  }
 };
 
 AL.showPlanBar = async function(){
