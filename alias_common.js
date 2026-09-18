@@ -3139,6 +3139,14 @@ AL.loadTheme = async function(){
       .select('theme_mode, theme_color, bubble_style, scene, lang, ' +
               'font_scale, font_weight, font_face')
       .maybeSingle();
+
+    /* 🔴 2026-09-19 — 아직 없는 칸이 있으면 옛 칸들만 읽습니다.
+       ⚠ 여기서 그냥 포기하면 색과 모양까지 기본으로 돌아갑니다. */
+    if (res.error && /schema cache|column/i.test(res.error.message || '')) {
+      console.warn('[theme] 아직 없는 칸이 있습니다. 옛 칸만 읽습니다.');
+      res = await AL.sb.from('account_settings')
+        .select('theme_mode, theme_color, bubble_style, scene, lang').maybeSingle();
+    }
     if (res.error || !res.data) return AL.readThemeCache();
 
     // 언어도 함께 맞춥니다. 다른 기기에서 바꿨을 수 있습니다.
@@ -3166,14 +3174,43 @@ AL.saveTheme = async function(t){
   var sess = await AL.sb.auth.getSession();
   var uid = sess.data.session ? sess.data.session.user.id : null;
   if (!uid) return;
-  var res = await AL.sb.from('account_settings').upsert({
+
+  var row = {
     account_id: uid,
     theme_mode: t.mode, theme_color: t.color,
     bubble_style: t.bubble, scene: t.scene,
     font_scale: t.fs || 'md', font_weight: t.fw || 'normal',
     font_face: t.ff || 'system',
     updated_at: new Date().toISOString(),
-  }, { onConflict: 'account_id' });
+  };
+
+  var res = await AL.sb.from('account_settings')
+    .upsert(row, { onConflict: 'account_id' });
+
+  /* 🔴🔴 2026-09-19 — 없는 칸은 빼고 다시 보냅니다.
+
+     무슨 일이 났나
+       칸을 새로 만들었는데 Supabase 가 표 모양을 기억해두고 써서
+       한동안 모릅니다.
+         Could not find the 'font_face' column ... in the schema cache
+
+     그때까지 **손님이 고른 것이 아예 저장이 안 되고 오류만 뜹니다.**
+     화면은 이미 바뀌었는데 말이죠.
+
+     ⚠ 없는 칸만 빼고 나머지는 저장합니다. 색과 모양은 지켜집니다.
+     ⚠ 폰에는 이미 적어뒀으니(localStorage) 이 폰에서는 그대로 보입니다.
+     ⚠ 캐시는 이 한 줄로 새로 읽게 할 수 있습니다.
+         notify pgrst, 'reload schema'; */
+  if (res.error && /schema cache|column/i.test(res.error.message || '')) {
+    console.warn('[theme] 아직 없는 칸이 있습니다. 빼고 저장합니다:', res.error.message);
+    ['font_face', 'font_weight', 'font_scale'].forEach(function(k){
+      if ((res.error.message || '').indexOf(k) >= 0) delete row[k];
+    });
+    var res2 = await AL.sb.from('account_settings')
+      .upsert(row, { onConflict: 'account_id' });
+    if (res2.error) throw res2.error;
+    return;
+  }
   if (res.error) throw res.error;
 };
 
