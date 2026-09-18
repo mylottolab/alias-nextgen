@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260919t">
-<link rel="stylesheet" href="alias_theme.css?v=20260919t">
+<link rel="stylesheet" href="alias_common.css?v=20260919v">
+<link rel="stylesheet" href="alias_theme.css?v=20260919v">
 <script src="alias_qrlib.js"></script>
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260919t"></script>
-<script src="alias_qr.js?v=20260919t"></script>
+<script src="alias_common.js?v=20260919v"></script>
+<script src="alias_qr.js?v=20260919v"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -349,6 +349,10 @@ async function reloadMine(){
         (dead ? '' :
           '<div class="row-acts">' +
             '<button data-rev="' + AL.esc(i.id) + '">' + AL.esc(AL.t('invRevoke')) + '</button>' +
+            /* 🔴 2026-09-19 — 코드만이 아니라 **링크째로** 보냅니다.
+               받는 분이 옮겨 적을 필요가 없습니다. */
+            '<button data-sh="' + AL.esc(i.code) + '">' +
+              AL.esc(AL.t('invShareSys')) + '</button>' +
             '<button data-cp="' + AL.esc(i.code) + '">' + AL.esc(AL.t('copy')) + '</button>' +
             /* 🔴 2026-09-15 — 이미 만든 초대를 그 별칭 그대로 다시 뽑습니다. */
             '<button data-pr="' + AL.esc(i.code) + '" data-prf="' +
@@ -363,6 +367,15 @@ async function reloadMine(){
     });
     ul.querySelectorAll('[data-cp]').forEach(function(b){
       b.addEventListener('click', function(){ AL.copyText(b.getAttribute('data-cp'), b); });
+    });
+    ul.querySelectorAll('[data-sh]').forEach(function(b){
+      b.addEventListener('click', async function(){
+        var url = AL.inviteUrl(b.getAttribute('data-sh'));
+        if (navigator.share) {
+          try { await navigator.share({ text: url }); return; } catch (e) { /* 취소 */ }
+        }
+        AL.copyText(url, b);
+      });
     });
     ul.querySelectorAll('[data-pr]').forEach(function(b){
       b.addEventListener('click', function(){

@@ -750,8 +750,11 @@ AL.STR = {
                  en:'Could not draw the QR. Use the code or link below.' },
   invShareWhy: { kr:'초대를 어떻게 전할까요',
                  en:'How will you pass this along' },
-  invShareNote:{ kr:'마주 보고 계시면 QR 이 가장 안전합니다.\n멀리 계시면 코드나 주소를 보내야 하는데,\n그때는 쓰시던 다른 수단을 한 번 거치게 됩니다.',
-                 en:'If you are face to face, QR is safest.\nIf not, you will need to send the code or link,\nwhich means using another app just once.' },
+  /* 🔴 2026-09-19 — [보내기] 를 쓰면 받는 분이 누르기만 하면 됩니다.
+     ⚠ 코드를 옮겨 적게 하지 마세요. 초대받은 분이 이 앱에서 제일 먼저
+       겪는 일이 그거면 안 됩니다. */
+  invShareNote: { kr:'[보내기] 로 링크를 보내면 받는 분은 누르기만 하면 됩니다.\n마주 보고 계시면 위 QR 이 가장 안전합니다. 어디로도 안 나갑니다.',
+                  en:'Use Send — they only have to tap the link.\nIf you are face to face, the QR above is safest: it goes nowhere.' },
   invShareSys: { kr:'다른 앱으로 보내기', en:'Share' },
   invWillSee:  { kr:'이 초대를 쓰면 상대는 나를 "{face}" 로 봅니다.',
                  en:'Whoever uses this invite will see you as "{face}".' },
@@ -1360,7 +1363,28 @@ AL.requireLogin = async function(){
   }
 
   if (!res.data.session) {
-    location.href = 'alias_auth.html';
+    /* 🔴🔴 2026-09-19 — 가던 길을 실어 보냅니다.
+
+       무슨 일이 났나
+         처음 오신 분이 **초대 링크**를 누르면 이렇게 됐습니다.
+           링크 누름 → 로그인 안 됨 → 가입 화면 (코드를 잃어버림)
+           → 가입 → 연락처로 → "어? 초대는?"
+         그러면 보내신 분께 다시 물어봐야 합니다. 초대받은 분이
+         제일 먼저 겪는 일이 이거면 안 됩니다.
+
+       가입 화면은 ?next= 를 받을 준비가 되어 있었습니다(alias_auth.html).
+       여기서 실어 보내지 않았을 뿐입니다.
+
+       ⚠ 우리 화면 주소만 실어 보냅니다. 가입 화면이 한 번 더 검사하지만,
+         여기서도 걸러야 합니다. 아무 주소나 실리면 남의 사이트로
+         보내는 길이 열립니다. */
+    var here = location.pathname.split('/').pop() + location.search;
+    if (/^alias_[a-z_]+\.html(\?|$)/.test(here) &&
+        here.indexOf('alias_auth') !== 0) {
+      location.href = 'alias_auth.html?next=' + encodeURIComponent(here);
+    } else {
+      location.href = 'alias_auth.html';
+    }
     return null;
   }
   return res.data.session.user;
