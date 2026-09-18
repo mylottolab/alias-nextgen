@@ -369,3 +369,108 @@ body > .sheet, body > .sheet-bg{ position:relative; z-index:1; }
 .sw-clay      .dot{ background:#D9BFA8; }
 .sw-bluegrey2 .dot{ background:#8CA9C2; }
 .sw-sage2     .dot{ background:#A8C4A2; }
+
+/* =====================================================================
+   Alias Next-Gen — 또렷하게 읽히는 테마 셋 + 글씨 크기·굵기
+   2026-09-19
+
+   ⚠ 이 내용을 **alias_theme.css 맨 아래에 붙여넣으세요.**
+     따로 파일을 늘리면 화면마다 <link> 를 하나씩 더 달아야 합니다.
+
+   왜 만들었나
+     "주간 바탕색이 너무 연해서 읽기 불편하다" 는 말씀을 들었습니다.
+     지금 주간 테마들은 바탕이 거의 흰색(#EEF2F7)인데 부제와 시각은
+     회색(--dim)입니다. **밝은 데서 보면 회색 글씨가 날아갑니다.**
+
+   ⚠ 색을 예쁘게 고르는 게 아니라 **글씨와 바탕의 차이**를 키워야
+     합니다. 아래 셋은 그 차이를 일부러 크게 잡았습니다.
+       --dim 과 --faint 를 기존 테마보다 훨씬 진하게 두었습니다.
+   ===================================================================== */
+
+/* ── 또렷 — 흰 바탕에 먹색 글씨. 가장 잘 읽힙니다 ─────────────────
+   ⚠ 바탕은 밝게 두되 **글씨를 끝까지 진하게** 잡았습니다.
+     부제(--dim)까지 거의 검정에 가깝습니다. */
+html[data-color="crisp"][data-mode="light"]{
+  --ink:#E8ECF1; --raise:#FFFFFF; --raise2:#F2F5F9; --line:#B9C4D1;
+  --text:#000000; --dim:#2B3440; --faint:#4A5663;
+  --steel:#144E86; --paper:#000000; --paper-ink:#FFFFFF; --bad:#9E2A22;
+}
+html[data-color="crisp"][data-mode="dark"]{
+  --ink:#0A0D11; --raise:#151A20; --raise2:#1D242C; --line:#38434F;
+  --text:#FFFFFF; --dim:#C2CCD6; --faint:#9AA6B2;
+  --steel:#8CC2F0; --paper:#FFFFFF; --paper-ink:#151A20; --bad:#F08B8B;
+}
+
+/* ── 크림 — 아이보리 바탕에 진한 갈색. 눈이 덜 부십니다 ──────────
+   ⚠ 흰 바탕이 눈부시다는 분께 권합니다. 오래 봐도 편합니다. */
+html[data-color="cream"][data-mode="light"]{
+  --ink:#E8DFC9; --raise:#FBF6E9; --raise2:#DDD2B7; --line:#B5A886;
+  --text:#14100A; --dim:#3D3322; --faint:#5E5138;
+  --steel:#7A4A16; --paper:#14100A; --paper-ink:#FBF6E9; --bad:#8C2C20;
+}
+html[data-color="cream"][data-mode="dark"]{
+  --ink:#16130D; --raise:#201C14; --raise2:#2B251A; --line:#3E3524;
+  --text:#F8F1DE; --dim:#CBBC9A; --faint:#A29376;
+  --steel:#E0A85C; --paper:#F8F1DE; --paper-ink:#201C14; --bad:#E58877;
+}
+
+/* ── 진회 — 바탕을 한참 눌러 글씨가 도드라집니다 ─────────────────
+   ⚠ 밝은 데(햇빛 아래)에서 제일 잘 읽힙니다. */
+html[data-color="slate"][data-mode="light"]{
+  --ink:#9AA6B4; --raise:#FDFEFF; --raise2:#8B98A8; --line:#69788A;
+  --text:#05090D; --dim:#1C2530; --faint:#36424F;
+  --steel:#0D3D66; --paper:#05090D; --paper-ink:#FDFEFF; --bad:#7E1E18;
+}
+html[data-color="slate"][data-mode="dark"]{
+  --ink:#04060A; --raise:#0D1218; --raise2:#151C24; --line:#26313D;
+  --text:#FFFFFF; --dim:#B8C4D0; --faint:#8E9BA8;
+  --steel:#6FB0EC; --paper:#FFFFFF; --paper-ink:#0D1218; --bad:#EE8080;
+}
+
+/* 고르는 화면의 미리보기 점 */
+.sw-crisp .dot{ background:#E8ECF1; }
+.sw-cream .dot{ background:#E8DFC9; }
+.sw-slate .dot{ background:#9AA6B4; }
+
+
+/* =====================================================================
+   글씨 크기
+   2026-09-19
+
+   ⚠ 이 앱의 CSS 는 크기를 px 로 박아두어서, 글씨 크기만 따로 키우면
+     칸이 안 늘어나고 글씨가 넘칩니다. 그래서 **화면 전체를 확대**하는
+     방식을 씁니다(zoom). 글씨·칸·간격이 함께 커져 모양이 안 깨집니다.
+
+   ⚠ 아주 크게는 125% 입니다. 그 이상은 한 줄에 몇 글자 안 들어가
+     오히려 읽기 나빠집니다.
+   ===================================================================== */
+html[data-fs="lg"]  body{ zoom:1.12; }
+html[data-fs="xl"]  body{ zoom:1.25; }
+
+/* ⚠ 통화화면과 전체화면은 확대하지 않습니다. 단추가 화면 밖으로
+   밀려나면 전화를 못 받습니다. */
+html[data-fs] body.callbody,
+html[data-fs] body.fullbody{ zoom:1; }
+
+
+/* =====================================================================
+   글씨 굵기
+   2026-09-19
+
+   ⚠ 가는 글씨가 흐려 보이는 주된 원인입니다. 색을 안 바꾸고도
+     "진해진" 느낌을 줍니다. 눈이 불편하신 분께 효과가 큽니다.
+   ===================================================================== */
+html[data-fw="bold"] body{ font-weight:600; }
+html[data-fw="bold"] .csub,
+html[data-fw="bold"] .cprev,
+html[data-fw="bold"] .ctime,
+html[data-fw="bold"] .note,
+html[data-fw="bold"] .hint,
+html[data-fw="bold"] .lede{ font-weight:600; }
+
+/* ⚠ 이미 굵은 것은 더 굵게 하지 않습니다. 뭉개집니다. */
+html[data-fw="bold"] b,
+html[data-fw="bold"] strong,
+html[data-fw="bold"] .cname,
+html[data-fw="bold"] h1, html[data-fw="bold"] h2,
+html[data-fw="bold"] h3{ font-weight:800; }
