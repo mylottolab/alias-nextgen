@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260919k">
-<link rel="stylesheet" href="alias_theme.css?v=20260919k">
+<link rel="stylesheet" href="alias_common.css?v=20260919m">
+<link rel="stylesheet" href="alias_theme.css?v=20260919m">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260919k"></script>
+<script src="alias_common.js?v=20260919m"></script>
 <!-- 🔴 2026-09-13 — 사진 압축(AL.compressImage)이 여기 있습니다 -->
-<script src="alias_media.js?v=20260919k"></script>
+<script src="alias_media.js?v=20260919m"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -126,6 +126,17 @@ document.addEventListener("DOMContentLoaded", function(){
     <label data-t="thScene"></label>
     <div class="swatches" id="swScene"></div>
     <p class="hint" data-t="thSceneNote"></p>
+  </div>
+  <!-- 🔴 2026-09-19 신설 — 글씨 크기·굵기
+       ⚠ "읽기 불편하다" 는 말씀에는 색보다 이쪽이 크게 듣습니다. -->
+  <div class="field">
+    <label data-t="fsTitle"></label>
+    <div class="swatches" id="swFs"></div>
+  </div>
+  <div class="field">
+    <label data-t="fwTitle"></label>
+    <div class="swatches" id="swFw"></div>
+    <p class="hint" data-t="fsNote"></p>
   </div>
 
   <div class="preview">
@@ -572,7 +583,9 @@ function paintLang(){
    고르는 즉시 화면이 바뀝니다. 미리보기를 따로 안 봐도 됩니다. */
 const TH = {
   mode:   [['dark','thDark'], ['light','thLight'], ['auto','thAuto']],
-  color:  [['midnight','thMidnight'], ['paper','thPaper'], ['forest','thForest'],
+  /* 🔴 2026-09-19 — 또렷하게 읽히는 셋을 맨 앞에 */
+  color:  [['crisp','thCrisp'], ['cream','thCream'], ['slate','thSlate'],
+           ['midnight','thMidnight'], ['paper','thPaper'], ['forest','thForest'],
            ['dusk','thDusk'], ['ink','thInk'],
            ['pitch','thPitch'], ['abyss','thAbyss'],
            ['midnite','thMidnite'], ['charcoal','thCharcoal'],
@@ -582,12 +595,18 @@ const TH = {
   bubble: [['round','thRound'], ['square','thSquare'], ['tail','thTail'], ['outline','thOutline']],
   scene:  [['none','thNone'], ['snow','thSnow'], ['rain','thRain'],
            ['petals','thPetals'], ['stars','thStars']],
+  /* 🔴 2026-09-19 — 글씨 크기와 굵기 */
+  fs:     [['md','fsMd'], ['lg','fsLg'], ['xl','fsXl']],
+  fw:     [['normal','fwNormal'], ['bold','fwBold']],
 };
 let theme = AL.readThemeCache();
 
 function paintTheme(){
   Object.keys(TH).forEach(function(kind){
     const box = document.getElementById('sw' + kind.charAt(0).toUpperCase() + kind.slice(1));
+    /* ⚠ 자리가 없으면 넘어갑니다. 없는 것에 손대면 그 자리에서 멈추고
+       그 아래 전부가 안 돕니다(함정 111). */
+    if (!box) return;
     box.innerHTML = TH[kind].map(function(o){
       const on = theme[kind] === o[0];
       const dot = kind === 'color' ? '<span class="dot"></span>' : '';

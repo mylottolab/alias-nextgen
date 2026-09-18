@@ -995,6 +995,22 @@ AL.STR = {
   prShare:   { kr:'초대 링크 공유하기', en:'Share invite link' },
   qrPrint:   { kr:'QR 인쇄', en:'Print QR' },
 
+  /* 🔴 2026-09-19 — 또렷하게 읽히는 색 셋 */
+  thCrisp:   { kr:'또렷', en:'Crisp' },
+  thCream:   { kr:'크림', en:'Cream' },
+  thSlate:   { kr:'진회', en:'Slate' },
+
+  /* 글씨 크기·굵기 */
+  fsTitle:   { kr:'글씨 크기', en:'Text size' },
+  fsMd:      { kr:'보통', en:'Normal' },
+  fsLg:      { kr:'크게', en:'Large' },
+  fsXl:      { kr:'아주 크게', en:'Extra large' },
+  fwTitle:   { kr:'글씨 굵기', en:'Text weight' },
+  fwNormal:  { kr:'보통', en:'Normal' },
+  fwBold:    { kr:'굵게', en:'Bold' },
+  fsNote:    { kr:'읽기 불편하시면 크기를 키우고 굵기를 굵게 해보세요. 색보다 효과가 큽니다.',
+               en:'If it is hard to read, try a larger, bolder text. It helps more than colour.' },
+
   /* 🔴 2026-09-18 신설 — 갤러리 */
   glTitle:    { kr:'갤러리', en:'Gallery' },
   glMine:     { kr:'내 갤러리', en:'My gallery' },
@@ -2957,7 +2973,10 @@ AL.watchMessages = function(onInsert){
      그래서 기기에도 한 벌 남겨두고, 그것으로 먼저 칠합니다.
 ------------------------------------------------------------------ */
 AL.THEME_KEY = 'alias_theme_v1';
-AL.THEME_DEFAULT = { mode:'dark', color:'midnight', bubble:'round', scene:'none' };
+/* 🔴 2026-09-19 — fs(글씨 크기) · fw(글씨 굵기) 를 더했습니다.
+   ⚠ 여기 없으면 화면이 고르개를 그릴 때 아무것도 안 켜진 채로 나옵니다. */
+AL.THEME_DEFAULT = { mode:'dark', color:'midnight', bubble:'round', scene:'none',
+                     fs:'md', fw:'normal' };
 
 AL.readThemeCache = function(){
   try {
@@ -2978,6 +2997,11 @@ AL.applyTheme = function(t){
   el.setAttribute('data-mode', mode);
   el.setAttribute('data-color', t.color);
   el.setAttribute('data-bubble', t.bubble);
+  /* 🔴 2026-09-19 — 글씨 크기와 굵기.
+     ⚠ "주간 바탕이 연해서 안 읽힌다" 는 말씀에서 시작했는데, 색보다
+       크기와 굵기가 더 크게 듣습니다. 색과 함께 고르게 둡니다. */
+  el.setAttribute('data-fs', t.fs || 'md');
+  el.setAttribute('data-fw', t.fw || 'normal');
   AL.paintScene(t.scene);
   return t;
 };
@@ -3099,7 +3123,8 @@ AL.bootTheme = function(){
 AL.loadTheme = async function(){
   try {
     var res = await AL.sb.from('account_settings')
-      .select('theme_mode, theme_color, bubble_style, scene, lang').maybeSingle();
+      .select('theme_mode, theme_color, bubble_style, scene, lang, font_scale, font_weight')
+      .maybeSingle();
     if (res.error || !res.data) return AL.readThemeCache();
 
     // 언어도 함께 맞춥니다. 다른 기기에서 바꿨을 수 있습니다.
@@ -3112,6 +3137,8 @@ AL.loadTheme = async function(){
     var t = {
       mode: res.data.theme_mode, color: res.data.theme_color,
       bubble: res.data.bubble_style, scene: res.data.scene,
+      fs: res.data.font_scale || 'md',
+      fw: res.data.font_weight || 'normal',
     };
     try { localStorage.setItem(AL.THEME_KEY, JSON.stringify(t)); } catch (e) {}
     return AL.applyTheme(t);
@@ -3128,6 +3155,7 @@ AL.saveTheme = async function(t){
     account_id: uid,
     theme_mode: t.mode, theme_color: t.color,
     bubble_style: t.bubble, scene: t.scene,
+    font_scale: t.fs || 'md', font_weight: t.fw || 'normal',
     updated_at: new Date().toISOString(),
   }, { onConflict: 'account_id' });
   if (res.error) throw res.error;
@@ -3156,7 +3184,11 @@ AL.applyLinkTheme = function(v){
 ------------------------------------------------------------------ */
 AL.THEME_OPTS = {
   mode:   [['dark','thDark'], ['light','thLight'], ['auto','thAuto']],
-  color:  [['midnight','thMidnight'], ['paper','thPaper'], ['forest','thForest'],
+  /* 🔴 2026-09-19 — 또렷하게 읽히는 셋을 **맨 앞**에 둡니다.
+     "고를 만한 색이 없다" 는 말씀은 대개 뒤쪽까지 안 보셔서 나옵니다.
+     잘 읽히는 것이 먼저 보여야 합니다. */
+  color:  [['crisp','thCrisp'], ['cream','thCream'], ['slate','thSlate'],
+           ['midnight','thMidnight'], ['paper','thPaper'], ['forest','thForest'],
            ['dusk','thDusk'], ['ink','thInk'],
            ['pitch','thPitch'], ['abyss','thAbyss'],
            ['midnite','thMidnite'], ['charcoal','thCharcoal'],
@@ -3164,6 +3196,9 @@ AL.THEME_OPTS = {
            ['sand','thSand'], ['clay','thClay'],
            ['bluegrey2','thBluegrey2'], ['sage2','thSage2']],
   bubble: [['round','thRound'], ['square','thSquare'], ['tail','thTail'], ['outline','thOutline']],
+  /* 🔴 2026-09-19 — 글씨 크기와 굵기 */
+  fs:     [['md','fsMd'], ['lg','fsLg'], ['xl','fsXl']],
+  fw:     [['normal','fwNormal'], ['bold','fwBold']],
   scene:  [['none','thNone'], ['snow','thSnow'], ['rain','thRain'],
            ['petals','thPetals'], ['stars','thStars']],
 };
