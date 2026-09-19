@@ -482,7 +482,16 @@ AL.STR = {
   muBad:      { kr:'유튜브 주소가 아닌 것 같습니다.', en:'That does not look like a YouTube link.' },
   muNote:     { kr:'한쪽이 틀면 양쪽이 같은 자리에서 듣습니다.',
                 en:'When one of you plays it, both hear it from the same spot.' },
+  /* 🔴 2026-09-20 — 손님이 음원을 올리지 못하게 바꿨습니다.
+     muUpload · muPick · muCostNote · muOwnNote · muFull · muUsed 는
+     이제 안 씁니다. 지우지 않고 둡니다 — 옛 화면이 부를 수 있습니다. */
   muUpload:   { kr:'음원 올리기', en:'Upload audio' },
+  muPick2:    { kr:'곡 고르기', en:'Choose a track' },
+  muPickNote: { kr:'저작권 걱정 없는 곡들입니다. 한쪽이 틀면 양쪽이 같이 듣습니다.',
+                en:'Cleared tracks. When one plays it, both hear it.' },
+  muNoSongs:  { kr:'아직 올라온 곡이 없습니다.', en:'No tracks yet.' },
+  muOldNote:  { kr:'예전에 올리신 곡입니다. 이제 새로 올릴 수는 없습니다.',
+                en:'Tracks you uploaded earlier. New uploads are no longer possible.' },
   muList:     { kr:'재생목록', en:'Playlist' },
   muListNone: { kr:'담은 곡이 없습니다.', en:'No tracks yet.' },
   muUsed:     { kr:'{n}곡 · {used} / {max}', en:'{n} tracks · {used} / {max}' },
