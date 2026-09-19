@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Alias</title>
+<link rel="stylesheet" href="alias_common.css?v=20260920a">
+<link rel="stylesheet" href="alias_theme.css?v=20260920a">
+<script src="alias_config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="alias_common.js?v=20260920a"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function(){
+  if (typeof AL === "undefined" || typeof AL.t !== "function") {
+    document.body.innerHTML =
+      '<div style="padding:26px;font-family:system-ui,sans-serif;line-height:1.8;' +
+      'color:#DDE5F0;background:#0E1621;min-height:100vh">' +
+      '<b style="font-size:17px">alias_common.js 를 못 읽었습니다.</b></div>';
+    return;
+  }
+  AL.bootTheme();
+});
+</script>
+
+<style>
+/* =====================================================================
+   🔴 2026-09-20 신설 — 관리자 화면
+
+   ⚠ 이건 **돈을 안 받고 파는 물건을 주는 자리**입니다.
+     그래서 화면도 일부러 수수하게 만들었습니다. 예쁘게 만들면
+     가볍게 쓰게 됩니다.
+
+   ⚠ 누구에게 얼마를 왜 줬는지 **아래에 늘 보이게** 둡니다.
+     기록이 눈에 안 보이면 남기는 뜻이 없습니다.
+   ===================================================================== */
+.awrap{padding:18px 16px 60px;max-width:560px;margin:0 auto}
+.ahead{font-size:22px;font-weight:800;margin:0 0 6px}
+.asub{color:#94A3B8;font-size:13.5px;line-height:1.7;margin:0 0 20px}
+
+.awarn{margin:0 0 18px;padding:12px 15px;border-radius:12px;font-size:13px;
+  line-height:1.7;word-break:keep-all;
+  background:rgba(242,201,76,.14);color:#F2C94C;
+  border:1px solid rgba(242,201,76,.38)}
+
+.afind{display:flex;gap:8px;margin:0 0 16px}
+.afind input{flex:1;box-sizing:border-box;padding:13px 14px;border-radius:12px;
+  font-size:15.5px;background:rgba(255,255,255,.06);color:inherit;
+  border:1px solid rgba(255,255,255,.14)}
+.afind button{flex:0 0 auto;padding:13px 18px;border-radius:12px;cursor:pointer;
+  font-size:14.5px;font-weight:700;background:rgba(255,255,255,.08);color:inherit;
+  border:1px solid rgba(255,255,255,.18)}
+
+.arow{padding:14px 15px;border-radius:14px;margin:0 0 9px;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12)}
+.arow .anick{font-size:16.5px;font-weight:800}
+.arow .ainfo{font-size:12.5px;opacity:.7;line-height:1.7;margin-top:4px}
+.arow .ainfo b{color:#8FE3B0;font-weight:700}
+.arow .ainfo b.over{color:#F2C94C}
+.arow .agive{display:flex;gap:7px;margin-top:11px;flex-wrap:wrap}
+.arow .agive button{flex:1;min-width:66px;padding:11px 0;border-radius:11px;
+  cursor:pointer;font-size:13.5px;font-weight:700;
+  background:rgba(143,227,176,.16);color:#8FE3B0;
+  border:1px solid rgba(143,227,176,.4)}
+
+.asect{font-size:13px;font-weight:700;opacity:.65;margin:26px 2px 10px}
+.alog{font-size:12.5px;line-height:1.85;opacity:.78}
+.alog div{padding:8px 0;border-bottom:1px solid rgba(255,255,255,.07)}
+
+.err{display:none;margin:14px 0 0;padding:12px 14px;border-radius:11px;
+  background:rgba(255,90,90,.14);color:#FFB4B4;font-size:13.5px;line-height:1.6}
+.err.show{display:block}
+.ok{display:none;margin:14px 0 0;padding:12px 14px;border-radius:11px;
+  background:rgba(143,227,176,.15);color:#8FE3B0;font-size:13.5px;line-height:1.6}
+.ok.show{display:block}
+.back{display:inline-block;margin:0 0 12px;font-size:14px;color:#94A3B8;
+  text-decoration:none}
+.empty{padding:26px 10px;text-align:center;opacity:.5;font-size:14px}
+</style>
+</head>
+
+<body>
+<div class="awrap">
+  <a class="back" href="alias_me.html" id="back"></a>
+  <h1 class="ahead" data-t="adTitle"></h1>
+  <p class="asub" data-t="adSub"></p>
+
+  <div class="awarn" data-t="adWarn"></div>
+
+  <div class="afind">
+    <input id="q" type="text" data-t-ph="adFindPh" autocomplete="off">
+    <button id="find" data-t="adFind"></button>
+  </div>
+
+  <div id="list"></div>
+
+  <div class="asect" data-t="adLog"></div>
+  <div class="alog" id="log"></div>
+
+  <div id="err" class="err"></div>
+  <div id="ok" class="ok"></div>
+</div>
+
+<script>
+/* =====================================================================
+   관리자 — 이용권 지급
+   2026-09-20
+
+   ⚠ 이 화면은 **관리자만** 열 수 있습니다. 다만 화면이 막는 게
+     아니라 **서버가 막습니다.** 주소를 알아도 관리자가 아니면
+     아무것도 안 나옵니다.
+
+   ⚠ 주는 일은 되돌리기 어렵습니다. 그래서 누를 때마다 한 번 묻습니다.
+   ===================================================================== */
+const MONTHS = [1, 3, 6, 12];
+
+function el(id){ return document.getElementById(id); }
+function showErr(m){ const e = el('err'); e.textContent = m; e.classList.add('show');
+  el('ok').classList.remove('show'); }
+function showOk(m){ const e = el('ok'); e.textContent = m; e.classList.add('show');
+  el('err').classList.remove('show'); }
+function clearMsg(){ el('err').classList.remove('show'); el('ok').classList.remove('show'); }
+
+function when(iso){
+  if (!iso) return '—';
+  return AL.fmtDate(iso);
+}
+
+function daysLeft(iso){
+  if (!iso) return 0;
+  return Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000);
+}
+
+async function find(){
+  clearMsg();
+  const q = el('q').value.trim();
+  if (!q) return;
+  el('list').innerHTML = '<div class="empty">' + AL.esc(AL.t('adSearching')) + '</div>';
+  try {
+    const res = await AL.sb.rpc('admin_find_user', { p_nick: q });
+    if (res.error) throw res.error;
+    paintList(res.data || []);
+  } catch (e) {
+    el('list').innerHTML = '';
+    showErr(e.message || String(e));
+  }
+}
+
+function paintList(rows){
+  if (!rows.length) {
+    el('list').innerHTML = '<div class="empty">' + AL.esc(AL.t('adNone')) + '</div>';
+    return;
+  }
+  el('list').innerHTML = rows.map(function(r){
+    /* 이용권이 살아 있으면 초록, 끝났으면 노랑 */
+    const until = r.plan_until || r.trial_until;
+    const left = daysLeft(until);
+    const over = left <= 0;
+    return '<div class="arow">' +
+      '<div class="anick">' + AL.esc(r.nickname) + '</div>' +
+      '<div class="ainfo">' +
+        AL.esc(AL.t('adJoined', { when: when(r.joined_at) })) + ' · ' +
+        AL.esc(AL.t('adAliases', { n: r.aliases })) + '<br>' +
+        AL.esc(AL.t(r.plan_until ? 'adPaid' : 'adTrial')) + ' ' +
+        '<b class="' + (over ? 'over' : '') + '">' + AL.esc(when(until)) +
+        (over ? ' (' + AL.esc(AL.t('adOver')) + ')'
+              : ' (' + AL.esc(AL.t('adLeft', { n: left })) + ')') + '</b>' +
+      '</div>' +
+      '<div class="agive">' +
+        MONTHS.map(function(m){
+          return '<button data-give="' + AL.esc(r.account_id) + '" data-m="' + m + '" ' +
+            'data-nick="' + AL.esc(r.nickname) + '">' +
+            AL.esc(AL.t('adGive', { n: m })) + '</button>';
+        }).join('') +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  el('list').querySelectorAll('[data-give]').forEach(function(b){
+    b.addEventListener('click', async function(){
+      const id = b.getAttribute('data-give');
+      const m = Number(b.getAttribute('data-m'));
+      const nick = b.getAttribute('data-nick');
+
+      /* ⚠ 되돌리기 어려우니 한 번 묻습니다. */
+      if (!confirm(AL.t('adAsk', { who: nick, n: m }))) return;
+      const why = prompt(AL.t('adWhy'), AL.t('adWhyDefault'));
+      if (why === null) return;          // 취소
+
+      b.disabled = true;
+      clearMsg();
+      try {
+        const res = await AL.sb.rpc('admin_grant_plan', {
+          p_account: id, p_months: m, p_reason: why || null,
+        });
+        if (res.error) throw res.error;
+        showOk(AL.t('adDone', { who: nick, n: m, when: when(res.data) }));
+        await find();       // 목록을 새로 그립니다
+        await loadLog();
+      } catch (e) {
+        showErr(e.message || String(e));
+      } finally {
+        b.disabled = false;
+      }
+    });
+  });
+}
+
+/* 준 기록 — 늘 보이게 둡니다.
+   ⚠ 기록이 눈에 안 보이면 남기는 뜻이 없습니다. */
+async function loadLog(){
+  try {
+    const res = await AL.sb.from('plan_grants')
+      .select('months, reason, plan_until, created_at, account_id')
+      .order('created_at', { ascending: false }).limit(20);
+    if (res.error) throw res.error;
+    const rows = res.data || [];
+    if (!rows.length) {
+      el('log').innerHTML = '<div style="opacity:.5">' +
+        AL.esc(AL.t('adLogNone')) + '</div>';
+      return;
+    }
+    el('log').innerHTML = rows.map(function(r){
+      return '<div>' + AL.esc(AL.fmtWhen(r.created_at)) + ' · ' +
+        AL.esc(AL.t('adGive', { n: r.months })) + ' → ' +
+        AL.esc(when(r.plan_until)) +
+        (r.reason ? ' · ' + AL.esc(r.reason) : '') + '</div>';
+    }).join('');
+  } catch (e) {
+    el('log').innerHTML = '';
+  }
+}
+
+el('find').addEventListener('click', find);
+el('q').addEventListener('keydown', function(e){ if (e.key === 'Enter') find(); });
+
+/* ── 시작 ────────────────────────────────────────────────────── */
+(async function(){
+  AL.paintText();
+  el('back').textContent = '‹ ' + AL.t('navMe');
+  AL.setBack('alias_me.html');
+  if (!await AL.requireLogin()) return;
+
+  /* ⚠ 관리자가 아니면 아무것도 안 보여줍니다.
+     서버도 막지만 화면에서도 한 번 더 막습니다. */
+  try {
+    const res = await AL.sb.rpc('is_admin');
+    if (res.error || !res.data) {
+      document.querySelector('.awrap').innerHTML =
+        '<div class="empty">' + AL.esc(AL.t('adNotAdmin')) + '</div>';
+      return;
+    }
+  } catch (e) {
+    document.querySelector('.awrap').innerHTML =
+      '<div class="empty">' + AL.esc(AL.t('adNotAdmin')) + '</div>';
+    return;
+  }
+
+  await loadLog();
+})();
+</script>
+</body>
+</html>

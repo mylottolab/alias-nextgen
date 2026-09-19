@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260919x">
-<link rel="stylesheet" href="alias_theme.css?v=20260919x">
+<link rel="stylesheet" href="alias_common.css?v=20260920a">
+<link rel="stylesheet" href="alias_theme.css?v=20260920a">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260919x"></script>
+<script src="alias_common.js?v=20260920a"></script>
 <!-- 🔴 2026-09-13 — 사진 압축(AL.compressImage)이 여기 있습니다 -->
-<script src="alias_media.js?v=20260919x"></script>
+<script src="alias_media.js?v=20260920a"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -197,6 +197,15 @@ document.addEventListener("DOMContentLoaded", function(){
       <button id="pPrev"></button>
     </div>
     <p class="hint" data-t="pvNote" style="margin:8px 2px 0"></p>
+  </div>
+
+  <!-- 🔴 2026-09-20 — 관리자에게만 보입니다 -->
+  <div id="adminBox" style="display:none">
+    <div class="sect" data-t="adTitle"></div>
+    <div class="dblock">
+      <a href="alias_admin.html" class="btn ghost" data-t="adMenu"
+         style="display:block;text-align:center;text-decoration:none"></a>
+    </div>
   </div>
 
   <div class="sect" data-t="meAccount"></div>
@@ -702,6 +711,14 @@ document.getElementById('pPrev').addEventListener('click', async function(){
   await reload();
   AL.showPlanBar();   // 🔴 2026-09-14
   AL.showPushBar();   // 🔴 2026-09-15 — 전화를 못 받는 상태면 알립니다
+
+  /* 🔴 2026-09-20 — 관리자에게만 "이용권 주기" 를 보여줍니다.
+     ⚠ 화면이 막는 게 아니라 서버가 막습니다. 여기서 숨기는 것은
+       보기 좋으라는 것뿐입니다. */
+  try {
+    var ad = await AL.sb.rpc('is_admin');
+    if (!ad.error && ad.data) el('adminBox').style.display = '';
+  } catch (e) {}
   AL.showExpiringBar();   // 🔴 2026-09-19 — 곧 지워질 녹음
   AL.startAlerts();      // 어느 화면에 있든 새 메시지를 알려줍니다
 })();
