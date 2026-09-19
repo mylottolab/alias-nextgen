@@ -755,6 +755,8 @@ AL.STR = {
        겪는 일이 그거면 안 됩니다. */
   invShareNote: { kr:'[보내기] 로 링크를 보내면 받는 분은 누르기만 하면 됩니다.\n마주 보고 계시면 위 QR 이 가장 안전합니다. 어디로도 안 나갑니다.',
                   en:'Use Send — they only have to tap the link.\nIf you are face to face, the QR above is safest: it goes nowhere.' },
+  invCopied:   { kr:'주소를 복사했습니다. 카톡이나 문자에 붙여넣어 보내세요.',
+                 en:'Link copied. Paste it into a message to send.' },
   invShareSys: { kr:'다른 앱으로 보내기', en:'Share' },
   invWillSee:  { kr:'이 초대를 쓰면 상대는 나를 "{face}" 로 봅니다.',
                  en:'Whoever uses this invite will see you as "{face}".' },
@@ -3756,6 +3758,63 @@ AL.callFn = async function(name, body){
 };
 
 /* 초대 주소. 화면 파일들이 같은 폴더에 있다고 봅니다. */
+/* =====================================================================
+   🔴🔴 2026-09-19 신설 — 다른 앱으로 보내기
+
+   앱 화면(웹뷰)에서는 navigator.share 가 **안 됩니다.** 공유창이 안
+   뜨고 조용히 넘어가서, 손님은 "왜 아무 일도 안 일어나지" 하게 됩니다.
+   인쇄·내려받기와 같은 자리입니다(함정 98).
+
+   ⚠ 초대 링크를 보내는 길은 **이 앱에서 제일 중요한 길**입니다.
+     사람을 데려오는 유일한 방법이니까요. 여기가 막히면 손님이 안 늘어납니다.
+
+   ⚠ 옛 APK 에는 창구가 없습니다. 있는지부터 보고, 없으면 복사로
+     넘어갑니다. 그때는 **복사했다고 말은 해줘야** 합니다.
+   ===================================================================== */
+/* 🔴 2026-09-19 — 어느 길로 갔는지 남깁니다.
+   "안 된다" 는 말씀만으로는 APK 문제인지 코드 문제인지 알 수 없습니다.
+   화면이 이 값을 보고 손님께 알려드립니다(함정 76). */
+AL._shareWhy = '';
+
+AL.shareText = async function(text, opts){
+  opts = opts || {};
+  AL._shareWhy = '';
+
+  /* ① 앱이면 자바 창구 */
+  try {
+    if (!window.AliasNative) {
+      AL._shareWhy = '앱 창구(AliasNative)가 없습니다';
+    } else if (typeof AliasNative.shareText !== 'function') {
+      AL._shareWhy = '이 앱 판에는 보내기 창구가 없습니다 (APK 를 새로 만드셔야 합니다)';
+    } else {
+      AliasNative.shareText(text, opts.title || '');
+      return 'app';
+    }
+  } catch (e) {
+    AL._shareWhy = '앱 창구 오류: ' + ((e && e.message) || String(e));
+    console.warn('[share] 자바 창구 실패', e);
+  }
+
+  /* ② 브라우저면 웹 공유 */
+  try {
+    if (navigator.share) {
+      await navigator.share({ text: text, title: opts.title || undefined });
+      return 'web';
+    }
+    AL._shareWhy += ' / 이 화면은 웹 공유도 못 합니다';
+  } catch (e) {
+    /* 손님이 취소한 것도 여기로 옵니다. 그건 실패가 아닙니다. */
+    if (e && e.name === 'AbortError') return 'cancel';
+    AL._shareWhy += ' / 웹 공유도 실패: ' + ((e && e.message) || String(e));
+    console.warn('[share] 웹 공유 실패', e);
+  }
+
+  /* ③ 둘 다 안 되면 복사 */
+  if (opts.btn) AL.copyText(text, opts.btn);
+  else { try { await navigator.clipboard.writeText(text); } catch (e) {} }
+  return 'copy';
+};
+
 AL.inviteUrl = function(code){
   var base = location.href.replace(/[^/]*$/, '');
   return base + 'alias_join.html?c=' + encodeURIComponent(code);

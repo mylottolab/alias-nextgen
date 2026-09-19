@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260919v">
-<link rel="stylesheet" href="alias_theme.css?v=20260919v">
+<link rel="stylesheet" href="alias_common.css?v=20260919x">
+<link rel="stylesheet" href="alias_theme.css?v=20260919x">
 <script src="alias_qrlib.js"></script>
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260919v"></script>
-<script src="alias_qr.js?v=20260919v"></script>
+<script src="alias_common.js?v=20260919x"></script>
+<script src="alias_qr.js?v=20260919x"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -371,10 +371,10 @@ async function reloadMine(){
     ul.querySelectorAll('[data-sh]').forEach(function(b){
       b.addEventListener('click', async function(){
         var url = AL.inviteUrl(b.getAttribute('data-sh'));
-        if (navigator.share) {
-          try { await navigator.share({ text: url }); return; } catch (e) { /* 취소 */ }
+        var how = await AL.shareText(url, { title: AL.t('invShareSys'), btn: b });
+        if (how === 'copy') {
+          alert(AL.t('invCopied') + (AL._shareWhy ? '\n\n(' + AL._shareWhy + ')' : ''));
         }
-        AL.copyText(url, b);
       });
     });
     ul.querySelectorAll('[data-pr]').forEach(function(b){
@@ -497,11 +497,15 @@ document.getElementById('copyLink').addEventListener('click', function(){
 document.getElementById('shareBtn').addEventListener('click', async function(){
   // ⚠ 여기서 다른 앱을 거치면 그 앱에 내 번호가 남습니다.
   //   그래서 위 QR 을 먼저 권합니다. 이건 멀리 있을 때의 차선책입니다.
+  /* 🔴 2026-09-19 — 앱에서는 자바 창구로 보냅니다.
+     웹 공유는 앱 화면에서 안 됩니다(함정 98·119). */
   const url = AL.inviteUrl(lastCode || '');
-  if (navigator.share) {
-    try { await navigator.share({ text: url }); return; } catch (e) { /* 취소 */ }
+  const how = await AL.shareText(url, { title: AL.t('invShareSys'), btn: this });
+  /* 🔴 2026-09-19 — 무슨 일이 일어났는지 늘 말해줍니다.
+     조용히 복사만 하면 손님은 단추가 고장난 줄 압니다(함정 76). */
+  if (how === 'copy') {
+    showOk(AL.t('invCopied') + (AL._shareWhy ? '\n(' + AL._shareWhy + ')' : ''));
   }
-  AL.copyText(url, this);
 });
 
 /* =====================================================================
@@ -808,9 +812,8 @@ window.addEventListener('afterprint', function(){
     '<p class="cap">' + AL.esc(AL.t('prDone2')) + '</p>' +
     '<div class="fb">' +
       '<button id="prDoneNo">' + AL.esc(AL.t('close')) + '</button>' +
-      (navigator.share
-        ? '<button id="prDoneShare" class="go">' + AL.esc(AL.t('prShare')) + '</button>'
-        : '') +
+      /* 🔴 2026-09-19 — 앱에도 창구가 있으니 늘 보여줍니다. */
+      '<button id="prDoneShare" class="go">' + AL.esc(AL.t('prShare')) + '</button>' +
     '</div>';
   prSheetShow(true);
   document.getElementById('prDoneNo').addEventListener('click', function(){
@@ -818,7 +821,7 @@ window.addEventListener('afterprint', function(){
   });
   const sh = document.getElementById('prDoneShare');
   if (sh) sh.addEventListener('click', async function(){
-    try { await navigator.share({ text: AL.inviteUrl(prCode) }); } catch (e) {}
+    await AL.shareText(AL.inviteUrl(prCode), { title: AL.t('invShareSys') });
   });
 });
 
