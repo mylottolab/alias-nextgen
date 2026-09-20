@@ -97,11 +97,26 @@ AL.openMusic = function(linkId, sideId){
       note(AL.t('muNote'));
 
       var link = await AL.sb.from('links')
-        .select('music_youtube_id, track_id, shared_music_id')
+        .select('music_youtube_id, track_id, shared_music_id, music_set_by')
         .eq('id', linkId).maybeSingle();
       var vid      = link.data ? link.data.music_youtube_id : null;
       var nowId    = link.data ? link.data.track_id : null;
       var sharedId = link.data ? link.data.shared_music_id : null;
+      var setBy    = link.data ? link.data.music_set_by : null;
+
+      /* 🔴 2026-09-20 — 누가 틀었는지.
+         ⚠ 곡이 갑자기 바뀌는데 이유를 모르면 고장인 줄 압니다.
+           "○○님이 틀었습니다" 한 줄이면 납득이 됩니다. */
+      var who = '';
+      if (setBy) {
+        if (setBy === sideId) who = AL.t('muSetByMe');
+        else {
+          try {
+            var pp = await AL.peerPersona(linkId);
+            who = AL.t('muSetBy', { who: (pp && pp.display_name) || '상대' });
+          } catch (e) { who = AL.t('muSetBy', { who: '상대' }); }
+        }
+      }
 
       /* 회사가 고른 곡 목록 — 갤러리 배경음과 같은 표를 씁니다. */
       var songs = [];
@@ -120,6 +135,7 @@ AL.openMusic = function(linkId, sideId){
 
       if (sg) {
         note(AL.t('muPlaying') + ' · ' + sg.title + (sg.artist ? ' · ' + sg.artist : ''));
+        if (who) note(who);
         var au0 = document.createElement('audio');
         au0.controls = true; au0.autoplay = true; au0.loop = true;
         au0.style.width = '100%';
@@ -135,6 +151,7 @@ AL.openMusic = function(linkId, sideId){
 
       } else if (now) {
         note(AL.t('muPlaying') + ' · ' + now.title);
+        if (who) note(who);
         var au = document.createElement('audio');
         au.controls = true; au.autoplay = true; au.style.width = '100%';
         try { au.src = await AL.mediaUrl(now.media_path); } catch (e) {}
@@ -147,6 +164,7 @@ AL.openMusic = function(linkId, sideId){
         sheet.appendChild(au);
 
       } else if (vid) {
+        if (who) note(who);
         var pl = document.createElement('div'); pl.className = 'player';
         var fr = document.createElement('iframe');
         fr.src = 'https://www.youtube.com/embed/' + vid;
@@ -170,6 +188,10 @@ AL.openMusic = function(linkId, sideId){
 
       title(AL.t('muPick2'));
       note(AL.t('muPickNote'));
+      /* 🔴 2026-09-20 — 나중 것이 이긴다는 규칙을 **고르기 전에** 알립니다.
+         ⚠ 곡이 바뀌고 나서 알리면 늦습니다. */
+      var rule = note(AL.t('muRule'));
+      rule.style.color = '#F2C94C';
 
       if (!songs.length) {
         note(AL.t('muNoSongs'));

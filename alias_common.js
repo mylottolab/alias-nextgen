@@ -492,6 +492,14 @@ AL.STR = {
   muNoSongs:  { kr:'아직 올라온 곡이 없습니다.', en:'No tracks yet.' },
   muOldNote:  { kr:'예전에 올리신 곡입니다. 이제 새로 올릴 수는 없습니다.',
                 en:'Tracks you uploaded earlier. New uploads are no longer possible.' },
+
+  /* 🔴 2026-09-20 — 둘이 동시에 틀면
+     ⚠ 나중에 누른 쪽이 이깁니다. 그걸 **미리** 알려드려야 합니다.
+       곡이 갑자기 바뀌는데 이유를 모르면 고장인 줄 압니다. */
+  muRule:     { kr:'⚠ 두 분이 각자 곡을 고르면 나중에 고른 곡이 나옵니다. 서로 이야기해서 정하세요.',
+                en:'⚠ If you both pick, the later pick wins. Talk it over first.' },
+  muSetBy:    { kr:'{who}님이 틀었습니다', en:'{who} started this' },
+  muSetByMe:  { kr:'제가 틀었습니다', en:'You started this' },
   muList:     { kr:'재생목록', en:'Playlist' },
   muListNone: { kr:'담은 곡이 없습니다.', en:'No tracks yet.' },
   muUsed:     { kr:'{n}곡 · {used} / {max}', en:'{n} tracks · {used} / {max}' },
