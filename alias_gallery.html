@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260920c">
-<link rel="stylesheet" href="alias_theme.css?v=20260920c">
+<link rel="stylesheet" href="alias_common.css?v=20260920f">
+<link rel="stylesheet" href="alias_theme.css?v=20260920f">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260920c"></script>
-<script src="alias_media.js?v=20260920c"></script>
+<script src="alias_common.js?v=20260920f"></script>
+<script src="alias_media.js?v=20260920f"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function(){
   if (typeof AL === "undefined" || typeof AL.t !== "function") {
@@ -226,6 +226,12 @@ body > .gwrap, body > nav.tabbar{position:relative;z-index:1}
     <p class="gnote" data-t="cvDimNote"></p>
 
     <div class="gsect" data-t="glMusic"></div>
+    <!-- 🔴 2026-09-20 — 갈래를 먼저 고르고, 그 안에서 곡을 고릅니다.
+         ⚠ 곡이 수십 개가 되면 한 목록에서는 못 고릅니다.
+           손님은 "지금 기분에 맞는 것" 을 찾지 곡 이름을 찾지 않습니다. -->
+    <div class="gfield">
+      <select id="emood"></select>
+    </div>
     <div class="gfield">
       <select id="emusic"></select>
     </div>
@@ -468,13 +474,7 @@ async function paintEdit(){
   el('eyt').value = data.youtube_id
     ? ('https://youtu.be/' + data.youtube_id) : '';
 
-  el('emusic').innerHTML =
-    '<option value="">' + AL.esc(AL.t('glMusicNo')) + '</option>' +
-    music.map(function(m){
-      return '<option value="' + AL.esc(m.id) + '"' +
-        (m.id === data.music_id ? ' selected' : '') + '>' +
-        AL.esc(m.title + (m.artist ? ' · ' + m.artist : '')) + '</option>';
-    }).join('');
+  paintMusicPickers();
 
   const grid = el('egrid');
   grid.innerHTML = '';
@@ -546,6 +546,50 @@ async function paintEdit(){
     });
   });
 }
+
+/* 🔴🔴 2026-09-20 — 갈래 먼저, 그다음 곡.
+
+   ⚠ 지금 고른 곡이 있으면 그 갈래가 먼저 잡힙니다. 꾸미기 화면을
+     다시 열었는데 갈래가 "전체" 로 돌아가 있으면 어리둥절합니다. */
+let moodNow = null;
+
+function paintMusicPickers(){
+  var groups = AL.groupMusic(music);
+
+  if (moodNow === null) {
+    groups.forEach(function(g){
+      if (g.songs.some(function(s){ return s.id === data.music_id; })) {
+        moodNow = g.key;
+      }
+    });
+    if (moodNow === null) moodNow = '';        // 전체
+  }
+
+  el('emood').innerHTML =
+    '<option value="">' + AL.esc(AL.t('mdAll')) + '</option>' +
+    groups.map(function(g){
+      return '<option value="' + AL.esc(g.key) + '"' +
+        (g.key === moodNow ? ' selected' : '') + '>' +
+        AL.esc(g.label + ' (' + g.songs.length + ')') + '</option>';
+    }).join('');
+
+  var list = moodNow
+    ? (groups.filter(function(g){ return g.key === moodNow; })[0] || { songs: [] }).songs
+    : music;
+
+  el('emusic').innerHTML =
+    '<option value="">' + AL.esc(AL.t('glMusicNo')) + '</option>' +
+    list.map(function(m){
+      return '<option value="' + AL.esc(m.id) + '"' +
+        (m.id === data.music_id ? ' selected' : '') + '>' +
+        AL.esc(m.title + (m.artist ? ' · ' + m.artist : '')) + '</option>';
+    }).join('');
+}
+
+el('emood').addEventListener('change', function(){
+  moodNow = this.value;
+  paintMusicPickers();
+});
 
 async function paintUsed(){
   const used = await AL.storageUsed();

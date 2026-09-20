@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260920c">
-<link rel="stylesheet" href="alias_theme.css?v=20260920c">
+<link rel="stylesheet" href="alias_common.css?v=20260920f">
+<link rel="stylesheet" href="alias_theme.css?v=20260920f">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260920c"></script>
+<script src="alias_common.js?v=20260920f"></script>
 <!-- 🔴 2026-09-13 — 사진 압축(AL.compressImage)이 여기 있습니다 -->
-<script src="alias_media.js?v=20260920c"></script>
+<script src="alias_media.js?v=20260920f"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -197,6 +197,22 @@ document.addEventListener("DOMContentLoaded", function(){
       <button id="pPrev"></button>
     </div>
     <p class="hint" data-t="pvNote" style="margin:8px 2px 0"></p>
+  </div>
+
+  <!-- 🔴 2026-09-20 신설 — 이용권
+       ⚠ 띠는 화면마다 떴다 사라지지만, 여기는 **늘 있는 집**입니다.
+         손님이 "이용권이 어디 있더라" 할 때 찾아올 자리가 있어야 합니다. -->
+  <div class="sect" data-t="plTitle"></div>
+  <div class="dblock">
+    <div class="prefrow">
+      <span class="pl" id="planNow"></span>
+      <a href="alias_buy.html" id="planGo"
+         style="padding:9px 16px;border-radius:999px;text-decoration:none;
+                font-size:13.5px;font-weight:700;
+                background:rgba(143,227,176,.2);color:#8FE3B0;
+                border:1px solid rgba(143,227,176,.45)"></a>
+    </div>
+    <p class="hint" data-t="plNote2"></p>
   </div>
 
   <!-- 🔴 2026-09-20 — 관리자에게만 보입니다 -->
@@ -694,6 +710,30 @@ document.getElementById('pPrev').addEventListener('click', async function(){
   showOk(AL.t('thSaved'));
 });
 
+/* 🔴 2026-09-20 — 이용권 상태를 늘 보여줍니다.
+   ⚠ 띠는 화면마다 떴다 사라집니다. 여기는 언제 와도 있는 자리입니다. */
+async function paintPlanRow(){
+  try {
+    const p = await AL.myPlan(true);
+    const d = AL.planDaysLeft(p);
+    const now = el('planNow');
+    const go = el('planGo');
+    if (!now || !go) return;
+
+    if (p.state === 'paid') {
+      now.textContent = AL.t('plUntilLeft', { when: AL.fmtDate(p.until), n: d });
+      go.textContent = AL.t('plExtend');
+    } else if (p.state === 'trial') {
+      now.textContent = AL.t('plTrialLeft', { n: d }) +
+        (p.bonus_ready ? ' · ' + AL.t('plBonus') : '');
+      go.textContent = AL.t('plBuy');
+    } else {
+      now.textContent = AL.t('plOver');
+      go.textContent = AL.t('plBuy');
+    }
+  } catch (e) { console.warn('[plan] 이용권을 못 읽었습니다', e); }
+}
+
 (async function(){
   AL.paintText();
   paintPrevBtn();
@@ -710,6 +750,7 @@ document.getElementById('pPrev').addEventListener('click', async function(){
   paintTheme();
   await reload();
   AL.showPlanBar();   // 🔴 2026-09-14
+  paintPlanRow();     // 🔴 2026-09-20 — 이용권 자리
   AL.showPushBar();   // 🔴 2026-09-15 — 전화를 못 받는 상태면 알립니다
 
   /* 🔴 2026-09-20 — 관리자에게만 "이용권 주기" 를 보여줍니다.

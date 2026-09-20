@@ -894,6 +894,12 @@ AL.STR = {
   plOver:       { kr:'이용권이 끝났습니다 · 받기만 됩니다',
                   en:'Your plan has ended · you can still receive' },
   plBuy:        { kr:'구매', en:'Buy' },
+  plExtend:     { kr:'연장', en:'Extend' },
+  plTitle:      { kr:'이용권', en:'Plan' },
+  plNote2:      { kr:'남은 기간에 이어서 더해집니다. 자동으로 다시 결제되지 않습니다.',
+                  en:'Added on top of what is left. It does not renew automatically.' },
+  plUntilLeft:  { kr:'이용권 {when} 까지 · {n}일 남음',
+                  en:'Plan valid until {when} · {n} days left' },
   plNeedTtl:    { kr:'이용권이 필요합니다', en:'A plan is required' },
   plNeed1:      { kr:'보내기와 걸기는 이용권이 있어야 합니다. 받기와 읽기는 그대로 됩니다.',
                   en:'Sending and calling need a plan. Receiving and reading still work.' },
@@ -1087,6 +1093,19 @@ AL.STR = {
   glAdd:      { kr:'＋ 사진·영상 넣기', en:'＋ Add photo or video' },
   glMusic:    { kr:'배경음', en:'Background music' },
   glMusicNo:  { kr:'없음', en:'None' },
+
+  /* 🔴 2026-09-20 — 배경음 갈래 (music_manager.py 와 같은 순서) */
+  mdCelebration:  { kr:'축하 · 기쁨', en:'Celebration' },
+  mdMourning:     { kr:'애도 · 추모', en:'Mourning' },
+  mdBreakup:      { kr:'이별 · 슬픔', en:'Heartbreak' },
+  mdEncouragement:{ kr:'건승 · 응원', en:'Encouragement' },
+  mdPets:         { kr:'반려동물 휴식', en:'For pets' },
+  mdBright:       { kr:'상쾌 · 밝음', en:'Bright' },
+  mdDark:         { kr:'어두움 · 고독', en:'Dark' },
+  mdMoving:       { kr:'이사 · 새 출발', en:'New beginnings' },
+  mdUnknown:      { kr:'테마불명', en:'Uncategorised' },
+  mdEtc:          { kr:'그 밖', en:'Other' },
+  mdAll:          { kr:'갈래 전체', en:'All moods' },
   glYoutube:  { kr:'유튜브 영상', en:'YouTube video' },
   glYtPh:     { kr:'유튜브 주소를 붙여넣으세요', en:'Paste a YouTube link' },
   glYtBad:    { kr:'유튜브 주소가 아닙니다.', en:'That is not a YouTube link.' },
@@ -1866,6 +1885,12 @@ AL._planCss = function(){
       'border:1px solid rgba(143,227,176,.35)}' +
     '#planBar.over{background:rgba(242,201,76,.15);color:#F2C94C;' +
       'border:1px solid rgba(242,201,76,.4)}' +
+    /* 🔴 2026-09-20 — 잘 쓰고 계신 분께는 조용하게.
+       ⚠ 체험·만료와 같은 세기로 띄우면 광고가 됩니다. */
+    '#planBar.calm{background:rgba(255,255,255,.05);color:inherit;opacity:.72;' +
+      'font-weight:600;font-size:12.5px;padding:9px 13px;' +
+      'border:1px solid rgba(255,255,255,.1)}' +
+    '#planBar.calm a{font-size:12px;padding:6px 12px}' +
     '#planBar span{flex:1}' +
     '#planBar a{flex:0 0 auto;padding:8px 14px;border-radius:999px;' +
       'text-decoration:none;font-weight:700;font-size:13px;' +
@@ -2041,29 +2066,59 @@ AL.showExpiringBar = async function(){
   }
 };
 
-AL.showPlanBar = async function(){
+/* ⚠ where 를 주면 그 자리에 답니다. 안 주면 .wrap 맨 위입니다.
+   대화창처럼 .wrap 이 없는 화면은 자리를 따로 정해줘야 합니다. */
+AL.showPlanBar = async function(where){
   var p = await AL.myPlan();
-  if (p.state === 'paid' || p.state === 'unknown') return;
+
+  /* 🔴🔴 2026-09-20 — 이용권이 살아 있어도 **늘 보여줍니다.**
+
+     무엇이 잘못돼 있었나
+       이용권이 있으면 띠가 아예 안 떴습니다. 그래서 **연장하러 갈
+       길이 없었습니다.** 처음 살 때만 구매 화면에 갈 수 있고,
+       그다음부터는 갈 데가 없었던 것이죠.
+
+     ⚠ 다만 체험·만료 때와 **같은 세기로 보여주면 안 됩니다.**
+       잘 쓰고 계신 분께 매번 눈에 띄는 띠를 띄우면 광고가 됩니다.
+       조용한 한 줄로 둡니다.
+
+     ⚠ 그리고 **끝이 가까워지면 다시 눈에 띄게** 합니다.
+       30일 안쪽이면 노랑, 7일 안쪽이면 빨강입니다. */
+  if (p.state === 'unknown') return;
 
   AL._planCss();
-  var host = document.querySelector('.wrap') || document.body;
+  var host = (typeof where === 'string' ? document.querySelector(where) : where)
+             || document.querySelector('.wrap') || document.body;
+  if (!host) return;
   var old = document.getElementById('planBar');
   if (old) old.remove();
 
   var bar = document.createElement('div');
   bar.id = 'planBar';
-  var msg;
+  var msg, cls, btn;
+  var d = AL.planDaysLeft(p);
+
   if (p.state === 'trial') {
-    bar.className = 'trial';
-    var d = AL.planDaysLeft(p);
+    cls = 'trial';
     msg = AL.t('plTrialLeft', { n: d });
     if (p.bonus_ready) msg += ' · ' + AL.t('plBonus');
+    btn = AL.t('plBuy');
+
+  } else if (p.state === 'paid') {
+    /* 🔴 잘 쓰고 계신 분께는 조용한 한 줄. 다만 끝이 가까우면 눈에 띄게. */
+    msg = AL.t('plUntilLeft', { when: AL.fmtDate(p.until), n: d });
+    btn = AL.t('plExtend');
+    cls = (d <= 7) ? 'over' : (d <= 30 ? 'trial' : 'calm');
+
   } else {
-    bar.className = 'over';
+    cls = 'over';
     msg = AL.t('plOver');
+    btn = AL.t('plBuy');
   }
+
+  bar.className = cls;
   bar.innerHTML = '<span>' + AL.esc(msg) + '</span>' +
-    '<a href="alias_buy.html">' + AL.esc(AL.t('plBuy')) + '</a>';
+    '<a href="alias_buy.html">' + AL.esc(btn) + '</a>';
   host.insertBefore(bar, host.firstChild);
 };
 
@@ -2415,6 +2470,41 @@ AL.musicUrl = function(path){
   if (!path) return null;
   var res = AL.sb.storage.from(AL.MUSIC_BUCKET).getPublicUrl(path);
   return res && res.data ? res.data.publicUrl : null;
+};
+
+/* =====================================================================
+   🔴 2026-09-20 — 배경음 갈래 아홉
+
+   ⚠ PC 관리 프로그램(music_manager.py)의 MOODS 와 **같은 열쇠말**을
+     씁니다. 한쪽만 고치면 곡이 "그 밖" 으로 떨어집니다.
+   ⚠ 곡이 많아지면 목록이 길어져 고르기 어렵습니다. 갈래로 접어
+     보여드립니다.
+   ===================================================================== */
+AL.MUSIC_MOODS = [
+  ['celebration',   'mdCelebration'],
+  ['mourning',      'mdMourning'],
+  ['breakup',       'mdBreakup'],
+  ['encouragement', 'mdEncouragement'],
+  ['pets',          'mdPets'],
+  ['bright',        'mdBright'],
+  ['dark',          'mdDark'],
+  ['moving',        'mdMoving'],
+  ['unknown',       'mdUnknown'],
+];
+
+/* 갈래별로 묶어 돌려줍니다. 목록에 없는 갈래는 맨 뒤 "그 밖" 으로.
+   ⚠ 빈 갈래는 아예 안 내보냅니다. 빈 제목만 줄줄이 있으면 답답합니다. */
+AL.groupMusic = function(songs){
+  var out = [];
+  var seen = {};
+  AL.MUSIC_MOODS.forEach(function(m){
+    var part = songs.filter(function(s){ return s.mood === m[0]; });
+    part.forEach(function(s){ seen[s.id] = true; });
+    if (part.length) out.push({ key: m[0], label: AL.t(m[1]), songs: part });
+  });
+  var rest = songs.filter(function(s){ return !seen[s.id]; });
+  if (rest.length) out.push({ key: '', label: AL.t('mdEtc'), songs: rest });
+  return out;
 };
 
 AL.loadMusicList = async function(){

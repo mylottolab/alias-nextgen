@@ -33,11 +33,38 @@
 
 window.AL = window.AL || {};
 
+/* 🔴 2026-09-20 — 갈래 단추 모양.
+   ⚠ 공용 CSS 에 없는 것이라 여기서 한 번만 넣습니다. 여러 번 열어도
+     한 번만 붙습니다. */
+(function(){
+  if (document.getElementById('aliasMoodCss')) return;
+  var st = document.createElement('style');
+  st.id = 'aliasMoodCss';
+  st.textContent =
+    '.mood{display:flex;align-items:center;gap:10px;width:100%;cursor:pointer;' +
+      'margin:6px 0 0;padding:14px 15px;border-radius:13px;text-align:left;' +
+      'font-size:15.5px;font-weight:700;' +
+      'background:rgba(255,255,255,.06);color:inherit;' +
+      'border:1px solid rgba(255,255,255,.13)}' +
+    '.mood.on{background:rgba(143,227,176,.15);color:#8FE3B0;' +
+      'border-color:rgba(143,227,176,.45)}' +
+    '.mood .mn{flex:1;min-width:0}' +
+    '.mood .mc{flex:0 0 auto;font-size:12.5px;font-weight:600;opacity:.6}' +
+    '.mood .ma{flex:0 0 auto;font-size:13px;opacity:.6;width:14px;' +
+      'text-align:center}';
+  document.head.appendChild(st);
+})();
+
 AL.openMusic = function(linkId, sideId){
   return new Promise(function(resolve){
     var bg = document.createElement('div'); bg.className = 'pk-bg';
     var sheet = document.createElement('div'); sheet.className = 'pk';
     document.body.appendChild(bg); document.body.appendChild(sheet);
+
+    /* 🔴 2026-09-20 — 열어둔 갈래. null 이면 다 접힌 상태입니다.
+       ⚠ draw() 를 다시 불러도 이 값은 남습니다. 곡을 바꿀 때마다
+         갈래가 도로 접히면 답답합니다. */
+    var openMood = null;
 
     var done = false;
     function close(){
@@ -196,23 +223,62 @@ AL.openMusic = function(linkId, sideId){
       if (!songs.length) {
         note(AL.t('muNoSongs'));
       } else {
-        songs.forEach(function(s){
-          var row = document.createElement('div');
-          row.className = 'trk' + (s.id === sharedId ? ' now' : '');
+        /* 🔴🔴 2026-09-20 — **갈래를 먼저** 보여주고, 누르면 그 안의 곡이
+           나옵니다.
 
-          var tn = document.createElement('span'); tn.className = 'tn';
-          var b = document.createElement('b'); b.textContent = s.title; tn.appendChild(b);
-          var sub = document.createElement('span');
-          sub.textContent = s.artist || ''; tn.appendChild(sub);
-          row.appendChild(tn);
+           ⚠ 곡이 수십 개가 되면 죽 늘어놓은 목록에서는 못 고릅니다.
+             손님은 "지금 기분에 맞는 것" 을 찾지, 곡 이름을 찾지
+             않습니다. **갈래가 먼저 보여야** 합니다.
 
-          row.appendChild(tbtn('▶', 'play', AL.t('muPlayThis'), function(){
-            /* ⚠ 회사 곡은 tracks 에 안 담습니다. 공개 서랍에 있고 모두가
-               나눠 쓰니, 방마다 복사할 이유가 없습니다.
-               links 에 어느 곡인지만 적어둡니다. */
-            playOnly({ shared_music_id: s.id });
-          }));
-          sheet.appendChild(row);
+           ⚠ 한 번 고르면 그 갈래가 열린 채로 남습니다. 듣다가 다른
+             곡으로 바꾸실 때 다시 찾아 들어가지 않으시게요. */
+        var groups = AL.groupMusic(songs);
+
+        /* 지금 트는 곡이 있으면 그 갈래를 열어둡니다. */
+        if (openMood === null && sharedId) {
+          groups.forEach(function(g){
+            if (g.songs.some(function(s){ return s.id === sharedId; })) {
+              openMood = g.key;
+            }
+          });
+        }
+
+        groups.forEach(function(g){
+          var on = (openMood === g.key);
+
+          var head = document.createElement('button');
+          head.className = 'mood' + (on ? ' on' : '');
+          head.innerHTML =
+            '<span class="mn">' + AL.esc(g.label) + '</span>' +
+            '<span class="mc">' + g.songs.length + '</span>' +
+            '<span class="ma">' + (on ? '▾' : '▸') + '</span>';
+          head.addEventListener('click', function(){
+            openMood = on ? null : g.key;    // 한 번 더 누르면 접힙니다
+            draw();
+          });
+          sheet.appendChild(head);
+
+          if (!on) return;
+
+          g.songs.forEach(function(s){
+            var row = document.createElement('div');
+            row.className = 'trk' + (s.id === sharedId ? ' now' : '');
+            row.style.marginLeft = '10px';
+
+            var tn = document.createElement('span'); tn.className = 'tn';
+            var b = document.createElement('b'); b.textContent = s.title; tn.appendChild(b);
+            var sub = document.createElement('span');
+            sub.textContent = s.artist || ''; tn.appendChild(sub);
+            row.appendChild(tn);
+
+            row.appendChild(tbtn('▶', 'play', AL.t('muPlayThis'), function(){
+              /* ⚠ 회사 곡은 tracks 에 안 담습니다. 공개 서랍에 있고 모두가
+                 나눠 쓰니, 방마다 복사할 이유가 없습니다.
+                 links 에 어느 곡인지만 적어둡니다. */
+              playOnly({ shared_music_id: s.id });
+            }));
+            sheet.appendChild(row);
+          });
         });
       }
 
