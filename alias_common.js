@@ -56,7 +56,7 @@ AL.sb = window.supabase.createClient(
 ------------------------------------------------------------------ */
 AL.STR = {
   /* 공통 */
-  appName:    { kr:'Alias', en:'Alias' },
+  appName:    { kr:'부름', en:'Burum' },
   save:       { kr:'저장', en:'Save' },
   close:      { kr:'닫기', en:'Close' },
   copy:       { kr:'복사', en:'Copy' },
@@ -110,14 +110,14 @@ AL.STR = {
   lgNote:      { kr:'폰과 PC에서 같은 언어로 보입니다.', en:'Applies on every device you sign in to.' },
 
   /* 화면 제목 · 손이 닿는 곳 이름 */
-  ttAuth:      { kr:'Alias', en:'Alias' },
-  ttContacts:  { kr:'연락처 — Alias', en:'Contacts — Alias' },
-  ttCalls:     { kr:'통화기록 — Alias', en:'Calls — Alias' },
-  ttMe:        { kr:'나 — Alias', en:'You — Alias' },
-  ttChat:      { kr:'대화 — Alias', en:'Chat — Alias' },
-  ttLink:      { kr:'관계 — Alias', en:'Relationship — Alias' },
-  ttInvite:    { kr:'초대 보내기 — Alias', en:'Send invite — Alias' },
-  ttJoin:      { kr:'초대 받기 — Alias', en:'Accept invite — Alias' },
+  ttAuth:      { kr:'부름', en:'Burum' },
+  ttContacts:  { kr:'연락처 — 부름', en:'Contacts — Burum' },
+  ttCalls:     { kr:'통화기록 — 부름', en:'Calls — Burum' },
+  ttMe:        { kr:'나 — 부름', en:'You — Burum' },
+  ttChat:      { kr:'대화 — 부름', en:'Chat — Burum' },
+  ttLink:      { kr:'관계 — 부름', en:'Relationship — Burum' },
+  ttInvite:    { kr:'초대 보내기 — 부름', en:'Send invite — Burum' },
+  ttJoin:      { kr:'초대 받기 — 부름', en:'Accept invite — Burum' },
   ariaBack:    { kr:'뒤로', en:'Back' },
   ariaCall:    { kr:'통화', en:'Call' },
   ariaSend:    { kr:'보내기', en:'Send' },
@@ -685,8 +685,8 @@ AL.STR = {
 
   /* 초대를 받고 처음 들어온 사람에게 */
   invLanding:  { kr:'누군가 당신을 초대했습니다', en:'Someone invited you' },
-  invWhat:     { kr:'Alias 는 전화번호 없이 이어지는 전화입니다.\n초대를 받은 사람만 연락할 수 있습니다.\n번호도, 주소록도 필요 없습니다.',
-                 en:'Alias is a phone that works without phone numbers.\nOnly people you invite can reach you.\nNo number, no address book.' },
+  invWhat:     { kr:'부름은 전화번호 없이 이어지는 전화입니다.\n초대를 받은 사람만 연락할 수 있습니다.\n번호도, 주소록도 필요 없습니다.',
+                 en:'Burum is a phone that works without phone numbers.\nOnly people you invite can reach you.\nNo number, no address book.' },
   invKeep:     { kr:'가입하시면 이 초대가 바로 이어집니다.',
                  en:'Sign up and this invite connects right away.' },
   madeTitle: { kr:'계정이 만들어졌습니다', en:'Your account is ready' },
@@ -895,6 +895,14 @@ AL.STR = {
                   en:'Your plan has ended · you can still receive' },
   plBuy:        { kr:'구매', en:'Buy' },
   plExtend:     { kr:'연장', en:'Extend' },
+
+  /* 🔴 2026-09-21 — 스토어 결제 */
+  stPayGoogle:  { kr:'Google Play 로 결제', en:'Pay with Google Play' },
+  stPayApple:   { kr:'App Store 로 결제', en:'Pay with the App Store' },
+  stNote:       { kr:'결제와 환불은 스토어가 처리합니다. 카드 정보는 부름에 전달되지 않습니다.',
+                  en:'Payment and refunds are handled by the store. Your card details never reach Burum.' },
+  stSoon:       { kr:'스토어 결제를 준비하고 있습니다. 곧 열립니다.',
+                  en:'Store payment is being set up and will open soon.' },
   plTitle:      { kr:'이용권', en:'Plan' },
   plNote2:      { kr:'남은 기간에 이어서 더해집니다. 자동으로 다시 결제되지 않습니다.',
                   en:'Added on top of what is left. It does not renew automatically.' },
@@ -924,8 +932,8 @@ AL.STR = {
   plBuyerTtl:   { kr:'구매자 정보', en:'Buyer details' },
   plBuyerName:  { kr:'이름', en:'Name' },
   plBuyerTel:   { kr:'연락처 (없으면 비워두세요)', en:'Phone (optional)' },
-  plPrivacy:    { kr:'결제사가 요구하는 정보입니다. Alias 는 저장하지 않으며, 상대에게도 보이지 않습니다.',
-                  en:'Required by the payment provider. Alias does not store it, and nobody you talk to can see it.' },
+  plPrivacy:    { kr:'결제사가 요구하는 정보입니다. 부름은 저장하지 않으며, 상대에게도 보이지 않습니다.',
+                  en:'Required by the payment provider. Burum does not store it, and nobody you talk to can see it.' },
   plNoPaypal:   { kr:'PayPal 을 불러오지 못했습니다. 카드 결제를 이용해 주세요.',
                   en:'Could not load PayPal. Please use card payment.' },
   plNeedName:   { kr:'이름을 적어주세요.', en:'Please enter your name.' },
@@ -968,8 +976,8 @@ AL.STR = {
                en:'Sell one thing online and your number is out there forever.' },
   hlLead2:   { kr:'연애가 끝나도, 퇴사를 해도, 번호는 그대로입니다.',
                en:'Break up, quit your job — the number stays.' },
-  hlLead3:   { kr:'Alias 는 번호 대신 끊을 수 있는 이름을 줍니다.',
-               en:'Alias gives you a name you can cut off instead.' },
+  hlLead3:   { kr:'부름은 번호 대신 끊을 수 있는 이름을 줍니다.',
+               en:'Burum gives you a name you can cut off instead.' },
 
   hlF1T:     { kr:'상대마다 다른 내가 됩니다', en:'A different you for each person' },
   hlF1B:     { kr:'거래처에는 하나, 동창들에게는 다른 하나. 얼굴 사진도 따로 둡니다. 서로는 같은 사람인 줄 모릅니다.',
@@ -989,7 +997,7 @@ AL.STR = {
   hlPrice:   { kr:'14일 무료 체험 · 이후 월 1,300원대',
                en:'14-day free trial · about $1.3 a month after' },
   hlStart:   { kr:'시작하기', en:'Get started' },
-  hlAgain:   { kr:'소개 다시 보기', en:'About Alias' },
+  hlAgain:   { kr:'소개 다시 보기', en:'About Burum' },
 
   /* 🔴 2026-09-15 신설 — 초대장 인쇄 */
   prBtn:     { kr:'🖨 인쇄 · PDF 로 받기', en:'🖨 Print / Save as PDF' },
@@ -1266,8 +1274,8 @@ AL.STR = {
                en:'Done. You can receive calls now.' },
   pshSlow:   { kr:'조금 더 걸릴 수 있습니다. 잠시 뒤 화면을 새로 열어보세요.',
                en:'It may take a moment. Reopen this screen shortly.' },
-  pshDenied: { kr:'알림이 꺼져 있습니다.\n설정 → 애플리케이션 → Alias → 알림 을 켜주세요.',
-               en:'Notifications are off.\nSettings → Apps → Alias → Notifications.' },
+  pshDenied: { kr:'알림이 꺼져 있습니다.\n설정 → 애플리케이션 → 부름 → 알림 을 켜주세요.',
+               en:'Notifications are off.\nSettings → Apps → Burum → Notifications.' },
   pshWhy:    { kr:'전화를 받을 준비가 안 됐습니다. 이유는 이렇습니다.',
                en:'Could not get ready to receive calls. Reason:' },
 
@@ -1292,7 +1300,9 @@ AL.STR = {
   /* 🔴 2026-09-12 신설 — 부름 화면 (alias_phone.html)
      ⚠ 이름은 아직 정하는 중입니다. 여기 한 줄만 고치면 화면 제목이 바뀝니다.
        후보: 부름 · 드보크 · 여보세요 · 손짓 */
-  phTitle:    { kr:'부름', en:'Dial' },
+  /* 🔴 2026-09-21 — 앱 이름이 "부름" 이 되어, 안의 화면은 "걸기" 로 바꿨습니다.
+     ⚠ 둘 다 "부름" 이면 "부름에서 부름을 누르세요" 가 됩니다. */
+  phTitle:    { kr:'걸기', en:'Dial' },
   phSearch:   { kr:'이름으로 찾기', en:'Search by name' },
   phEmptySlot:{ kr:'비어 있음', en:'empty' },
   phPickWho:  { kr:'{n}번으로 누구를 넣을까요?', en:'Who goes in {n}?' },
@@ -3949,6 +3959,64 @@ AL.shareText = async function(text, opts){
   if (opts.btn) AL.copyText(text, opts.btn);
   else { try { await navigator.clipboard.writeText(text); } catch (e) {} }
   return 'copy';
+};
+
+/* =====================================================================
+   🔴🔴 2026-09-21 신설 — 지금 어디서 돌고 있나 (웹 · 안드로이드 앱 · 아이폰 앱)
+
+   왜 필요한가
+     부름은 **웹과 앱이 같은 화면 파일**을 씁니다. 그런데 결제는 달라야
+     합니다.
+       브라우저          PayPal · 이니시스 (지금 그대로)
+       안드로이드 앱      Google Play 결제
+       아이폰 앱         Apple 결제
+     스토어에 올린 앱 안에서 다른 결제를 쓰면 스토어 수수료를 그대로
+     내면서 결제사 수수료까지 따로 내게 됩니다. 심사에서 떨어질 수도
+     있습니다(2026-09-21 조사).
+
+   ⚠ 앱 안에서 "웹에서 사세요" 라고 안내하면 안 됩니다. 구글·애플이
+     막는 행위이고, 구글은 2026-12-31 부터 그 링크에도 수수료를 받습니다.
+   ===================================================================== */
+AL.platform = function(){
+  try {
+    if (window.Capacitor && typeof Capacitor.isNativePlatform === 'function' &&
+        Capacitor.isNativePlatform()) {
+      var p = (typeof Capacitor.getPlatform === 'function') ? Capacitor.getPlatform() : '';
+      if (p === 'ios') return 'ios';
+      return 'android';
+    }
+  } catch (e) {}
+  /* Capacitor 가 안 보여도 우리 자바 창구가 있으면 안드로이드 앱입니다. */
+  if (window.AliasNative) return 'android';
+  return 'web';
+};
+
+/* 스토어에 등록할 상품 번호 — Play Console · App Store Connect 에서
+   **이 이름 그대로** 만들어야 합니다.
+   ⚠ 한 번 만든 상품 번호는 바꿀 수 없습니다. 지우고 같은 이름으로 다시
+     만들 수도 없습니다. 신중하게 정했습니다. */
+AL.STORE_SKUS = {
+  3:  'burum_plan_3m',
+  6:  'burum_plan_6m',
+  12: 'burum_plan_12m',
+};
+
+/* 스토어 결제를 부릅니다.
+   ⚠ 지금은 비어 있습니다. Play Console 에 상품을 등록한 뒤(앱을 한 번
+     올려야 만들 수 있습니다) 결제 창구를 붙입니다.
+   ⚠ 결제가 끝나면 앱이 영수증을 서버로 보내고, **서버가 구글·애플에
+     진짜인지 확인한 뒤에만** 이용권을 늘립니다. 앱의 말만 믿으면 가짜
+     신호로 공짜 이용권을 받을 수 있습니다. */
+AL.storeBuy = async function(months){
+  var sku = AL.STORE_SKUS[months];
+  if (!sku) throw new Error('없는 상품입니다: ' + months);
+
+  if (window.AliasNative && typeof AliasNative.storeBuy === 'function') {
+    return AliasNative.storeBuy(sku);        // 등록 뒤 붙일 자리
+  }
+  var e = new Error(AL.t('stSoon'));
+  e.code = 'store_not_ready';
+  throw e;
 };
 
 AL.inviteUrl = function(code){

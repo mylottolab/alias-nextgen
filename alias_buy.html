@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260919h">
-<link rel="stylesheet" href="alias_theme.css?v=20260919h">
+<title>부름</title>
+<link rel="stylesheet" href="alias_common.css?v=20260921b">
+<link rel="stylesheet" href="alias_theme.css?v=20260921b">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260919h"></script>
+<script src="alias_common.js?v=20260921b"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function(){
   if (typeof AL === "undefined" || typeof AL.t !== "function") {
@@ -105,8 +105,15 @@ document.addEventListener("DOMContentLoaded", function(){
 
   <div class="sect" data-t="plPayWay"></div>
   <div class="pay">
+    <!-- 브라우저에서만 보입니다 -->
     <div id="ppBox"></div>
     <button class="paybtn" id="cardBtn" style="display:none"></button>
+
+    <!-- 🔴 2026-09-21 — 앱 안에서만 보입니다.
+         ⚠ 스토어 앱 안에서는 스토어 결제만 보여야 합니다. PayPal·카드를
+           함께 두면 수수료를 이중으로 내고, 심사에서 떨어질 수 있습니다. -->
+    <button class="paybtn main" id="storeBtn" style="display:none"></button>
+    <p class="note" id="storeNote" style="display:none"></p>
   </div>
 
   <!-- 이니시스는 구매자 정보를 요구합니다. 카드 결제를 고를 때만 나옵니다. -->
@@ -162,6 +169,11 @@ let picked = null;
 let plan = null;      // 내 이용권 상태
 
 function el(id){ return document.getElementById(id); }
+
+/* 🔴 2026-09-21 — 웹이면 PayPal·이니시스, 앱이면 스토어 결제.
+   ⚠ 같은 화면 파일을 웹과 앱이 함께 씁니다. 여기서 한 번 갈라둡니다. */
+const PLATFORM = AL.platform();
+const IN_APP = (PLATFORM !== 'web');
 function showErr(msg){ const e = el('err'); e.textContent = msg; e.classList.add('show'); }
 function clearErr(){ el('err').classList.remove('show'); }
 
@@ -190,13 +202,42 @@ function paintPlans(){
     b.addEventListener('click', function(){
       picked = Number(b.getAttribute('data-m'));
       paintPlans();
-      renderPayPal();
+      if (!IN_APP) renderPayPal();
     });
   });
 
-  el('cardBtn').style.display = picked ? '' : 'none';
-  el('cardBtn').textContent = AL.t('plPayCard');
+  if (IN_APP) {
+    /* 앱 — 스토어 결제 단추 하나만 */
+    el('cardBtn').style.display = 'none';
+    el('ppBox').style.display = 'none';
+    el('buyer').style.display = 'none';
+    el('storeBtn').style.display = picked ? '' : 'none';
+    el('storeBtn').textContent = AL.t(PLATFORM === 'ios' ? 'stPayApple' : 'stPayGoogle');
+    el('storeNote').style.display = '';
+    el('storeNote').textContent = AL.t('stNote');
+  } else {
+    el('cardBtn').style.display = picked ? '' : 'none';
+    el('cardBtn').textContent = AL.t('plPayCard');
+  }
 }
+
+/* ── 스토어 결제 (앱 안) ───────────────────────────────────────────── */
+el('storeBtn').addEventListener('click', async function(){
+  clearErr();
+  if (!picked) return;
+  this.disabled = true;
+  try {
+    await AL.storeBuy(picked);
+  } catch (e) {
+    /* ⚠ 준비 중이어도 "웹에서 사세요" 라고 안내하지 않습니다.
+       스토어가 막는 행위입니다. */
+    showErr(e.code === 'store_not_ready'
+      ? AL.t('stSoon')
+      : AL.t('errGeneric', { msg: e.message || String(e) }));
+  } finally {
+    this.disabled = false;
+  }
+});
 
 /* ── PayPal ─────────────────────────────────────────────────────────
    ⚠ 단추는 상품을 고른 뒤에 그립니다. 미리 그려두면 손님이 상품을 바꿔도
@@ -319,6 +360,7 @@ loadIniSdk().catch(function(e){
 });
 
 el('cardBtn').addEventListener('click', function(){
+  if (IN_APP) return;      // 🔴 2026-09-21 — 앱에서는 카드 결제를 안 씁니다
   el('buyer').style.display = '';
   el('buyer').scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
@@ -401,7 +443,9 @@ el('goCard').addEventListener('click', async function(){
     if (!plans.length) throw new Error('요금표가 비어 있습니다');
     picked = plans[plans.length - 1].duration_months;   // 가장 긴 것을 먼저 골라둡니다
     paintPlans();
-    renderPayPal();
+    /* ⚠ 앱이면 PayPal 을 아예 불러오지 않습니다. 불러오기만 해도
+       PayPal 쪽에 기록이 남고 화면도 느려집니다. */
+    if (!IN_APP) renderPayPal();
   } catch (e) {
     console.error(e);
     showErr(AL.t('errGeneric', { msg: e.message || String(e) }));
