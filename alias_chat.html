@@ -4,21 +4,21 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>부름</title>
-<link rel="stylesheet" href="alias_common.css?v=20260922a">
-<link rel="stylesheet" href="alias_theme.css?v=20260922a">
+<link rel="stylesheet" href="alias_common.css?v=20260922b">
+<link rel="stylesheet" href="alias_theme.css?v=20260922b">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260922a"></script>
-<script src="alias_media.js?v=20260922a"></script>
-<script src="alias_extras.js?v=20260922a"></script>
-<script src="alias_room.js?v=20260922a"></script>
+<script src="alias_common.js?v=20260922b"></script>
+<script src="alias_media.js?v=20260922b"></script>
+<script src="alias_extras.js?v=20260922b"></script>
+<script src="alias_room.js?v=20260922b"></script>
 <!-- 🔴 2026-09-20 — 같이 듣기를 회사 곡으로 제한합니다.
      ⚠ 반드시 alias_room.js **다음**이어야 합니다. 순서가 뒤바뀌면
        옛 것(음원 올리기)이 이깁니다. -->
-<script src="alias_music.js?v=20260922a"></script>
-<script src="alias_call.js?v=20260922a"></script>
-<script src="alias_e2ee.js?v=20260922a"></script>
-<script src="alias_gcall.js?v=20260922a"></script>
+<script src="alias_music.js?v=20260922b"></script>
+<script src="alias_call.js?v=20260922b"></script>
+<script src="alias_e2ee.js?v=20260922b"></script>
+<script src="alias_gcall.js?v=20260922b"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -570,10 +570,28 @@ async function open_(){
   document.getElementById('find').style.display =
     AL.featureOn(out.link, 'search') ? '' : 'none';
 
+  /* 🔴🔴 2026-09-22 — 상대가 계정을 지운 1:1 대화
+
+     상대의 자리가 사라지면 서버가 peer 를 비워서 보냅니다.
+     **지난 대화는 그대로 읽게 두고, 보내는 것만 막습니다.**
+
+     ⚠ 받을 사람이 없는데 보내지면 손님이 헷갈립니다. 답이 안 오는
+       이유를 모른 채 계속 기다리게 됩니다.
+     ⚠ 방(4명)은 막지 않습니다. 한 사람이 떠나도 나머지는 계속
+       이야기합니다. 떠난 사람의 말만 "떠난 사람" 으로 남습니다. */
+  const gone = !isRoom && !peer;
+  if (gone) closed = true;
+
   if (closed) {
-    showErr(AL.t('chatClosed'));
+    showErr(AL.t(gone ? 'chatGone' : 'chatClosed'));
     document.getElementById('input').disabled = true;
     document.getElementById('send').disabled = true;
+    /* 보내는 길은 모두 닫습니다 — 사진·파일·음성·전화 */
+    ['clip', 'call'].forEach(function(id){
+      var b = document.getElementById(id);
+      if (b) b.style.display = 'none';
+    });
+    document.getElementById('input').placeholder = AL.t(gone ? 'chatGonePh' : 'chatClosedPh');
   }
   roomHours = out.link.autoDeleteHours || null;
   linkInfo = out.link;
@@ -731,7 +749,7 @@ async function refresh(){
       markRead: document.visibilityState === 'visible',
     });
     peer = out.peer;
-    closed = out.link.status !== 'active';
+    closed = out.link.status !== 'active' || (!isRoom && !peer);   // 🔴 2026-09-22 떠난 상대
 
   // 이 방만의 모양이 있으면 그것으로, 없으면 내 기본으로 칠합니다.
   AL.applyLinkTheme({
