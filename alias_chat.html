@@ -4,21 +4,21 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>부름</title>
-<link rel="stylesheet" href="alias_common.css?v=20260922b">
-<link rel="stylesheet" href="alias_theme.css?v=20260922b">
+<link rel="stylesheet" href="alias_common.css?v=20260922c">
+<link rel="stylesheet" href="alias_theme.css?v=20260922c">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260922b"></script>
-<script src="alias_media.js?v=20260922b"></script>
-<script src="alias_extras.js?v=20260922b"></script>
-<script src="alias_room.js?v=20260922b"></script>
+<script src="alias_common.js?v=20260922c"></script>
+<script src="alias_media.js?v=20260922c"></script>
+<script src="alias_extras.js?v=20260922c"></script>
+<script src="alias_room.js?v=20260922c"></script>
 <!-- 🔴 2026-09-20 — 같이 듣기를 회사 곡으로 제한합니다.
      ⚠ 반드시 alias_room.js **다음**이어야 합니다. 순서가 뒤바뀌면
        옛 것(음원 올리기)이 이깁니다. -->
-<script src="alias_music.js?v=20260922b"></script>
-<script src="alias_call.js?v=20260922b"></script>
-<script src="alias_e2ee.js?v=20260922b"></script>
-<script src="alias_gcall.js?v=20260922b"></script>
+<script src="alias_music.js?v=20260922c"></script>
+<script src="alias_call.js?v=20260922c"></script>
+<script src="alias_e2ee.js?v=20260922c"></script>
+<script src="alias_gcall.js?v=20260922c"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -69,6 +69,10 @@ document.addEventListener("DOMContentLoaded", function(){
   <div class="chat-body" id="body"></div>
   <div class="typing" id="typing"></div>
   <div class="chat-err" id="err" style="display:none"></div>
+  <!-- 🔴 2026-09-22 — 끊긴 관계 · 떠난 상대 안내는 여기에.
+       ⚠ 오류 줄(#err)에 두면 몇 초마다 새로 읽을 때 지워집니다.
+         늘 떠 있어야 하는 안내라 자리를 따로 둡니다. -->
+  <div class="chat-err" id="stateBar" style="display:none"></div>
 
   <div class="replybar" id="replybar">
     <div class="rb-txt"><b data-t="msgReplyTo"></b><span id="rbText"></span></div>
@@ -150,6 +154,26 @@ function showErr(msg){
   el.textContent = msg; el.style.display = '';
 }
 function clearErr(){ document.getElementById('err').style.display = 'none'; }
+
+/* 🔴 2026-09-22 — 보낼 수 없는 대화의 안내와 막기.
+   ⚠ 여는 순간뿐 아니라 새로 읽을 때마다 부릅니다. 대화를 보는 도중에
+     상대가 떠나거나 관계가 끊겨도 바로 반영되게요. */
+function paintState(){
+  const gone = !isRoom && !peer;
+  if (gone) closed = true;
+  const bar = document.getElementById('stateBar');
+  if (!closed) { bar.style.display = 'none'; return; }
+
+  bar.textContent = AL.t(gone ? 'chatGone' : 'chatClosed');
+  bar.style.display = '';
+  document.getElementById('input').disabled = true;
+  document.getElementById('send').disabled = true;
+  document.getElementById('input').placeholder = AL.t(gone ? 'chatGonePh' : 'chatClosedPh');
+  ['clip', 'call'].forEach(function(id){
+    var b = document.getElementById(id);
+    if (b) b.style.display = 'none';
+  });
+}
 
 /* ── 그리기 ─────────────────────────────────────────────────────── */
 function atBottom(){
@@ -579,20 +603,7 @@ async function open_(){
        이유를 모른 채 계속 기다리게 됩니다.
      ⚠ 방(4명)은 막지 않습니다. 한 사람이 떠나도 나머지는 계속
        이야기합니다. 떠난 사람의 말만 "떠난 사람" 으로 남습니다. */
-  const gone = !isRoom && !peer;
-  if (gone) closed = true;
-
-  if (closed) {
-    showErr(AL.t(gone ? 'chatGone' : 'chatClosed'));
-    document.getElementById('input').disabled = true;
-    document.getElementById('send').disabled = true;
-    /* 보내는 길은 모두 닫습니다 — 사진·파일·음성·전화 */
-    ['clip', 'call'].forEach(function(id){
-      var b = document.getElementById(id);
-      if (b) b.style.display = 'none';
-    });
-    document.getElementById('input').placeholder = AL.t(gone ? 'chatGonePh' : 'chatClosedPh');
-  }
+  paintState();
   roomHours = out.link.autoDeleteHours || null;
   linkInfo = out.link;
 
@@ -782,6 +793,7 @@ async function refresh(){
 
     refreshFails = 0;
     clearErr();
+    paintState();        // 🔴 2026-09-22 — 끊김·떠남 안내는 지우지 않고 다시 그립니다
     const before = msgs.length;
     msgs = server.concat(temps);
     await loadCalls();              // 통화 기록도 함께 맞춥니다
