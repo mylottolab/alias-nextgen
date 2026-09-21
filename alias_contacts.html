@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>부름</title>
-<link rel="stylesheet" href="alias_common.css?v=20260921c">
-<link rel="stylesheet" href="alias_theme.css?v=20260921c">
+<link rel="stylesheet" href="alias_common.css?v=20260922a">
+<link rel="stylesheet" href="alias_theme.css?v=20260922a">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260921c"></script>
-<script src="alias_call.js?v=20260921c"></script>
+<script src="alias_common.js?v=20260922a"></script>
+<script src="alias_call.js?v=20260922a"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -227,7 +227,10 @@ function visible(){
 function nameOf(r){
   return (r.kind === 'group')
     ? (r.room_name || AL.t('grNoName'))
-    : (r.peer_label || r.peer_display || AL.t('cntUnnamed'));
+    /* 🔴 2026-09-22 — 상대가 계정을 지웠으면 상대 별칭이 비어 옵니다.
+       "이름 없음" 이 아니라 "떠난 사람" 으로 보여줍니다.
+       ⚠ 내가 붙여둔 이름(peer_label)이 있으면 그게 먼저입니다. */
+    : (r.peer_label || r.peer_display || AL.t('goneName'));
 }
 
 /* ── 정렬 ────────────────────────────────────────────────────────
@@ -773,6 +776,7 @@ document.getElementById('addBg').addEventListener('click', function(){ showAdd(f
   await reload();
 
   AL.showPlanBar();   // 🔴 2026-09-14 — 체험·만료 띠
+  AL.showDeletionBar();   // 🔴 2026-09-22 — 삭제 예약이면 알림
   AL.showPushBar();   // 🔴 2026-09-15 — 전화를 못 받는 상태면 알립니다
   AL.showExpiringBar();   // 🔴 2026-09-19 — 곧 지워질 녹음
 

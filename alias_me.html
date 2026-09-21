@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>부름</title>
-<link rel="stylesheet" href="alias_common.css?v=20260921c">
-<link rel="stylesheet" href="alias_theme.css?v=20260921c">
+<link rel="stylesheet" href="alias_common.css?v=20260922a">
+<link rel="stylesheet" href="alias_theme.css?v=20260922a">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260921c"></script>
+<script src="alias_common.js?v=20260922a"></script>
 <!-- 🔴 2026-09-13 — 사진 압축(AL.compressImage)이 여기 있습니다 -->
-<script src="alias_media.js?v=20260921c"></script>
+<script src="alias_media.js?v=20260922a"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -236,6 +236,14 @@ document.addEventListener("DOMContentLoaded", function(){
        머리에 두면 헤매다 누르고, 다시 로그인해야 합니다. -->
   <div class="signout-zone">
     <button id="out" data-t="signOut"></button>
+  </div>
+
+  <!-- 🔴 2026-09-22 — 계정 삭제
+       ⚠ 애플·구글 모두 "앱 안에서 찾을 수 있는 자리" 를 요구합니다.
+         로그아웃처럼 맨 아래, 눈에 덜 띄게 둡니다. 숨기면 반려됩니다. -->
+  <div style="text-align:center;margin:18px 0 6px">
+    <a href="alias_delete.html" data-t="dlMenu"
+       style="font-size:13px;color:#94A3B8;text-decoration:underline"></a>
   </div>
 
 </div>
@@ -758,6 +766,7 @@ async function paintPlanRow(){
   paintTheme();
   await reload();
   AL.showPlanBar();   // 🔴 2026-09-14
+  AL.showDeletionBar();   // 🔴 2026-09-22 — 삭제 예약이면 알림
   paintPlanRow();     // 🔴 2026-09-20 — 이용권 자리
   AL.showPushBar();   // 🔴 2026-09-15 — 전화를 못 받는 상태면 알립니다
 

@@ -896,6 +896,36 @@ AL.STR = {
   plBuy:        { kr:'구매', en:'Buy' },
   plExtend:     { kr:'연장', en:'Extend' },
 
+  /* 🔴 2026-09-22 신설 — 계정 삭제 */
+  dlMenu:       { kr:'계정 삭제', en:'Delete account' },
+  dlTitle:      { kr:'계정 삭제', en:'Delete account' },
+  dlSub:        { kr:'신청하시면 7일 뒤에 지워집니다. 그 사이 다시 로그인해 취소하실 수 있습니다.',
+                  en:'Your account is deleted 7 days after you ask. You can cancel by signing in before then.' },
+  dlGoneTtl:    { kr:'지워지는 것', en:'What is deleted' },
+  dlGone1:      { kr:'별칭 · 얼굴 사진 · 갤러리 · 설정', en:'Aliases, photos, galleries and settings' },
+  dlGone2:      { kr:'모든 녹음·녹화 — 상대 쪽에서도 함께 지워집니다',
+                  en:'All recordings — they are removed for the other person too' },
+  dlGone3:      { kr:'남은 이용권 기간', en:'Any time left on your plan' },
+  dlGone4:      { kr:'로그인 계정 — 같은 닉네임으로 다시 들어올 수 없습니다',
+                  en:'Your login — you will not be able to sign in with this nickname again' },
+  dlStayTtl:    { kr:'남는 것', en:'What remains' },
+  dlStay1:      { kr:'주고받은 메시지는 상대의 대화창에 "떠난 사람" 으로 남습니다. 누구였는지는 남지 않습니다.',
+                  en:'Messages stay in the other person\'s chat as "someone who left". Who you were is not kept.' },
+  dlStay2:      { kr:'결제 기록 — 법에 따라 5년 보관하며, 이름은 지웁니다.',
+                  en:'Payment records — kept for 5 years as required by law, without your name.' },
+  dlType:       { kr:'확인을 위해 닉네임 "{nick}" 을 적어주세요.',
+                  en:'To confirm, type your nickname "{nick}".' },
+  dlGo:         { kr:'계정 삭제 신청', en:'Request deletion' },
+  dlAsk:        { kr:'정말 계정 삭제를 신청할까요?\n7일 안에는 취소할 수 있습니다.',
+                  en:'Request account deletion?\nYou can cancel within 7 days.' },
+  dlWaiting:    { kr:'계정이 {when} 에 지워집니다.\n그 전에 아래 단추를 누르시면 취소됩니다.',
+                  en:'Your account will be deleted on {when}.\nPress the button below to cancel.' },
+  dlCancel:     { kr:'삭제 취소', en:'Cancel deletion' },
+  dlCancelled:  { kr:'삭제를 취소했습니다. 그대로 쓰시면 됩니다.',
+                  en:'Deletion cancelled. Nothing has changed.' },
+  dlBar:        { kr:'계정이 {when} 에 지워집니다', en:'Your account will be deleted on {when}' },
+  goneName:     { kr:'떠난 사람', en:'Someone who left' },
+
   /* 🔴 2026-09-21 — 스토어 결제 */
   stPayGoogle:  { kr:'Google Play 로 결제', en:'Pay with Google Play' },
   stPayApple:   { kr:'App Store 로 결제', en:'Pay with the App Store' },
@@ -2078,6 +2108,39 @@ AL.showExpiringBar = async function(){
 
 /* ⚠ where 를 주면 그 자리에 답니다. 안 주면 .wrap 맨 위입니다.
    대화창처럼 .wrap 이 없는 화면은 자리를 따로 정해줘야 합니다. */
+/* =====================================================================
+   🔴 2026-09-22 — 삭제를 신청한 계정이면 화면 위에 알립니다.
+
+   ⚠ 7일 동안 모르고 쓰다가 지워지면 안 됩니다. 로그인할 때마다
+     "○○ 에 지워집니다 [취소]" 가 떠야 합니다.
+   ===================================================================== */
+AL.showDeletionBar = async function(where){
+  try {
+    var res = await AL.sb.from('account_deletions').select('purge_at').maybeSingle();
+    if (res.error || !res.data || !res.data.purge_at) return;
+
+    var host = (typeof where === 'string' ? document.querySelector(where) : where)
+               || document.querySelector('.wrap') || document.body;
+    if (!host || document.getElementById('delBar')) return;
+
+    var bar = document.createElement('div');
+    bar.id = 'delBar';
+    bar.style.cssText =
+      'display:flex;align-items:center;gap:10px;margin:0 0 12px;padding:12px 14px;' +
+      'border-radius:12px;font-size:13.5px;font-weight:700;line-height:1.5;' +
+      'word-break:keep-all;background:rgba(255,90,90,.15);color:#FFB4B4;' +
+      'border:1px solid rgba(255,90,90,.45)';
+    bar.innerHTML =
+      '<span style="flex:1">' + AL.esc(AL.t('dlBar', { when: AL.fmtDate(res.data.purge_at) })) + '</span>' +
+      '<a href="alias_delete.html" style="flex:0 0 auto;padding:8px 14px;border-radius:999px;' +
+      'text-decoration:none;font-size:13px;background:rgba(255,255,255,.14);color:inherit;' +
+      'border:1px solid currentColor">' + AL.esc(AL.t('dlCancel')) + '</a>';
+    host.insertBefore(bar, host.firstChild);
+  } catch (e) {
+    console.warn('[delete] 삭제 예약을 못 읽었습니다', e);
+  }
+};
+
 AL.showPlanBar = async function(where){
   var p = await AL.myPlan();
 
