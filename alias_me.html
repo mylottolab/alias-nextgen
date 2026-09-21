@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>부름</title>
-<link rel="stylesheet" href="alias_common.css?v=20260921b">
-<link rel="stylesheet" href="alias_theme.css?v=20260921b">
+<link rel="stylesheet" href="alias_common.css?v=20260921c">
+<link rel="stylesheet" href="alias_theme.css?v=20260921c">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260921b"></script>
+<script src="alias_common.js?v=20260921c"></script>
 <!-- 🔴 2026-09-13 — 사진 압축(AL.compressImage)이 여기 있습니다 -->
-<script src="alias_media.js?v=20260921b"></script>
+<script src="alias_media.js?v=20260921c"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -709,6 +709,14 @@ document.getElementById('pPrev').addEventListener('click', async function(){
   await paintPrevBtn();
   showOk(AL.t('thSaved'));
 });
+
+/* ⚠ 2026-09-21 — 이 도우미가 이 화면에만 없었습니다.
+   다른 화면에는 다 있어서 있는 줄 알고 썼는데, 없으니 그 자리에서
+   멈췄습니다. try 로 감싸둔 탓에 오류도 안 보이고 **관리자 단추와
+   이용권 줄이 조용히 안 나왔습니다**(함정 121).
+   ⚠ 함수 안의 const el = ... 은 그 안에서만 쓰는 이름이라 부딪치지
+     않습니다. */
+function el(id){ return document.getElementById(id); }
 
 /* 🔴 2026-09-20 — 이용권 상태를 늘 보여줍니다.
    ⚠ 띠는 화면마다 떴다 사라집니다. 여기는 언제 와도 있는 자리입니다. */
