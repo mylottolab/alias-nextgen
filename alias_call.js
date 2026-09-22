@@ -10,6 +10,8 @@
    2026-09-11  🔴 중계(TURN)가 없으면 콘솔에 크게 알림
    2026-09-11  🔴 소리가 오가는 양을 재서 화면에 보여줌 (bytes)
    2026-09-11  🔴 붙는 과정을 화면에 단계별로 보여줌 (ice-state)
+   2026-09-22  🔴 통화 중 끊기면 60초 동안 다시 잇기 (일반 전화가 걸려와도)
+   2026-09-22  🔴 녹음 닫기가 "연결될 때" 에 잘못 들어가 있던 것을 고침
    2026-09-19  🔴 통화 녹음 — 양쪽 동의와 보관 기간 협의
    2026-09-12  🔴 영상 화질·보내는 양에 상한 (700kbps · 20장/초 · 640x480)
    2026-09-12  🔴 거는 과정을 다섯 단계로 화면에 보여줌 (어디서 멈추는지)
@@ -72,7 +74,23 @@ AL.call = {
   myCands: null,       // 🔴 2026-09-11: 내가 찾은 길. 상대가 들어오면 다시 보냅니다
   bytesSeen: 0,        // 🔴 2026-09-11: 지금까지 주고받은 양
   onState: null,      // 화면이 상태를 받아보는 통로
+
+  /* 🔴 2026-09-22 — 통화 중 끊겼을 때 다시 잇기 */
+  everConnected: false,  // 한 번이라도 붙었나 (붙기 전과 뒤의 규칙이 다릅니다)
+  reconnecting: false,
+  restartTimer: null,    // 거는 쪽이 새 길을 찾자고 거듭 보내는 시계
+  reofferSdp: null,
+  restartTries: 0,
+  lastReoffer: null,     // 받는 쪽 — 같은 요청이 또 오면 답만 다시 보냅니다
+  lastReanswer: null,
 };
+
+/* 🔴 2026-09-22 — 통화 중 끊겼을 때 얼마나 기다리며 되살려 볼지.
+   ⚠ 9/10 에는 12초였습니다. "상대가 앱을 꺼서 말없이 사라진 경우" 를
+     막으려던 것인데, 일반 전화가 걸려와 폰이 잠깐 인터넷을 멈추는 것까지
+     "사라졌다" 로 알아듣고 끊었습니다(2026-09-22 발견).
+   ⚠ 너무 길면 정말 사라진 상대를 오래 기다립니다. 60초로 둡니다. */
+AL.RECONNECT_GRACE_MS = 60000;
 
 /* ── 서버에서 STUN/TURN 을 받아옵니다 ────────────────────────────────
    ⚠ 화면 파일에는 아무 열쇠도 없습니다. 매번 새로 받습니다.
@@ -355,15 +373,29 @@ async function buildPeer(iceServers){
     if (s === 'connected') {
       if (AL.call.dropTimer) { clearTimeout(AL.call.dropTimer); AL.call.dropTimer = null; }
   if (AL.call.endWatch) { clearInterval(AL.call.endWatch); AL.call.endWatch = null; }
-  /* 🔴 2026-09-19 — 녹음 중에 통화가 끝나면 그릇을 닫습니다.
-     ⚠ 저장은 화면이 합니다. 여기서는 치우기만 합니다. */
-  if (AL._rec) {
-    try { AL._rec.mr.stop(); } catch (e) {}
-    try { AL._rec.ctx.close(); } catch (e) {}
-  }
+      /* 🔴 2026-09-22 고침 — 여기 있던 "녹음 닫기" 를 cleanup() 으로 옮겼습니다.
+         9/19 에 잘못 넣은 자리였습니다. 이 자리는 **연결될 때마다** 불려서,
+         통화 중 잠깐 끊겼다 다시 붙으면 녹음이 저장 없이 꺼졌습니다. */
+      stopIceRestart();
+
+      /* 🔴 2026-09-22 — 끊겼다 다시 붙은 것이면 */
+      if (AL.call.everConnected) {
+        AL.call.reconnecting = false;
+        console.log('[call] 다시 이어졌습니다');
+        AL.reviveMic();      // 일반 전화에 마이크를 빼앗겼다 돌아온 경우
+        say('reconnected');
+        return;
+      }
+      AL.call.everConnected = true;
       capVideo();            // 🔴 2026-09-12 — 붙은 뒤 한 번 더 확실히
       startStats();          // 🔴 2026-09-11 — 소리가 오가는지 재기 시작
       say('connected');
+    }
+    /* 🔴🔴 2026-09-22 — 통화 중(한 번 붙은 뒤)에 흔들리면 끊지 않고 되살립니다.
+       ⚠ 붙기 전의 규칙(아래 두 줄)은 그대로 둡니다. 아예 안 붙은 통화까지
+         60초 끌면 안 됩니다. */
+    else if ((s === 'failed' || s === 'disconnected') && AL.call.everConnected) {
+      tryReconnect(s);
     }
     else if (s === 'failed') say('failed');
     else if (s === 'disconnected') {
@@ -397,10 +429,143 @@ async function drainPending(){
   }
 }
 
+/* =====================================================================
+   🔴🔴 2026-09-22 신설 — 통화 중 끊겼을 때 다시 잇기
+
+   무슨 일이 났나
+     통화 중 둘 중 한 폰에 **일반 전화가 걸려오면** 부름 통화가 끊겼습니다.
+     한쪽은 연락처로, 한쪽은 "연결 실패" 를 띄우고 멈췄습니다.
+
+   왜 그런가
+     일반 전화가 오면 폰이 잠깐 인터넷을 멈추거나 앱을 뒤로 밉니다.
+     그런데 부름은 흔들리면 12초 뒤(끊김) 또는 곧바로(실패) 끊는 규칙만
+     있었고, **다시 이을 방법이 아예 없었습니다.** 처음 연결 때 한 번만
+     주고받고 그 뒤 것은 무시했습니다.
+
+   어떻게
+     ① 흔들리면 "다시 잇는 중…" 을 띄우고 60초 동안 기다립니다
+     ② **거는 쪽만** 새 길을 찾자고 합니다(ICE 재시작 · reoffer).
+        둘이 동시에 하면 서로 부딪혀서 한쪽만 하게 합니다
+     ③ 받는 쪽이 답합니다(reanswer)
+     ④ 다시 붙으면 마이크를 다시 잡습니다 — 일반 전화에 빼앗겼을 수 있습니다
+     ⑤ 60초 안에 못 붙으면 그때 끊습니다
+
+   ⚠ 신호가 인터넷 끊김에 묻힐 수 있어서, 거는 쪽은 4초마다 다시 보냅니다.
+   ⚠ 이건 임시 방편입니다. 일반 전화를 받는 동안 "보류" 로 두려면
+     안드로이드에 전화 앱으로 등록(ConnectionService)해야 합니다.
+     아이폰(CallKit) 작업 때 함께 하기로 했습니다.
+   ===================================================================== */
+function tryReconnect(s){
+  if (!AL.call.reconnecting) {
+    AL.call.reconnecting = true;
+    console.warn('[call] 통화 중 연결이 흔들립니다:', s, '— 다시 잇습니다');
+    say('reconnecting');
+  }
+
+  /* 기다리는 시계는 처음 흔들린 때부터 한 번만 돕니다. */
+  if (!AL.call.dropTimer) {
+    AL.call.dropTimer = setTimeout(function(){
+      AL.call.dropTimer = null;
+      if (AL.call.pc && AL.call.pc.connectionState !== 'connected') {
+        console.warn('[call] 60초 안에 다시 잇지 못했습니다. 끊습니다.');
+        AL.endCall('completed');
+      }
+    }, AL.RECONNECT_GRACE_MS);
+  }
+
+  /* 거는 쪽만. 잠깐 끊김은 저절로 붙는 경우가 많아 5초 지켜봅니다. */
+  if (AL.call.outgoing) {
+    setTimeout(function(){
+      if (AL.call.pc && AL.call.pc.connectionState !== 'connected') startIceRestart();
+    }, s === 'failed' ? 0 : 5000);
+  }
+}
+
+async function startIceRestart(){
+  if (!AL.call.pc || AL.call.restartTimer) return;
+  AL.call.restartTries = 0;
+
+  async function once(){
+    var pc = AL.call.pc;
+    if (!pc || pc.connectionState === 'connected') { stopIceRestart(); return; }
+    AL.call.restartTries++;
+    try {
+      /* 처음, 그리고 16초마다 새 길을 찾습니다. 그 사이엔 같은 것을 다시 보냅니다. */
+      if (!AL.call.reofferSdp || AL.call.restartTries % 4 === 0) {
+        if (pc.signalingState !== 'stable' && pc.signalingState !== 'have-local-offer') return;
+        var off = await pc.createOffer({ iceRestart: true });
+        await pc.setLocalDescription(off);
+        AL.call.reofferSdp = off;
+        console.log('[call] 다시 잇기 — 새 길을 찾자고 합니다');
+      }
+      send('reoffer', { sdp: AL.call.reofferSdp });
+    } catch (e) { console.warn('[call] 다시 잇기 실패', e); }
+  }
+
+  await once();
+  AL.call.restartTimer = setInterval(once, 4000);
+}
+
+function stopIceRestart(){
+  if (AL.call.restartTimer) { clearInterval(AL.call.restartTimer); AL.call.restartTimer = null; }
+  AL.call.reofferSdp = null;
+  AL.call.restartTries = 0;
+}
+
+/* 상대 설명에 적힌 길 이름표(ufrag).
+   ⚠ 새 길을 찾으면 이름표가 바뀝니다. 새 이름표의 후보가 설명보다
+     먼저 도착하면 넣지 못하고 버려져서, 담아두었다 나중에 넣습니다. */
+function remoteUfrag(){
+  try {
+    var m = /a=ice-ufrag:(\S+)/.exec(AL.call.pc.remoteDescription.sdp);
+    return m ? m[1] : null;
+  } catch (e) { return null; }
+}
+
+/* 🔴 2026-09-22 — 마이크를 다시 잡습니다.
+   일반 전화를 받으면 폰이 마이크를 그쪽으로 가져갑니다. 돌아와도 부름의
+   마이크가 끊긴 채면 상대는 계속 내 목소리를 못 듣습니다.
+   ⚠ 음소거 상태는 그대로 이어갑니다. */
+AL.reviveMic = async function(){
+  try {
+    if (!AL.call.pc || !AL.call.local) return;
+    var t = AL.call.local.getAudioTracks()[0];
+    if (t && t.readyState === 'live' && !t.muted) return;   // 멀쩡하면 그대로
+
+    var ns = await navigator.mediaDevices.getUserMedia({ audio: true });
+    var nt = ns.getAudioTracks()[0];
+    if (!nt) return;
+    nt.enabled = t ? t.enabled : true;
+
+    var snd = AL.call.pc.getSenders().filter(function(x){
+      return x.track && x.track.kind === 'audio';
+    })[0];
+    if (snd) await snd.replaceTrack(nt);
+    try { if (t) { AL.call.local.removeTrack(t); t.stop(); } } catch (e) {}
+    AL.call.local.addTrack(nt);
+    console.log('[call] 마이크를 다시 잡았습니다');
+  } catch (e) {
+    console.warn('[call] 마이크 다시 잡기 실패', e);
+  }
+};
+
+/* 앱이 앞으로 돌아오면 마이크를 확인합니다 (일반 전화를 끊고 돌아온 때). */
+document.addEventListener('visibilitychange', function(){
+  if (document.visibilityState === 'visible' && AL.call.pc && AL.call.everConnected) {
+    AL.reviveMic();
+  }
+});
+
 async function addIce(candidate){
   if (!AL.call.pc) return;
   // 아직 상대 설명이 안 들어왔으면 담아둡니다.
   if (!AL.call.pc.remoteDescription || !AL.call.pc.remoteDescription.type) {
+    AL.call.pending.push(candidate);
+    return;
+  }
+  /* 🔴 2026-09-22 — 다시 잇는 중에 새 이름표의 후보가 먼저 오면 담아둡니다. */
+  var ru = remoteUfrag();
+  if (candidate && candidate.usernameFragment && ru && candidate.usernameFragment !== ru) {
     AL.call.pending.push(candidate);
     return;
   }
@@ -703,6 +868,38 @@ async function handleSignal(m){
   if (m.kind.indexOf('rec-') === 0) {
     console.log('[rec] 신호:', m.kind);
     say('rec', { kind: m.kind, days: m.days, who: m.who });
+    return;
+  }
+
+  /* 🔴🔴 2026-09-22 — 통화 중 다시 잇기 (tryReconnect 참고) */
+  if (m.kind === 'reoffer') {
+    // 받는 쪽 — 거는 쪽이 새 길을 찾자고 합니다
+    if (!AL.call.pc || !m.sdp) return;
+    if (AL.call.lastReoffer === m.sdp.sdp && AL.call.lastReanswer) {
+      send('reanswer', { sdp: AL.call.lastReanswer });   // 같은 것이 또 오면 답만 다시
+      return;
+    }
+    try {
+      await AL.call.pc.setRemoteDescription(new RTCSessionDescription(m.sdp));
+      await drainPending();
+      var ra = await AL.call.pc.createAnswer();
+      await AL.call.pc.setLocalDescription(ra);
+      AL.call.lastReoffer = m.sdp.sdp;
+      AL.call.lastReanswer = ra;
+      send('reanswer', { sdp: ra });
+      console.log('[call] 다시 잇기 — 답을 보냈습니다');
+    } catch (e) { console.warn('[call] 다시 잇기 답 실패', e); }
+    return;
+  }
+  if (m.kind === 'reanswer') {
+    // 거는 쪽 — 답이 왔습니다
+    if (!AL.call.pc || !m.sdp) return;
+    if (AL.call.pc.signalingState !== 'have-local-offer') return;   // 이미 받았거나 늦게 온 것
+    try {
+      await AL.call.pc.setRemoteDescription(new RTCSessionDescription(m.sdp));
+      await drainPending();
+      console.log('[call] 다시 잇기 — 답을 받았습니다');
+    } catch (e) { console.warn('[call] 다시 잇기 답 넣기 실패', e); }
     return;
   }
 
@@ -1052,10 +1249,21 @@ function cleanup(){
   if (AL.call.resendTimer) { clearInterval(AL.call.resendTimer); AL.call.resendTimer = null; }
   if (AL.call.noAnswerTimer) { clearTimeout(AL.call.noAnswerTimer); AL.call.noAnswerTimer = null; }
   if (AL.call.dropTimer) { clearTimeout(AL.call.dropTimer); AL.call.dropTimer = null; }
+  stopIceRestart();                  // 🔴 2026-09-22
+  AL.call.everConnected = false;
+  AL.call.reconnecting = false;
+  AL.call.lastReoffer = null;
+  AL.call.lastReanswer = null;
   /* 🔴 2026-09-12 — 거절 감시 시계를 여기서 꼭 꺼야 합니다.
      안 끄면 통화가 끝난 뒤에도 3초마다 DB 를 들여다보고, 나중에 엉뚱한
      통화를 "거절됐다" 고 끝낼 수 있습니다. */
   if (AL.call.endWatch) { clearInterval(AL.call.endWatch); AL.call.endWatch = null; }
+  /* 🔴 2026-09-22 — 통화가 **끝날 때만** 녹음 그릇을 닫습니다.
+     ⚠ 저장은 화면(recFinish)이 먼저 합니다. 여기서는 남은 것을 치울 뿐입니다. */
+  if (AL._rec) {
+    try { if (AL._rec.mr.state !== 'inactive') AL._rec.mr.stop(); } catch (e) {}
+    try { AL._rec.ctx.close(); } catch (e) {}
+  }
   AL.call.remoteV = null;   // 🔴 2026-09-12
   if (AL.call.local) {
     AL.call.local.getTracks().forEach(function(t){ try { t.stop(); } catch (e) {} });

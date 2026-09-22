@@ -925,6 +925,8 @@ AL.STR = {
                   en:'Deletion cancelled. Nothing has changed.' },
   dlBar:        { kr:'계정이 {when} 에 지워집니다', en:'Your account will be deleted on {when}' },
   goneName:     { kr:'떠난 사람', en:'Someone who left' },
+  clReconnecting:{ kr:'연결이 잠시 끊겼습니다. 다시 잇는 중…',
+                   en:'Connection dropped. Reconnecting…' },
   chatGone:     { kr:'상대가 떠났습니다. 지난 대화는 그대로 볼 수 있지만, 더는 보낼 수 없습니다.',
                   en:'This person has left. You can still read past messages, but cannot send new ones.' },
   chatGonePh:   { kr:'상대가 떠나 보낼 수 없습니다', en:'They have left — you cannot send' },

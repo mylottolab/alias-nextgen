@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Alias</title>
-<link rel="stylesheet" href="alias_common.css?v=20260920a">
-<link rel="stylesheet" href="alias_theme.css?v=20260920a">
+<title>부름</title>
+<link rel="stylesheet" href="alias_common.css?v=20260922d">
+<link rel="stylesheet" href="alias_theme.css?v=20260922d">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260920a"></script>
-<script src="alias_media.js?v=20260920a"></script>
-<script src="alias_call.js?v=20260920a"></script>
+<script src="alias_common.js?v=20260922d"></script>
+<script src="alias_media.js?v=20260922d"></script>
+<script src="alias_call.js?v=20260922d"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -455,6 +455,12 @@ function onState(state, extra){
   else if (state === 'ringing')   { setStatus(AL.t('clCalling')); AL.startDialTone(); }
   else if (state === 'answering') { AL.stopDialTone(); setStatus(AL.t('clConnected')); }
   else if (state === 'connected') { AL.stopDialTone(); setStatus(AL.t('clConnected')); startTimer(); paintActs(); paintVidNote(); }
+  /* 🔴 2026-09-22 — 통화 중 흔들렸을 때.
+     ⚠ 말없이 조용하면 손님이 끊긴 줄 알고 먼저 끊어버립니다.
+       "다시 잇는 중" 을 보여줘야 기다려 줍니다.
+     ⚠ 시간 표시는 그대로 이어갑니다(startTimer 는 두 번 불려도 안전합니다). */
+  else if (state === 'reconnecting') { setStatus(AL.t('clReconnecting')); }
+  else if (state === 'reconnected')  { setStatus(AL.t('clConnected')); }
   else if (state === 'no-media')  setStatus(AL.t('clNoMedia'));
   else if (state === 'failed')    { setStatus(AL.t('clFailed')); bye(); }
   else if (state === 'declined')  { setStatus(AL.t('clDeclined')); bye(); }
@@ -1068,7 +1074,7 @@ function onRecSignal(kind, days, who, vid){
   /* 🔴 2026-09-12 — 판 번호는 콘솔에만 남깁니다.
      화면에 찍으면 손님이 볼 이유가 없는 글씨가 뜹니다.
      ⚠ 무언가 안 될 때 "새 파일이 도는지" 확인하려면 여기를 보세요. */
-  console.log('[call] 화면 판: 20260920a');
+  console.log('[call] 화면 판: 20260922d');
   if (!await AL.requireLogin()) return;
   if (!linkId) { setStatus(AL.t('dtlNotFound')); return; }
 
