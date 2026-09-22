@@ -1310,6 +1310,23 @@ AL.STR = {
                en:'Done. You can receive calls now.' },
   pshSlow:   { kr:'조금 더 걸릴 수 있습니다. 잠시 뒤 화면을 새로 열어보세요.',
                en:'It may take a moment. Reopen this screen shortly.' },
+  /* 🔴 2026-09-22 — 알림을 묻기 전 설명 */
+  nfTitle:    { kr:'전화벨이 울리려면 알림이 필요합니다',
+                en:'Notifications are what make your phone ring' },
+  nfBody:     { kr:'부름은 전화 앱입니다. 알림을 켜두셔야 전화가 왔을 때 벨이 울리고 잠금화면에 뜹니다.\n꺼두시면 전화가 와도 모르고 지나갑니다.',
+                en:'Burum is a phone. Notifications are how your phone rings and shows calls on the lock screen.\nWith them off, calls arrive silently and you miss them.' },
+  nfPoint1:   { kr:'전화 · 메시지에만 씁니다', en:'Used only for calls and messages' },
+  nfPoint2:   { kr:'광고나 홍보 알림은 보내지 않습니다',
+                en:'We never send ads or promotions' },
+  nfGo:       { kr:'알림 켜기', en:'Turn on notifications' },
+  nfOpen:     { kr:'설정에서 켜기', en:'Open settings' },
+  nfLater:    { kr:'나중에', en:'Later' },
+
+  pshOffAll:  { kr:'알림이 꺼져 있어 전화를 못 받습니다',
+                en:'Notifications are off — you cannot receive calls' },
+  pshOffCalls:{ kr:'전화 알림이 꺼져 있어 벨이 안 울립니다',
+                en:'Call notifications are off — your phone will not ring' },
+  pshOpen:    { kr:'설정 열기', en:'Open settings' },
   pshDenied: { kr:'알림이 꺼져 있습니다.\n설정 → 애플리케이션 → 부름 → 알림 을 켜주세요.',
                en:'Notifications are off.\nSettings → Apps → Burum → Notifications.' },
   pshWhy:    { kr:'전화를 받을 준비가 안 됐습니다. 이유는 이렇습니다.',
@@ -1980,8 +1997,31 @@ AL._planCss = function(){
    ⚠ 브라우저에서는 아무것도 안 합니다. PC 로 쓰는 분에게는
      원래 푸시가 없습니다.
    ===================================================================== */
+/* 🔴🔴 2026-09-22 신설 — 알림이 꺼져 있는가
+
+   ⚠ 앱을 깔고 손님이 알림을 꺼두면 **전화벨이 안 울립니다.** 그런데
+     본인은 모릅니다. 서버에 기기 번호가 남아 있어서 지금까지는
+     "괜찮다" 고 잘못 판단했습니다(2026-09-22 발견).
+   ⚠ 앱 알림 전체와 그중 "전화" 알림을 따로 봅니다. 앱 알림은 켜두고
+     전화만 끄는 일이 있습니다.
+   ⚠ 옛 APK 에는 이 창구가 없습니다. 없으면 모르는 것으로 두고 넘어갑니다. */
+AL.alertsBlocked = function(){
+  try {
+    if (!window.AliasNative) return false;
+    if (typeof AliasNative.notificationsOn === 'function' && !AliasNative.notificationsOn()) {
+      return 'all';
+    }
+    if (typeof AliasNative.callChannelOn === 'function' && !AliasNative.callChannelOn()) {
+      return 'calls';
+    }
+  } catch (e) { console.warn('[push] 알림 상태를 못 물었습니다', e); }
+  return false;
+};
+
 AL.pushReady = async function(){
   if (!AL.isNativeApp()) return true;          // 브라우저는 볼 것 없습니다
+  /* 🔴 2026-09-22 — 번호가 있어도 알림이 꺼져 있으면 못 받습니다. */
+  if (AL.alertsBlocked()) return false;
   try {
     var sess = await AL.sb.auth.getSession();
     if (!sess.data.session) return true;
@@ -2007,11 +2047,19 @@ AL.showPushBar = async function(){
   var old2 = document.getElementById('pushBar');
   if (old2) old2.remove();
 
+  /* 🔴 2026-09-22 — 왜 못 받는지에 따라 글씨와 단추가 달라집니다.
+     ⚠ 알림이 꺼진 사람에게 "다시 받아오기" 를 눌러봐야 소용없습니다.
+       설정 화면으로 데려다줘야 합니다. */
+  var blocked = AL.alertsBlocked();
+
   var bar = document.createElement('div');
   bar.id = 'pushBar';
   bar.className = 'over';
-  bar.innerHTML = '<span>' + AL.esc(AL.t('pshNone')) + '</span>' +
-    '<a href="#" id="pshFix">' + AL.esc(AL.t('pshFix')) + '</a>';
+  bar.innerHTML = '<span>' +
+    AL.esc(AL.t(blocked === 'calls' ? 'pshOffCalls'
+              : blocked ? 'pshOffAll' : 'pshNone')) + '</span>' +
+    '<a href="#" id="pshFix">' +
+    AL.esc(AL.t(blocked ? 'pshOpen' : 'pshFix')) + '</a>';
   bar.style.cssText =
     'display:flex;align-items:center;gap:10px;margin:0 0 12px;padding:11px 14px;' +
     'border-radius:12px;font-size:13.5px;line-height:1.5;font-weight:600;' +
@@ -2027,6 +2075,19 @@ AL.showPushBar = async function(){
 
   a.addEventListener('click', async function(e){
     e.preventDefault();
+
+    /* 알림이 꺼진 것이면 설정 화면을 열어드립니다. */
+    if (blocked) {
+      try {
+        if (window.AliasNative && typeof AliasNative.openNotificationSettings === 'function') {
+          AliasNative.openNotificationSettings();
+          return;
+        }
+      } catch (e2) {}
+      alert(AL.t('pshDenied'));
+      return;
+    }
+
     a.textContent = AL.t('pshTrying');
     AL._pushErr = '';
 
@@ -4250,6 +4311,67 @@ AL.sweepDevices = async function(){
   } catch (e) { /* 못 치워도 통화는 됩니다 */ }
 };
 
+/* =====================================================================
+   🔴🔴 2026-09-22 신설 — 알림을 묻기 전에 왜 필요한지 먼저 말합니다
+
+   무엇이 문제였나
+     앱을 깔면 안드로이드가 "알림을 허용하시겠습니까?" 창을 띄웁니다.
+     그런데 그 창은 **딱 한 번만 뜨고, 거절하면 다시 안 뜹니다.**
+     아무 설명 없이 뜨면 손님은 습관처럼 거절합니다. 그러면 전화 앱인데
+     **전화벨이 안 울립니다.**
+
+   ⚠ 앱이 알림을 마음대로 켤 수는 없습니다. 안드로이드가 막습니다.
+     할 수 있는 것은 **묻기 전에 이유를 설명하는 것**뿐입니다.
+
+   ⚠ [나중에] 를 누르시면 안드로이드 창을 아예 안 띄웁니다.
+     한 번뿐인 기회를 거절로 써버리면 안 되니까요. 그다음부터는
+     연락처 화면의 빨간 띠가 알려드립니다.
+
+   ⚠ 이미 거절하신 분께는 안드로이드가 창을 안 띄웁니다. 그때는
+     설정 화면으로 데려다 드립니다.
+   ===================================================================== */
+AL.explainNotify = function(already){
+  return new Promise(function(resolve){
+    var bg = document.createElement('div');
+    var box = document.createElement('div');
+    bg.style.cssText = 'position:fixed;inset:0;z-index:98;background:rgba(0,0,0,.72)';
+    box.style.cssText =
+      'position:fixed;z-index:99;left:50%;top:50%;transform:translate(-50%,-50%);' +
+      'width:min(400px,90vw);padding:24px;border-radius:18px;' +
+      'background:#1B2430;color:#DDE5F0;border:1px solid rgba(255,255,255,.14);' +
+      'box-shadow:0 18px 44px rgba(0,0,0,.6);' +
+      'font-family:inherit;line-height:1.75;word-break:keep-all';
+
+    box.innerHTML =
+      '<div style="font-size:19px;font-weight:800;margin:0 0 14px">' +
+        AL.esc(AL.t('nfTitle')) + '</div>' +
+      '<p style="margin:0 0 12px;font-size:14.5px">' +
+        AL.esc(AL.t('nfBody')).replace(/\n/g, '<br>') + '</p>' +
+      '<ul style="margin:0 0 20px;padding-left:19px;font-size:13.5px;opacity:.8">' +
+        '<li>' + AL.esc(AL.t('nfPoint1')) + '</li>' +
+        '<li>' + AL.esc(AL.t('nfPoint2')) + '</li>' +
+      '</ul>' +
+      '<button id="nfGo" style="width:100%;padding:16px 0;border-radius:14px;' +
+        'cursor:pointer;font-size:15.5px;font-weight:800;font-family:inherit;' +
+        'background:rgba(143,227,176,.2);color:#8FE3B0;' +
+        'border:1px solid rgba(143,227,176,.45)">' +
+        AL.esc(AL.t(already ? 'nfOpen' : 'nfGo')) + '</button>' +
+      '<button id="nfLater" style="width:100%;margin-top:9px;padding:13px 0;' +
+        'border-radius:13px;cursor:pointer;font-size:14px;font-family:inherit;' +
+        'background:transparent;color:#94A3B8;border:0">' +
+        AL.esc(AL.t('nfLater')) + '</button>';
+
+    document.body.appendChild(bg);
+    document.body.appendChild(box);
+
+    function close(v){ bg.remove(); box.remove(); resolve(v); }
+    box.querySelector('#nfGo').addEventListener('click', function(){ close('go'); });
+    box.querySelector('#nfLater').addEventListener('click', function(){ close('later'); });
+    /* ⚠ 바깥을 눌러도 닫히게 하지 않습니다. 실수로 닫고 지나가면
+       전화를 못 받는 채로 쓰게 됩니다. */
+  });
+};
+
 /* 앱이 켜질 때 한 번 부릅니다. 브라우저면 아무 일도 안 합니다. */
 AL.registerPush = async function(){
   if (!AL.isNativeApp()) return false;
@@ -4267,7 +4389,31 @@ AL.registerPush = async function(){
   try {
     /* 알림을 받아도 되는지 먼저 묻습니다. */
     var perm = await PN.checkPermissions();
+
     if (perm.receive !== 'granted') {
+      /* 🔴 2026-09-22 — 안드로이드 창을 띄우기 전에 왜 필요한지 설명합니다.
+         ⚠ 그 창은 한 번뿐입니다. 설명 없이 띄우면 습관처럼 거절합니다. */
+      var already = (perm.receive === 'denied');
+      var said = await AL.explainNotify(already);
+
+      if (said !== 'go') {
+        AL._pushErr = '손님이 나중에 하기로 했습니다';
+        return false;      // 빨간 띠가 이어서 알려드립니다
+      }
+
+      if (already) {
+        /* 이미 거절하신 분께는 안드로이드가 창을 안 띄웁니다.
+           설정 화면으로 데려다 드립니다. */
+        try {
+          if (window.AliasNative &&
+              typeof AliasNative.openNotificationSettings === 'function') {
+            AliasNative.openNotificationSettings();
+          }
+        } catch (e2) {}
+        AL._pushErr = '알림이 꺼져 있습니다. 설정에서 켜주세요.';
+        return false;
+      }
+
       perm = await PN.requestPermissions();
     }
     if (perm.receive !== 'granted') {
