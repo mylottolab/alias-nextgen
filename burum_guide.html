@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>사용설명서 — 부름</title>
+<meta name="description" content="부름(Burum) 사용설명서 — 전화번호 없이 이어지는 전화">
+<style>
+/* =====================================================================
+   부름 — 문서 공통 모양
+   2026-09-22
+
+   ⚠ 이 문서들은 **로그인 없이** 열려야 합니다.
+     구글·애플 심사관이 봐야 하고, 앱을 지운 분도 봐야 합니다.
+     그래서 alias_common.js 를 쓰지 않고 혼자 돕니다.
+   ===================================================================== */
+:root{ color-scheme: light dark; }
+*{ box-sizing:border-box; }
+body{
+  margin:0; padding:0 18px 60px;
+  font-family:system-ui,-apple-system,"맑은 고딕","Malgun Gothic",sans-serif;
+  font-size:15.5px; line-height:1.85; word-break:keep-all;
+  background:#FFFFFF; color:#1A1A1A;
+}
+@media (prefers-color-scheme: dark){
+  body{ background:#0E1621; color:#DDE5F0; }
+  a{ color:#8FE3B0; }
+  table{ border-color:#2A3A4A !important; }
+  th,td{ border-color:#2A3A4A !important; }
+  th{ background:#182231 !important; }
+  .box{ background:#182231 !important; border-color:#2A3A4A !important; }
+}
+.wrap{ max-width:720px; margin:0 auto; }
+header{ padding:26px 0 18px; border-bottom:1px solid #E5E5E5; margin-bottom:26px; }
+@media (prefers-color-scheme: dark){ header{ border-color:#2A3A4A; } }
+.home{ font-size:14px; text-decoration:none; color:#6B7280; }
+h1{ font-size:26px; font-weight:800; margin:14px 0 6px; }
+.when{ font-size:13.5px; color:#6B7280; margin:0; }
+h2{ font-size:18px; font-weight:800; margin:34px 0 10px; }
+h3{ font-size:16px; font-weight:700; margin:22px 0 8px; }
+p{ margin:0 0 12px; }
+ul,ol{ margin:0 0 14px; padding-left:22px; }
+li{ margin-bottom:5px; }
+table{ width:100%; border-collapse:collapse; margin:0 0 16px; font-size:14px; }
+th,td{ border:1px solid #E5E5E5; padding:9px 11px; text-align:left; vertical-align:top; }
+th{ background:#F6F7F9; font-weight:700; width:34%; }
+.box{ padding:14px 16px; border-radius:12px; margin:0 0 16px;
+  background:#F6F7F9; border:1px solid #E5E5E5; font-size:14.5px; }
+.box b{ display:block; margin-bottom:5px; }
+.key{ border-left:4px solid #E0A800; padding-left:13px; margin:0 0 16px; }
+footer{ margin-top:46px; padding-top:20px; border-top:1px solid #E5E5E5;
+  font-size:13px; color:#6B7280; line-height:1.9; }
+@media (prefers-color-scheme: dark){ footer{ border-color:#2A3A4A; } }
+footer a{ color:inherit; }
+@media print{ body{ background:#fff; color:#000; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <a class="home" href="https://burum.kr/">‹ 부름</a>
+  <h1>사용설명서</h1>
+  <p class="when">시행일 2026년 9월 22일</p>
+</header>
+<div class="box key">
+  <b>부름은 전화번호 없이 이어지는 전화입니다.</b>
+  번호를 주고받지 않고, 초대를 받은 사람하고만 연결됩니다.
+  끊고 싶으면 언제든 끊을 수 있고, 끊으면 상대는 다시 연락할 수 없습니다.
+</div>
+
+<h2>1. 시작하기</h2>
+
+<h3>가입</h3>
+<p>닉네임과 비밀번호만 정하시면 됩니다. 전화번호도, 이메일도 묻지 않습니다.</p>
+<div class="box">
+  <b>복구 코드를 꼭 적어두세요</b>
+  가입할 때 복구 코드를 드립니다. 비밀번호를 잊으셨을 때 이것으로 들어오십니다.
+  <b>복구 코드를 잃고 비밀번호도 잊으시면 저희도 계정을 되찾아 드릴 수 없습니다.</b>
+  전화번호를 모르기 때문입니다. 종이에 적어 두시거나 사진을 찍어 두세요.
+</div>
+
+<h3>별칭 만들기</h3>
+<p>별칭은 <b>상대에게 보이는 내 이름</b>입니다. 관계마다 다르게 쓰실 수 있습니다.</p>
+<ul>
+  <li>거래처에는 "업무용", 동창에게는 "동창찾기" 처럼요.</li>
+  <li>상대는 그 별칭만 봅니다. 두 별칭이 같은 사람이라는 것을 알 수 없습니다.</li>
+  <li>별칭마다 얼굴 사진과 갤러리를 따로 둘 수 있습니다.</li>
+</ul>
+
+<h3>상대를 초대하기</h3>
+<p>네 가지 방법이 있습니다. 상황에 맞는 것을 고르시면 됩니다.</p>
+<table>
+  <tr><th>QR 보여주기</th><td>마주 보고 계실 때 가장 안전합니다. 아무 데도 나가지 않습니다.</td></tr>
+  <tr><th>보내기</th><td>카톡·문자로 링크를 보냅니다. 받는 분은 누르기만 하면 됩니다.</td></tr>
+  <tr><th>링크 복사</th><td>직접 붙여넣어 보내실 때</td></tr>
+  <tr><th>종이로 인쇄</th><td>명함·게시판용. A4 한 장에 여러 장이 나옵니다.</td></tr>
+</table>
+<div class="box">
+  <b>종이 초대장은 조심하세요</b>
+  사진이 찍혀 퍼질 수 있습니다. <b>만료 날짜를 짧게</b> 잡고, 쓰임 횟수는 나눠주실
+  장수만큼만 두세요. 종이에는 "이 초대로 이어지면 상대는 저를 ○○로 봅니다"가 함께
+  찍힙니다.
+</div>
+
+<h2>2. 매일 쓰기</h2>
+<ul>
+  <li><b>대화</b> — 글·사진·영상·음성메시지를 주고받습니다. 이모지도 있습니다.</li>
+  <li><b>통화</b> — 음성통화와 영상통화가 됩니다. 이동통신 신호가 아니라 인터넷으로
+      연결되므로, 와이파이나 데이터가 켜져 있어야 합니다.</li>
+  <li><b>방</b> — 최대 4명까지 함께 이야기할 수 있습니다.</li>
+  <li><b>걸기</b> — 아래 가운데 아이콘입니다. 번호판처럼 생긴 화면에서 바로 걸 수 있습니다.</li>
+</ul>
+
+<h3>전화가 안 울릴 때</h3>
+<p>부름은 전화 앱이라 <b>알림이 켜져 있어야 벨이 울립니다.</b> 알림을 꺼두시면 전화가
+와도 모르고 지나갑니다. 연락처 화면 위에 빨간 띠가 떠 있으면 [설정 열기]를 눌러
+알림을 켜주세요.</p>
+
+<h2>3. 나를 꾸미기</h2>
+<ul>
+  <li><b>얼굴 사진</b> — 별칭마다 다르게 둘 수 있습니다.</li>
+  <li><b>갤러리</b> — 별칭마다 하나씩 있는 내 공간입니다. 대문글, 사진·영상, 배경음,
+      유튜브 영상을 둘 수 있습니다. 배경 사진을 깔면 화면 전체에 펼쳐집니다.</li>
+  <li><b>누가 보나</b> — <b>그 별칭으로 이어진 분만</b> 봅니다. 거래처는 "업무용"
+      갤러리만 보고, "개인용"은 있는 줄도 모릅니다.</li>
+</ul>
+
+<h3>왜 제 음악을 못 올리나요</h3>
+<div class="box">
+  부름은 회사가 저작권을 확인한 곡만 올려두고, 그중에서 고르시게 합니다.<br><br>
+  음악은 대부분 저작권이 있습니다. 내 폰에 있는 노래라도 다른 사람에게 들려주는 것은
+  별개의 일입니다. 그런데 <b>어떤 파일이 저작권에 걸리는지 기계가 가려낼 방법이
+  없습니다.</b> 세계에서 가장 큰 회사들도 못 하는 일입니다.<br><br>
+  가려낼 수 없다면 길은 둘뿐입니다. 모르는 척 열어두거나, 닫거나. 열어두면 언젠가
+  <b>손님이 올린 노래 때문에 손님께 문제가 갈 수</b> 있습니다. 저희는 그 위험을 손님께
+  넘기지 않기로 했습니다.<br><br>
+  대신 곡을 계속 늘려가겠습니다. 듣고 싶은 곡이 있으면 알려주세요.<br>
+  <b>유튜브 링크는 그대로 쓰실 수 있습니다.</b> 영상과 광고가 그대로 나와 만든 분께
+  수익이 돌아가기 때문입니다.
+</div>
+
+<h2>4. 안전하게 쓰기</h2>
+
+<h3>끊기와 차단</h3>
+<p>언제든 끊으실 수 있습니다. <b>이용권이 없어도 끊기와 차단은 항상 됩니다.</b>
+부름이 파는 것이 "끊을 수 있는 연결"인데, 돈으로 그걸 막으면 약속을 어기는 것이기
+때문입니다.</p>
+
+<h3>종단간 암호화</h3>
+<p>관계마다 켤 수 있습니다. 켜면 그 대화는 <b>저희 서버도 읽을 수 없습니다.</b>
+다만 <b>한 번 켜면 되돌릴 수 없고</b>, 열쇠를 잃으면 저희도 복구해 드릴 수 없습니다.</p>
+
+<h3>최근 대화 미리보기</h3>
+<p>연락처 목록에 최근 대화를 한 줄 보여주는 기능입니다. <b>기본은 꺼져 있습니다.</b>
+버스나 사무실에서 옆 사람이 읽을 수 있기 때문입니다. "나 → 환경설정"에서 켜실 수 있고,
+켜두시더라도 연락처의 ⋯ 에서 <b>민감한 사이만 따로 가릴</b> 수 있습니다.</p>
+
+<h3>한 폰은 한 계정</h3>
+<p>전화를 받을 자리는 계정이 아니라 <b>폰에 붙습니다.</b> 다른 계정으로 바꾸시면 전화도
+그 계정으로 따라옵니다. 원래 계정으로 다시 로그인하시면 돌아옵니다.</p>
+
+<h2>5. 녹음과 녹화</h2>
+<div class="box key">
+  <b>몰래 녹음은 할 수 없습니다.</b> 그게 부름의 약속입니다.
+</div>
+<p>통화는 두 사람의 것입니다. 한쪽이 남기기로 하면 다른 쪽의 목소리도 함께 남습니다.
+그래서 이렇게 했습니다.</p>
+<ul>
+  <li>시작하려면 <b>상대의 허락</b>이 필요합니다.</li>
+  <li>통화 내내 <b>양쪽 화면에 🔴 표시</b>가 떠 있습니다.</li>
+  <li>두 분 중 <b>누구든 언제든 멈출</b> 수 있습니다.</li>
+  <li>보관 기간도 <b>두 분이 정합니다.</b> 신청한 쪽이 15일·30일·90일 중에서 고르면,
+      받는 분은 <b>더 짧게 줄이실</b> 수 있습니다. 늘리지는 못합니다.</li>
+  <li>녹음은 <b>두 분 다 들으시고, 두 분 다 지우실</b> 수 있습니다. 내 목소리가 담긴
+      것을 남만 지울 수 있다면 그건 동의가 아니라 포기이기 때문입니다.</li>
+</ul>
+<p>정한 기간이 지나면 지워집니다. <b>7일 전과 3일 전에 알려드리니</b>, 꼭 필요한 것은
+그때 [폰에 내려받기]로 챙겨 두세요.</p>
+
+<h2>6. 이용권</h2>
+<table>
+  <tr><th>3개월</th><td>5,500원 — 실제로는 4개월 쓰십니다</td></tr>
+  <tr><th>6개월</th><td>9,500원 — 실제로는 7개월</td></tr>
+  <tr><th>12개월</th><td>16,000원 — 실제로는 13개월</td></tr>
+</table>
+<p>저장 용량 3GB가 함께 제공됩니다. 가입하시면 <b>14일간 무료 체험</b>이고, 체험 기간에
+처음 결제하시면 1개월을 더 드립니다.</p>
+
+<h3>이용권이 끝나면</h3>
+<div class="box">
+  <b>받기와 읽기는 그대로 됩니다.</b><br>
+  상대는 계속 말을 걸 수 있고, 손님은 그걸 보실 수 있습니다. 전화도 받으실 수 있습니다.
+  <b>보내기·걸기·새 초대·별칭 추가</b>만 멈춥니다.<br><br>
+  휴대폰 요금을 안 내면 걸기는 막히지만 받기는 되는 것과 같습니다. 관계가 살아 있으니
+  돌아오실 자리도 남습니다.
+</div>
+<p>이용권이 끝나고 <b>3개월이 지나면 갤러리에 올리신 사진과 영상이 삭제됩니다.</b>
+그 전에 다시 결제하시면 그대로 남습니다.</p>
+
+<h2>7. 글씨가 잘 안 보이실 때</h2>
+<p>"나 → 모양"에서 넷을 바꾸실 수 있습니다.</p>
+<table>
+  <tr><th>색</th><td>"또렷" · "크림" · "진회"가 가장 잘 읽힙니다</td></tr>
+  <tr><th>글씨 크기</th><td>보통 · 크게 · 아주 크게</td></tr>
+  <tr><th>글씨 굵기</th><td>보통 · 굵게</td></tr>
+  <tr><th>글씨체</th><td>폰 설정 따름 · 고딕 · 명조 · 돋움 · 손글씨</td></tr>
+</table>
+<p><b>색보다 크기와 굵기가 효과가 큽니다.</b> 먼저 그 둘을 바꿔보세요. 글씨체는 폰에
+이미 있는 것만 쓰므로 데이터를 쓰지 않고 바로 바뀝니다.</p>
+
+<h2>8. 계정을 지우고 싶을 때</h2>
+<p>"나 → 계정 삭제"에서 신청하시면 <b>7일 뒤에 지워집니다.</b> 그 사이에 다시
+로그인하셔서 취소하실 수 있습니다.</p>
+<table>
+  <tr><th>지워지는 것</th><td>별칭 · 얼굴 사진 · 갤러리 · 설정 · 모든 녹음 ·
+      로그인 계정 · 남은 이용권</td></tr>
+  <tr><th>남는 것</th><td>주고받은 메시지는 상대의 대화에 "떠난 사람"으로 남습니다.
+      누구였는지는 남지 않습니다.</td></tr>
+</table>
+<div class="box">
+  <b>환불을 원하시면 지우기 전에</b> 신청해 주세요. 계정을 지우시면 남은 이용권이
+  소멸합니다. 자세한 것은 <a href="burum_refund.html">취소·환불 규정</a>을 보세요.
+</div>
+
+<h2>9. 도움이 필요하시면</h2>
+<div class="box">
+  <a href="mailto:weapps.kr@gmail.com">weapps.kr@gmail.com</a><br>
+  010-9237-9042
+</div>
+<p>전화가 잘 안 오실 때는 앱 안의 안내(전화를 잘 받으려면)를 먼저 보시면 대부분
+해결됩니다.</p>
+<footer>
+  <b>위브앱솔루션</b> · 대표 이미화 · 사업자등록번호 206-08-71754<br>
+  통신판매업신고 2022-수원권선-1701<br>
+  경기도 수원시 권선구 수성로47 10동 501호<br>
+  010-9237-9042 · weapps.kr@gmail.com<br><br>
+  <a href="burum_terms.html">이용약관</a> ·
+  <a href="burum_privacy.html"><b>개인정보처리방침</b></a> ·
+  <a href="burum_refund.html">취소·환불 규정</a> ·
+  <a href="burum_guide.html">사용설명서</a><br><br>
+  ⓒ 위브앱솔루션 · 부름(Burum)
+</footer>
+</div>
+</body>
+</html>

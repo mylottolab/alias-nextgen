@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>취소 · 환불 규정 — 부름</title>
+<meta name="description" content="부름(Burum) 유료 이용권의 청약철회, 해지, 환불 기준">
+<style>
+/* =====================================================================
+   부름 — 문서 공통 모양
+   2026-09-22
+
+   ⚠ 이 문서들은 **로그인 없이** 열려야 합니다.
+     구글·애플 심사관이 봐야 하고, 앱을 지운 분도 봐야 합니다.
+     그래서 alias_common.js 를 쓰지 않고 혼자 돕니다.
+   ===================================================================== */
+:root{ color-scheme: light dark; }
+*{ box-sizing:border-box; }
+body{
+  margin:0; padding:0 18px 60px;
+  font-family:system-ui,-apple-system,"맑은 고딕","Malgun Gothic",sans-serif;
+  font-size:15.5px; line-height:1.85; word-break:keep-all;
+  background:#FFFFFF; color:#1A1A1A;
+}
+@media (prefers-color-scheme: dark){
+  body{ background:#0E1621; color:#DDE5F0; }
+  a{ color:#8FE3B0; }
+  table{ border-color:#2A3A4A !important; }
+  th,td{ border-color:#2A3A4A !important; }
+  th{ background:#182231 !important; }
+  .box{ background:#182231 !important; border-color:#2A3A4A !important; }
+}
+.wrap{ max-width:720px; margin:0 auto; }
+header{ padding:26px 0 18px; border-bottom:1px solid #E5E5E5; margin-bottom:26px; }
+@media (prefers-color-scheme: dark){ header{ border-color:#2A3A4A; } }
+.home{ font-size:14px; text-decoration:none; color:#6B7280; }
+h1{ font-size:26px; font-weight:800; margin:14px 0 6px; }
+.when{ font-size:13.5px; color:#6B7280; margin:0; }
+h2{ font-size:18px; font-weight:800; margin:34px 0 10px; }
+h3{ font-size:16px; font-weight:700; margin:22px 0 8px; }
+p{ margin:0 0 12px; }
+ul,ol{ margin:0 0 14px; padding-left:22px; }
+li{ margin-bottom:5px; }
+table{ width:100%; border-collapse:collapse; margin:0 0 16px; font-size:14px; }
+th,td{ border:1px solid #E5E5E5; padding:9px 11px; text-align:left; vertical-align:top; }
+th{ background:#F6F7F9; font-weight:700; width:34%; }
+.box{ padding:14px 16px; border-radius:12px; margin:0 0 16px;
+  background:#F6F7F9; border:1px solid #E5E5E5; font-size:14.5px; }
+.box b{ display:block; margin-bottom:5px; }
+.key{ border-left:4px solid #E0A800; padding-left:13px; margin:0 0 16px; }
+footer{ margin-top:46px; padding-top:20px; border-top:1px solid #E5E5E5;
+  font-size:13px; color:#6B7280; line-height:1.9; }
+@media (prefers-color-scheme: dark){ footer{ border-color:#2A3A4A; } }
+footer a{ color:inherit; }
+@media print{ body{ background:#fff; color:#000; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <a class="home" href="https://burum.kr/">‹ 부름</a>
+  <h1>취소 · 환불 규정</h1>
+  <p class="when">시행일 2026년 9월 22일</p>
+</header>
+<div class="box key">
+  <b>한눈에 보기</b>
+  <b>7일 이내 · 관계를 만들기 전</b> → 전액 환불<br>
+  <b>쓰기 시작한 뒤</b> → 언제든 해지. 이용하신 기간과 위약금 10%를 뺀 금액 환불<br>
+  <b>카드 수수료</b> → 회사가 부담합니다<br>
+  <b>앱에서 결제하신 경우</b> → Google Play 또는 App Store로 신청하셔야 합니다
+</div>
+
+<h2>제1조 (목적)</h2>
+<p>이 규정은 위브앱솔루션(이하 "회사")이 제공하는 "부름"(Burum) 서비스의 유료 상품에
+대한 청약철회, 계약 해지, 환불의 기준과 절차를 정함을 목적으로 합니다.</p>
+
+<h2>제2조 (적용 대상 상품)</h2>
+<table>
+  <tr><th>3개월 이용권</th><td>5,500원 (실제 제공 4개월)</td></tr>
+  <tr><th>6개월 이용권</th><td>9,500원 (실제 제공 7개월)</td></tr>
+  <tr><th>12개월 이용권</th><td>16,000원 (실제 제공 13개월)</td></tr>
+</table>
+<p>모든 이용권에는 저장 용량 3GB가 포함됩니다. 가격은 변경될 수 있으며, 변경 시
+결제 화면에 표시된 금액이 적용됩니다.</p>
+
+<h2>제3조 (결제 수단과 환불 창구)</h2>
+<div class="box key">
+  <b>어디서 결제하셨는지에 따라 신청하는 곳이 다릅니다.</b>
+</div>
+<table>
+  <tr><th>안드로이드 앱</th><td>Google Play를 통해 결제됩니다. <b>환불도 Google Play에
+      신청</b>하셔야 하며, 구글의 환불 정책이 적용됩니다.</td></tr>
+  <tr><th>아이폰 앱</th><td>App Store를 통해 결제됩니다. <b>환불도 Apple에 신청</b>하셔야
+      하며, 애플의 환불 정책이 적용됩니다.</td></tr>
+  <tr><th>웹(burum.kr)</th><td>KG이니시스(국내 카드) 또는 PayPal로 결제됩니다.
+      <b>이 규정에 따라 회사에 직접 신청</b>하십시오.</td></tr>
+</table>
+<p>환불은 <b>결제하신 수단으로만</b> 이루어집니다. 다른 수단이나 현금으로의 환불은
+불가능합니다.</p>
+<p>스토어를 통해 결제하신 경우에도, 스토어에서 환불이 어려우신 때에는 제10조의 창구로
+문의해 주십시오. 회사가 할 수 있는 범위에서 돕겠습니다.</p>
+
+<h2>제4조 (청약철회)</h2>
+<ol>
+  <li>이용자는 결제일부터 <b>7일 이내</b>에 청약을 철회할 수 있습니다.</li>
+  <li>다만 서비스를 이미 이용하기 시작하신 경우에는 청약철회가 제한될 수 있습니다.</li>
+  <li><b>"이용하기 시작한 경우"</b>란 결제 후 다음 중 하나라도 하신 경우를 말합니다.
+    <ul>
+      <li>새 초대를 만든 경우</li>
+      <li>새 관계를 맺은 경우</li>
+      <li>메시지를 보내거나 전화를 건 경우</li>
+      <li>갤러리에 사진·영상을 올린 경우</li>
+    </ul>
+  </li>
+  <li>결제만 하고 위 행위를 하지 않으신 경우, 7일 이내라면 <b>위약금과 이용 기간
+      해당액을 공제하지 않고 전액 환불</b>합니다.</li>
+  <li>이용을 시작하신 경우에도 제5조에 따라 <b>언제든 해지하고 잔여 기간에 대한 환불을
+      받으실 수 있습니다.</b></li>
+</ol>
+
+<h2>제5조 (중도 해지와 환불액 계산)</h2>
+<ol>
+  <li>이용자는 이용 기간 중 <b>언제든 계약을 해지</b>하실 수 있습니다.</li>
+  <li>환불액은 다음과 같이 계산합니다.
+    <div class="box">환불액 = 결제금액 － 이용 기간 해당액 － 위약금 － 실비</div>
+  </li>
+  <li><b>이용 기간 해당액</b>은 <b>실제로 제공되는 전체 기간</b>을 기준으로 일할
+      계산합니다.
+    <div class="box">이용 기간 해당액 = 결제금액 × (결제일부터 해지 요청일까지의 일수
+      ÷ 실제 제공 기간의 일수)</div>
+      예를 들어 12개월 이용권(16,000원)은 13개월(약 395일)이 실제 제공 기간이므로,
+      그 일수로 나눕니다. 덤으로 드린 1개월도 이용자에게 유리하게 계산에 포함합니다.</li>
+  <li><b>위약금</b>은 결제금액의 <b>10%</b>를 공제합니다.</li>
+  <li><b>이용 기간은 실제 사용량과 무관하게 계산합니다.</b> 맺으신 관계의 수, 주고받은
+      메시지의 수, 사용한 저장 용량은 환불액에 영향을 주지 않습니다.</li>
+  <li>계산 예시 — 12개월 이용권 16,000원을 결제하고 90일 사용 후 해지하는 경우
+    <div class="box">
+      이용 기간 해당액 &nbsp;16,000 × (90 ÷ 395) = 3,646원<br>
+      위약금 &nbsp;16,000 × 10% = 1,600원<br>
+      실비 = 0원<br>
+      ─────────────────────────────<br>
+      <b>환불액 10,754원</b>
+    </div>
+  </li>
+</ol>
+
+<h2>제6조 (실비 공제)</h2>
+<ol>
+  <li><b>회사는 결제대행 수수료를 이용자에게 부담시키지 않습니다.</b> 환불 시 회사에
+      반환되지 않는 결제 수수료는 회사가 부담합니다.</li>
+  <li>공제하는 실비는 <b>환급에 실제로 드는 비용</b>에 한하며, 계좌 송금 수수료,
+      해외 송금 수수료 및 중계은행 수수료, 환전 차액이 이에 해당합니다.</li>
+  <li><b>실비는 회사가 임의로 정하지 않습니다.</b> 실제 발생한 금액에 한하며, 이용자가
+      요청하시는 경우 내역을 제시합니다.</li>
+  <li>결제하신 수단으로 그대로 취소되어 송금 절차가 필요 없는 경우(카드 승인 취소 등)에는
+      <b>실비를 공제하지 않습니다.</b></li>
+  <li>공제 결과 <b>환불액이 적거나 0원이 될 수 있습니다.</b> 이 경우에도 회사는 추가
+      비용을 청구하지 않습니다.</li>
+</ol>
+
+<h2>제7조 (계정 삭제와 환불)</h2>
+<div class="box key">
+  <b>계정을 삭제하시면 남은 이용권은 소멸합니다.</b>
+  환불을 원하시는 경우 <b>계정을 삭제하기 전에</b> 제10조의 창구로 신청해 주십시오.
+  회사는 계정 삭제 화면에서 이 내용을 안내합니다.
+</div>
+
+<h2>제8조 (회사의 사유로 인한 환불)</h2>
+<ol>
+  <li>회사의 귀책사유로 서비스를 제공하지 못한 경우, 해당 기간에 대해 <b>공제 없이
+      전액 환불</b>합니다.</li>
+  <li>회사가 서비스를 종료하는 경우, 잔여 기간에 대해 공제 없이 전액 환불하며
+      최소 30일 전에 공지합니다.</li>
+  <li>이용자의 약관 위반으로 이용이 정지된 경우에는 환불하지 않습니다. 다만 그 사유를
+      서면(전자문서 포함)으로 알립니다.</li>
+</ol>
+
+<h2>제9조 (무료 체험)</h2>
+<p>가입 후 14일간 제공되는 무료 체험은 결제가 이루어지지 않으므로 환불 대상이 아닙니다.
+체험 기간 중 첫 결제 시 제공되는 1개월 추가 혜택은 제5조의 계산에 포함됩니다.</p>
+
+<h2>제10조 (신청 방법과 처리 기간)</h2>
+<p>웹에서 결제하신 경우 다음으로 신청해 주십시오.</p>
+<div class="box">
+  <a href="mailto:weapps.kr@gmail.com">weapps.kr@gmail.com</a><br>
+  010-9237-9042
+</div>
+<p>신청 시 다음을 알려주시면 처리가 빠릅니다.</p>
+<ul>
+  <li>결제하신 계정의 닉네임</li>
+  <li>결제일과 상품명</li>
+  <li>해지·환불을 원하시는 사유 (선택)</li>
+</ul>
+<p>회사는 신청을 받은 날부터 <b>3영업일 이내</b>에 환불 여부와 금액을 <b>계산 내역과
+함께</b> 회신합니다. 환불은 회신일부터 <b>7영업일 이내</b>에 처리합니다. 다만 카드사
+또는 PayPal의 처리 일정에 따라 계좌 반영까지 추가 기간이 소요될 수 있습니다.</p>
+
+<h2>제11조 (분쟁의 해결)</h2>
+<ol>
+  <li>이 규정에 관한 분쟁은 회사와 이용자가 협의하여 해결합니다.</li>
+  <li>협의가 이루어지지 않는 경우, 「전자상거래 등에서의 소비자보호에 관한 법률」에 따른
+      소비자분쟁조정위원회의 조정을 신청하실 수 있습니다.</li>
+  <li>이 규정에 정하지 않은 사항은 관계 법령 및 「소비자분쟁해결기준」(공정거래위원회
+      고시)에 따릅니다.</li>
+</ol>
+
+<h2>제12조 (준거법 및 관할)</h2>
+<p>이 규정의 해석과 적용에 관하여는 <b>대한민국 법</b>을 준거법으로 하며, 소송의 관할
+법원은 회사의 소재지를 관할하는 대한민국 법원으로 합니다. 해외에서 결제하신 경우에도
+같습니다.</p>
+
+<h2>제13조 (언어)</h2>
+<p>이 규정은 <b>한국어</b>로 작성되었습니다. 회사는 편의를 위하여 영문 번역본을 제공할
+수 있으며, 번역본과 한국어본의 내용이 다른 경우 <b>한국어본이 우선</b>합니다.</p>
+<footer>
+  <b>위브앱솔루션</b> · 대표 이미화 · 사업자등록번호 206-08-71754<br>
+  통신판매업신고 2022-수원권선-1701<br>
+  경기도 수원시 권선구 수성로47 10동 501호<br>
+  010-9237-9042 · weapps.kr@gmail.com<br><br>
+  <a href="burum_terms.html">이용약관</a> ·
+  <a href="burum_privacy.html"><b>개인정보처리방침</b></a> ·
+  <a href="burum_refund.html">취소·환불 규정</a> ·
+  <a href="burum_guide.html">사용설명서</a><br><br>
+  ⓒ 위브앱솔루션 · 부름(Burum)
+</footer>
+</div>
+</body>
+</html>
