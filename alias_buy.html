@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>부름</title>
-<link rel="stylesheet" href="alias_common.css?v=20260922h">
-<link rel="stylesheet" href="alias_theme.css?v=20260922h">
+<link rel="stylesheet" href="alias_common.css?v=20260924a">
+<link rel="stylesheet" href="alias_theme.css?v=20260924a">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260922h"></script>
+<script src="alias_common.js?v=20260924a"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function(){
   if (typeof AL === "undefined" || typeof AL.t !== "function") {
@@ -175,6 +175,13 @@ function el(id){ return document.getElementById(id); }
 const PLATFORM = AL.platform();
 const IN_APP = (PLATFORM !== 'web');
 function showErr(msg){ const e = el('err'); e.textContent = msg; e.classList.add('show'); }
+function showOk(msg){
+  const e = el('err');
+  e.textContent = msg;
+  e.style.display = 'block';
+  e.style.background = 'rgba(143,227,176,.15)';
+  e.style.color = '#8FE3B0';
+}
 function clearErr(){ el('err').classList.remove('show'); }
 
 function won(n){ return n.toLocaleString('ko-KR') + '원'; }
@@ -221,21 +228,50 @@ function paintPlans(){
   }
 }
 
-/* ── 스토어 결제 (앱 안) ───────────────────────────────────────────── */
+/* ── 스토어 결제 (앱 안) ─────────────────────────────────────────────
+   🔴 2026-09-24 — 결과는 곧바로 오지 않습니다.
+     결제창이 뜨고 → 손님이 결제하고 → 자바가 영수증을 받아 →
+     화면이 서버로 보내 확인받고 → 그제야 결과가 옵니다.
+     그동안 단추를 잠그고 "확인하는 중" 을 보여줍니다.
+   ⚠ 잠근 단추를 반드시 풀어야 합니다. 결제를 그만두셨을 때 단추가
+     잠긴 채면 다시 살 수가 없습니다. */
+function storeBusy(on, msgKey){
+  const b = el('storeBtn');
+  b.disabled = on;
+  b.textContent = on
+    ? AL.t(msgKey || 'stWait')
+    : AL.t(PLATFORM === 'ios' ? 'stPayApple' : 'stPayGoogle');
+}
+
+/* 자바 → AL.onStoreEvent → 서버 확인 → 여기로 결과가 옵니다 */
+AL.onStoreDone = function(r){
+  storeBusy(false);
+  if (r.ok) {
+    showOk(AL.t(r.already ? 'stDone' : 'stDone', { n: r.months || picked }));
+    /* 이용권이 늘었으니 화면을 새로 그립니다. */
+    setTimeout(function(){ location.replace('alias_contacts.html'); }, 1800);
+    return;
+  }
+  if (r.canceled) { showErr(AL.t('stCanceled')); return; }
+  if (r.pending)  { showOk(AL.t('stPending')); return; }
+  showErr(AL.t('stFailed') + (r.error ? '\n(' + r.error + ')' : ''));
+};
+
 el('storeBtn').addEventListener('click', async function(){
   clearErr();
   if (!picked) return;
-  this.disabled = true;
+  storeBusy(true, 'stWait');
   try {
     await AL.storeBuy(picked);
+    /* 결제창이 떴습니다. 결과는 AL.onStoreDone 으로 옵니다. */
+    storeBusy(true, 'stChecking');
   } catch (e) {
+    storeBusy(false);
     /* ⚠ 준비 중이어도 "웹에서 사세요" 라고 안내하지 않습니다.
        스토어가 막는 행위입니다. */
     showErr(e.code === 'store_not_ready'
       ? AL.t('stSoon')
       : AL.t('errGeneric', { msg: e.message || String(e) }));
-  } finally {
-    this.disabled = false;
   }
 });
 

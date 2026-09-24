@@ -939,6 +939,15 @@ AL.STR = {
                   en:'Payment and refunds are handled by the store. Your card details never reach Burum.' },
   stSoon:       { kr:'스토어 결제를 준비하고 있습니다. 곧 열립니다.',
                   en:'Store payment is being set up and will open soon.' },
+  stWait:       { kr:'결제창을 여는 중…', en:'Opening payment…' },
+  stChecking:   { kr:'결제를 확인하는 중…', en:'Checking your payment…' },
+  stDone:       { kr:'{n}개월이 더해졌습니다. 고맙습니다.',
+                  en:'{n} months added. Thank you.' },
+  stCanceled:   { kr:'결제를 그만두었습니다.', en:'Payment was cancelled.' },
+  stPending:    { kr:'결제가 확정되면 이용권이 더해집니다. 잠시 기다려 주세요.',
+                  en:'Your plan will be added once the payment clears.' },
+  stFailed:     { kr:'결제를 확인하지 못했습니다. 돈이 빠져나갔다면 고객센터로 알려주세요.',
+                  en:'We could not verify the payment. If you were charged, please contact us.' },
   plTitle:      { kr:'이용권', en:'Plan' },
   plNote2:      { kr:'남은 기간에 이어서 더해집니다. 자동으로 다시 결제되지 않습니다.',
                   en:'Added on top of what is left. It does not renew automatically.' },
@@ -4142,11 +4151,92 @@ AL.storeBuy = async function(months){
   if (!sku) throw new Error('없는 상품입니다: ' + months);
 
   if (window.AliasNative && typeof AliasNative.storeBuy === 'function') {
-    return AliasNative.storeBuy(sku);        // 등록 뒤 붙일 자리
+    AliasNative.storeBuy(sku);
+    return 'started';     // 결과는 AL.onStoreEvent 로 옵니다
   }
   var e = new Error(AL.t('stSoon'));
   e.code = 'store_not_ready';
   throw e;
+};
+
+/* =====================================================================
+   🔴🔴 2026-09-24 신설 — 스토어 결제 결과를 받는 곳
+
+   자바(BillingBridge)가 결제 결과를 여기로 넘겨줍니다.
+
+     storePurchase   결제가 끝나 영수증이 왔습니다   ← 서버로 보내야 합니다
+     storeCanceled   손님이 그만두었습니다
+     storePending    편의점 결제처럼 아직 확정 전입니다
+     storeError      무언가 잘못됐습니다
+
+   🔴 영수증은 **서버가 구글에 직접 확인**합니다. 앱이 "결제했어요" 라고
+     한 말을 믿으면 가짜 신호로 공짜 이용권을 받을 수 있습니다.
+
+   ⚠ 확인이 끝나면 **반드시 storeConsume 을 불러야** 합니다. 안 부르면
+     손님이 같은 이용권을 두 번 못 삽니다.
+
+   ⚠ 화면(alias_buy.html)이 AL.onStoreDone 을 정해두면 결과를 받아
+     손님께 보여줍니다.
+   ===================================================================== */
+AL.onStoreEvent = async function(ev){
+  ev = ev || {};
+  console.log('[store]', ev.kind, ev.sku || '');
+
+  if (ev.kind === 'storeCanceled') {
+    if (AL.onStoreDone) AL.onStoreDone({ ok: false, canceled: true });
+    return;
+  }
+  if (ev.kind === 'storePending') {
+    if (AL.onStoreDone) AL.onStoreDone({ ok: false, pending: true });
+    return;
+  }
+  if (ev.kind === 'storeError') {
+    if (AL.onStoreDone) AL.onStoreDone({ ok: false, error: ev.a || '' });
+    return;
+  }
+  if (ev.kind !== 'storePurchase') return;
+
+  /* 영수증을 서버로 보냅니다 */
+  try {
+    var sess = await AL.sb.auth.getSession();
+    if (!sess.data.session) throw new Error(AL.t('errNotLoggedIn'));
+
+    var res = await fetch(AL.SUPABASE_URL + '/functions/v1/alias-plan-google-verify', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + sess.data.session.access_token,
+      },
+      body: JSON.stringify({
+        productId: ev.sku,
+        purchaseToken: ev.a,
+        orderId: ev.b || null,
+      }),
+    });
+    var out = await res.json();
+
+    if (!res.ok || !out.ok) {
+      /* ⚠ 여기서 consume 하지 않습니다. 영수증을 살려두어야 다음에
+         앱을 다시 켤 때 한 번 더 보낼 수 있습니다(구제). */
+      console.error('[store] 서버 확인 실패:', out);
+      if (AL.onStoreDone) AL.onStoreDone({ ok: false, error: out.error || '' });
+      return;
+    }
+
+    /* 🔴 확인됐으니 영수증을 정리합니다. 이걸 빼면 다시 못 삽니다. */
+    try {
+      if (window.AliasNative && typeof AliasNative.storeConsume === 'function') {
+        AliasNative.storeConsume(ev.a);
+      }
+    } catch (e) { console.warn('[store] 영수증 정리 실패', e); }
+
+    AL._plan = null;     // 이용권을 다시 읽게 합니다
+    if (AL.onStoreDone) AL.onStoreDone({ ok: true, months: out.months, already: out.already });
+
+  } catch (e) {
+    console.error('[store] 영수증 보내기 실패', e);
+    if (AL.onStoreDone) AL.onStoreDone({ ok: false, error: e.message || String(e) });
+  }
 };
 
 AL.inviteUrl = function(code){
