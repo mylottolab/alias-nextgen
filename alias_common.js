@@ -972,6 +972,8 @@ AL.STR = {
   sgRules:      { kr:'· 추가 용량이 끝나 넘치면 새로 올리기만 멈춥니다. 보기와 받기는 그대로 됩니다.\n· 30일 동안 기다리며 세 번 알려드립니다.\n· 그래도 넘치면 넘친 만큼만 오래된 것부터 지워집니다. 대화 글은 지워지지 않습니다.\n· 자동으로 다시 결제되지 않습니다.',
                   en:'· When extra storage ends and you are over, only new uploads pause. Viewing and receiving keep working.\n· We wait 30 days and remind you three times.\n· If still over, only the overflow is removed, oldest first. Chat messages are never removed.\n· It does not renew automatically.' },
   sgGo:         { kr:'저장 공간', en:'Storage' },
+  sgLinkTtl:    { kr:'저장 공간이 모자라세요?', en:'Running out of storage?' },
+  sgLinkSub:    { kr:'추가 용량 1GB · 3개월 · 2,000원', en:'Extra storage 1GB · 3 months · ₩2,000' },
   plTitle:      { kr:'이용권', en:'Plan' },
   plNote2:      { kr:'남은 기간에 이어서 더해집니다. 자동으로 다시 결제되지 않습니다.',
                   en:'Added on top of what is left. It does not renew automatically.' },
