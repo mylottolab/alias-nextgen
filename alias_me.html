@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>부름</title>
-<link rel="stylesheet" href="alias_common.css?v=20260927a">
-<link rel="stylesheet" href="alias_theme.css?v=20260927a">
+<link rel="stylesheet" href="alias_common.css?v=20260928a">
+<link rel="stylesheet" href="alias_theme.css?v=20260928a">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260927a"></script>
+<script src="alias_common.js?v=20260928a"></script>
 <!-- 🔴 2026-09-13 — 사진 압축(AL.compressImage)이 여기 있습니다 -->
-<script src="alias_media.js?v=20260927a"></script>
+<script src="alias_media.js?v=20260928a"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -213,6 +213,22 @@ document.addEventListener("DOMContentLoaded", function(){
                 border:1px solid rgba(143,227,176,.45)"></a>
     </div>
     <p class="hint" data-t="plNote2"></p>
+  </div>
+
+  <!-- 🔴 2026-09-28 신설 — 저장 공간
+       ⚠ 추가 용량을 사고, 묶음마다 끝나는 날을 보고, 넘쳤으면 언제 무엇이
+         지워지는지 알 수 있는 자리입니다. 누르면 alias_storage.html -->
+  <div class="sect" data-t="sgTitle"></div>
+  <div class="dblock">
+    <div class="prefrow">
+      <span class="pl" id="storNow"></span>
+      <a href="alias_storage.html" id="storGo" data-t="sgGo"
+         style="padding:9px 16px;border-radius:999px;text-decoration:none;
+                font-size:13.5px;font-weight:700;
+                background:rgba(143,227,176,.2);color:#8FE3B0;
+                border:1px solid rgba(143,227,176,.45)"></a>
+    </div>
+    <p class="hint" id="storOver" style="display:none;color:#FFB4B4"></p>
   </div>
 
   <!-- 🔴 2026-09-20 — 관리자에게만 보입니다 -->
@@ -773,6 +789,21 @@ async function paintPlanRow(){
   } catch (e) { console.warn('[plan] 이용권을 못 읽었습니다', e); }
 }
 
+/* 🔴 2026-09-28 — 저장 공간 한 줄. 넘쳤으면 빨간 글씨로 지워지는 날을 보여줍니다. */
+async function paintStorageRow(){
+  try {
+    const s = await AL.storageStatus();
+    const used = Number(s.used || 0), cap = Number(s.cap || 0);
+    const now = el('storNow');
+    if (now) now.textContent = AL.t('sgUsed', { used: AL.fmtBytes(used), cap: AL.fmtBytes(cap) });
+    const o = el('storOver');
+    if (o && used > cap && s.delete_after) {
+      o.style.display = '';
+      o.textContent = AL.t('sgOver', { over: AL.fmtBytes(used - cap), when: AL.fmtDate(s.delete_after) });
+    }
+  } catch (e) { console.warn('[storage] 저장 공간을 못 읽었습니다', e); }
+}
+
 (async function(){
   AL.paintText();
   paintPrevBtn();
@@ -791,6 +822,7 @@ async function paintPlanRow(){
   AL.showPlanBar();   // 🔴 2026-09-14
   AL.showDeletionBar();   // 🔴 2026-09-22 — 삭제 예약이면 알림
   paintPlanRow();     // 🔴 2026-09-20 — 이용권 자리
+  paintStorageRow();  // 🔴 2026-09-28 — 저장 공간 자리
   AL.showPushBar();   // 🔴 2026-09-15 — 전화를 못 받는 상태면 알립니다
 
   /* 🔴 2026-09-20 — 관리자에게만 "이용권 주기" 를 보여줍니다.

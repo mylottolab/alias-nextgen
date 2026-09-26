@@ -948,6 +948,30 @@ AL.STR = {
                   en:'Your plan will be added once the payment clears.' },
   stFailed:     { kr:'결제를 확인하지 못했습니다. 돈이 빠져나갔다면 고객센터로 알려주세요.',
                   en:'We could not verify the payment. If you were charged, please contact us.' },
+  /* 🔴 2026-09-28 — 추가 용량 (1GB · 3개월 · 2,000원)
+     ⚠ 값은 여기와 Play Console · 서버(alias-plan-google-verify) 세 곳이 같아야 합니다. */
+  sgTitle:      { kr:'저장 공간', en:'Storage' },
+  sgSub:        { kr:'갤러리에 올린 사진·영상이 쓰는 자리입니다.',
+                  en:'Space used by photos and videos in your gallery.' },
+  sgUsed:       { kr:'{used} / {cap} 사용', en:'{used} of {cap} used' },
+  sgBase:       { kr:'이용권에 포함 {n}GB', en:'Included with your plan: {n}GB' },
+  sgPack:       { kr:'추가 {n}GB · {when}까지', en:'Extra {n}GB · until {when}' },
+  sgNoPack:     { kr:'추가 용량이 없습니다.', en:'No extra storage.' },
+  sgBuyTtl:     { kr:'추가 용량', en:'Extra storage' },
+  sgBuyDesc:    { kr:'1GB · 3개월 · 2,000원\n결제창에서 수량을 고르시면 한 번에 여러 개를 사실 수 있습니다. 산 날부터 3개월 동안 쓰실 수 있고, 묶음마다 끝나는 날이 따로 있습니다.',
+                  en:'1GB · 3 months · ₩2,000\nChoose a quantity in the payment window to buy several at once. Each pack lasts 3 months from the day you buy it.' },
+  sgBuyBtn:     { kr:'Google Play 로 추가 용량 사기', en:'Buy extra storage with Google Play' },
+  sgWebOnly:    { kr:'추가 용량은 지금 안드로이드 앱에서 사실 수 있습니다.',
+                  en:'Extra storage can currently be bought in the Android app.' },
+  sgDone:       { kr:'{n}GB 가 더해졌습니다. {when}까지 쓰실 수 있습니다.',
+                  en:'{n}GB added. You can use it until {when}.' },
+  sgPending:    { kr:'결제가 확정되면 추가 용량이 더해집니다. 잠시 기다려 주세요.',
+                  en:'Extra storage will be added once the payment clears.' },
+  sgOver:       { kr:'저장 공간이 {over} 넘쳤습니다. 새로 올리기는 멈췄고, {when}에 넘친 만큼 오래된 사진·영상부터 지워집니다.\n추가 용량을 사시거나 지우시면 풀립니다.',
+                  en:'You are {over} over your storage. Uploading is paused, and on {when} the oldest photos and videos will be removed until you fit.\nBuying extra storage or deleting items clears this.' },
+  sgRules:      { kr:'· 추가 용량이 끝나 넘치면 새로 올리기만 멈춥니다. 보기와 받기는 그대로 됩니다.\n· 30일 동안 기다리며 세 번 알려드립니다.\n· 그래도 넘치면 넘친 만큼만 오래된 것부터 지워집니다. 대화 글은 지워지지 않습니다.\n· 자동으로 다시 결제되지 않습니다.',
+                  en:'· When extra storage ends and you are over, only new uploads pause. Viewing and receiving keep working.\n· We wait 30 days and remind you three times.\n· If still over, only the overflow is removed, oldest first. Chat messages are never removed.\n· It does not renew automatically.' },
+  sgGo:         { kr:'저장 공간', en:'Storage' },
   plTitle:      { kr:'이용권', en:'Plan' },
   plNote2:      { kr:'남은 기간에 이어서 더해집니다. 자동으로 다시 결제되지 않습니다.',
                   en:'Added on top of what is left. It does not renew automatically.' },
@@ -989,8 +1013,8 @@ AL.STR = {
   /* 🔴 2026-09-17 — 저장 정리 규칙을 반드시 알립니다.
      ⚠ 말없이 지우면 손님이 잃은 줄도 모릅니다. 사는 자리에서 미리
        적어두어야 나중에 지울 수 있습니다. 약관에도 넣으세요. */
-  plNote:       { kr:'· 기간이 끝나도 받기와 읽기는 그대로 됩니다.\n· 남은 기간이 있으면 이어서 더해집니다.\n· 자동으로 다시 결제되지 않습니다.\n· 저장 공간 3GB. 다 차면 지우신 만큼 다시 쓸 수 있습니다.\n· 기간이 끝나고 3개월이 지나면 저장하신 사진·영상이 지워집니다. 미리 알려드립니다.',
-                  en:'· Receiving and reading keep working after it ends.\n· Remaining time is added on.\n· It does not renew automatically.\n· 3GB of storage. Free up space by deleting.\n· Stored photos and videos are removed 3 months after your plan ends. We will remind you first.' },
+  plNote:       { kr:'· 기간이 끝나도 받기와 읽기는 그대로 됩니다.\n· 남은 기간이 있으면 이어서 더해집니다.\n· 자동으로 다시 결제되지 않습니다.\n· 저장 공간 3GB. 다 차면 지우시거나 추가 용량(1GB · 3개월)을 사실 수 있습니다.\n· 기간이 끝나고 3개월이 지나면 저장하신 사진·영상이 지워집니다. 미리 알려드립니다.',
+                  en:'· Receiving and reading keep working after it ends.\n· Remaining time is added on.\n· It does not renew automatically.\n· 3GB of storage. Free up space or add extra storage (1GB · 3 months).\n· Stored photos and videos are removed 3 months after your plan ends. We will remind you first.' },
 
   /* 결제 결과 */
   plResultTitle:{ kr:'결제 결과', en:'Payment' },
@@ -1188,8 +1212,8 @@ AL.STR = {
   glDelAsk:   { kr:'이것을 지울까요? 되돌릴 수 없습니다.',
                 en:'Delete this? It cannot be undone.' },
   glUsed:     { kr:'{used} / {cap} 썼습니다', en:'{used} of {cap} used' },
-  glFull:     { kr:'저장 공간이 찼습니다. ({used} / {cap})\n지우신 만큼 다시 쓸 수 있습니다.',
-                en:'Storage is full. ({used} / {cap})\nDelete something to free up space.' },
+  glFull:     { kr:'저장 공간이 찼습니다. ({used} / {cap})\n지우신 만큼 다시 쓸 수 있습니다. "나 → 저장 공간" 에서 추가 용량을 사실 수도 있습니다.',
+                en:'Storage is full. ({used} / {cap})\nDelete something to free up space, or add extra storage in Me → Storage.' },
   glUploading:{ kr:'올리는 중…', en:'Uploading…' },
   glSquashing:{ kr:'줄이는 중…', en:'Compressing…' },
   glSaved:    { kr:'저장했습니다.', en:'Saved.' },
@@ -2675,15 +2699,34 @@ AL.storageUsed = async function(){
   } catch (e) { return 0; }
 };
 
+/* 🔴 2026-09-28 — 한도 = 기본 3GB + 아직 안 끝난 추가 용량 묶음
+   서버(my_storage_cap)가 계산합니다. 화면이 더하면 가짜로 늘릴 수 있습니다.
+   ⚠ 묶음이 끝나는 순간 한도가 줄어야 하니 오래 붙잡아 두지 않습니다(1분).
+   ⚠ 서버 함수가 없거나 실패하면 예전처럼 요금표의 기본 용량을 씁니다. */
 AL._cap = null;
+AL._capAt = 0;
 AL.storageCap = async function(){
-  if (AL._cap !== null) return AL._cap;
+  if (AL._cap !== null && Date.now() - AL._capAt < 60000) return AL._cap;
   try {
-    var res = await AL.sb.from('alias_pricing_plans')
-      .select('storage_gb').eq('tier', 'standard').limit(1).maybeSingle();
-    AL._cap = res.data ? Number(res.data.storage_gb) * 1024 * 1024 * 1024 : 0;
-  } catch (e) { AL._cap = 0; }
+    var r = await AL.sb.rpc('my_storage_cap');
+    if (r.error) throw r.error;
+    AL._cap = Number(r.data || 0);
+  } catch (e) {
+    try {
+      var res = await AL.sb.from('alias_pricing_plans')
+        .select('storage_gb').eq('tier', 'standard').limit(1).maybeSingle();
+      AL._cap = res.data ? Number(res.data.storage_gb) * 1024 * 1024 * 1024 : 0;
+    } catch (e2) { AL._cap = 0; }
+  }
+  AL._capAt = Date.now();
   return AL._cap;
+};
+
+/* 🔴 2026-09-28 — 저장 공간 한눈에: 쓴 양 · 한도 · 묶음 · 넘친 날 */
+AL.storageStatus = async function(){
+  var r = await AL.sb.rpc('my_storage_status');
+  if (r.error) throw r.error;
+  return r.data || {};
 };
 
 /* =====================================================================
@@ -4144,6 +4187,20 @@ AL.STORE_SKUS = {
   12: 'burum_plan_12m',
 };
 
+/* 🔴 2026-09-28 — 추가 용량 1GB · 3개월. 수량은 구글 결제창에서 고릅니다.
+   ⚠ 이 번호도 Play Console · 서버와 **같아야** 하고, 지우면 다시 못 씁니다. */
+AL.STORE_STORAGE_SKU = 'burum_storage_1gb_3m';
+
+AL.storeBuyStorage = async function(){
+  if (window.AliasNative && typeof AliasNative.storeBuy === 'function') {
+    AliasNative.storeBuy(AL.STORE_STORAGE_SKU);
+    return 'started';     // 결과는 AL.onStoreEvent 로 옵니다
+  }
+  var e = new Error(AL.t('sgWebOnly'));
+  e.code = 'store_not_ready';
+  throw e;
+};
+
 /* 스토어 결제를 부릅니다.
    ⚠ 지금은 비어 있습니다. Play Console 에 상품을 등록한 뒤(앱을 한 번
      올려야 만들 수 있습니다) 결제 창구를 붙입니다.
@@ -4235,7 +4292,10 @@ AL.onStoreEvent = async function(ev){
     } catch (e) { console.warn('[store] 영수증 정리 실패', e); }
 
     AL._plan = null;     // 이용권을 다시 읽게 합니다
-    if (AL.onStoreDone) AL.onStoreDone({ ok: true, months: out.months, already: out.already });
+    AL._cap = null;      // 🔴 2026-09-28 — 한도도 다시 읽게 합니다
+    if (AL.onStoreDone) AL.onStoreDone({ ok: true, months: out.months, already: out.already,
+                                         storageGb: out.storageGb, until: out.until,
+                                         sku: ev.sku });
 
   } catch (e) {
     console.error('[store] 영수증 보내기 실패', e);

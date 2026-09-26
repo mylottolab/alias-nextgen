@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>부름</title>
+<link rel="stylesheet" href="alias_common.css?v=20260928a">
+<link rel="stylesheet" href="alias_theme.css?v=20260928a">
+<script src="alias_config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="alias_common.js?v=20260928a"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function(){
+  if (typeof AL === "undefined" || typeof AL.t !== "function") {
+    document.body.innerHTML =
+      '<div style="padding:26px;font-family:system-ui,sans-serif;line-height:1.8;' +
+      'color:#DDE5F0;background:#0E1621;min-height:100vh">' +
+      '<b style="font-size:17px">alias_common.js 를 못 읽었습니다.</b><br><br>' +
+      'alias_config.js 를 확인하세요.</div>';
+    return;
+  }
+  AL.bootTheme();
+});
+</script>
+
+<style>
+/* =====================================================================
+   🔴 2026-09-28 신설 — 저장 공간 · 추가 용량
+
+   무엇을 보여주나
+     · 쓴 양 / 전체 용량 (막대)
+     · 이용권에 포함된 3GB 와, 산 추가 용량 묶음마다 끝나는 날
+     · 넘쳤으면 — 언제 무엇이 지워지는지
+     · 앱이면 추가 용량 사기 단추 (1GB · 3개월 · 2,000원, 수량은 구글 창에서)
+
+   ⚠ 값은 서버가 계산합니다(my_storage_status). 화면은 그리기만 합니다.
+   ⚠ 스토어 앱 안에서는 스토어 결제만 보입니다. 웹에서는 "앱에서 사실 수
+     있습니다" 로만 안내합니다(웹 결제는 아직 없습니다).
+   ⚠ 공용 CSS 를 안 건드리려고 여기에 다 적습니다(alias_buy 와 같은 모양).
+   ===================================================================== */
+.buywrap{padding:18px 16px 60px;max-width:520px;margin:0 auto}
+.buyhead{font-size:24px;font-weight:800;margin:0 0 6px}
+.buysub{color:#94A3B8;font-size:14px;line-height:1.7;margin:0 0 20px}
+.back{display:inline-block;margin:0 0 14px;font-size:14px;color:#94A3B8;text-decoration:none}
+
+.meter{padding:16px;border-radius:15px;margin:0 0 14px;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.13)}
+.meter .num{font-size:18px;font-weight:800;margin:0 0 10px}
+.bar{height:10px;border-radius:999px;background:rgba(255,255,255,.1);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:999px;background:#8FE3B0;width:0}
+.bar i.warn{background:#F2C94C}
+.bar i.over{background:#FF8A8A}
+.rows{margin:12px 0 0;font-size:13.5px;line-height:1.9}
+.rows .r{display:flex;justify-content:space-between;gap:10px}
+.rows .r span:last-child{opacity:.7;text-align:right}
+
+.over{margin:0 0 14px;padding:13px 15px;border-radius:12px;font-size:14px;line-height:1.75;
+  white-space:pre-line;word-break:keep-all;
+  background:rgba(255,90,90,.14);color:#FFB4B4;border:1px solid rgba(255,90,90,.4)}
+
+.sect{font-size:13px;font-weight:700;opacity:.65;margin:22px 2px 10px}
+.offer{padding:16px;border-radius:15px;margin:0 0 12px;white-space:pre-line;
+  font-size:14px;line-height:1.75;word-break:keep-all;
+  background:rgba(143,227,176,.08);border:1px solid rgba(143,227,176,.3)}
+.offer b{font-size:16.5px}
+.paybtn{width:100%;padding:16px 0;border-radius:14px;font-size:16px;font-weight:800;cursor:pointer;
+  background:rgba(143,227,176,.2);color:#8FE3B0;border:1px solid rgba(143,227,176,.45)}
+.paybtn:disabled{opacity:.45;cursor:default}
+.note{margin:18px 0 0;font-size:12.5px;line-height:1.8;color:#94A3B8;white-space:pre-line}
+.msg{display:none;margin:14px 0 0;padding:12px 14px;border-radius:11px;font-size:13.5px;line-height:1.6;
+  white-space:pre-line;background:rgba(255,90,90,.14);color:#FFB4B4}
+.msg.ok{background:rgba(143,227,176,.15);color:#8FE3B0}
+.msg.show{display:block}
+</style>
+</head>
+
+<body data-t-title="sgTitle">
+<div class="buywrap">
+
+  <a class="back" href="alias_me.html" id="back"></a>
+
+  <h1 class="buyhead" data-t="sgTitle"></h1>
+  <p class="buysub" data-t="sgSub"></p>
+
+  <div class="over" id="overBox" style="display:none"></div>
+
+  <div class="meter">
+    <div class="num" id="num">…</div>
+    <div class="bar"><i id="barFill"></i></div>
+    <div class="rows" id="rows"></div>
+  </div>
+
+  <div class="sect" data-t="sgBuyTtl"></div>
+  <div class="offer" id="offer"></div>
+  <button class="paybtn" id="buyBtn" style="display:none"></button>
+  <p class="note" id="webOnly" style="display:none" data-t="sgWebOnly"></p>
+
+  <div class="msg" id="msg"></div>
+
+  <p class="note" data-t="sgRules"></p>
+  <p class="note" id="storeNote" style="display:none" data-t="stNote"></p>
+
+</div>
+
+<script>
+function el(id){ return document.getElementById(id); }
+const PLATFORM = AL.platform();
+const IN_APP = (PLATFORM === 'android');   // ⚠ 아이폰은 App Store 결제를 붙인 뒤에
+
+function say(text, ok){
+  const m = el('msg');
+  m.textContent = text;
+  m.classList.toggle('ok', !!ok);
+  m.classList.add('show');
+}
+function hush(){ el('msg').classList.remove('show'); }
+
+async function paint(){
+  try {
+    const s = await AL.storageStatus();
+    const used = Number(s.used || 0), cap = Number(s.cap || 0);
+    el('num').textContent = AL.t('sgUsed', { used: AL.fmtBytes(used), cap: AL.fmtBytes(cap) });
+
+    const pct = cap ? Math.min(100, Math.round(used / cap * 100)) : 0;
+    const f = el('barFill');
+    f.style.width = pct + '%';
+    f.className = used > cap ? 'over' : (pct >= 85 ? 'warn' : '');
+
+    let html = '<div class="r"><span>' + AL.esc(AL.t('sgBase', { n: s.base_gb || 3 })) + '</span><span></span></div>';
+    const packs = Array.isArray(s.packs) ? s.packs : [];
+    if (packs.length) {
+      packs.forEach(function(p){
+        html += '<div class="r"><span>' +
+          AL.esc(AL.t('sgPack', { n: p.gb, when: AL.fmtDate(p.expires_at) })) + '</span><span></span></div>';
+      });
+    } else {
+      html += '<div class="r"><span>' + AL.esc(AL.t('sgNoPack')) + '</span><span></span></div>';
+    }
+    el('rows').innerHTML = html;
+
+    /* 넘쳤으면 — 언제 무엇이 지워지는지 먼저 보여줍니다 */
+    if (used > cap && s.delete_after) {
+      el('overBox').style.display = '';
+      el('overBox').textContent = AL.t('sgOver', {
+        over: AL.fmtBytes(used - cap), when: AL.fmtDate(s.delete_after) });
+    } else {
+      el('overBox').style.display = 'none';
+    }
+  } catch (e) {
+    console.error('[storage] 못 읽었습니다', e);
+    el('num').textContent = '';
+    say(AL.t('errGeneric', { msg: e.message || String(e) }));
+  }
+}
+
+function busy(on, key){
+  const b = el('buyBtn');
+  b.disabled = on;
+  b.textContent = on ? AL.t(key || 'stWait') : AL.t('sgBuyBtn');
+}
+
+/* 자바 → AL.onStoreEvent → 서버 확인 → 여기로 결과가 옵니다 */
+AL.onStoreDone = function(r){
+  busy(false);
+  if (r.ok && r.storageGb) {
+    say(AL.t('sgDone', { n: r.storageGb, when: AL.fmtDate(r.until) }), true);
+    paint();
+    return;
+  }
+  if (r.ok) { paint(); return; }     // 이용권 영수증이 늦게 도착한 경우
+  if (r.canceled) { say(AL.t('stCanceled')); return; }
+  if (r.pending)  { say(AL.t('sgPending'), true); return; }
+  say(AL.t('stFailed') + (r.error ? '\n(' + r.error + ')' : ''));
+};
+
+el('buyBtn').addEventListener('click', async function(){
+  hush();
+  busy(true, 'stWait');
+  try {
+    await AL.storeBuyStorage();
+    busy(true, 'stChecking');
+  } catch (e) {
+    busy(false);
+    say(e.code === 'store_not_ready' ? AL.t('sgWebOnly')
+      : AL.t('errGeneric', { msg: e.message || String(e) }));
+  }
+});
+
+(async function(){
+  AL.paintText();
+  AL.setBack('alias_me.html');
+  el('back').textContent = '‹ ' + AL.t('navMe');
+  if (!await AL.requireLogin()) return;
+
+  el('offer').textContent = AL.t('sgBuyDesc');
+  if (IN_APP) {
+    el('buyBtn').style.display = '';
+    el('buyBtn').textContent = AL.t('sgBuyBtn');
+    el('storeNote').style.display = '';
+  } else {
+    el('webOnly').style.display = '';
+  }
+  await paint();
+})();
+</script>
+</body>
+</html>

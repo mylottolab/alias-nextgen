@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>부름</title>
-<link rel="stylesheet" href="alias_common.css?v=20260927a">
-<link rel="stylesheet" href="alias_theme.css?v=20260927a">
+<link rel="stylesheet" href="alias_common.css?v=20260928a">
+<link rel="stylesheet" href="alias_theme.css?v=20260928a">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260927a"></script>
+<script src="alias_common.js?v=20260928a"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function(){
   if (typeof AL === "undefined" || typeof AL.t !== "function") {
@@ -246,6 +246,12 @@ function storeBusy(on, msgKey){
 /* 자바 → AL.onStoreEvent → 서버 확인 → 여기로 결과가 옵니다 */
 AL.onStoreDone = function(r){
   storeBusy(false);
+  /* 🔴 2026-09-28 — 앱을 다시 켤 때 못 끝낸 추가 용량 영수증이 이 화면으로
+     올 수 있습니다. 이용권 문구("undefined개월")로 보이지 않게 따로 알립니다. */
+  if (r.ok && r.storageGb) {
+    showOk(AL.t('sgDone', { n: r.storageGb, when: AL.fmtDate(r.until) }));
+    return;
+  }
   if (r.ok) {
     showOk(AL.t(r.already ? 'stDone' : 'stDone', { n: r.months || picked }));
     /* 이용권이 늘었으니 화면을 새로 그립니다. */
