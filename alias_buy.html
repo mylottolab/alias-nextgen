@@ -276,6 +276,7 @@ AL.onStoreDone = function(r){
     setTimeout(function(){ location.replace('alias_contacts.html'); }, 1800);
     return;
   }
+  if (r.cleared)  { showOk(AL.t('stCleared')); return; }   // 🔴 2026-09-27
   if (r.canceled) { showErr(AL.t('stCanceled')); return; }
   if (r.pending)  { showOk(AL.t('stPending')); return; }
   showErr(AL.t('stFailed') + (r.error ? '\n(' + r.error + ')' : ''));

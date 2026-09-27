@@ -944,10 +944,12 @@ AL.STR = {
   stDone:       { kr:'{n}개월이 더해졌습니다. 고맙습니다.',
                   en:'{n} months added. Thank you.' },
   stCanceled:   { kr:'결제를 그만두었습니다.', en:'Payment was cancelled.' },
+  stCleared:    { kr:'취소·환불된 결제를 정리했습니다. 이제 다시 사실 수 있습니다.',
+                  en:'A cancelled or refunded payment was cleared. You can buy again now.' },
   stPending:    { kr:'결제가 확정되면 이용권이 더해집니다. 잠시 기다려 주세요.',
                   en:'Your plan will be added once the payment clears.' },
-  stFailed:     { kr:'결제를 확인하지 못했습니다. 돈이 빠져나갔다면 고객센터로 알려주세요.',
-                  en:'We could not verify the payment. If you were charged, please contact us.' },
+  stFailed:     { kr:'결제를 확인하지 못했습니다. 돈이 빠져나갔다면 앱을 완전히 껐다 켜주세요. 한 번 더 확인합니다. 그래도 안 되면 고객센터로 알려주세요.',
+                  en:'We could not verify the payment. If you were charged, fully close and reopen the app and we will check again. If that does not help, please contact us.' },
   /* 🔴 2026-09-28 — 추가 용량 (1GB · 3개월 · 2,000원)
      ⚠ 값은 여기와 Play Console · 서버(alias-plan-google-verify) 세 곳이 같아야 합니다. */
   sgTitle:      { kr:'저장 공간', en:'Storage' },
@@ -4277,6 +4279,21 @@ AL.onStoreEvent = async function(ev){
       }),
     });
     var out = await res.json();
+
+    /* 🔴 2026-09-27 — 취소·환불된 영수증은 **정리만** 합니다.
+       서버가 구글에 물어 "취소됐다" 고 하면(consume: true) 아무것도 드리지 않고
+       영수증만 치웁니다. 안 치우면 구글이 "이미 보유한 아이템" 으로 여겨
+       **그 상품을 영영 다시 못 삽니다.** (2026-09-27 실제로 겪었습니다) */
+    if (out && out.consume) {
+      try {
+        if (window.AliasNative && typeof AliasNative.storeConsume === 'function') {
+          AliasNative.storeConsume(ev.a);
+        }
+      } catch (e) { console.warn('[store] 영수증 정리 실패', e); }
+      console.log('[store] 취소·환불된 영수증을 정리했습니다:', ev.sku);
+      if (AL.onStoreDone) AL.onStoreDone({ ok: false, cleared: true, sku: ev.sku });
+      return;
+    }
 
     if (!res.ok || !out.ok) {
       /* ⚠ 여기서 consume 하지 않습니다. 영수증을 살려두어야 다음에
