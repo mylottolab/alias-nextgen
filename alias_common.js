@@ -305,6 +305,11 @@ AL.STR = {
   /* 파일 */
   mdAttach:    { kr:'파일 붙이기', en:'Attach' },
   mdPhoto:     { kr:'사진 · 영상', en:'Photo or video' },
+  /* 🔴 2026-09-27 — 바로 찍어 올리기. 첨부 메뉴에만 씁니다.
+     ⚠ mdPhoto 는 대화 목록의 "사진 · 영상" 미리보기에도 쓰여서 그대로 둡니다. */
+  mdShootPhoto: { kr:'📷 사진 찍기', en:'📷 Take a photo' },
+  mdShootVideo: { kr:'🎥 영상 찍기 (30초 안쪽)', en:'🎥 Record a video (under 30s)' },
+  mdFromAlbum:  { kr:'🖼 사진 · 영상 (앨범에서)', en:'🖼 Photo or video (from album)' },
   mdFile:      { kr:'문서', en:'Document' },
   mdCompress:  { kr:'사진 줄이는 중…', en:'Shrinking photo…' },
   mdUploading: { kr:'올리는 중…', en:'Uploading…' },

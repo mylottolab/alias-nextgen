@@ -4,21 +4,21 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>부름</title>
-<link rel="stylesheet" href="alias_common.css?v=20260927a">
-<link rel="stylesheet" href="alias_theme.css?v=20260927a">
+<link rel="stylesheet" href="alias_common.css?v=20260928a">
+<link rel="stylesheet" href="alias_theme.css?v=20260928a">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260927a"></script>
-<script src="alias_media.js?v=20260927a"></script>
-<script src="alias_extras.js?v=20260927a"></script>
-<script src="alias_room.js?v=20260927a"></script>
+<script src="alias_common.js?v=20260928a"></script>
+<script src="alias_media.js?v=20260928a"></script>
+<script src="alias_extras.js?v=20260928a"></script>
+<script src="alias_room.js?v=20260928a"></script>
 <!-- 🔴 2026-09-20 — 같이 듣기를 회사 곡으로 제한합니다.
      ⚠ 반드시 alias_room.js **다음**이어야 합니다. 순서가 뒤바뀌면
        옛 것(음원 올리기)이 이깁니다. -->
-<script src="alias_music.js?v=20260927a"></script>
-<script src="alias_call.js?v=20260927a"></script>
-<script src="alias_e2ee.js?v=20260927a"></script>
-<script src="alias_gcall.js?v=20260927a"></script>
+<script src="alias_music.js?v=20260928a"></script>
+<script src="alias_call.js?v=20260928a"></script>
+<script src="alias_e2ee.js?v=20260928a"></script>
+<script src="alias_gcall.js?v=20260928a"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -98,6 +98,13 @@ document.addEventListener("DOMContentLoaded", function(){
     <input type="file" id="pick" style="display:none"
            accept="image/*,video/*" multiple>
     <input type="file" id="pickAny" style="display:none" multiple>
+    <!-- 🔴 2026-09-27 — 바로 찍어 올리기
+         capture 가 있으면 안드로이드 앱(Capacitor)이 카메라를 바로 엽니다.
+         ⚠ 카메라 권한은 영상통화 때문에 이미 있습니다.
+         ⚠ PC 브라우저는 capture 를 무시하고 파일 고르기를 엽니다.
+           그래서 이 두 단추는 폰에서만 보입니다(아래 SHOOT_OK). -->
+    <input type="file" id="camPhoto" style="display:none" accept="image/*" capture="environment">
+    <input type="file" id="camVideo" style="display:none" accept="video/*" capture="environment">
     <textarea id="input" rows="1" data-t-ph="chatPlace"></textarea>
     <button class="send" id="send" data-t-aria="ariaSend" disabled>↑</button>
   </div>
@@ -112,7 +119,9 @@ document.addEventListener("DOMContentLoaded", function(){
 <div class="sheet-bg" id="atBg"></div>
 <div class="sheet" id="atSheet" style="display:none">
   <div class="grip"></div>
-  <button id="atPhoto" data-t="mdPhoto"></button>
+  <button id="atCamPhoto" data-t="mdShootPhoto" style="display:none"></button>
+  <button id="atCamVideo" data-t="mdShootVideo" style="display:none"></button>
+  <button id="atPhoto" data-t="mdFromAlbum"></button>
   <button id="atFile" data-t="mdFile"></button>
   <button id="atVoice" data-t="vcRecord"></button>
   <button id="atEmoji" data-t="emPopular"></button>
@@ -1447,6 +1456,18 @@ document.getElementById('atBg').addEventListener('click', function(){ showAttach
 document.getElementById('atPhoto').addEventListener('click', function(){
   showAttach(false); document.getElementById('pick').click();
 });
+/* 🔴 2026-09-27 — 바로 찍어 올리기 (폰에서만 보입니다) */
+const SHOOT_OK = /Android|iPhone|iPad/i.test(navigator.userAgent);
+if (SHOOT_OK) {
+  document.getElementById('atCamPhoto').style.display = '';
+  document.getElementById('atCamVideo').style.display = '';
+}
+document.getElementById('atCamPhoto').addEventListener('click', function(){
+  showAttach(false); document.getElementById('camPhoto').click();
+});
+document.getElementById('atCamVideo').addEventListener('click', function(){
+  showAttach(false); document.getElementById('camVideo').click();
+});
 document.getElementById('atFile').addEventListener('click', function(){
   showAttach(false); document.getElementById('pickAny').click();
 });
@@ -1456,7 +1477,7 @@ document.getElementById('atVoice').addEventListener('click', function(){
 document.getElementById('atEmoji').addEventListener('click', function(){
   showAttach(false); toggleEmoji();
 });
-['pick', 'pickAny'].forEach(function(id){
+['pick', 'pickAny', 'camPhoto', 'camVideo'].forEach(function(id){
   document.getElementById(id).addEventListener('change', function(){
     const files = Array.from(this.files || []);
     this.value = '';                    // 같은 파일을 다시 고를 수 있게 비웁니다
