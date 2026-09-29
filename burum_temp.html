@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>부름 — 1회용 임시연락처</title>
+<link rel="stylesheet" href="alias_common.css?v=20260928b">
+<link rel="stylesheet" href="alias_theme.css?v=20260928b">
+<script src="alias_config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="alias_common.js?v=20260928b"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<!--
+  ═══════════════════════════════════════════════════════════════
+  2026-09-30 신설 — 부름 1회용 임시연락처 (주인)
+    burum_temp.html            목록 · [새로 만들기]
+    burum_temp.html?new=1      만들기 (이름표 · 기한 · 한 사람만/여러 사람 · 내 얼굴)
+    burum_temp.html?id=…       한 장 (QR · 코드 · 보내기 · 크게 · 명함 · 연락 온 분 · 끊기)
+    burum_temp.html?thread=…   알림을 눌러 왔을 때 → 그 대화방으로
+
+  🔴 규칙은 DB 가 지킵니다 (burum_temp.sql): 이용권 · 한도 · 한 사람만 · 끝나면 거절
+  ⚠ 이 화면은 alias_common.js 의 사전을 고치지 않고 자기 글씨를 따로 가집니다.
+    심사 중에 공용 파일을 건드리지 않으려는 것입니다.
+  ⚠ 앱 안의 인쇄 · 보내기는 AliasNative.printPage · shareText (부름 자바에 이미 있음)
+  ═══════════════════════════════════════════════════════════════
+-->
+<script>
+document.addEventListener('DOMContentLoaded', function(){ if (window.AL && AL.bootTheme) AL.bootTheme(); });
+</script>
+<style>
+.view{ display:none; } .view.show{ display:block; }
+.tmp-row{ display:block; width:100%; text-align:left; background:var(--raise); border:1px solid var(--line); border-radius:16px;
+          padding:14px 15px; margin-bottom:10px; color:var(--text); font-family:inherit; cursor:pointer; }
+.tmp-row .t{ display:flex; align-items:center; gap:8px; }
+.tmp-row .n{ flex:1; font-weight:700; font-size:15px; }
+.tmp-row .c{ font-family:ui-monospace,monospace; font-size:12.5px; color:var(--dim); letter-spacing:1px; }
+.tmp-row .m{ font-size:12.5px; color:var(--dim); margin-top:4px; }
+.tmp-row.dead{ opacity:.5; }
+.tmp-badge{ min-width:20px; height:20px; border-radius:10px; background:var(--steel); color:var(--ink); font-size:11px; font-weight:800;
+            display:inline-flex; align-items:center; justify-content:center; padding:0 6px; }
+.tmp-bar{ height:5px; border-radius:99px; background:var(--raise2); overflow:hidden; margin-top:10px; }
+.tmp-bar i{ display:block; height:5px; background:var(--steel); }
+.tmp-empty{ background:var(--raise); border:1px dashed var(--line); border-radius:16px; padding:20px 16px; text-align:center;
+            font-size:13.5px; line-height:1.7; color:var(--dim); }
+.tmp-pills{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+.tmp-pill{ min-height:46px; border-radius:12px; border:1px solid var(--line); background:var(--raise); color:var(--dim); font-family:inherit; font-size:15px; font-weight:600; cursor:pointer; }
+.tmp-pill.on{ border:2px solid var(--steel); color:var(--text); background:var(--raise2); font-weight:800; }
+.tmp-who{ display:grid; gap:8px; }
+.tmp-who button{ text-align:left; border-radius:14px; border:1px solid var(--line); background:var(--raise); padding:12px 15px; font-family:inherit; color:var(--text); cursor:pointer; }
+.tmp-who button.on{ border:2px solid var(--steel); background:var(--raise2); }
+.tmp-who b{ display:block; font-size:15px; } .tmp-who span{ font-size:12.5px; color:var(--dim); }
+.tmp-card{ background:#F2E9D6; color:#2A2418; border-radius:20px; padding:18px; text-align:center; }
+.tmp-card .hd{ display:flex; align-items:center; gap:8px; margin-bottom:10px; text-align:left; }
+.tmp-card .hd b{ flex:1; font-size:15px; }
+.tmp-chip{ font-size:11.5px; font-weight:700; border-radius:99px; padding:3px 10px; background:#E4D6B8; color:#5A4A2A; }
+.tmp-qr{ width:200px; height:200px; margin:0 auto; background:#fff; padding:8px; border-radius:10px; box-sizing:content-box; }
+.tmp-qr img, .tmp-qr canvas{ width:200px !important; height:200px !important; }
+.tmp-code{ font-family:ui-monospace,'SF Mono',monospace; font-size:28px; font-weight:800; letter-spacing:3px; margin-top:4px; }
+.tmp-acts{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:12px 0; }
+.tmp-acts button{ min-height:70px; border-radius:14px; border:1px solid var(--line); background:var(--raise); color:var(--text); font-family:inherit;
+                  font-size:13px; font-weight:600; cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; }
+.tmp-acts .i{ font-size:19px; }
+.tmp-note{ font-size:12.5px; line-height:1.65; color:var(--dim); background:var(--raise); border-radius:14px; padding:12px 14px; }
+.tmp-sect{ font-size:13px; font-weight:700; margin:18px 2px 8px; }
+.tmp-conv{ display:flex; align-items:center; gap:10px; background:var(--raise); border:1px solid var(--line); border-radius:14px; padding:13px 14px;
+           margin-bottom:8px; color:var(--text); text-decoration:none; }
+.tmp-conv .x{ flex:1; } .tmp-conv b{ display:block; font-size:14px; } .tmp-conv span{ font-size:12px; color:var(--dim); }
+.tmp-cut{ width:100%; margin-top:14px; min-height:50px; border-radius:14px; border:1px solid rgba(217,106,106,.5); background:rgba(217,106,106,.1);
+          color:var(--bad); font-family:inherit; font-size:15px; font-weight:700; cursor:pointer; }
+.tmp-ended{ background:var(--raise2); border-radius:14px; padding:14px; text-align:center; color:var(--dim); font-size:13.5px; margin-top:12px; }
+.tmp-big{ display:none; position:fixed; inset:0; background:#fff; z-index:50; flex-direction:column; align-items:center; justify-content:center; gap:16px; }
+.tmp-big.show{ display:flex; }
+.tmp-big .tmp-code{ color:#1B2433; font-size:36px; }
+.tmp-big button{ position:absolute; top:calc(16px + env(safe-area-inset-top,0px)); right:16px; min-width:48px; min-height:48px; border:none; border-radius:24px; background:#E4E8EE; font-size:20px; cursor:pointer; }
+.tmp-pick{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:55; align-items:flex-end; justify-content:center; }
+.tmp-pick.show{ display:flex; }
+.tmp-pick .box{ background:var(--raise); width:100%; max-width:430px; border-radius:20px 20px 0 0; padding:20px 18px calc(20px + env(safe-area-inset-bottom,0px)); }
+.tmp-pick h3{ margin:0 0 4px; font-size:17px; } .tmp-pick p{ font-size:12.5px; color:var(--dim); margin:0 0 14px; line-height:1.6; }
+.tmp-pick .opt{ display:block; width:100%; text-align:left; background:var(--raise2); border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:8px; font-family:inherit; color:var(--text); cursor:pointer; }
+.tmp-pick .opt b{ display:block; font-size:15px; } .tmp-pick .opt span{ font-size:12.5px; color:var(--dim); }
+.tmp-toast{ position:fixed; left:50%; bottom:calc(28px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%); background:#0B1118; color:#fff;
+            font-size:13px; font-weight:600; padding:10px 16px; border-radius:20px; display:none; z-index:60; max-width:88vw; text-align:center; line-height:1.5; }
+.tmp-toast.show{ display:block; }
+/* 명함 인쇄 — A4 에 10장(2×5) 또는 15장(3×5) · 점선 */
+.tmp-sheet{ display:none; }
+@media print{
+  @page{ size:A4; margin:10mm; }
+  html, body{ background:#fff !important; margin:0 !important; padding:0 !important; }
+  body > *:not(.tmp-sheet){ display:none !important; }
+  .tmp-sheet{ display:grid; grid-template-columns:1fr 1fr; width:100%; }
+  .tmp-sheet.n15{ grid-template-columns:1fr 1fr 1fr; }
+  .pc{ aspect-ratio:9/5; box-sizing:border-box; border:0.3mm dashed #B5B5B5; margin:-0.15mm; display:flex; align-items:center; gap:4%; padding:4.5%;
+       font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif; color:#1B2433; break-inside:avoid; }
+  .pc .q{ height:78%; aspect-ratio:1/1; flex-shrink:0; } .pc .q img{ width:100%; height:100%; display:block; image-rendering:pixelated; }
+  .pc .t{ display:flex; flex-direction:column; gap:1.3mm; min-width:0; }
+  .pc .d{ align-self:flex-start; font-size:6.5pt; font-weight:700; background:#E4D6B8; color:#5A4A2A; border-radius:6pt; padding:0.4mm 1.8mm; }
+  .pc .h{ font-size:11pt; font-weight:800; line-height:1.22; } .pc .s{ font-size:6pt; line-height:1.4; color:#4A4234; }
+  .pc .u{ font-size:5.5pt; color:#5C6664; } .pc .c{ font-family:ui-monospace,monospace; font-size:11pt; font-weight:800; letter-spacing:1pt; }
+  .n15 .pc{ gap:3.5%; padding:4%; } .n15 .pc .q{ height:82%; } .n15 .pc .s{ display:none; }
+  .n15 .pc .h{ font-size:8pt; } .n15 .pc .d{ font-size:5pt; } .n15 .pc .u{ font-size:4.3pt; } .n15 .pc .c{ font-size:8.5pt; }
+  .pnote{ grid-column:1/-1; text-align:center; font-size:7pt; color:#8A8F8E; padding-top:3mm; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="tophead" style="margin-bottom:10px"><a class="backlink" href="alias_contacts.html" id="backLink">‹ 연락처</a><span></span></div>
+
+  <!-- 목록 -->
+  <section class="view" id="vList">
+    <h1 class="h2" data-x="tList"></h1>
+    <p class="lede" data-x="sList"></p>
+    <button type="button" class="btn" id="goNew" data-x="bNew"></button>
+    <div id="list" style="margin-top:14px;"></div>
+  </section>
+
+  <!-- 만들기 -->
+  <section class="view" id="vNew">
+    <h1 class="h2" data-x="tNew"></h1>
+    <p class="lede" data-x="sNew"></p>
+    <div class="field"><label for="label" data-x="lLabel"></label><input id="label" maxlength="40" autocomplete="off"><p class="hint" data-x="hLabel"></p></div>
+    <div class="field"><label data-x="lDays"></label>
+      <div class="tmp-pills" id="days"><button type="button" class="tmp-pill" data-d="1"></button><button type="button" class="tmp-pill" data-d="3"></button><button type="button" class="tmp-pill on" data-d="7"></button><button type="button" class="tmp-pill" data-d="30"></button></div>
+    </div>
+    <div class="field"><label data-x="lWho"></label>
+      <div class="tmp-who" id="who">
+        <button type="button" class="on" data-s="1"><b data-x="wOne"></b><span data-x="wOneD"></span></button>
+        <button type="button" data-s="0"><b data-x="wMany"></b><span data-x="wManyD"></span></button>
+      </div>
+    </div>
+    <div class="field"><label data-x="lFace"></label><button type="button" class="btn ghost" id="face" style="margin-top:0;text-align:left"></button></div>
+    <button type="button" class="btn" id="makeBtn" data-x="bMake"></button>
+    <div class="err" id="makeErr"></div>
+  </section>
+
+  <!-- 한 장 -->
+  <section class="view" id="vOne">
+    <div class="tmp-card">
+      <div class="hd"><span class="tmp-chip" id="oTag"></span><b id="oName"></b></div>
+      <div class="tmp-qr" id="qr"></div>
+      <div style="font-size:12px;color:#6B6154;margin-top:10px;" data-x="codeLb"></div>
+      <div class="tmp-code" id="oCode"></div>
+      <div style="font-size:13px;color:#4A4234;margin-top:6px;" id="oLeft"></div>
+    </div>
+    <div id="liveActs">
+      <div class="tmp-acts">
+        <button type="button" id="aSend"><span class="i">🔗</span><span data-x="aSend"></span></button>
+        <button type="button" id="aBig"><span class="i">⤢</span><span data-x="aBig"></span></button>
+        <button type="button" id="aPrint"><span class="i">🖨</span><span data-x="aPrint"></span></button>
+      </div>
+      <div class="tmp-note" data-x="honest"></div>
+    </div>
+    <div class="tmp-ended" id="endedBox" style="display:none;" data-x="endedBox"></div>
+    <div class="tmp-sect" data-x="convT"></div>
+    <div id="convs"></div>
+    <button type="button" class="tmp-cut" id="cutBtn" data-x="bCut"></button>
+    <div class="err" id="oneErr"></div>
+  </section>
+</div>
+
+<div class="tmp-big" id="big" role="dialog"><button type="button" id="bigX" aria-label="닫기">✕</button><div id="bigQr"></div><div class="tmp-code" id="bigCode"></div></div>
+<div class="tmp-pick" id="pick" role="dialog"><div class="box">
+  <h3 data-x="pkT"></h3><p data-x="pkD"></p>
+  <button type="button" class="opt" data-n="10"><b data-x="pk10"></b><span data-x="pk10d"></span></button>
+  <button type="button" class="opt" data-n="15"><b data-x="pk15"></b><span data-x="pk15d"></span></button>
+  <button type="button" class="btn ghost" id="pickNo" data-x="cancel"></button>
+</div></div>
+<div class="tmp-sheet" id="sheet" aria-hidden="true"></div>
+<div id="qrTmp" style="position:absolute;left:-9999px;top:0;" aria-hidden="true"></div>
+<div class="tmp-toast" id="toast"></div>
+
+<script>
+const X = {
+  kr: {
+    tList:'1회용 임시연락처', sList:'처음 만난 사람에게 번호 대신 건네세요. 상대는 앱 없이 연락하고, 마음이 맞으면 부름으로 정식으로 이을 수 있습니다.',
+    bNew:'＋ 새 임시연락처 만들기', empty:'아직 만든 임시연락처가 없습니다.\n중고거래 · 첫 만남 · 매물 안내처럼 잠깐 쓸 연락처를 만들어 보세요.',
+    tNew:'임시연락처 만들기', sNew:'정한 날이 지나거나 [지금 끊기]를 누르면 더는 연락이 오지 않습니다. 서로의 번호는 드러나지 않습니다.',
+    lLabel:'나만 보는 이름표', hLabel:'상대에게는 보이지 않습니다.', phLabel:'예) 당근 자전거 구매자',
+    lDays:'얼마나 쓸까요', d:'{n}일', lWho:'누가 연락할 수 있나요',
+    wOne:'한 사람만', wOneD:'처음 연락한 분만 이어집니다. 중고거래 · 첫 만남에', wMany:'여러 사람', wManyD:'QR을 본 누구나. 매물 안내판 · 행사 명함에',
+    lFace:'이 연락처로 쓸 내 얼굴', bMake:'만들기', making:'만드는 중…',
+    errPlan:'임시연락처는 이용권이 있어야 만들 수 있습니다.', errLive:'살아 있는 임시연락처가 {n}장입니다. 다 쓴 것을 끊으시면 새로 만들 수 있습니다.',
+    errDay:'오늘은 {n}장까지 만들 수 있습니다. 내일 다시 만들어주세요.', errGen:'만들지 못했습니다. 잠시 뒤 다시 해주세요.', errFace:'얼굴(별칭)을 먼저 골라주세요.',
+    one:'한 사람만', many:'여러 사람', left:'{n}일 남음 · {d}까지', leftH:'{n}시간 남음', ended:'끝남', noLabel:'이름표 없음',
+    people:'연락 {n}명', codeLb:'QR이 안 되면 burum.kr/c 에서 코드를 넣으세요',
+    aSend:'링크 보내기', aBig:'크게 보여주기', aPrint:'명함 인쇄',
+    honest:'상대는 앱 없이 연락할 수 있고, 서로의 번호는 끝까지 드러나지 않습니다. 다만 상대가 대화를 캡처하는 것까지 막을 수는 없습니다.',
+    endedBox:'이 임시연락처는 끝났습니다. 더는 연락이 오지 않습니다.', convT:'연락 온 분', noConv:'아직 연락 온 분이 없습니다.',
+    open:'진행 중', closed:'끝난 대화', unnamed:'이름 없는 분', bCut:'✂ 지금 끊기',
+    cutAsk:'지금 끊을까요? 끊으면 이 연락처로는 더는 연락이 오지 않습니다. 되돌릴 수 없습니다.', cutDone:'끊었습니다.', cutFail:'끊지 못했습니다. 잠시 뒤 다시 눌러주세요.',
+    shareText:'번호 없이 연락하실 수 있어요 ({d}까지)\n{url}\n코드 {c}', copied:'링크를 복사했습니다. 카카오톡이나 문자에 붙여넣어 보내세요.',
+    pkT:'A4 한 장에 몇 장 찍을까요?', pkD:'같은 명함이 점선과 함께 찍힙니다. 인쇄 창에서 "PDF로 저장"도 됩니다.',
+    pk10:'10장 · 명함 크기', pk10d:'약 9 × 5cm · 두 줄 × 다섯 칸', pk15:'15장 · 작은 크기', pk15d:'약 6.3 × 3.5cm · 세 줄 × 다섯 칸', cancel:'취소',
+    pDate:'{d}까지', pHead:'번호 없이<br>연락하세요', pDesc:'QR을 찍으면 바로 대화. 앱 설치는 필요 없습니다.', pUrl:'안 찍히면 burum.kr/c 에서 코드 입력',
+    pCut:'✂ 점선을 따라 잘라 쓰세요. 같은 명함 {n}장입니다.',
+  },
+  en: {
+    tList:'One-time contact cards', sList:'Hand one out instead of your number. They reach you without the app — and if it clicks, you can link up on Burum.',
+    bNew:'＋ New one-time card', empty:'No cards yet.\nMake one for a deal, a first meeting or a listing sign.',
+    tNew:'New one-time card', sNew:'It stops working on the date you pick or when you cut it off. Neither side sees a phone number.',
+    lLabel:'Private label', hLabel:'Only you see this.', phLabel:'e.g. Bike buyer', lDays:'How long?', d:'{n}d', lWho:'Who can reach you?',
+    wOne:'One person', wOneD:'Only the first person who reaches you', wMany:'Anyone', wManyD:'Anyone with the QR — for signs and event cards',
+    lFace:'Face to use for this card', bMake:'Create', making:'Creating…',
+    errPlan:'You need a plan to create cards.', errLive:'You have {n} active cards. Cut some off to create more.',
+    errDay:'You can create {n} per day. Try again tomorrow.', errGen:'Could not create it. Please try again.', errFace:'Pick a face first.',
+    one:'One person', many:'Anyone', left:'{n} days left · until {d}', leftH:'{n} hours left', ended:'Ended', noLabel:'No label',
+    people:'{n} people', codeLb:'If the QR fails, enter the code at burum.kr/c',
+    aSend:'Send link', aBig:'Show large', aPrint:'Print cards',
+    honest:'They can reach you without the app and neither number is shown — but screenshots cannot be prevented.',
+    endedBox:'This card has ended.', convT:'People who reached you', noConv:'No one yet.',
+    open:'Active', closed:'Closed', unnamed:'Unnamed', bCut:'✂ Cut off now',
+    cutAsk:'Cut off now? No one can reach you with this card afterwards.', cutDone:'Cut off.', cutFail:'Could not cut it off. Try again.',
+    shareText:'You can reach me without my number (until {d})\n{url}\nCode {c}', copied:'Link copied. Paste it into a message.',
+    pkT:'How many per A4 sheet?', pkD:'Identical cards with dotted cut lines. You can also Save as PDF.',
+    pk10:'10 · card size', pk10d:'about 9 × 5 cm', pk15:'15 · small', pk15d:'about 6.3 × 3.5 cm', cancel:'Cancel',
+    pDate:'until {d}', pHead:'Reach me<br>without my number', pDesc:'Scan to chat. No app needed.', pUrl:'Or enter the code at burum.kr/c',
+    pCut:'✂ Cut along the dotted lines — {n} identical cards.',
+  },
+};
+const LG = (window.AL && AL.lang === 'en') ? 'en' : 'kr';
+const T = (k, v) => { let s = (X[LG][k] ?? X.kr[k] ?? k); if (v) Object.keys(v).forEach((z) => { s = s.split('{' + z + '}').join(v[z]); }); return s; };
+const el = (id) => document.getElementById(id);
+const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtD = (iso) => new Date(iso).toLocaleDateString(LG === 'en' ? 'en-US' : 'ko-KR', { month:'long', day:'numeric' });
+const fmtCode = (c) => c ? c.slice(0, 3) + ' · ' + c.slice(3) : '';
+const link = (tok) => 'https://burum.kr/burum_t.html?t=' + encodeURIComponent(tok);
+const alive = (c) => !c.ended_at && new Date(c.expires_at) > new Date();
+function toast(m){ const t = el('toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 3200); }
+function leftText(c){
+  if (!alive(c)) return T('ended');
+  const ms = new Date(c.expires_at) - new Date();
+  return ms < 86400000 ? T('leftH', { n: Math.max(1, Math.ceil(ms / 3600000)) }) : T('left', { n: Math.ceil(ms / 86400000), d: fmtD(c.expires_at) });
+}
+function paintText(){
+  document.querySelectorAll('[data-x]').forEach((n) => { n.textContent = T(n.dataset.x); });
+  el('label').placeholder = T('phLabel');
+  document.querySelectorAll('#days .tmp-pill').forEach((b) => { b.textContent = T('d', { n: b.dataset.d }); });
+}
+function show(v){ ['vList', 'vNew', 'vOne'].forEach((x) => el(x).classList.toggle('show', x === v)); window.scrollTo(0, 0); }
+
+let cards = [], cur = null, days = 7, single = true, face = null;
+
+async function loadCards(){ const r = await AL.sb.rpc('my_temp_cards'); if (r.error) throw r.error; cards = r.data || []; }
+
+function paintList(){
+  if (!cards.length) { el('list').innerHTML = '<div class="tmp-empty" style="white-space:pre-line">' + esc(T('empty')) + '</div>'; return; }
+  el('list').innerHTML = cards.map((c, i) => {
+    const pct = alive(c) ? Math.max(3, Math.min(100, Math.round((new Date(c.expires_at) - new Date()) / (new Date(c.expires_at) - new Date(c.created_at)) * 100))) : 100;
+    return '<button type="button" class="tmp-row' + (alive(c) ? '' : ' dead') + '" data-i="' + i + '"><div class="t"><span class="n">' + esc(c.label || T('noLabel')) + '</span>' +
+      (c.unread ? '<span class="tmp-badge">' + c.unread + '</span>' : '') + '<span class="c">' + esc(fmtCode(c.code)) + '</span></div>' +
+      '<div class="m">' + esc((c.single_person ? T('one') : T('many')) + ' · ' + T('people', { n: c.people || 0 }) + ' · ' + leftText(c)) + '</div>' +
+      '<div class="tmp-bar"><i style="width:' + pct + '%"></i></div></button>';
+  }).join('');
+}
+el('list').addEventListener('click', (e) => { const b = e.target.closest('.tmp-row'); if (!b) return; const c = cards[+b.dataset.i]; history.pushState(null, '', '?id=' + c.id); openOne(c); });
+el('goNew').addEventListener('click', () => { history.pushState(null, '', '?new=1'); openNew(); });
+
+/* ── 만들기 ── */
+function paintNew(){
+  document.querySelectorAll('#days .tmp-pill').forEach((b) => b.classList.toggle('on', +b.dataset.d === days));
+  document.querySelectorAll('#who button').forEach((b) => b.classList.toggle('on', (b.dataset.s === '1') === single));
+  el('face').textContent = face ? face.display_name + ' ›' : T('errFace');
+}
+async function openNew(){
+  el('makeErr').classList.remove('show');
+  if (!face) { try { const a = await AL.loadAliases(); face = a.filter((x) => x.is_default)[0] || a[0] || null; } catch (e) {} }
+  paintNew(); show('vNew');
+}
+el('days').addEventListener('click', (e) => { const b = e.target.closest('.tmp-pill'); if (!b) return; days = +b.dataset.d; paintNew(); });
+el('who').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; single = b.dataset.s === '1'; paintNew(); });
+el('face').addEventListener('click', async () => { const p = await AL.pickAlias({ currentId: face ? face.id : null }); if (p) { face = p; paintNew(); } });
+el('makeBtn').addEventListener('click', async () => {
+  const er = el('makeErr'); er.classList.remove('show');
+  if (!face) { er.textContent = T('errFace'); er.classList.add('show'); return; }
+  const b = el('makeBtn'); b.disabled = true; b.textContent = T('making');
+  try {
+    const r = await AL.sb.rpc('create_temp_card', { p_label: el('label').value.trim(), p_days: days, p_single: single, p_persona: face.id });
+    if (r.error) throw r.error;
+    el('label').value = '';
+    await loadCards();
+    const c = cards.find((x) => x.id === r.data.id);
+    history.replaceState(null, '', '?id=' + r.data.id);
+    if (c) openOne(c);
+  } catch (e) {
+    const s = String(e.message || e), n = (s.match(/:(\d+)/) || [])[1];
+    if (s.indexOf('plan_required') >= 0 && AL.needPlan) { AL.needPlan(); }
+    er.textContent = s.indexOf('plan_required') >= 0 ? T('errPlan') : s.indexOf('limit_live') >= 0 ? T('errLive', { n })
+                   : s.indexOf('limit_day') >= 0 ? T('errDay', { n }) : T('errGen');
+    er.classList.add('show');
+  } finally { b.disabled = false; b.textContent = T('bMake'); }
+});
+
+/* ── 한 장 ── */
+function drawQr(box, text, size){ box.innerHTML = ''; new QRCode(box, { text, width: size, height: size, correctLevel: QRCode.CorrectLevel.M }); }
+async function openOne(c){
+  cur = c;
+  el('oTag').textContent = c.single_person ? T('one') : T('many');
+  el('oName').textContent = c.label || T('noLabel');
+  el('oCode').textContent = fmtCode(c.code);
+  el('oLeft').textContent = leftText(c);
+  const live = alive(c);
+  el('liveActs').style.display = live ? '' : 'none';
+  el('endedBox').style.display = live ? 'none' : '';
+  el('cutBtn').style.display = live ? '' : 'none';
+  el('qr').style.opacity = live ? '1' : '.25';
+  drawQr(el('qr'), link(c.token), 200);
+  el('oneErr').classList.remove('show');
+  show('vOne');
+  await loadConvs(c);
+  clearInterval(openOne._t);
+  if (live) openOne._t = setInterval(() => { if (el('vOne').classList.contains('show') && cur && cur.id === c.id && !document.hidden) loadConvs(c); }, 10000);
+}
+async function loadConvs(c){
+  try {
+    const { data } = await AL.sb.from('temp_threads').select('id, visitor_name, status, last_activity_at, owner_read_at')
+      .eq('card_id', c.id).order('last_activity_at', { ascending: false });
+    const list = data || [];
+    el('convs').innerHTML = list.length ? list.map((t) =>
+      '<a class="tmp-conv" href="burum_temp_chat.html?thread=' + encodeURIComponent(t.id) + '"><span>💬</span><span class="x"><b>' + esc(t.visitor_name || T('unnamed')) +
+      '</b><span>' + esc((t.status === 'open' ? T('open') : T('closed')) + ' · ' + AL.fmtDateTime(t.last_activity_at)) + '</span></span><span>›</span></a>').join('')
+      : '<div class="tmp-empty">' + esc(T('noConv')) + '</div>';
+  } catch (e) { console.warn('[temp] 연락 온 분을 못 읽었습니다', e); }
+}
+el('aSend').addEventListener('click', async () => {
+  if (!cur) return;
+  const text = T('shareText', { d: fmtD(cur.expires_at), url: link(cur.token), c: fmtCode(cur.code) });
+  if (window.AliasNative && typeof AliasNative.shareText === 'function') { AliasNative.shareText(text, T('tList')); return; }
+  if (navigator.share) { try { await navigator.share({ text }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+  try { await navigator.clipboard.writeText(text); toast(T('copied')); } catch (e) { prompt('', text); }
+});
+el('aBig').addEventListener('click', () => { if (!cur) return; drawQr(el('bigQr'), link(cur.token), Math.min(340, innerWidth - 60)); el('bigCode').textContent = fmtCode(cur.code); el('big').classList.add('show'); });
+el('bigX').addEventListener('click', () => el('big').classList.remove('show'));
+el('aPrint').addEventListener('click', () => { if (cur) el('pick').classList.add('show'); });
+el('pickNo').addEventListener('click', () => el('pick').classList.remove('show'));
+el('pick').addEventListener('click', (e) => {
+  if (e.target === el('pick')) { el('pick').classList.remove('show'); return; }
+  const o = e.target.closest('.opt'); if (!o || !cur) return;
+  el('pick').classList.remove('show');
+  const n = +o.dataset.n;
+  drawQr(el('qrTmp'), link(cur.token), 480);
+  const cv = el('qrTmp').querySelector('canvas');
+  const src = cv ? cv.toDataURL('image/png') : ((el('qrTmp').querySelector('img') || {}).src || '');
+  const one = '<div class="pc"><div class="q"><img alt="" src="' + src + '"></div><div class="t"><span class="d">' + esc(T('pDate', { d: fmtD(cur.expires_at) })) +
+    '</span><div class="h">' + T('pHead') + '</div><div class="s">' + esc(T('pDesc')) + '</div><div class="u">' + esc(T('pUrl')) + '</div><div class="c">' + esc(fmtCode(cur.code)) + '</div></div></div>';
+  el('sheet').className = 'tmp-sheet' + (n === 15 ? ' n15' : '');
+  el('sheet').innerHTML = one.repeat(n) + '<div class="pnote">' + esc(T('pCut', { n })) + '</div>';
+  setTimeout(() => { if (window.AliasNative && typeof AliasNative.printPage === 'function') AliasNative.printPage('Burum ' + cur.code); else window.print(); }, 300);
+});
+el('cutBtn').addEventListener('click', async () => {
+  if (!cur || !confirm(T('cutAsk'))) return;
+  const r = await AL.sb.rpc('end_temp_card', { p_id: cur.id });
+  if (r.error || !r.data) { el('oneErr').textContent = T('cutFail'); el('oneErr').classList.add('show'); return; }
+  toast(T('cutDone')); await loadCards(); const c = cards.find((x) => x.id === cur.id); if (c) openOne(c);
+});
+
+function route(){
+  const p = new URLSearchParams(location.search);
+  if (p.get('thread')) { location.replace('burum_temp_chat.html?thread=' + encodeURIComponent(p.get('thread'))); return; }
+  if (p.get('new')) return openNew();
+  const c = p.get('id') ? cards.find((x) => x.id === p.get('id')) : null;
+  if (c) return openOne(c);
+  paintList(); show('vList');
+}
+window.addEventListener('popstate', route);
+el('backLink').addEventListener('click', (e) => {
+  if (el('vList').classList.contains('show')) return;
+  e.preventDefault(); history.pushState(null, '', location.pathname); loadCards().then(() => { paintList(); show('vList'); });
+});
+
+(async function(){
+  paintText();
+  if (AL.setBack) AL.setBack('alias_contacts.html');
+  const me = await AL.requireLogin(); if (!me) return;
+  try { await loadCards(); } catch (e) { console.warn('[temp] 목록을 못 읽었습니다', e); }
+  route();
+  if (AL.startAlerts) AL.startAlerts();
+})();
+</script>
+</body>
+</html>

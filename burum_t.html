@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>부름 — 번호 없이 연락하기</title>
+<link rel="stylesheet" href="alias_common.css?v=20260928b">
+<link rel="stylesheet" href="alias_theme.css?v=20260928b">
+<script src="alias_config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="alias_common.js?v=20260928b"></script>
+<!--
+  ═══════════════════════════════════════════════════════════════
+  2026-09-30 신설 — 부름 1회용 임시연락처 (받는 분 · 설치 · 가입 없음)
+    burum.kr/burum_t.html?t=토큰   (QR · 링크)
+    burum.kr/c                      (코드를 넣는 곳 → 여기로)
+
+  🔴 로그인하지 않습니다. 표를 직접 읽지 않고 DB 함수만 씁니다.
+     temp_public · temp_visit_open · temp_visit_send · temp_visit_read
+  🔴 이 브라우저만 아는 "비밀 표식(secret)" 으로 자기 대화만 읽고 씁니다.
+     표식은 이 브라우저의 localStorage 에만 있습니다.
+  ⚠ 통화(음성 · 영상)는 2차에서 붙입니다. 지금은 문자만.
+  ═══════════════════════════════════════════════════════════════
+-->
+<script>document.addEventListener('DOMContentLoaded', function(){ if (window.AL && AL.bootTheme) AL.bootTheme(); });</script>
+<style>
+html, body{ height:100%; }
+.v{ display:none; } .v.show{ display:flex; }
+.shell{ min-height:100%; flex-direction:column; max-width:430px; margin:0 auto; }
+.bh{ display:flex; align-items:center; gap:8px; padding:calc(18px + env(safe-area-inset-top,0px)) 20px 0; }
+.bh .m{ width:30px; height:30px; border-radius:9px; background:var(--steel); color:var(--ink); display:flex; align-items:center; justify-content:center; font-weight:800; }
+.bh b{ font-size:15px; } .bh span{ margin-left:auto; font-size:12px; color:var(--dim); }
+.pad{ padding:28px 20px 0; flex:1; display:flex; flex-direction:column; gap:16px; }
+.chip{ align-self:flex-start; font-size:12px; font-weight:700; border-radius:99px; padding:4px 11px; background:var(--raise2); color:var(--dim); }
+.ttl{ font-size:26px; font-weight:800; line-height:1.35; margin:0; white-space:pre-line; }
+.dsc{ font-size:14.5px; line-height:1.7; color:var(--dim); margin:0; }
+.safe{ display:flex; gap:10px; font-size:12.5px; line-height:1.65; color:var(--dim); }
+.foot{ padding:14px 20px calc(24px + env(safe-area-inset-bottom,0px)); text-align:center; }
+.foot a{ font-size:13px; color:var(--bad); }
+.center{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:0 30px; text-align:center; }
+.center .ic{ width:72px; height:72px; border-radius:36px; background:var(--raise2); display:flex; align-items:center; justify-content:center; font-size:32px; }
+/* 대화 */
+.ch{ display:flex; align-items:center; gap:8px; padding:calc(14px + env(safe-area-inset-top,0px)) 14px 10px; background:var(--raise); border-bottom:1px solid var(--line); }
+.ch b{ flex:1; font-size:16px; } .ch span{ font-size:12px; color:var(--dim); }
+.list{ flex:1; overflow-y:auto; padding:14px 12px; display:flex; flex-direction:column; gap:10px; }
+.note0{ align-self:center; font-size:12px; color:var(--dim); background:var(--raise); border-radius:99px; padding:5px 12px; }
+.mm{ max-width:78%; padding:10px 14px; border-radius:18px; font-size:15px; line-height:1.55; white-space:pre-wrap; word-break:break-word; }
+.mm.me{ align-self:flex-end; background:var(--steel); color:var(--ink); border-bottom-right-radius:4px; }
+.mm.you{ align-self:flex-start; background:var(--raise2); border-bottom-left-radius:4px; }
+.mm .at{ display:block; font-size:10.5px; opacity:.65; margin-top:3px; }
+.promo{ align-self:stretch; background:#F2E9D6; color:#2A2418; border-radius:18px; padding:16px; display:flex; flex-direction:column; gap:9px; }
+.promo .k{ font-size:12.5px; font-weight:800; color:#5A4A2A; } .promo .h{ font-size:17px; font-weight:800; line-height:1.4; }
+.promo .d{ font-size:13px; line-height:1.65; color:#4A4234; }
+.promo a{ min-height:48px; border-radius:14px; background:#2A2418; color:#F2E9D6; font-size:15px; font-weight:800; display:flex; align-items:center; justify-content:center; text-decoration:none; }
+.promo button{ min-height:44px; border-radius:12px; border:1px solid #CFC2A6; background:transparent; color:#4A4234; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer; }
+.inb{ display:flex; gap:8px; padding:10px 12px calc(12px + env(safe-area-inset-bottom,0px)); background:var(--raise); border-top:1px solid var(--line); }
+.inb textarea{ flex:1; min-height:44px; max-height:120px; resize:none; border-radius:22px; border:1px solid var(--line); background:var(--ink); color:var(--text); padding:11px 16px; font-family:inherit; font-size:16px; }
+.inb button{ min-width:48px; min-height:48px; border-radius:24px; border:none; background:var(--steel); color:var(--ink); font-size:18px; font-weight:800; cursor:pointer; }
+</style>
+</head>
+<body>
+<!-- 첫 화면 -->
+<div class="v shell" id="vStart">
+  <div class="bh"><div class="m">부</div><b>부름</b><span data-x="noApp"></span></div>
+  <div class="pad">
+    <span class="chip" id="chip"></span>
+    <h1 class="ttl" data-x="head"></h1>
+    <p class="dsc" id="dsc"></p>
+    <div class="field" style="margin:0"><label for="name" data-x="nameL"></label><input id="name" maxlength="30" autocomplete="off"></div>
+    <button type="button" class="btn" id="startBtn" data-x="start"></button>
+    <div class="err" id="startErr"></div>
+    <div class="safe"><span>🛡️</span><span data-x="safe"></span></div>
+  </div>
+  <div class="foot"><a href="#" id="report" data-x="report"></a></div>
+</div>
+
+<!-- 대화 -->
+<div class="v shell" id="vChat" style="height:100%;">
+  <div class="ch"><b data-x="other"></b><span id="leftChip"></span></div>
+  <div class="list" id="list"><div class="note0" data-x="noNum"></div></div>
+  <div class="inb"><label for="msg" style="position:absolute;width:1px;height:1px;overflow:hidden">메시지</label>
+    <textarea id="msg" rows="1"></textarea><button type="button" id="send" aria-label="보내기">➤</button></div>
+</div>
+
+<!-- 끝남 · 다른 분 · 없음 -->
+<div class="v shell" id="vEnd">
+  <div class="bh"><div class="m">부</div><b>부름</b></div>
+  <div class="center"><div class="ic" id="endIc">⏳</div><h1 class="h2" id="endT" style="margin:0"></h1><p class="dsc" id="endD"></p></div>
+  <div style="padding:0 22px calc(28px + env(safe-area-inset-bottom,0px));"><a class="btn" href="index.html" style="display:block;text-align:center;text-decoration:none;line-height:1.2" data-x="learn"></a></div>
+</div>
+
+<script>
+const X = {
+  kr: { noApp:'설치 없이 웹에서', head:'번호 없이\n바로 연락하세요', chip:'임시연락처 · {t}', days:'{n}일 남음', hours:'{n}시간 남음',
+        dsc:'서로의 전화번호는 드러나지 않습니다. 이 연락처는 {d}까지만 쓰입니다.', nameL:'상대에게 보일 내 이름 (선택)', namePh:'예) 자전거 보고 연락드려요',
+        start:'문자 보내기', safe:'상대가 끊거나 기한이 지나면 연락이 끝납니다. 상대가 원하면 부름으로 정식으로 이어질 수 있습니다.',
+        report:'이상한 연락처인가요? 신고하기', other:'상대', noNum:'번호는 서로 드러나지 않습니다', ph:'메시지',
+        pk:'정식으로 잇자는 제안', ph1:'부름으로 계속 연락하자고 합니다', pd:'부름에서는 번호 없이, 기한 없이 대화를 이어갈 수 있습니다. 이어도 서로의 번호는 드러나지 않습니다.',
+        pGo:'부름 가입하고 잇기', pNo:'괜찮아요, 여기까지만',
+        endT:'이 연락처는 끝났습니다', endD:'기한이 지났거나 상대가 연락을 마쳤습니다. 더는 문자를 보낼 수 없습니다.',
+        takeT:'이미 다른 분과 연결된 연락처입니다', takeD:'이 임시연락처는 처음 연락한 한 분만 쓸 수 있습니다.',
+        noneT:'연락처를 찾지 못했습니다', noneD:'주소가 잘못되었거나 지워진 연락처입니다.',
+        learn:'부름 알아보기', fail:'보내지 못했습니다. 잠시 뒤 다시 해주세요.', fast:'너무 빨리 보내고 있습니다. 잠시 뒤 다시 보내주세요.' },
+  en: { noApp:'No app needed', head:'Reach them\nwithout a number', chip:'One-time card · {t}', days:'{n} days left', hours:'{n} hours left',
+        dsc:'Neither phone number is shown. This contact works until {d}.', nameL:'Your name for them (optional)', namePh:'e.g. About the bike',
+        start:'Send a message', safe:'It ends when they cut it off or it expires. If they wish, you can link up on Burum.',
+        report:'Something wrong? Report', other:'Contact', noNum:'Phone numbers stay hidden', ph:'Message',
+        pk:'An invitation', ph1:'They would like to keep in touch on Burum', pd:'On Burum you can keep talking with no numbers and no expiry.',
+        pGo:'Join Burum and link up', pNo:'No thanks',
+        endT:'This contact has ended', endD:'It expired or the owner cut it off.', takeT:'Already connected with someone else', takeD:'This card only works for the first person.',
+        noneT:'Contact not found', noneD:'The link is wrong or the card was removed.', learn:'About Burum', fail:'Could not send.', fast:'Sending too fast. Please wait.' },
+};
+const LG = (window.AL && AL.lang === 'en') ? 'en' : 'kr';
+const T = (k, v) => { let s = (X[LG][k] ?? X.kr[k] ?? k); if (v) Object.keys(v).forEach((z) => { s = s.split('{' + z + '}').join(v[z]); }); return s; };
+const el = (id) => document.getElementById(id);
+const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const token = new URLSearchParams(location.search).get('t') || '';
+function ls(k, v){ try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
+function visitorKey(){
+  let v = ls('burum_temp_visitor');
+  if (!v || v.length < 16) { v = Array.from(crypto.getRandomValues(new Uint8Array(16))).map((b) => b.toString(16).padStart(2, '0')).join(''); ls('burum_temp_visitor', v); }
+  return v;
+}
+let secret = ls('burum_temp_s_' + token), lastId = 0, info = null, pollT = null;
+
+function show(id){ ['vStart', 'vChat', 'vEnd'].forEach((x) => el(x).classList.toggle('show', x === id)); }
+function leftText(){ if (!info) return ''; const ms = new Date(info.expires_at) - new Date(); return ms < 86400000 ? T('hours', { n: Math.max(1, Math.ceil(ms / 3600000)) }) : T('days', { n: Math.ceil(ms / 86400000) }); }
+function endView(kind){
+  clearInterval(pollT);
+  el('endIc').textContent = kind === 'taken' ? '🔒' : (kind === 'none' ? '❔' : '⏳');
+  el('endT').textContent = T(kind === 'taken' ? 'takeT' : kind === 'none' ? 'noneT' : 'endT');
+  el('endD').textContent = T(kind === 'taken' ? 'takeD' : kind === 'none' ? 'noneD' : 'endD');
+  show('vEnd');
+}
+function gate(msg){ const m = String(msg || ''); if (m.indexOf('temp_ended') >= 0) { endView('ended'); return true; } if (m.indexOf('temp_taken') >= 0) { endView('taken'); return true; } return false; }
+
+function add(m){
+  const box = el('list');
+  if (m.sender === 'system') return;   // 정식으로 잇기 제안은 아래 카드로 따로 그립니다
+  const at = new Date(m.at).toLocaleTimeString(LG === 'en' ? 'en-US' : 'ko-KR', { hour:'numeric', minute:'2-digit' });
+  box.insertAdjacentHTML('beforeend', '<div class="mm ' + (m.sender === 'visitor' ? 'me' : 'you') + '">' + esc(m.body) + '<span class="at">' + esc(at) + '</span></div>');
+}
+function paintPromo(code){
+  if (!code || ls('burum_temp_nopromo_' + token) === '1' || el('promo')) return;
+  const url = 'alias_join.html?c=' + encodeURIComponent(code);
+  el('list').insertAdjacentHTML('beforeend', '<div class="promo" id="promo"><div class="k">🤝 ' + esc(T('pk')) + '</div><div class="h">' + esc(T('ph1')) +
+    '</div><div class="d">' + esc(T('pd')) + '</div><a href="' + url + '">' + esc(T('pGo')) + '</a><button type="button" id="promoNo">' + esc(T('pNo')) + '</button></div>');
+  el('promoNo').addEventListener('click', () => { ls('burum_temp_nopromo_' + token, '1'); el('promo').remove(); });
+  el('list').scrollTop = el('list').scrollHeight;
+}
+async function pull(){
+  if (!secret) return;
+  const r = await AL.sb.rpc('temp_visit_read', { p_secret: secret, p_after: lastId });
+  const d = r.data || {};
+  if (!d.ok) { if (d.error === 'not_found') { secret = null; } return; }
+  if (d.ended) { endView('ended'); return; }
+  info = info || { expires_at: d.expires_at };
+  el('leftChip').textContent = T('chip', { t: leftText() });
+  const box = el('list'); const atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+  (d.messages || []).forEach((m) => { add(m); lastId = Math.max(lastId, Number(m.id)); });
+  if (atEnd) box.scrollTop = box.scrollHeight;
+  paintPromo(d.promo_code);
+}
+function chat(){ show('vChat'); el('msg').placeholder = T('ph'); pull(); clearInterval(pollT); pollT = setInterval(() => { if (!document.hidden) pull(); }, 4000); }
+
+el('startBtn').addEventListener('click', async () => {
+  const b = el('startBtn'); b.disabled = true; el('startErr').classList.remove('show');
+  try {
+    const r = await AL.sb.rpc('temp_visit_open', { p_token: token, p_visitor: visitorKey(), p_name: el('name').value.trim() });
+    if (r.error) throw r.error;
+    secret = r.data.secret; ls('burum_temp_s_' + token, secret);
+    chat(); el('msg').focus();
+  } catch (e) { if (!gate(e.message)) { el('startErr').textContent = T('fail'); el('startErr').classList.add('show'); } }
+  finally { b.disabled = false; }
+});
+el('send').addEventListener('click', async () => {
+  const v = el('msg').value.trim(); if (!v || !secret) return;
+  el('send').disabled = true;
+  try {
+    const r = await AL.sb.rpc('temp_visit_send', { p_secret: secret, p_body: v });
+    if (r.error) throw r.error;
+    el('msg').value = ''; await pull(); el('list').scrollTop = el('list').scrollHeight;
+  } catch (e) { if (!gate(e.message)) alert(String(e.message || '').indexOf('too_fast') >= 0 ? T('fast') : T('fail')); }
+  finally { el('send').disabled = false; }
+});
+el('msg').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !('ontouchstart' in window)) { e.preventDefault(); el('send').click(); } });
+el('report').addEventListener('click', (e) => { e.preventDefault(); location.href = 'mailto:weapps.kr@gmail.com?subject=' + encodeURIComponent('[부름 임시연락처 신고] ' + token.slice(0, 8)); });
+
+(async function(){
+  document.querySelectorAll('[data-x]').forEach((n) => { n.textContent = T(n.dataset.x); });
+  el('name').placeholder = T('namePh');
+  if (!token) { endView('none'); return; }
+  let p = null;
+  try { const r = await AL.sb.rpc('temp_public', { p_token: token, p_code: null, p_visitor: visitorKey() }); p = r.data; } catch (e) {}
+  if (!p) { endView('none'); return; }
+  info = p;
+  if (p.ended) { endView('ended'); return; }
+  if (p.taken) { endView('taken'); return; }
+  el('chip').textContent = T('chip', { t: leftText() });
+  el('dsc').textContent = T('dsc', { d: new Date(p.expires_at).toLocaleDateString(LG === 'en' ? 'en-US' : 'ko-KR', { month:'long', day:'numeric' }) });
+  if (secret) chat(); else show('vStart');
+})();
+</script>
+</body>
+</html>

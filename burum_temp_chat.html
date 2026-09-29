@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>부름 — 임시 대화</title>
+<link rel="stylesheet" href="alias_common.css?v=20260928b">
+<link rel="stylesheet" href="alias_theme.css?v=20260928b">
+<script src="alias_config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="alias_common.js?v=20260928b"></script>
+<!--
+  2026-09-30 신설 — 부름 임시 대화방 (주인 쪽)
+  · 받는 분의 문자는 4초마다 새로 읽습니다(받는 분은 계정이 없어 실시간 방송을 못 씁니다).
+  · [부름으로 정식으로 잇기] → temp_owner_promote: 1회용 · 7일 초대를 만들어 받는 분 화면에 제안 카드로
+  · [지금 끊기] → end_temp_card: 이 임시연락처의 모든 대화를 닫습니다
+-->
+<script>document.addEventListener('DOMContentLoaded', function(){ if (window.AL && AL.bootTheme) AL.bootTheme(); });</script>
+<style>
+html, body{ height:100%; }
+body{ display:flex; flex-direction:column; }
+.tc-head{ display:flex; align-items:center; gap:6px; padding:calc(12px + env(safe-area-inset-top,0px)) 12px 10px 6px; background:var(--raise); border-bottom:1px solid var(--line); }
+.tc-head a{ min-width:44px; min-height:44px; display:flex; align-items:center; justify-content:center; color:var(--text); text-decoration:none; font-size:22px; }
+.tc-head .t{ flex:1; } .tc-head b{ display:block; font-size:16px; } .tc-head span{ font-size:12px; color:var(--dim); }
+.tc-band{ margin:10px 12px 0; background:var(--raise2); border:1px solid var(--line); border-radius:16px; padding:12px 14px; }
+.tc-band .l{ font-size:13px; color:var(--dim); margin-bottom:10px; }
+.tc-band .b{ display:grid; grid-template-columns:1.5fr 1fr; gap:8px; }
+.tc-band button{ min-height:44px; border-radius:12px; font-family:inherit; font-size:14px; font-weight:800; cursor:pointer; }
+.tc-promote{ border:none; background:var(--steel); color:var(--ink); }
+.tc-promote:disabled{ opacity:.55; }
+.tc-cut{ border:1px solid rgba(217,106,106,.5); background:transparent; color:var(--bad); }
+.tc-list{ flex:1; overflow-y:auto; padding:14px 12px; display:flex; flex-direction:column; gap:10px; }
+.tc-m{ max-width:78%; padding:10px 14px; border-radius:18px; font-size:15px; line-height:1.55; white-space:pre-wrap; word-break:break-word; }
+.tc-m.me{ align-self:flex-end; background:var(--steel); color:var(--ink); border-bottom-right-radius:4px; }
+.tc-m.you{ align-self:flex-start; background:var(--raise2); border-bottom-left-radius:4px; }
+.tc-m .at{ display:block; font-size:10.5px; opacity:.65; margin-top:3px; }
+.tc-sys{ align-self:center; font-size:12.5px; color:var(--dim); background:var(--raise); border:1px solid var(--line); border-radius:12px; padding:8px 12px; text-align:center; max-width:88%; }
+.tc-in{ display:flex; gap:8px; padding:10px 12px calc(12px + env(safe-area-inset-bottom,0px)); background:var(--raise); border-top:1px solid var(--line); }
+.tc-in textarea{ flex:1; min-height:44px; max-height:120px; resize:none; border-radius:22px; border:1px solid var(--line); background:var(--ink); color:var(--text);
+                 padding:11px 16px; font-family:inherit; font-size:16px; }
+.tc-in button{ min-width:48px; min-height:48px; border-radius:24px; border:none; background:var(--steel); color:var(--ink); font-size:18px; font-weight:800; cursor:pointer; }
+.tc-in.off{ opacity:.5; pointer-events:none; }
+.tc-err{ display:none; margin:8px 12px 0; font-size:13px; color:var(--bad); } .tc-err.show{ display:block; }
+</style>
+</head>
+<body>
+<div class="tc-head"><a href="#" id="back" aria-label="뒤로">‹</a><div class="t"><b id="who"></b><span id="sub"></span></div></div>
+<div class="tc-band" id="band">
+  <div class="l" id="left"></div>
+  <div class="b"><button type="button" class="tc-promote" id="promote"></button><button type="button" class="tc-cut" id="cut"></button></div>
+</div>
+<div class="tc-err" id="err"></div>
+<div class="tc-list" id="list"></div>
+<div class="tc-in" id="inBox"><label for="msg" style="position:absolute;width:1px;height:1px;overflow:hidden">메시지</label>
+  <textarea id="msg" rows="1"></textarea><button type="button" id="send" aria-label="보내기">➤</button></div>
+
+<script>
+const X = {
+  kr: { unnamed:'이름 없는 분', sub:'임시 · {l}', left:'임시연락처 · {t} · 번호는 서로 드러나지 않습니다', days:'{n}일 남음', hours:'{n}시간 남음', ended:'끝났습니다',
+        promote:'부름으로 정식으로 잇기', promoted:'정식으로 잇자고 제안했습니다', cut:'지금 끊기', ph:'메시지',
+        promoAsk:'이 분께 부름으로 정식으로 잇자는 제안을 보낼까요?\n받는 분이 부름에 가입하면 관계가 맺어집니다. 서로의 번호는 계속 드러나지 않습니다.',
+        promoSys:'정식으로 잇자는 제안을 보냈습니다. 상대가 가입하면 연락처에 나타납니다.',
+        cutAsk:'이 임시연락처를 지금 끊을까요? 이 연락처로 온 모든 대화가 닫힙니다.', noPersona:'이 임시연락처에는 얼굴(별칭)이 없어 정식으로 이을 수 없습니다.',
+        failSend:'보내지 못했습니다.', endedNote:'이 임시연락처는 끝났습니다. 더는 보낼 수 없습니다.' },
+  en: { unnamed:'Unnamed', sub:'One-time · {l}', left:'One-time card · {t} · no numbers shown', days:'{n} days left', hours:'{n} hours left', ended:'Ended',
+        promote:'Link up on Burum', promoted:'Invitation sent', cut:'Cut off', ph:'Message',
+        promoAsk:'Invite this person to link up on Burum?\nOnce they sign up you will be connected. Numbers stay hidden.',
+        promoSys:'You invited them to link up. They will appear in your contacts once they join.',
+        cutAsk:'Cut off this card now? All its conversations will close.', noPersona:'This card has no face, so it cannot be linked.',
+        failSend:'Could not send.', endedNote:'This card has ended.' },
+};
+const LG = (window.AL && AL.lang === 'en') ? 'en' : 'kr';
+const T = (k, v) => { let s = (X[LG][k] ?? X.kr[k] ?? k); if (v) Object.keys(v).forEach((z) => { s = s.split('{' + z + '}').join(v[z]); }); return s; };
+const el = (id) => document.getElementById(id);
+const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const threadId = new URLSearchParams(location.search).get('thread');
+let thread = null, card = null, lastId = 0, alive = true;
+
+function err(m){ el('err').textContent = m; el('err').classList.add('show'); }
+function paintHead(){
+  const ms = new Date(card.expires_at) - new Date();
+  alive = !card.ended_at && ms > 0 && thread.status === 'open';
+  const t = !alive ? T('ended') : (ms < 86400000 ? T('hours', { n: Math.max(1, Math.ceil(ms / 3600000)) }) : T('days', { n: Math.ceil(ms / 86400000) }));
+  el('who').textContent = thread.visitor_name || T('unnamed');
+  el('sub').textContent = T('sub', { l: card.label || '' });
+  el('left').textContent = T('left', { t });
+  el('promote').textContent = thread.promo_code ? T('promoted') : T('promote');
+  el('promote').disabled = !!thread.promo_code || !alive;
+  el('cut').style.display = alive ? '' : 'none';
+  el('inBox').classList.toggle('off', !alive);
+}
+function add(m){
+  const box = el('list');
+  if (m.sender === 'system') {
+    box.insertAdjacentHTML('beforeend', '<div class="tc-sys">' + esc(m.body === 'promo' ? T('promoSys') : m.body) + '</div>');
+  } else {
+    const at = new Date(m.created_at || m.at).toLocaleTimeString(LG === 'en' ? 'en-US' : 'ko-KR', { hour:'numeric', minute:'2-digit' });
+    box.insertAdjacentHTML('beforeend', '<div class="tc-m ' + (m.sender === 'owner' ? 'me' : 'you') + '">' + esc(m.body) + '<span class="at">' + esc(at) + '</span></div>');
+  }
+  lastId = Math.max(lastId, Number(m.id) || 0);
+}
+async function pull(){
+  const { data } = await AL.sb.from('temp_messages').select('id, sender, body, created_at').eq('thread_id', threadId).gt('id', lastId).order('id');
+  const list = data || [];
+  if (!list.length) return;
+  const box = el('list'); const atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+  list.forEach(add);
+  if (atEnd || lastId === list[list.length - 1].id) box.scrollTop = box.scrollHeight;
+  AL.sb.rpc('temp_owner_seen', { p_thread: threadId });
+}
+async function refreshMeta(){
+  const t = await AL.sb.from('temp_threads').select('id, card_id, visitor_name, status, promo_code').eq('id', threadId).maybeSingle();
+  if (!t.data) throw new Error('not_found');
+  thread = t.data;
+  const c = await AL.sb.from('temp_cards').select('id, label, expires_at, ended_at, persona_id').eq('id', thread.card_id).maybeSingle();
+  card = c.data; paintHead();
+}
+el('send').addEventListener('click', async () => {
+  const v = el('msg').value.trim(); if (!v || !alive) return;
+  el('send').disabled = true;
+  try {
+    const r = await AL.sb.rpc('temp_owner_send', { p_thread: threadId, p_body: v });
+    if (r.error) throw r.error;
+    el('msg').value = ''; await pull(); el('list').scrollTop = el('list').scrollHeight;
+  } catch (e) { err(String(e.message || '').indexOf('temp_ended') >= 0 ? T('endedNote') : T('failSend')); await refreshMeta(); }
+  finally { el('send').disabled = false; }
+});
+el('msg').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !('ontouchstart' in window)) { e.preventDefault(); el('send').click(); } });
+el('promote').addEventListener('click', async () => {
+  if (!confirm(T('promoAsk'))) return;
+  const r = await AL.sb.rpc('temp_owner_promote', { p_thread: threadId });
+  if (r.error) { err(String(r.error.message).indexOf('no_persona') >= 0 ? T('noPersona') : String(r.error.message)); return; }
+  await refreshMeta(); await pull();
+});
+el('cut').addEventListener('click', async () => {
+  if (!confirm(T('cutAsk'))) return;
+  const r = await AL.sb.rpc('end_temp_card', { p_id: card.id });
+  if (r.error || !r.data) { err(T('failSend')); return; }
+  await refreshMeta();
+});
+el('back').addEventListener('click', (e) => { e.preventDefault(); if (history.length > 1) history.back(); else location.href = 'burum_temp.html' + (card ? '?id=' + card.id : ''); });
+
+(async function(){
+  el('msg').placeholder = T('ph');
+  if (AL.setBack) AL.setBack('burum_temp.html');
+  const me = await AL.requireLogin(); if (!me) return;
+  try { await refreshMeta(); } catch (e) { err('—'); return; }
+  el('list').innerHTML = ''; await pull(); el('list').scrollTop = el('list').scrollHeight;
+  setInterval(() => { if (!document.hidden) { pull(); } }, 4000);
+  setInterval(() => { if (!document.hidden) refreshMeta(); }, 30000);
+})();
+</script>
+</body>
+</html>
