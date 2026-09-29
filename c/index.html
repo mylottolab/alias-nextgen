@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>부름 — 코드로 연락하기</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="/alias_config.js"></script>
+<!--
+  2026-09-30 신설: burum.kr/c — 임시연락처 명함의 "안 찍히면 burum.kr/c 에서 코드 입력"
+  ⚠ 폴더 c 안의 index.html 이라 burum.kr/c 로 열립니다. burum.kr/c?K7M4QP 처럼 코드를 붙여 와도 됩니다.
+-->
+<style>
+*{ box-sizing:border-box; }
+body{ margin:0; background:#0E1621; color:#DDE5F0; font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif; min-height:100vh;
+      display:flex; align-items:center; justify-content:center; padding:20px; word-break:keep-all; }
+.card{ background:#182231; border:1px solid #27344A; border-radius:20px; padding:28px 22px; max-width:380px; width:100%; text-align:center; }
+h1{ font-size:21px; margin:0 0 8px; } p{ font-size:13.5px; line-height:1.7; color:#8C9CB2; margin:0 0 18px; }
+input{ width:100%; border:2px solid #27344A; background:#0E1621; color:#DDE5F0; border-radius:14px; padding:14px; font-size:26px; font-weight:800; text-align:center; letter-spacing:6px; text-transform:uppercase; font-family:ui-monospace,monospace; }
+input:focus{ outline:none; border-color:#5B8FC7; }
+button{ width:100%; margin-top:12px; border:none; border-radius:14px; min-height:52px; font-size:16px; font-weight:800; background:#5B8FC7; color:#0E1621; cursor:pointer; }
+button:disabled{ opacity:.5; }
+.err{ display:none; margin-top:12px; font-size:13px; color:#F0B4B4; } .err.show{ display:block; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1 id="t">코드로 연락하기</h1>
+  <p id="d">받으신 명함이나 메시지의 6자리 코드를 넣어주세요. 앱 설치나 가입은 필요 없습니다.</p>
+  <label for="code" style="position:absolute;width:1px;height:1px;overflow:hidden">코드</label>
+  <input id="code" maxlength="9" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="K7M4QP">
+  <button type="button" id="go">연락하기</button>
+  <div class="err" id="err">그 코드를 찾지 못했습니다. 다시 확인해주세요.</div>
+</div>
+<script>
+/* 부름 공용 설정(alias_config.js)의 AL.SUPABASE_URL · AL.SUPABASE_ANON 을 씁니다 */
+const URL0 = (window.AL && AL.SUPABASE_URL) || 'https://azredlrnvsssfjytaotb.supabase.co';
+const KEY0 = (window.AL && AL.SUPABASE_ANON) || '';
+const sb = supabase.createClient(URL0, KEY0);
+function clean(v){ return String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+async function go(){
+  const c = clean(document.getElementById('code').value), e = document.getElementById('err'); e.classList.remove('show');
+  if (c.length !== 6) { e.classList.add('show'); return; }
+  const b = document.getElementById('go'); b.disabled = true;
+  try {
+    const r = await sb.rpc('temp_public', { p_token: null, p_code: c, p_visitor: null });
+    if (r.error || !r.data || !r.data.token) throw 0;
+    location.replace('/burum_t.html?t=' + encodeURIComponent(r.data.token));
+  } catch (x) { e.classList.add('show'); b.disabled = false; }
+}
+document.getElementById('go').addEventListener('click', go);
+document.getElementById('code').addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
+const q = clean(location.search.replace(/^\?/, '').replace(/^code=/i, ''));
+if (q.length === 6) { document.getElementById('code').value = q; go(); }
+</script>
+</body>
+</html>
