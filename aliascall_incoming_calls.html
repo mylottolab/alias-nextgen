@@ -695,6 +695,8 @@ async function acIceReady(){
   return RTC_CONFIG;
 }
 acLoadIce();
+/* 열쇠는 1시간짜리 — 받는 쪽이 늘 새 열쇠를 갖고 있게 45분마다 미리 새로 받습니다 */
+setInterval(() => acLoadIce(true), 45 * 60 * 1000);
 
 let myRegistrationIds = [];
 let pendingSession = null;
@@ -1212,7 +1214,7 @@ async function answerCall(session){
       // ⚠ 발신자가 응답받을 때까지 offer를 반복 재전송하도록 바꿨는데(유실 방지),
       // 이미 처리 중인 offer라면 중복으로 새 연결을 또 만들지 않도록 방어
       if (pc && pc.signalingState !== 'closed') { console.log('[webrtc] (중복 offer, 이미 처리중이라 무시)'); return; }
-      pc = new RTCPeerConnection(await acIceReady());
+      pc = new RTCPeerConnection(RTC_CONFIG);   // 🔴 2026-09-30 받는 쪽은 기다리지 않습니다 — 기다리는 사이 상대의 ICE 후보가 먼저 와서 버려졌습니다(소리 안 남)
       console.log('[webrtc] ② RTCPeerConnection 생성됨');
       pc.onicecandidate = (e) => { if (e.candidate) { console.log('[webrtc] 내 ICE 후보 전송:', e.candidate.type); rtChannel.send({ type:'broadcast', event:'ice-candidate', payload:{ candidate: e.candidate } }); } else { console.log('[webrtc] 내 ICE 후보 수집 완료(null candidate)'); } };
       pc.ontrack = (e) => {

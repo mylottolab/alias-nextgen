@@ -1066,7 +1066,7 @@ async function answerIncomingCall(session){
       // 있으면(=이미 처리 중이면) 중복 offer는 무시
       if (finderPc && finderPc.signalingState !== 'closed') return;
 
-      finderPc = new RTCPeerConnection(await acIceReady());
+      finderPc = new RTCPeerConnection(RTC_CONFIG);   // 🔴 2026-09-30 받는 쪽은 기다리지 않습니다 — 기다리는 사이 상대의 ICE 후보가 먼저 와서 버려졌습니다(소리 안 남)
       finderPc.onicecandidate = (e) => {
         if (e.candidate) finderRtChannel.send({ type: 'broadcast', event: 'ice-candidate', payload: { candidate: e.candidate } });
       };
@@ -1286,6 +1286,8 @@ async function acIceReady(){
   return RTC_CONFIG;
 }
 acLoadIce();
+/* 열쇠는 1시간짜리 — 받는 쪽이 늘 새 열쇠를 갖고 있게 45분마다 미리 새로 받습니다 */
+setInterval(() => acLoadIce(true), 45 * 60 * 1000);
 const myClientId = 'caller-' + Math.random().toString(36).slice(2);
 
 let pc = null, localStream = null, rtChannel = null, currentSessionToken = null, currentMode = 'voice';
