@@ -4261,7 +4261,13 @@ AL.onStoreEvent = async function(ev){
     return;
   }
   if (ev.kind === 'storeError') {
-    if (AL.onStoreDone) AL.onStoreDone({ ok: false, error: ev.a || '' });
+    if (AL.onStoreDone) AL.onStoreDone({ ok: false, error: ev.a || '', code: ev.code });
+    return;
+  }
+  /* 🔴 2026-10-01 — "이미 가진 상품" = 정리 안 된 영수증이 남아 있습니다.
+     자바(버전 12)가 그 영수증을 곧 다시 넘겨주고, 서버가 확인 · 정리합니다. */
+  if (ev.kind === 'storeOwned') {
+    if (AL.onStoreDone) AL.onStoreDone({ ok: false, owned: true, code: ev.code });
     return;
   }
   if (ev.kind !== 'storePurchase') return;
@@ -4326,6 +4332,20 @@ AL.onStoreEvent = async function(ev){
     if (AL.onStoreDone) AL.onStoreDone({ ok: false, error: e.message || String(e) });
   }
 };
+
+/* 🔴🔴 2026-10-01 — 결제 수리판(앱 버전 12)과 짝
+   storeFlush    화면이 준비됐다고 알려, 줄에 서 있던 영수증을 바로 받습니다
+   storeRecover  못 끝낸 영수증을 다시 찾아 달라고 합니다(구매 화면이 열릴 때)
+   ⚠ 옛 앱(버전 11)에는 없습니다. 있는지 보고 부르므로 옛 앱도 그대로 됩니다. */
+AL.storeFlush = function(){
+  try { if (window.AliasNative && typeof AliasNative.storeFlush === 'function') AliasNative.storeFlush(); } catch (e) {}
+};
+AL.storeRecover = function(){
+  try { if (window.AliasNative && typeof AliasNative.storeRecover === 'function') AliasNative.storeRecover(); } catch (e) {}
+};
+/* 화면이 다 읽힌 뒤 한 번 — 앱을 다시 켰을 때 넘기지 못한 영수증을 받습니다 */
+if (document.readyState === 'complete') setTimeout(AL.storeFlush, 800);
+else window.addEventListener('load', function(){ setTimeout(AL.storeFlush, 800); });
 
 AL.inviteUrl = function(code){
   var base = location.href.replace(/[^/]*$/, '');

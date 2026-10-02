@@ -279,6 +279,12 @@ AL.onStoreDone = function(r){
   if (r.cleared)  { showOk(AL.t('stCleared')); return; }   // 🔴 2026-09-27
   if (r.canceled) { showErr(AL.t('stCanceled')); return; }
   if (r.pending)  { showOk(AL.t('stPending')); return; }
+  /* 🔴 2026-10-01 — 이미 가진 상품: 남은 영수증을 정리하는 중입니다 */
+  if (r.owned) {
+    showOk(AL.lang === 'en' ? 'A previous purchase was not finished. Finishing it now — please wait a moment and try again.'
+                            : '전에 산 것이 아직 정리되지 않았습니다. 지금 정리하고 있으니 잠시 뒤 다시 눌러주세요.');
+    return;
+  }
   showErr(AL.t('stFailed') + (r.error ? '\n(' + r.error + ')' : ''));
 };
 
@@ -487,6 +493,7 @@ el('goCard').addEventListener('click', async function(){
   AL.setBack('alias_contacts.html');
   el('back').textContent = '‹ ' + AL.t('navContacts');
   if (!await AL.requireLogin()) return;
+  AL.storeRecover();   // 🔴 2026-10-01 — 못 끝낸 영수증이 있으면 지금 받습니다(앱 버전 12부터)
 
   plan = await AL.myPlan(true);
   if (plan && plan.bonus_ready) {
