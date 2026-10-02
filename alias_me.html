@@ -231,6 +231,24 @@ document.addEventListener("DOMContentLoaded", function(){
     <p class="hint" id="storOver" style="display:none;color:#FFB4B4"></p>
   </div>
 
+  <!-- 🔴🔴 2026-10-01 신설 — 두 앱 잇기 (1단계: 서로 안내)
+       차 · 물건 · 아이 · 반려동물에 붙이는 QR 긴급연락은 에일리어스콜의 일입니다.
+       부름 손님이 그것이 필요할 때 찾아갈 수 있게 늘 같은 자리에 둡니다.
+       ⚠ 글은 아래 스크립트가 언어에 맞춰 채웁니다(공용 사전을 건드리지 않으려고). -->
+  <div class="sect" id="acSect">함께 쓰면 좋은 앱</div>
+  <div class="dblock">
+    <a class="prefrow" id="acPromo" href="https://play.google.com/store/apps/details?id=com.weaveapp.aliascall"
+       target="_blank" rel="noopener" style="text-decoration:none;color:inherit">
+      <span class="pl"><b id="acPromoT">🚗 차 · 물건 · 아이 · 반려동물에 QR이 필요하세요?</b>
+        <span class="ps" id="acPromoD">발견한 분이 번호를 몰라도 바로 연락할 수 있게 — 에일리어스콜</span></span>
+      <span id="acPromoGo"
+         style="padding:9px 16px;border-radius:999px;white-space:nowrap;
+                font-size:13.5px;font-weight:700;
+                background:rgba(143,227,176,.2);color:#8FE3B0;
+                border:1px solid rgba(143,227,176,.45)">보러 가기 ›</span>
+    </a>
+  </div>
+
   <!-- 🔴 2026-09-20 — 관리자에게만 보입니다 -->
   <div id="adminBox" style="display:none">
     <div class="sect" data-t="adTitle"></div>
@@ -647,7 +665,7 @@ function paintLang(){
       try {
         await AL.setLang(b.getAttribute('data-lang'));
         // 화면 전체가 바뀌었으니 여기서 만든 것들도 다시 그립니다.
-        paintLang(); paintTheme(); paintPrefs(); paintList();
+        paintLang(); paintTheme(); paintPrefs(); paintList(); paintPromo();
         showOk(AL.t('thSaved'));
       } catch (e) {
         console.error(e);
@@ -655,6 +673,19 @@ function paintLang(){
       }
     });
   });
+}
+
+/* ── 🔴 2026-10-01 두 앱 잇기 — 에일리어스콜 안내 글을 언어에 맞춰 ── */
+function paintPromo(){
+  const en = AL.lang === 'en';
+  const s = el('acSect'), t = el('acPromoT'), d = el('acPromoD'), g = el('acPromoGo');
+  if (!s || !t || !d || !g) return;
+  s.textContent = en ? 'Apps that work well together' : '함께 쓰면 좋은 앱';
+  t.textContent = en ? '🚗 Need a QR tag for your car, belongings, child or pet?'
+                     : '🚗 차 · 물건 · 아이 · 반려동물에 QR이 필요하세요?';
+  d.textContent = en ? 'Let whoever finds them reach you instantly, without your number — Aliascall'
+                     : '발견한 분이 번호를 몰라도 바로 연락할 수 있게 — 에일리어스콜';
+  g.textContent = en ? 'Take a look ›' : '보러 가기 ›';
 }
 
 /* ── 모양 고르기 ───────────────────────────────────────────────
@@ -806,6 +837,7 @@ async function paintStorageRow(){
 
 (async function(){
   AL.paintText();
+  paintPromo();       // 🔴 2026-10-01 — 에일리어스콜 안내 (로그인과 상관없이)
   paintPrevBtn();
   me = await AL.requireLogin();
   if (!me) return;
