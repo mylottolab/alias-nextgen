@@ -97,19 +97,25 @@ document.addEventListener("DOMContentLoaded", function(){
   width:30px;height:30px;flex:0 0 30px;margin-left:9px;vertical-align:middle;
   font-size:13px;font-weight:800;line-height:1;
   background-repeat:no-repeat;background-size:cover;background-position:center}
-/* 🔴 2026-10-01 임시연락처 입구 · [임시] 묶음 */
-.tmp-entry{ display:flex; align-items:center; gap:11px; text-decoration:none; color:inherit; background:var(--card,#fff);
-  border:1.5px dashed var(--line,#DCE3DE); border-radius:14px; padding:12px 14px; margin:8px 0 12px; }
+/* 🔴 2026-10-01 임시연락처 입구 · [임시] 묶음
+   ⚠ 부름 테마의 색 이름(--raise · --text · --line · --dim)을 씁니다.
+     처음엔 --card(없는 이름)에 흰색을 대신 넣어, 야간 모드에서 흰 바탕에 밝은 글씨가 되어
+     글이 안 보였습니다. 이제 주간 · 야간 · 어느 색 테마에서도 테마를 따라갑니다. */
+.tmp-entry{ display:flex; align-items:center; gap:11px; text-decoration:none;
+  color:var(--text, inherit); background:var(--raise, rgba(128,128,128,.10));
+  border:1.5px dashed var(--line, rgba(128,128,128,.35)); border-radius:14px; padding:12px 14px; margin:8px 0 12px; }
 .tmp-ic{ font-size:22px; }
 .tmp-tx{ flex:1; min-width:0; }
-.tmp-tx b{ display:block; font-size:14px; }
-.tmp-tx small{ display:block; font-size:11.5px; opacity:.7; line-height:1.5; margin-top:2px; }
-.tmp-new{ font-size:12px; font-weight:800; border-radius:20px; padding:6px 11px; background:var(--accent,#1F6F6B); color:#fff; white-space:nowrap; }
+.tmp-tx b{ display:block; font-size:14px; color:var(--text, inherit); }
+.tmp-tx small{ display:block; font-size:11.5px; color:var(--dim, inherit); opacity:.95; line-height:1.5; margin-top:2px; }
+.tmp-new{ font-size:12px; font-weight:800; border-radius:20px; padding:6px 11px; background:var(--steel, #2F7DD1); color:#fff; white-space:nowrap; }
 .tmp-group{ margin:0 0 14px; }
-.tmp-gh{ font-size:12px; font-weight:800; opacity:.7; margin:4px 2px 6px; }
-.tmp-row{ display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit; padding:10px 12px; border-radius:12px; background:var(--card,#fff); margin-bottom:6px; }
-.tmp-row .nm{ flex:1; min-width:0; font-size:14px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.tmp-row .sub{ display:block; font-size:11.5px; font-weight:400; opacity:.65; margin-top:2px; }
+.tmp-gh{ font-size:12px; font-weight:800; color:var(--dim, inherit); margin:4px 2px 6px; }
+.tmp-row{ display:flex; align-items:center; gap:10px; text-decoration:none; color:var(--text, inherit);
+  padding:10px 12px; border-radius:12px; background:var(--raise, rgba(128,128,128,.10));
+  border:1px solid var(--line, rgba(128,128,128,.25)); margin-bottom:6px; }
+.tmp-row .nm{ flex:1; min-width:0; font-size:14px; font-weight:700; color:var(--text, inherit); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.tmp-row .sub{ display:block; font-size:11.5px; font-weight:400; color:var(--dim, inherit); margin-top:2px; }
 .tmp-row .dot{ min-width:20px; height:20px; border-radius:10px; background:#E5484D; color:#fff; font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center; padding:0 6px; }
 </style>
 </head>
