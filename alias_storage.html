@@ -171,7 +171,14 @@ AL.onStoreDone = function(r){
   if (r.cleared)  { say(AL.t('stCleared'), true); return; }   // 🔴 2026-09-27
   if (r.canceled) { say(AL.t('stCanceled')); return; }
   if (r.pending)  { say(AL.t('sgPending'), true); return; }
-  say(AL.t('stFailed') + (r.error ? '\n(' + r.error + ')' : ''));
+  /* 🔴 2026-10-01 — "이미 가진 상품" = 전에 산 용량 영수증이 아직 정리되지 않았습니다.
+     앱(버전 12)이 그 영수증을 다시 찾아 넘기고, 서버가 확인 · 정리합니다. */
+  if (r.owned) {
+    say(AL.lang === 'en' ? 'A previous storage purchase was not finished. Finishing it now — please wait a moment and try again.'
+                         : '전에 산 용량이 아직 정리되지 않았습니다. 지금 정리하고 있으니 잠시 뒤 다시 눌러주세요.', true);
+    return;
+  }
+  say(AL.t('stFailed') + (r.error ? '\n(' + r.error + ')' : '') + (r.code != null && r.code !== 0 ? ' [' + r.code + ']' : ''));
 };
 
 el('buyBtn').addEventListener('click', async function(){
@@ -192,6 +199,7 @@ el('buyBtn').addEventListener('click', async function(){
   AL.setBack('alias_me.html');
   el('back').textContent = '‹ ' + AL.t('navMe');
   if (!await AL.requireLogin()) return;
+  AL.storeRecover();   // 🔴 2026-10-01 — 못 끝낸 용량 영수증이 있으면 지금 받아 정리합니다(앱 버전 12부터)
 
   el('offer').textContent = AL.t('sgBuyDesc');
   if (IN_APP) {
