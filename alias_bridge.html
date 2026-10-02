@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>부름</title>
+<link rel="stylesheet" href="alias_common.css?v=20260928b">
+<link rel="stylesheet" href="alias_theme.css?v=20260928b">
+<script src="alias_config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="alias_common.js?v=20260928b"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function(){
+  if (typeof AL === "undefined" || typeof AL.t !== "function") {
+    document.body.innerHTML = '<div style="padding:26px;font-family:system-ui,sans-serif;line-height:1.8;color:#DDE5F0;background:#0E1621;min-height:100vh">' +
+      '<b style="font-size:17px">alias_common.js 를 못 읽었습니다.</b><br><br>F12 → Console 에 원인이 찍힙니다.</div>';
+    return;
+  }
+  AL.bootTheme();
+});
+</script>
+<style>
+.br-box{max-width:420px;margin:40px auto 0;text-align:center;padding:0 6px}
+.br-ic{font-size:46px;margin-bottom:10px}
+.br-t{font-size:20px;font-weight:800;line-height:1.45;margin-bottom:10px}
+.br-d{font-size:14.5px;line-height:1.75;opacity:.8;margin-bottom:18px}
+.br-as{font-size:13px;opacity:.75;margin-top:14px}
+.br-as button{margin:0 0 0 6px;padding:6px 12px;font-size:12.5px;border-radius:999px;display:inline-block;width:auto}
+.br-spin{width:38px;height:38px;border-radius:50%;margin:6px auto 16px;
+  border:4px solid rgba(143,227,176,.25);border-top-color:#8FE3B0;animation:brs 1s linear infinite}
+@keyframes brs{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="br-box" id="box">
+    <div class="br-spin"></div>
+    <div class="br-t" id="t"></div>
+  </div>
+  <div id="err" class="err"></div>
+</div>
+
+<script>
+/* =====================================================================
+   부름 — 에일리어스콜에서 이어오기 (alias_bridge.html?b=번호)
+   2026-10-01 신설
+
+   에일리어스콜 대화의 "부름 연결 카드" 를 누르면 여기로 옵니다.
+     로그인 → bridge_claim(번호, 내 별칭)
+       먼저 누른 분   → "상대분을 기다리는 중" · 3초마다 확인 (떠나도 됩니다 — 연결되면 폰 알림)
+       나중에 누른 분 → 곧바로 연결
+     연결되면 두 분 모두 같은 대화창(alias_chat.html?link=…&bridged=1)
+       → 맨 위에 "부름으로 연결되었습니다. 사용하세요." (alias_common.js 의 AL.bridgedBanner)
+   ⚠ 별칭은 기본 별칭으로 잇습니다. [다른 이름으로] 로 바꿀 수 있습니다.
+   ===================================================================== */
+const token = new URLSearchParams(location.search).get('b') || '';
+const EN = function(){ return AL.lang === 'en'; };
+const S = {
+  wait:   ['연결하는 중…', 'Connecting…'],
+  waitT:  ['상대분을 기다리고 있어요', 'Waiting for the other person'],
+  waitD:  ['상대분도 에일리어스콜 대화의 카드를 누르면 바로 이 자리에서 대화창이 열립니다.<br>이 화면을 닫으셔도 괜찮습니다 — 연결되면 폰 알림으로 알려드려요.',
+           'As soon as they tap the card in the Aliascall chat, the conversation opens right here.<br>You can close this screen — we will notify you when you are connected.'],
+  as:     ['이 이름으로 연결합니다: ', 'Connecting as: '],
+  change: ['다른 이름으로', 'Use another name'],
+  ok:     ['연결되었습니다! 대화창을 여는 중…', 'Connected! Opening the conversation…'],
+  full:   ['이 연결 카드는 이미 두 분이 사용했습니다.', 'This connection card has already been used by two people.'],
+  expired:['연결 카드의 기한(14일)이 지났습니다. 에일리어스콜 대화에서 다시 보내주세요.', 'This connection card has expired (14 days). Please send a new one from the Aliascall chat.'],
+  bad:    ['연결 카드 주소가 올바르지 않습니다.', 'This connection link is not valid.'],
+  already:['이미 연락처로 이어진 분입니다. 연락처에서 찾아보세요.', 'You are already connected. Find them in your contacts.'],
+  fail:   ['연결하지 못했습니다', 'Could not connect'],
+};
+function T(k){ return S[k][EN() ? 1 : 0]; }
+function el(id){ return document.getElementById(id); }
+
+let persona = null, timer = null;
+
+function paintWaiting(){
+  el('box').innerHTML =
+    '<div class="br-spin"></div>' +
+    '<div class="br-t">' + AL.esc(T('waitT')) + '</div>' +
+    '<div class="br-d">' + T('waitD') + '</div>' +
+    '<div class="br-as">' + AL.esc(T('as')) + '<b>' + AL.esc(persona ? persona.display_name : '') + '</b></div>';
+}
+function goChat(linkId){
+  if (timer) clearInterval(timer);
+  el('box').innerHTML = '<div class="br-ic">🎉</div><div class="br-t">' + AL.esc(T('ok')) + '</div>';
+  setTimeout(function(){ location.replace('alias_chat.html?link=' + encodeURIComponent(linkId) + '&bridged=1'); }, 500);
+}
+function fail(code){
+  if (timer) clearInterval(timer);
+  const map = { full: 'full', expired: 'expired', bad_token: 'bad', already_used: 'already', own_invite: 'already' };
+  el('box').innerHTML = '<div class="br-ic">⚠️</div><div class="br-t">' +
+    AL.esc(map[code] ? T(map[code]) : T('fail') + (code ? ' (' + code + ')' : '')) + '</div>' +
+    '<a class="btn" href="alias_contacts.html" style="display:block;text-decoration:none;text-align:center;margin-top:16px" data-t="joinGoList">' +
+    AL.esc(AL.t('joinGoList')) + '</a>';
+}
+
+async function claim(){
+  const res = await AL.sb.rpc('bridge_claim', { p_token: token, p_persona: persona.id });
+  if (res.error) { fail(res.error.message); return; }
+  const out = res.data || {};
+  if (!out.ok) { fail(out.error); return; }
+  if (out.connected && out.link_id) { goChat(out.link_id); return; }
+  /* 먼저 누른 분 — 기다립니다 */
+  paintWaiting();
+  if (!timer) timer = setInterval(async function(){
+    try {
+      const s = await AL.sb.rpc('bridge_status', { p_token: token });
+      if (s.data && s.data.connected && s.data.link_id) goChat(s.data.link_id);
+    } catch (e) {}
+  }, 3000);
+}
+
+(async function(){
+  AL.paintText();
+  el('t').textContent = T('wait');
+  if (!/^[A-Za-z0-9_-]{16,64}$/.test(token)) { fail('bad_token'); return; }
+
+  /* 로그인이 안 되어 있으면 이 주소를 들고 가입 · 로그인으로 — 끝나면 여기로 돌아옵니다 */
+  const sess = await AL.sb.auth.getSession();
+  if (!sess.data.session) {
+    location.replace('alias_auth.html?next=' + encodeURIComponent('alias_bridge.html' + location.search));
+    return;
+  }
+  if (!await AL.requireLogin()) return;
+
+  let aliases = [];
+  try { aliases = await AL.loadAliases(); } catch (e) {}
+  persona = aliases.filter(function(a){ return a.is_default; })[0] || aliases[0] || null;
+  if (!persona) {
+    /* 가입 직후에는 별칭이 없습니다 — 고르개가 만들기부터 띄웁니다 */
+    persona = await AL.pickAlias({ note: AL.t('errNoAlias') });
+    if (!persona) { fail('bad_persona'); return; }
+  }
+  await claim();
+  AL.startAlerts();
+})();
+</script>
+</body>
+</html>

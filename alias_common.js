@@ -4347,6 +4347,31 @@ AL.storeRecover = function(){
 if (document.readyState === 'complete') setTimeout(AL.storeFlush, 800);
 else window.addEventListener('load', function(){ setTimeout(AL.storeFlush, 800); });
 
+/* 🔴🔴 2026-10-01 — 에일리어스콜에서 이어온 대화(?bridged=1)면 맨 위에 안내 띠
+   "부름으로 연결되었습니다. 사용하세요." — 몇 초 뒤 또는 누르면 사라집니다.
+   ⚠ 한 번만 보이게 주소에서 bridged 를 지웁니다(새로고침 · 뒤로 가기에 다시 안 뜸). */
+AL.bridgedBanner = function(){
+  try {
+    var q = new URLSearchParams(location.search);
+    if (q.get('bridged') !== '1') return;
+    q.delete('bridged');
+    history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q.toString() : '') + location.hash);
+    var en = AL.lang === 'en';
+    var b = document.createElement('div');
+    b.setAttribute('role', 'status');
+    b.style.cssText = 'position:fixed;left:12px;right:12px;top:calc(10px + env(safe-area-inset-top,0px));z-index:9999;' +
+      'background:#1F8A5B;color:#fff;border-radius:14px;padding:13px 16px;font-size:15px;font-weight:800;line-height:1.45;' +
+      'box-shadow:0 10px 28px rgba(0,0,0,.35);text-align:center;cursor:pointer;transition:opacity .4s';
+    b.textContent = en ? '🎉 You are now connected on Burum. Go ahead and chat!' : '🎉 부름으로 연결되었습니다. 사용하세요.';
+    var gone = function(){ b.style.opacity = '0'; setTimeout(function(){ b.remove(); }, 450); };
+    b.addEventListener('click', gone);
+    (document.body || document.documentElement).appendChild(b);
+    setTimeout(gone, 6000);
+  } catch (e) {}
+};
+if (document.readyState === 'complete') AL.bridgedBanner();
+else window.addEventListener('load', AL.bridgedBanner);
+
 AL.inviteUrl = function(code){
   var base = location.href.replace(/[^/]*$/, '');
   return base + 'alias_join.html?c=' + encodeURIComponent(code);
