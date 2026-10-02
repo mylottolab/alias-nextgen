@@ -97,6 +97,20 @@ document.addEventListener("DOMContentLoaded", function(){
   width:30px;height:30px;flex:0 0 30px;margin-left:9px;vertical-align:middle;
   font-size:13px;font-weight:800;line-height:1;
   background-repeat:no-repeat;background-size:cover;background-position:center}
+/* 🔴 2026-10-01 임시연락처 입구 · [임시] 묶음 */
+.tmp-entry{ display:flex; align-items:center; gap:11px; text-decoration:none; color:inherit; background:var(--card,#fff);
+  border:1.5px dashed var(--line,#DCE3DE); border-radius:14px; padding:12px 14px; margin:8px 0 12px; }
+.tmp-ic{ font-size:22px; }
+.tmp-tx{ flex:1; min-width:0; }
+.tmp-tx b{ display:block; font-size:14px; }
+.tmp-tx small{ display:block; font-size:11.5px; opacity:.7; line-height:1.5; margin-top:2px; }
+.tmp-new{ font-size:12px; font-weight:800; border-radius:20px; padding:6px 11px; background:var(--accent,#1F6F6B); color:#fff; white-space:nowrap; }
+.tmp-group{ margin:0 0 14px; }
+.tmp-gh{ font-size:12px; font-weight:800; opacity:.7; margin:4px 2px 6px; }
+.tmp-row{ display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit; padding:10px 12px; border-radius:12px; background:var(--card,#fff); margin-bottom:6px; }
+.tmp-row .nm{ flex:1; min-width:0; font-size:14px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.tmp-row .sub{ display:block; font-size:11.5px; font-weight:400; opacity:.65; margin-top:2px; }
+.tmp-row .dot{ min-width:20px; height:20px; border-radius:10px; background:#E5484D; color:#fff; font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center; padding:0 6px; }
 </style>
 </head>
 <body class="tabbed" data-t-title="ttContacts">
@@ -126,6 +140,19 @@ document.addEventListener("DOMContentLoaded", function(){
   </details>
 
   <div id="twin" class="ok" data-t="cntSamePeer"></div>
+
+  <!-- 🔴 2026-10-01 — 1회용 임시연락처 입구와 [임시] 묶음
+       잠깐 쓸 연락처(중고거래 · 소개팅 · 매물)는 정식 연락처와 섞지 않고 따로 보입니다. -->
+  <a class="tmp-entry" id="tmpEntry" href="burum_temp.html">
+    <span class="tmp-ic">🎫</span>
+    <span class="tmp-tx"><b id="tmpEntryT"></b><small id="tmpEntryS"></small></span>
+    <span class="tmp-new" id="tmpNew"></span>
+  </a>
+  <div class="tmp-group" id="tmpGroup" style="display:none;">
+    <div class="tmp-gh" id="tmpGroupH"></div>
+    <div id="tmpList"></div>
+  </div>
+
   <div id="list"></div>
   <div id="err" class="err"></div>
 
@@ -746,10 +773,42 @@ async function reload(){
     } catch (e) {}
 
     paint();
+    loadTemp();   // 🔴 2026-10-01 임시연락처 묶음 — 연락처를 읽은 뒤(로그인 확인 뒤)
   } catch (e) {
     console.error(e);
     showErr(AL.t('errGeneric', { msg: e.message || String(e) }));
   }
+}
+
+/* ── 🔴 2026-10-01 임시연락처 입구 · [임시] 묶음 ─────────────────────
+   my_temp_cards() — 살아 있는 것만(끝나지 않았고 기한 전) 묶어 보여줍니다.
+   ⚠ 못 읽어도 연락처 목록은 그대로 그립니다(입구만 보임). */
+async function loadTemp(){
+  const ko = AL.lang !== 'en';
+  document.getElementById('tmpEntryT').textContent = ko ? '임시연락처' : 'One-time contact cards';
+  document.getElementById('tmpEntryS').textContent = ko ? '중고거래 · 소개팅 · 매물처럼 잠깐만 쓸 연락처. 정한 날에 저절로 끊깁니다.'
+                                                       : 'For a deal, a first meeting or a listing — cuts off on the date you choose.';
+  const nb = document.getElementById('tmpNew');
+  nb.textContent = ko ? '+ 만들기' : '+ New';
+  if (!nb.dataset.on) { nb.dataset.on = '1';
+    nb.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); location.href = 'burum_temp.html?new=1'; }); }
+  try {
+    const r = await AL.sb.rpc('my_temp_cards');
+    if (r.error) throw r.error;
+    const now = Date.now();
+    const live = (r.data || []).filter(function(c){ return !c.ended_at && Date.parse(c.expires_at) > now; });
+    if (!live.length) { document.getElementById('tmpGroup').style.display = 'none'; return; }
+    const unread = live.reduce(function(a, c){ return a + (c.unread || 0); }, 0);
+    document.getElementById('tmpGroupH').textContent = (ko ? '임시 · ' : 'One-time · ') + live.length + (unread ? (ko ? ' · 새 문자 ' : ' · new ') + unread : '');
+    document.getElementById('tmpList').innerHTML = live.slice(0, 20).map(function(c){
+      const until = new Date(c.expires_at).toLocaleDateString(ko ? 'ko-KR' : 'en-US', { month: 'short', day: 'numeric' });
+      const sub = (ko ? (c.people || 0) + '명 연락 · ' + until + '까지' : (c.people || 0) + ' contacted · until ' + until);
+      return '<a class="tmp-row" href="burum_temp.html"><span class="nm">🎫 ' + AL.esc(c.label || c.code || '') +
+             '<span class="sub">' + AL.esc(sub) + '</span></span>' +
+             (c.unread ? '<span class="dot">' + AL.esc(c.unread > 99 ? '99+' : c.unread) + '</span>' : '') + '</a>';
+    }).join('');
+    document.getElementById('tmpGroup').style.display = '';
+  } catch (e) { console.warn('[contacts] 임시연락처를 못 읽었습니다', e); }
 }
 
 /* ── 도구 ───────────────────────────────────────────────────── */
