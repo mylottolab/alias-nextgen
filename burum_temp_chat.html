@@ -41,6 +41,17 @@ body{ display:flex; flex-direction:column; }
 .tc-in button{ min-width:48px; min-height:48px; border-radius:24px; border:none; background:var(--steel); color:var(--ink); font-size:18px; font-weight:800; cursor:pointer; }
 .tc-in.off{ opacity:.5; pointer-events:none; }
 .tc-err{ display:none; margin:8px 12px 0; font-size:13px; color:var(--bad); } .tc-err.show{ display:block; }
+
+/* 🔴 2026-10-01 — 피아 구분: 좌우 · 확실히 다른 색 · 보낸 사람 이름표
+   테마 색(--steel · --raise2)은 어두운 테마에서 서로 비슷해 보여 고정 색을 씁니다. */
+.bw{ display:flex; flex-direction:column; max-width:80%; }
+.bw.me{ align-self:flex-end; align-items:flex-end; margin-left:auto; }
+.bw.you{ align-self:flex-start; align-items:flex-start; margin-right:auto; }
+.bw .who{ font-size:11.5px; font-weight:800; opacity:.75; margin:6px 6px 3px; }
+.bw .bb{ padding:10px 14px; border-radius:18px; font-size:15px; line-height:1.55; white-space:pre-wrap; word-break:break-word; }
+.bw.me .bb{ background:#2F7DD1; color:#fff; border-bottom-right-radius:4px; }
+.bw.you .bb{ background:#EEF2F6; color:#16202B; border-bottom-left-radius:4px; }
+.bw .bb .at{ display:block; font-size:10.5px; opacity:.7; margin-top:3px; }
 </style>
 </head>
 <body>
@@ -89,13 +100,21 @@ function paintHead(){
   el('cut').style.display = alive ? '' : 'none';
   el('inBox').classList.toggle('off', !alive);
 }
+let prevSender = null;   // 🔴 같은 사람이 이어 보내면 이름표를 한 번만
 function add(m){
   const box = el('list');
   if (m.sender === 'system') {
+    prevSender = null;
     box.insertAdjacentHTML('beforeend', '<div class="tc-sys">' + esc(m.body === 'promo' ? T('promoSys') : m.body) + '</div>');
   } else {
     const at = new Date(m.created_at || m.at).toLocaleTimeString(LG === 'en' ? 'en-US' : 'ko-KR', { hour:'numeric', minute:'2-digit' });
-    box.insertAdjacentHTML('beforeend', '<div class="tc-m ' + (m.sender === 'owner' ? 'me' : 'you') + '">' + esc(m.body) + '<span class="at">' + esc(at) + '</span></div>');
+    const mine = m.sender === 'owner';
+    const who = mine ? (LG === 'en' ? 'Me' : '나')
+                     : ((thread && thread.visitor_name) ? thread.visitor_name + (LG === 'en' ? ' (guest)' : ' (손님)') : (LG === 'en' ? 'Guest' : '손님'));
+    const label = prevSender === m.sender ? '' : '<div class="who">' + esc(who) + '</div>';
+    prevSender = m.sender;
+    box.insertAdjacentHTML('beforeend', '<div class="bw ' + (mine ? 'me' : 'you') + '">' + label +
+      '<div class="bb">' + esc(m.body) + '<span class="at">' + esc(at) + '</span></div></div>');
   }
   lastId = Math.max(lastId, Number(m.id) || 0);
 }
