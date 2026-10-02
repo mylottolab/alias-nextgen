@@ -361,6 +361,8 @@ function paintList(){
         /* 🔴 2026-09-13 — 단추 하나로 모읍니다.
            누르면 "지금 사진 · 바꾸기 · 지우기" 가 한 창에 다 나옵니다.
            줄에 단추를 셋 넷 늘어놓으면 좁은 폰에서 찌그러집니다(함정 81). */
+        /* 🔴 2026-10-01 — 이름 바꾸기 (에일리어스콜에서 이어온 "AliascallN" 도 여기서 바꿉니다) */
+        '<button data-rename="' + AL.esc(a.id) + '">' + AL.esc(AL.lang === 'en' ? 'Rename' : '이름 바꾸기') + '</button>' +
         '<button data-face-btn="' + AL.esc(a.id) + '">' +
           AL.esc(AL.t(a.avatar_url ? 'faceChange' : 'faceAdd')) + '</button>' +
         /* 🔴 2026-09-15 — 이 별칭의 초대를 바로 뽑으러 갑니다.
@@ -376,6 +378,9 @@ function paintList(){
     '</li>';
   }).join('');
 
+  ul.querySelectorAll('[data-rename]').forEach(function(b){
+    b.addEventListener('click', function(){ renameAlias(b.getAttribute('data-rename')); });
+  });
   ul.querySelectorAll('[data-def]').forEach(function(b){
     b.addEventListener('click', function(){ makeDefault(b.getAttribute('data-def')); });
   });
@@ -574,6 +579,35 @@ async function makeAlias(){
     showErr(AL.t('errGeneric', { msg: e.message || String(e) }));
   } finally {
     btn.disabled = false;
+  }
+}
+
+/* 🔴 2026-10-01 — 별칭 이름 바꾸기
+   ⚠ 같은 이름을 두 개 둘 수 없습니다(만들 때와 같은 규칙). 1 ~ 20자.
+   ⚠ 이 별칭을 쓰는 모든 대화에서 상대에게 보이는 이름이 함께 바뀝니다. */
+async function renameAlias(id){
+  clearMsg();
+  const a = aliases.filter(function(x){ return x.id === id; })[0];
+  if (!a) return;
+  const en = AL.lang === 'en';
+  let name = prompt(en ? 'New name for "' + a.display_name + '" (1–20 characters)\nEveryone who knows you by this name will see the new one.'
+                       : '"' + a.display_name + '" 의 새 이름 (1 ~ 20자)\n이 이름으로 이어진 분들에게 새 이름이 보입니다.', a.display_name);
+  if (name === null) return;
+  name = name.trim();
+  if (!name || name.length > 20) { showErr(en ? 'Please use 1 to 20 characters.' : '1 ~ 20자로 적어 주세요.'); return; }
+  if (name === a.display_name) return;
+  if (aliases.some(function(x){ return x.id !== id && x.display_name === name; })) {
+    showErr(en ? 'You already have an alias with that name.' : '같은 이름의 별칭이 이미 있습니다.'); return;
+  }
+  try {
+    const up = await AL.sb.from('personas').update({ display_name: name }).eq('id', id).select('id');
+    if (up.error) throw up.error;
+    if (!up.data || !up.data.length) throw new Error(AL.t('errNoRows'));
+    showOk(en ? 'Renamed.' : '이름을 바꿨습니다.');
+    await reload();
+  } catch (e) {
+    console.error(e);
+    showErr(AL.t('errGeneric', { msg: e.message || String(e) }));
   }
 }
 

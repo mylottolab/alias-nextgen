@@ -4372,6 +4372,95 @@ AL.bridgedBanner = function(){
 if (document.readyState === 'complete') AL.bridgedBanner();
 else window.addEventListener('load', AL.bridgedBanner);
 
+/* =====================================================================
+   🔴🔴 2026-10-01 — 세 화면(연락처 · 통화 기록 · 나) 맨 위에 [MyPage] [로그아웃]
+   전에는 로그인은 첫 화면에만, 로그아웃은 "나" 맨 아래에만 있어 찾기 어려웠습니다.
+   ⚠ 공용 파일 한 곳에서 붙입니다 — 세 화면 파일은 고치지 않습니다(body.tabbed 인 화면).
+   MyPage  지금 이용권 · 남은 날 · 저장 공간을 한눈에, [연장하기] · [저장 공간] 바로가기
+   ===================================================================== */
+AL.topBar = async function(){
+  try {
+    if (!document.body || !document.body.classList.contains('tabbed')) return;
+    if (document.getElementById('alTopBar')) return;
+    var wrap = document.querySelector('.wrap'); if (!wrap) return;
+    var en = AL.lang === 'en';
+    var bar = document.createElement('div');
+    bar.id = 'alTopBar';
+    bar.style.cssText = 'display:flex;justify-content:flex-end;gap:8px;margin:2px 0 6px';
+    var pill = 'appearance:none;-webkit-appearance:none;cursor:pointer;margin:0;width:auto;padding:7px 14px;border-radius:999px;' +
+               'font-size:12.5px;font-weight:700;background:rgba(255,255,255,.07);color:inherit;border:1px solid rgba(255,255,255,.18)';
+    var sess = null; try { sess = (await AL.sb.auth.getSession()).data.session; } catch (e) {}
+    var my = document.createElement('button'); my.type = 'button'; my.style.cssText = pill;
+    my.textContent = '👤 MyPage';
+    my.addEventListener('click', function(){ AL.openMyPage(); });
+    var io = document.createElement('button'); io.type = 'button'; io.style.cssText = pill;
+    io.textContent = sess ? (en ? 'Log out' : '로그아웃') : (en ? 'Log in' : '로그인');
+    io.addEventListener('click', function(){
+      if (sess) { if (confirm(AL.t('outAsk'))) AL.signOut(); }
+      else location.href = 'alias_auth.html?next=' + encodeURIComponent(location.pathname.split('/').pop() + location.search);
+    });
+    if (sess) bar.appendChild(my);
+    bar.appendChild(io);
+    wrap.insertBefore(bar, wrap.firstChild);
+  } catch (e) { console.warn('[topbar]', e); }
+};
+
+AL.openMyPage = async function(){
+  var en = AL.lang === 'en';
+  var old = document.getElementById('alMyBg'); if (old) old.remove();
+  var bg = document.createElement('div'); bg.id = 'alMyBg';
+  bg.style.cssText = 'position:fixed;inset:0;z-index:9990;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center';
+  var box = document.createElement('div');
+  box.style.cssText = 'width:100%;max-width:520px;background:#1B2430;color:#DDE5F0;border-radius:18px 18px 0 0;' +
+    'padding:20px 18px calc(20px + env(safe-area-inset-bottom,0px));max-height:85vh;overflow:auto;font-size:14.5px;line-height:1.6';
+  box.innerHTML = '<div style="font-size:18px;font-weight:800;margin-bottom:12px">👤 MyPage</div>' +
+    '<div id="alMyBody" style="opacity:.8">' + (en ? 'Loading…' : '불러오는 중…') + '</div>';
+  bg.appendChild(box); document.body.appendChild(bg);
+  bg.addEventListener('click', function(e){ if (e.target === bg) bg.remove(); });
+
+  var card = function(title, line, sub, href, label, hot){
+    return '<div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:14px;margin-bottom:10px">' +
+      '<div style="font-size:12.5px;opacity:.7;margin-bottom:4px">' + AL.esc(title) + '</div>' +
+      '<div style="font-size:16px;font-weight:800">' + AL.esc(line) + '</div>' +
+      (sub ? '<div style="font-size:12.5px;opacity:.75;margin-top:3px">' + AL.esc(sub) + '</div>' : '') +
+      '<a href="' + href + '" style="display:inline-block;margin-top:10px;padding:9px 16px;border-radius:999px;text-decoration:none;' +
+        'font-size:13.5px;font-weight:800;background:' + (hot ? '#2F9E6B' : 'rgba(143,227,176,.2)') + ';color:' + (hot ? '#fff' : '#8FE3B0') + ';' +
+        'border:1px solid rgba(143,227,176,.45)">' + AL.esc(label) + '</a></div>';
+  };
+  var html = '';
+  try {
+    var p = await AL.myPlan(true);
+    var d = AL.planDaysLeft(p);
+    if (p.state === 'paid') {
+      html += card(en ? 'My plan' : '내 이용권', (en ? 'Plan · ' : '이용권 · ') + d + (en ? ' days left' : '일 남음'),
+                   (en ? 'Until ' : '') + AL.fmtDate(p.until) + (en ? '' : '까지'), 'alias_buy.html', en ? 'Extend ›' : '연장하기 ›', d <= 14);
+    } else if (p.state === 'trial') {
+      html += card(en ? 'My plan' : '내 이용권', (en ? 'Free trial · ' : '무료 체험 · ') + d + (en ? ' days left' : '일 남음'),
+                   p.bonus_ready ? AL.t('plBonus') : '', 'alias_buy.html', en ? 'Buy a plan ›' : '이용권 사기 ›', true);
+    } else {
+      html += card(en ? 'My plan' : '내 이용권', en ? 'No active plan' : '이용권이 끝났습니다',
+                   en ? 'Receiving and reading still work.' : '받기 · 읽기는 그대로 됩니다.', 'alias_buy.html', en ? 'Buy a plan ›' : '이용권 사기 ›', true);
+    }
+  } catch (e) { html += '<div style="opacity:.7;margin-bottom:10px">' + (en ? 'Could not read your plan.' : '이용권을 읽지 못했습니다.') + '</div>'; }
+  try {
+    var s = await AL.storageStatus();
+    var used = Number(s.used || 0), cap = Number(s.cap || 0);
+    var pct = cap > 0 ? Math.min(100, Math.round(used / cap * 100)) : 0;
+    html += card(en ? 'Storage' : '저장 공간', AL.fmtBytes(used) + ' / ' + AL.fmtBytes(cap) + ' (' + pct + '%)',
+                 used > cap && s.delete_after ? AL.t('sgOver', { over: AL.fmtBytes(used - cap), when: AL.fmtDate(s.delete_after) }) : '',
+                 'alias_storage.html', en ? 'Add storage ›' : '용량 늘리기 ›', pct >= 90);
+  } catch (e) {}
+  html += '<a href="alias_me.html" style="display:block;text-align:center;margin-top:6px;color:#8FE3B0;font-size:13.5px">' +
+          (en ? 'More settings on the Me screen ›' : '이름 · 모양 · 알림 설정은 "나" 화면에서 ›') + '</a>' +
+          '<button type="button" id="alMyClose" style="display:block;width:100%;margin-top:12px;padding:12px;border-radius:12px;' +
+          'background:none;border:1px solid rgba(255,255,255,.18);color:inherit;font-size:14px;cursor:pointer">' + (en ? 'Close' : '닫기') + '</button>';
+  var body = document.getElementById('alMyBody');
+  if (body) { body.style.opacity = '1'; body.innerHTML = html; }
+  var c = document.getElementById('alMyClose'); if (c) c.addEventListener('click', function(){ bg.remove(); });
+};
+if (document.readyState === 'complete') setTimeout(AL.topBar, 0);
+else window.addEventListener('load', function(){ setTimeout(AL.topBar, 0); });
+
 AL.inviteUrl = function(code){
   var base = location.href.replace(/[^/]*$/, '');
   return base + 'alias_join.html?c=' + encodeURIComponent(code);
