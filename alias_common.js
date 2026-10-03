@@ -4380,27 +4380,49 @@ else window.addEventListener('load', AL.bridgedBanner);
    ===================================================================== */
 AL.topBar = async function(){
   try {
-    if (!document.body || !document.body.classList.contains('tabbed')) return;
-    if (document.getElementById('alTopBar')) return;
-    var wrap = document.querySelector('.wrap'); if (!wrap) return;
+    if (!document.body || document.getElementById('alTopBar')) return;
+    /* 🔴 2026-10-04 — 주간/야간 · 한국어/영어 바꾸기를 주요 화면마다(첫 로그인 화면부터)
+       ⚠ 통화 · 대화 · 걸기처럼 화면을 꽉 채우는 곳에는 넣지 않습니다(누르다 통화가 끊기지 않게). */
+    var page = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
+    var SKIP = ['alias_call.html', 'alias_chat.html', 'alias_phone.html', 'burum_t.html', 'burum_temp_chat.html'];
+    if (SKIP.indexOf(page) >= 0) return;
+    var wrap = document.querySelector('.wrap') || document.body;
+    var tabbed = document.body.classList.contains('tabbed');
     var en = AL.lang === 'en';
     var bar = document.createElement('div');
     bar.id = 'alTopBar';
-    bar.style.cssText = 'display:flex;justify-content:flex-end;gap:8px;margin:2px 0 6px';
-    var pill = 'appearance:none;-webkit-appearance:none;cursor:pointer;margin:0;width:auto;padding:7px 14px;border-radius:999px;' +
-               'font-size:12.5px;font-weight:700;background:rgba(255,255,255,.07);color:inherit;border:1px solid rgba(255,255,255,.18)';
-    var sess = null; try { sess = (await AL.sb.auth.getSession()).data.session; } catch (e) {}
-    var my = document.createElement('button'); my.type = 'button'; my.style.cssText = pill;
-    my.textContent = '👤 MyPage';
-    my.addEventListener('click', function(){ AL.openMyPage(); });
-    var io = document.createElement('button'); io.type = 'button'; io.style.cssText = pill;
-    io.textContent = sess ? (en ? 'Log out' : '로그아웃') : (en ? 'Log in' : '로그인');
-    io.addEventListener('click', function(){
-      if (sess) { if (confirm(AL.t('outAsk'))) AL.signOut(); }
-      else location.href = 'alias_auth.html?next=' + encodeURIComponent(location.pathname.split('/').pop() + location.search);
-    });
-    if (sess) bar.appendChild(my);
-    bar.appendChild(io);
+    bar.style.cssText = 'display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin:2px 0 6px;position:relative;z-index:5';
+    var pill = 'appearance:none;-webkit-appearance:none;cursor:pointer;margin:0;width:auto;padding:7px 13px;border-radius:999px;' +
+               'font-size:12.5px;font-weight:700;background:rgba(128,128,128,.12);color:inherit;border:1px solid rgba(128,128,128,.35);white-space:nowrap';
+    var mk = function(text, fn){ var b = document.createElement('button'); b.type = 'button'; b.style.cssText = pill; b.textContent = text; b.addEventListener('click', fn); return b; };
+
+    /* ☀️ / 🌙 — 지금 화면의 반대로 바꿉니다(설정의 "모드" 와 같은 곳에 저장) */
+    var dark = document.documentElement.getAttribute('data-mode') !== 'light';
+    bar.appendChild(mk(dark ? (en ? '☀️ Day' : '☀️ 주간') : (en ? '🌙 Night' : '🌙 야간'), async function(){
+      try {
+        var t = AL.readThemeCache();
+        t.mode = (document.documentElement.getAttribute('data-mode') === 'light') ? 'dark' : 'light';
+        await AL.saveTheme(t);
+      } catch (e) { console.warn('[topbar] 모양 저장 실패', e); }
+      var old = document.getElementById('alTopBar'); if (old) old.remove();
+      AL.topBar();   // 단추 글씨를 새 모드에 맞게
+    }));
+
+    /* EN / 한국어 — 바꾼 뒤 화면을 새로 읽어 모든 글씨를 바꿉니다 */
+    bar.appendChild(mk(en ? '한국어' : 'EN', async function(){
+      try { await AL.setLang(en ? 'kr' : 'en'); } catch (e) { console.warn('[topbar] 언어 저장 실패', e); }
+      location.reload();
+    }));
+
+    /* 연락처 · 통화 기록 · 나 — MyPage · 로그인/로그아웃 (2026-10-01) */
+    if (tabbed) {
+      var sess = null; try { sess = (await AL.sb.auth.getSession()).data.session; } catch (e) {}
+      if (sess) bar.appendChild(mk('👤 MyPage', function(){ AL.openMyPage(); }));
+      bar.appendChild(mk(sess ? (en ? 'Log out' : '로그아웃') : (en ? 'Log in' : '로그인'), function(){
+        if (sess) { if (confirm(AL.t('outAsk'))) AL.signOut(); }
+        else location.href = 'alias_auth.html?next=' + encodeURIComponent(page + location.search);
+      }));
+    }
     wrap.insertBefore(bar, wrap.firstChild);
   } catch (e) { console.warn('[topbar]', e); }
 };
