@@ -87,8 +87,10 @@ document.addEventListener('DOMContentLoaded', function(){ if (window.AL && AL.bo
   @page{ size:A4; margin:10mm; }
   html, body{ background:#fff !important; margin:0 !important; padding:0 !important; }
   body > *:not(.tmp-sheet){ display:none !important; }
-  .tmp-sheet{ display:grid; grid-template-columns:1fr 1fr; width:100%; }
-  .tmp-sheet.n15{ grid-template-columns:1fr 1fr 1fr; }
+  /* 🔴 2026-10-04 — 폭을 A4(210 − 여백 20 = 190mm)로 못박습니다. "100%" 로 두면 앱(웹뷰) 인쇄가
+       폰 화면 폭으로 재서 명함이 작아질 수 있습니다(에일리어스콜에서 한 줄 · 일곱 장으로 나왔던 일). */
+  .tmp-sheet{ display:grid; grid-template-columns:repeat(2, 95mm); width:190mm !important; margin:0 auto; }
+  .tmp-sheet.n15{ grid-template-columns:repeat(3, 63.33mm); }
   .pc{ aspect-ratio:9/5; box-sizing:border-box; border:0.3mm dashed #B5B5B5; margin:-0.15mm; display:flex; align-items:center; gap:4%; padding:4.5%;
        font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif; color:#1B2433; break-inside:avoid; }
   .pc .q{ height:78%; aspect-ratio:1/1; flex-shrink:0; } .pc .q img{ width:100%; height:100%; display:block; image-rendering:pixelated; }
@@ -161,6 +163,8 @@ document.addEventListener('DOMContentLoaded', function(){ if (window.AL && AL.bo
 <div class="tmp-big" id="big" role="dialog"><button type="button" id="bigX" aria-label="닫기">✕</button><div id="bigQr"></div><div class="tmp-code" id="bigCode"></div></div>
 <div class="tmp-pick" id="pick" role="dialog"><div class="box">
   <h3 data-x="pkT"></h3><p data-x="pkD"></p>
+  <!-- 🔴 2026-10-04 — 폰에서 바로 인쇄 · 안 되면 PDF 로 저장해 PC 에서 (에일리어스콜과 같은 문구) -->
+  <p data-x="pkTip" style="margin:6px 0 12px;padding:9px 11px;border-radius:9px;background:rgba(143,227,176,.12);font-size:12px;line-height:1.6;opacity:.95"></p>
   <button type="button" class="opt" data-n="10"><b data-x="pk10"></b><span data-x="pk10d"></span></button>
   <button type="button" class="opt" data-n="15"><b data-x="pk15"></b><span data-x="pk15d"></span></button>
   <button type="button" class="btn ghost" id="pickNo" data-x="cancel"></button>
@@ -190,6 +194,7 @@ const X = {
     cutAsk:'지금 끊을까요? 끊으면 이 연락처로는 더는 연락이 오지 않습니다. 되돌릴 수 없습니다.', cutDone:'끊었습니다.', cutFail:'끊지 못했습니다. 잠시 뒤 다시 눌러주세요.',
     shareText:'번호 없이 연락하실 수 있어요 ({d}까지)\n{url}\n코드 {c}', copied:'링크를 복사했습니다. 카카오톡이나 문자에 붙여넣어 보내세요.',
     pkT:'A4 한 장에 몇 장 찍을까요?', pkD:'같은 명함이 점선과 함께 찍힙니다. 인쇄 창에서 "PDF로 저장"도 됩니다.',
+    pkTip:'📱 Wi-Fi 프린터는 폰에서 바로 인쇄됩니다(인쇄 창에서 프린터 선택). 폰과 프린터가 연결되지 않으면, 인쇄 창에서 "PDF로 저장"을 고른 뒤 PC에서 인쇄하세요.',
     pk10:'10장 · 명함 크기', pk10d:'약 9 × 5cm · 두 줄 × 다섯 칸', pk15:'15장 · 작은 크기', pk15d:'약 6.3 × 3.5cm · 세 줄 × 다섯 칸', cancel:'취소',
     pDate:'{d}까지', pHead:'번호 없이<br>연락하세요', pDesc:'QR을 찍으면 바로 대화. 앱 설치는 필요 없습니다.', pUrl:'안 찍히면 burum.kr/c 에서 코드 입력',
     pCut:'✂ 점선을 따라 잘라 쓰세요. 같은 명함 {n}장입니다.',
@@ -212,6 +217,7 @@ const X = {
     cutAsk:'Cut off now? No one can reach you with this card afterwards.', cutDone:'Cut off.', cutFail:'Could not cut it off. Try again.',
     shareText:'You can reach me without my number (until {d})\n{url}\nCode {c}', copied:'Link copied. Paste it into a message.',
     pkT:'How many per A4 sheet?', pkD:'Identical cards with dotted cut lines. You can also Save as PDF.',
+    pkTip:'📱 Wi-Fi printers can print straight from your phone (pick the printer in the print window). If your printer doesn\'t connect to your phone, choose "Save as PDF" in the print window and print it from your PC.',
     pk10:'10 · card size', pk10d:'about 9 × 5 cm', pk15:'15 · small', pk15d:'about 6.3 × 3.5 cm', cancel:'Cancel',
     pDate:'until {d}', pHead:'Reach me<br>without my number', pDesc:'Scan to chat. No app needed.', pUrl:'Or enter the code at burum.kr/c',
     pCut:'✂ Cut along the dotted lines — {n} identical cards.',
