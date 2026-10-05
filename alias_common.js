@@ -4414,6 +4414,11 @@ AL.topBar = async function(){
       location.reload();
     }));
 
+    /* 🔴 2026-10-05 — [❓ 사용법] 사용설명서(한국어 · 영어) */
+    bar.appendChild(mk(en ? '❓ Guide' : '❓ 사용법', function(){
+      location.href = 'burum_guide.html?lang=' + (en ? 'en' : 'ko');
+    }));
+
     /* 연락처 · 통화 기록 · 나 — MyPage · 로그인/로그아웃 (2026-10-01) */
     if (tabbed) {
       var sess = null; try { sess = (await AL.sb.auth.getSession()).data.session; } catch (e) {}
