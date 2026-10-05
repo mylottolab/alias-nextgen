@@ -288,6 +288,8 @@ function goChat(delayMs){
 
 let me = null, view = null;
 let muted = false;
+/* 🔴 2026-10-05 (2-3) — 스피커로 듣는 중인가. 영상은 처음부터 스피커, 음성은 수화기(귀에 대고) */
+let speakerOn = (callType === 'video');
 let tick = null, t0 = null;
 
 function el(id){ return document.getElementById(id); }
@@ -395,6 +397,18 @@ function paintActs(){
       muted = AL.toggleMute(); paintActs();
     });
   box.appendChild(m);
+
+  /* 🔴 2026-10-05 (2-3) — [🔊 스피커] 수화기 ↔ 스피커. 앱에서만(브라우저는 폰이 알아서 함).
+     ⚠ 블루투스 이어폰이 연결돼 있으면 스피커를 끈 상태 = 이어폰으로 들립니다. */
+  if (window.AliasNative && typeof AliasNative.setSpeaker === 'function') {
+    const en = AL.lang === 'en';
+    box.appendChild(btn('rbtn plain' + (speakerOn ? ' on' : ''), speakerOn ? '🔊' : '🔈',
+      speakerOn ? (en ? 'Speaker on' : '스피커 켜짐') : (en ? 'Speaker' : '스피커'), function(){
+        speakerOn = !speakerOn;
+        try { AliasNative.setSpeaker(speakerOn); } catch (e) { console.warn('[call] 스피커 바꾸기 실패', e); }
+        paintActs();
+      }));
+  }
 
   /* 🔴 2026-09-19 — 녹음. **통화 중 누구든** 누를 수 있습니다.
      ⚠ 담는 중이면 안 보여줍니다. 멈추기는 위 띠에 있습니다. */
