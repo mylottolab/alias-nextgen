@@ -719,6 +719,21 @@ window.ALIAS_ANSWER_NOW = function(){
   } catch (e) { console.warn('[call] 바로 받기 실패', e); }
 };
 
+/* 🔴🔴 2026-10-05 (2-2) — 이어폰 · 차의 [거절] · [끊기] 를 앱(자바)이 전해 올 때 */
+window.ALIAS_DECLINE_NOW = function(id){
+  try {
+    if (incoming && (!id || id === callId) && !AL.call.pc) { decline(); return; }
+    if (AL.declineCall && id) AL.declineCall(id);
+  } catch (e) { console.warn('[call] 바로 거절 실패', e); }
+};
+window.ALIAS_HANGUP_NOW = function(){
+  try {
+    setStatus(AL.t('clEnded'));
+    if (AL.call && AL.call.pc) AL.endCall('completed');
+    setTimeout(function(){ if (!leaving) bye(); }, 1500);
+  } catch (e) { console.warn('[call] 바로 끊기 실패', e); try { bye(); } catch (e2) {} }
+};
+
 async function decline(){
   AL.stopRinging();
   stopAliveWatch();
@@ -1032,6 +1047,13 @@ function onRecSignal(kind, days, who, vid){
     }
 
     if (once) burnTicket(once);
+
+    /* 🔴 2026-10-05 (2-2) — 이어폰 · 차에서 [거절] 하고 왔으면(decline=1) 곧바로 거절 */
+    if (P.get('decline') === '1') {
+      setStatus(AL.t('clDeclined'));
+      decline();
+      return;
+    }
 
     /* 🔴🔴 2026-10-05 — 이미 [받기] 를 누르고 왔으면(큰 전화 화면 · 이어폰 · 차) 바로 연결.
        ⚠ 영상통화는 얼굴이 나가는 일이라 지금처럼 고르시게 둡니다(아래 벨 · 단추로). */
