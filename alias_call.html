@@ -733,6 +733,31 @@ window.ALIAS_ANSWER_NOW = function(){
   } catch (e) { console.warn('[call] 바로 받기 실패', e); }
 };
 
+/* 🔴🔴 2026-10-05 (2-4) — 통화 중 일반 전화를 "대기 후 받기" 하면 앱(자바)이 부릅니다.
+   대기 동안 서로 소리가 안 가게 — 내 마이크와 상대 소리를 끄고, 돌아오면 원래대로. */
+let onHold = false, mutedBeforeHold = false;
+window.ALIAS_HOLD = function(on){
+  try {
+    on = !!on;
+    if (on === onHold) return;
+    onHold = on;
+    const en = AL.lang === 'en';
+    if (on) {
+      mutedBeforeHold = muted;
+      if (AL.call.local) AL.call.local.getAudioTracks().forEach(function(t){ t.enabled = false; });
+      ['remoteA', 'remoteV'].forEach(function(id){ const m = el(id); if (m) m.muted = true; });
+      setStatus(en ? 'On hold — another call is in progress' : '대기 중 — 다른 전화를 받고 있습니다');
+    } else {
+      if (AL.call.local) AL.call.local.getAudioTracks().forEach(function(t){ t.enabled = !mutedBeforeHold; });
+      muted = mutedBeforeHold;
+      ['remoteA', 'remoteV'].forEach(function(id){ const m = el(id); if (m) { m.muted = false; m.play && m.play().catch(function(){}); } });
+      setStatus(AL.t('clConnected'));
+      try { AL.reviveMic && AL.reviveMic(); } catch (e) {}   // 일반 전화에 마이크를 빼앗겼을 수 있음
+    }
+    paintActs();
+  } catch (e) { console.warn('[call] 대기 바꾸기 실패', e); }
+};
+
 /* 🔴🔴 2026-10-05 (2-2) — 이어폰 · 차의 [거절] · [끊기] 를 앱(자바)이 전해 올 때 */
 window.ALIAS_DECLINE_NOW = function(id){
   try {
@@ -1101,6 +1126,12 @@ function onRecSignal(kind, days, who, vid){
         /* 상대 잠금화면에 보일 이름 — 이 관계에서 내가 쓰는 별칭입니다 */
         myFace: view.my_face || '',
       });
+      /* 🔴 2026-10-05 (2-4) — 내가 건 통화도 폰에 알립니다(일반 전화가 오면 "대기" 로 다루게) */
+      try {
+        if (window.AliasNative && typeof AliasNative.callStarted === 'function' && AL.call.callId) {
+          AliasNative.callStarted(String(AL.call.callId), peerName());
+        }
+      } catch (e) { console.warn('[call] 폰에 알리기 실패(통화는 그대로)', e); }
     } catch (e) {
       /* 🔴🔴 2026-09-12 — 조용히 멈추지 않습니다. */
       console.error('[call] 걸기 실패', e);
