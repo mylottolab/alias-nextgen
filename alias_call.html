@@ -199,6 +199,12 @@ body.vidon .who .av{display:none}
         안 죽으니 표가 남아 있었습니다.
      ② 받는 쪽에서 벨을 울리기 "전에" 이미 끝난 통화인지 한 번 봅니다.
         예전에는 3초 뒤에야 봤기 때문에 끝난 전화가 3초씩 울렸습니다.
+
+   🔴🔴 2026-10-05 — "직접 받았음(answered=1)"
+     큰 전화 화면(IncomingCallActivity) · 이어폰 · 차의 [받기] 로 이미 받고 왔으면,
+     이 화면이 [받기] 를 다시 묻지 않고 곧바로 연결합니다(음성통화).
+     ⚠ 영상통화는 얼굴이 나가는 일이라, 지금처럼 [카메라 끄고 받기] [영상으로 받기]
+       를 한 번 더 고르시게 합니다.
    ===================================================================== */
 
 const P = new URLSearchParams(location.search);
@@ -208,6 +214,7 @@ const token    = P.get('token');
 const callType = P.get('type') || 'voice';
 const once     = P.get('once');       // 이 통화의 표. 한 번만 씁니다
 const incoming = !!callId;
+const answeredAlready = P.get('answered') === '1';   // 🔴 2026-10-05 — 이미 [받기] 를 누르고 옴
 
 /* 🔴 뒤로 가기로 이 화면에 다시 오면 전화를 또 걸면 안 됩니다.
    브라우저는 그냥 주소를 다시 열 뿐이라, 주소만 보고 "걸어라" 하면
@@ -471,9 +478,6 @@ function onState(state, extra){
     // ⚠ 통화 중에 얼마나 쓰는지 보여줍니다. 모르면 불안합니다.
     let line = AL.t('dtThisCall', { size: AL.fmtBytes(extra.bytes) });
 
-    /* 🔴 2026-09-12 — 소리가 실제로 흐르는지는 **음성통화에서도** 보여줍니다.
-       "소리재생(3.4)" 의 숫자가 올라가야 소리가 스피커로 가고 있는 것입니다.
-       0.0 에 머물면 안 오거나 못 틀고 있는 것입니다. */
     /* 🔴 2026-09-13 — 소리 상태는 콘솔에만 남깁니다.
        화면에 "소리재생(3.4)" 같은 글씨가 뜨면 손님이 불안해합니다.
 
@@ -501,36 +505,7 @@ function onState(state, extra){
     el('bytes').textContent = line;
   }
 
-  /* 🔴🔴 2026-09-11 신설 — 붙는 과정을 눈으로 보여줍니다.
-
-     전에는 "전화 거는 중" 한 줄뿐이라, 안 붙을 때 어디서 막혔는지
-     알 수가 없었습니다. 이제 단계가 보입니다.
-
-       길 찾는 중    상대에게 닿을 길을 찾고 있습니다
-       길 맞춰보는 중 찾은 길들을 하나씩 두드려 보고 있습니다
-       통화 중       뚫렸습니다
-
-     어느 칸에서 멈추는지로 원인이 반쯤 갈립니다.
-       "길 찾는 중" 에서 멈춤     → 중계(TURN) 나 네트워크 문제
-       "길 맞춰보는 중" 에서 멈춤 → 양쪽이 서로 닿지 못하는 것
-       "통화 중" 인데 소리 없음   → 볼륨이나 마이크 문제
-
-     ⚠ 이미 통화 중이면 덮어쓰지 않습니다. 시계가 도는 걸 가리면 안 됩니다. */
-  /* 🔴🔴 2026-09-11 신설 — 찾은 길을 화면에 그대로 보여줍니다.
-     USB 를 안 꽂아도 폰만 보면 원인을 알 수 있어야 합니다.
-
-       집 1 · 밖 1 · 중계 2    ← 정상. 중계를 쓸 수 있습니다
-       집 1 · 밖 1 · 중계 0    ← 중계 없음. 이동통신끼리는 통화가 안 됩니다
-       🔴 중계 못 받음         ← 함수를 아예 못 불렀습니다 (로그인 표 문제) */
   /* 🔴🔴 2026-09-12 신설 — 거는 과정을 다섯 단계로 보여줍니다.
-
-     전에는 실패해도 "전화 거는 중…" 에서 조용히 멈췄습니다. 오류는
-     콘솔에만 찍혀서 USB 를 꽂지 않으면 알 수가 없었습니다(함정 76).
-     이제 **어디까지 갔는지**가 화면에 남습니다.
-
-       1/5 마이크·카메라  2/5 통화 줄  3/5 중계 주소
-       4/5 신호 채널      5/5 제안 보냄
-
      멈춘 자리 바로 다음이 문제입니다. */
   else if (state === 'step') {
     el('bytes').textContent = extra.n + '/' + extra.of + ' ' + extra.what;
@@ -575,25 +550,13 @@ function onState(state, extra){
     const isVid = (extra.kind === 'video');
     const target = isVid ? el('remoteV') : el('remoteA');
     target.srcObject = extra.stream;
-    /* 🔴 2026-09-12 — 소리 요소의 음량을 끝까지 올려둡니다.
-       영상통화에서 소리가 작게 들린다는 말씀이 있었습니다.
-       ⚠ 이것과 별개로 **폰의 "미디어" 음량**이 낮으면 작게 들립니다.
-         통화 중에 음량 버튼 위쪽을 눌러야 합니다(함정 ㊾). */
     try { target.volume = 1.0; target.muted = false; } catch (e) {}
 
     if (isVid) showVideoMode();
 
-    /* 🔴 2026-09-12 — 첫 장면에서 멈추면 다시 틀어줍니다.
-       브라우저가 재생을 막았거나 화면이 잠깐 가려졌을 때입니다. */
-    /* 🔴🔴 2026-09-12 — **소리도** 다시 틀어봅니다.
-
-       거는 쪽(A)에서만 소리가 안 들리는 일이 났습니다.
-       받는 쪽은 "받기" 를 이 화면에서 눌렀으니 브라우저가 "소리를 내도
-       좋다" 고 봅니다. 거는 쪽은 앞 화면에서 누르고 넘어왔기 때문에
-       이 화면에는 그 허락이 없습니다. 그래서 막힐 수 있습니다.
-
-       2초마다 살펴보고 멈춰 있으면 다시 틀어줍니다.
-       이미 나오고 있으면 아무 일도 안 합니다. */
+    /* 🔴🔴 2026-09-12 — 소리 · 영상이 멈춰 있으면 다시 틀어줍니다.
+       "재생 중" 이라는 말을 믿지 않고 시계가 실제로 가는지 봅니다.
+       두 번 연속 제자리면 손님에게 한 번 눌러달라고 합니다. */
     if (!window.__mediaNudge) {
       window.__lastT = {};
       window.__stuck = {};
@@ -604,18 +567,6 @@ function onState(state, extra){
 
           if (m.paused) { m.play().catch(function(){}); return; }
 
-          /* 🔴🔴 2026-09-12 — "재생 중" 이라는 말을 믿지 않습니다.
-
-             거는 쪽에서 소리가 안 들렸습니다. 그런데 화면에는 `소리재생`
-             이라고 나왔습니다. 틀긴 틀었는데 **소리가 안 나가는 상태**입니다.
-
-             받는 쪽은 "받기" 를 이 화면에서 눌렀으니 브라우저가 소리를
-             허락합니다. 거는 쪽은 앞 화면에서 누르고 넘어와서 허락이
-             없습니다. 그때 이런 어정쩡한 상태가 됩니다.
-
-             그래서 **시계가 실제로 가는지**를 봅니다. 소리가 나가고 있으면
-             currentTime 이 계속 늘어납니다. 두 번 연속 제자리면 안 나가는
-             것이니 손님에게 한 번 눌러달라고 합니다. 그 한 번이 허락입니다. */
           const t = m.currentTime;
           if (window.__lastT[id] === t) {
             window.__stuck[id] = (window.__stuck[id] || 0) + 1;
@@ -647,19 +598,8 @@ function onState(state, extra){
 }
 
 /* 🔴 2026-09-10 신설 — 두 번 부르지 않게 빗장을 겁니다.
-   'peer-hangup' 뒤에 'ended' 가 잇달아 오면 예전에는 bye() 가 두 번 돌아
-   나가는 타이머가 둘 겹쳤습니다.
-
    ⚠⚠ 2026-09-12 — 이 한 줄이 **사라진 적이 있습니다.**
-     영상 받는 부분을 다시 쓰면서 그 아래 있던 이 줄까지 같이 날아갔습니다.
-     그러면 if (leaving) 에서 "그런 것 없다" 며 튕겨나가, bye() 가 통째로
-     안 돕니다. 증상은 이랬습니다.
-
-       ✕ 를 눌러도 화면이 안 닫힘
-       "통화가 끝났습니다" 글씨는 뜨는데 통화시간이 계속 올라감
-       양쪽 다 그럼
-
-     문법 검사로는 절대 안 잡힙니다. 쓸 때가 되어야 터집니다.
+     그러면 bye() 가 통째로 안 돌아 ✕ 를 눌러도 화면이 안 닫혔습니다.
      **이 줄을 지우지 마세요.** */
 var leaving = false;
 
@@ -667,8 +607,7 @@ function bye(){
   ongoingStop();          // 🔴 2026-09-22 — 통화 중 알림줄 끄기
   if (leaving) return;
   leaving = true;
-  /* 🔴 2026-09-19 — 녹음 중이었으면 저장하고 나갑니다.
-     ⚠ 통화가 끝났다고 담던 것을 버리면 안 됩니다. */
+  /* 🔴 2026-09-19 — 녹음 중이었으면 저장하고 나갑니다. */
   try { recFinish(); } catch (e) { console.warn('[rec] 마무리 실패', e); }
 
   AL.stopRinging();
@@ -676,8 +615,6 @@ function bye(){
   stopAliveWatch();
   if (tick) { clearInterval(tick); tick = null; }
   el('acts').innerHTML = '';
-  /* 🔴 2026-09-12 — 끝난 뒤에도 "내 카메라가 나가는 중입니다" 가 남아
-     있었습니다. 이미 끝났는데 맞는 말이 아닙니다. 같이 치웁니다. */
   const vw = document.querySelector('.vidwarn');
   if (vw) vw.remove();
   el('bytes').textContent = '';
@@ -687,16 +624,8 @@ function bye(){
 
 /* =====================================================================
    🔴 2026-09-09 신설 — 벨이 영영 울리던 문제
-   받는 쪽은 "받기 전에는" 신호 채널에 들어가지 않습니다. 그래서 A 가
-   끊어도 그 신호가 B 에게 닿을 길이 없어, B 혼자 계속 울렸습니다.
-   실제로 6분·11분씩 울린 기록이 남아 있었습니다.
-
-   그래서 두 가지를 둡니다.
      ① 3초마다 calls 표를 보고 ended_at 이 채워졌으면 멈춥니다
      ② 그와 별개로 45초가 지나면 무조건 멈춥니다
-        (표를 못 읽는 경우를 위한 안전장치 — 함정 ⑦)
-
-   ⚠ 2026-09-10 추가 — 울리기 "전에" 도 한 번 봅니다. 아래 checkAlreadyOver()
    ===================================================================== */
 var aliveTimer = null, ringLimit = null;
 var RING_MAX_MS = 45000;
@@ -709,8 +638,7 @@ function stopAliveWatch(){
 function endedQuietly(){
   stopAliveWatch();
   AL.stopRinging();
-  /* 🔴 2026-09-11 — 벨을 울리던 알림도 같이 지웁니다.
-     알림이 남아 있으면 전화벨이 계속 반복됩니다. */
+  /* 🔴 2026-09-11 — 벨을 울리던 알림도 같이 지웁니다. */
   if (AL.clearCallNotices) AL.clearCallNotices(callId);
   setStatus(AL.t('clEnded'));
   el('acts').innerHTML = '';
@@ -718,8 +646,6 @@ function endedQuietly(){
 }
 
 /* 🔴 2026-09-10 — 벨을 울리기 전에 물어봅니다.
-   이미 끝난 통화면 한 번도 울리지 않고 조용히 나갑니다.
-   되돌려주는 값
      'over'    끝난 통화입니다 (또는 아예 없는 통화입니다)
      'live'    아직 살아 있습니다
      'unknown' 못 읽었습니다 — 일단 울리고 watchCallAlive 에 맡깁니다 */
@@ -752,14 +678,16 @@ function watchCallAlive(){
   }, RING_MAX_MS);
 }
 
+let answering = false;   // 🔴 2026-10-05 — 두 번 받지 않게(주소 · 앱 창구가 겹칠 수 있음)
 async function answer(opts){
+  if (answering || AL.call.pc) return;
+  answering = true;
   opts = opts || {};
   AL.stopRinging();
   stopAliveWatch();
 
   /* 🔴 2026-09-09: 받기 직전에 한 번 더 봅니다.
-     알림을 늦게 누르면 그 사이 A 가 끊었을 수 있습니다. 그대로 받으면
-     아무도 없는 채널에 들어가서 "전화 거는 중" 에 영영 멈춥니다. */
+     알림을 늦게 누르면 그 사이 A 가 끊었을 수 있습니다. */
   try {
     var chk = await AL.sb.from('calls')
       .select('ended_at, answered_at').eq('id', callId).maybeSingle();
@@ -773,15 +701,23 @@ async function answer(opts){
       noCam: !!opts.noCam,          // 🔴 2026-09-12 — 카메라 끄고 받기
       onState: onState,
     });
-    /* 카메라 없이 받았으면 그 사실을 화면에 남깁니다.
-       "왜 내 얼굴이 안 보이지" 하고 고장으로 오해하면 안 됩니다. */
     if (opts.noCam) el('bytes').textContent = AL.t('clNoCamNote');
     paintActs();
   } catch (e) {
     console.error(e);
+    answering = false;
     setStatus(AL.t('clNoMedia'));
   }
 }
+
+/* 🔴🔴 2026-10-05 — 앱(자바)이 "이미 받았다" 고 알려 올 때.
+   부름을 보고 있는 중이면 이 화면이 먼저 떠 있어서 주소가 바뀌지 않습니다.
+   그때 앱이 이것을 불러 곧바로 연결합니다(음성통화만 — 영상은 고르시게 둡니다). */
+window.ALIAS_ANSWER_NOW = function(){
+  try {
+    if (incoming && view && !AL.call.pc && callType !== 'video') answer({});
+  } catch (e) { console.warn('[call] 바로 받기 실패', e); }
+};
 
 async function decline(){
   AL.stopRinging();
@@ -793,20 +729,6 @@ async function decline(){
 
 /* =====================================================================
    🔴🔴 2026-09-19 신설 — 통화 녹음 협의
-
-   흐름
-     ① 통화 중 누구든 [🔴 녹음] 을 누릅니다 → 기간을 고릅니다 (15·30·90)
-     ② 상대 화면에 뜹니다
-          [○○님의 녹음 신청 허락]
-          [보관 기간 30일이면 허락]
-          [보관 기간 15일이면 허락]
-          [녹음 거절]
-     ③ 그대로 허락  → 곧바로 시작
-        줄여서 허락  → 신청한 쪽에 한 번 더 묻습니다
-        거절        → "상대가 녹음을 거절했습니다"
-     ④ 양쪽에 "🔴 녹음 중 · ○일 뒤 지워집니다"
-        누구든 [녹음 멈추기] 를 누를 수 있습니다
-
    ⚠ 늘 **짧은 쪽**을 따릅니다. 조심스러운 쪽이 이깁니다.
    ⚠ 몰래 시작할 수 없습니다. 상대의 허락 신호를 받아야만 담습니다.
    ===================================================================== */
@@ -831,9 +753,6 @@ function rcShow(on){
 
 /* =====================================================================
    🔴🔴 2026-09-22 — 통화 중 알림줄 (안드로이드 CallOngoingService)
-
-   붙으면 켜고, 끝나면 끕니다.
-   ⚠ 알림줄이 떠 있어야 일반 전화 화면에 밀려도 마이크를 계속 씁니다.
    ⚠ 옛 APK 에는 창구가 없습니다. 있을 때만 부릅니다.
    ⚠ 끄는 것은 여러 번 불려도 괜찮습니다. 켜진 채 남는 것이 더 나쁩니다.
    ===================================================================== */
@@ -864,8 +783,6 @@ function peerName(){
 function rcAsk(){
   if (!AL.recSupported()) { setStatus(AL.t('rcNoSupport')); return; }
   recAskDays = 90;
-  /* 🔴 2026-09-19 — 영상통화면 녹화라고 분명히 적습니다.
-     ⚠ "녹음" 인 줄 알았는데 얼굴이 담기면 손님이 놀랍니다. */
   const isVid = (callType === 'video');
   el('rcBox').innerHTML =
     '<h3>' + AL.esc(AL.t(isVid ? 'rcAskVid' : 'rcAskTtl')) + '</h3>' +
@@ -979,9 +896,6 @@ function rcCut(days){
 /* ── ④ 담기 시작·멈추기 ──────────────────────────────────── */
 async function recStart(days){
   try {
-    /* 🔴 2026-09-19 — 영상통화면 상대 얼굴까지 담습니다.
-       ⚠ 한도(45MB · 약 14분)에 닿으면 스스로 멈추고 저장합니다.
-         그냥 두면 한 시간 녹화하고 저장이 통째로 실패합니다. */
     await AL.startRecording({
       video: (callType === 'video'),
       onFull: function(){ recSay(AL.t('rcFull'), true); recFinish(); },
@@ -1006,23 +920,18 @@ function paintRecBar(){
   bar.classList.add('on');
 }
 
-/* ⚠ 요소가 없어도 멈추지 않게 합니다.
-   없는 요소에 손을 대면 그 자리에서 코드가 죽고, 그 아래 전부가
-   안 돕니다. 통화화면이 통째로 비었던 원인입니다(함정 85·111). */
+/* ⚠ 요소가 없어도 멈추지 않게 합니다(함정 85·111). */
 (function(){
   var b = el('recStop');
   if (!b) { console.warn('[rec] recStop 이 없습니다'); return; }
   b.addEventListener('click', function(){
-    /* ⚠ 멈추기는 **통화를 끊는 게 아닙니다.** 담는 것만 멈춥니다.
-       통화는 이어집니다. 끊으시려면 빨간 단추를 누르셔야 합니다. */
+    /* ⚠ 멈추기는 **통화를 끊는 게 아닙니다.** 담는 것만 멈춥니다. */
     AL.sendRec('rec-stop', {});
     recFinish();
   });
 })();
 
-/* 멈추고 저장합니다.
-   ⚠ 양쪽이 각자 담고 각자 올립니다. 같은 자리에 덮어쓰므로 나중에
-     끝난 쪽 것이 남습니다. 같은 대화이니 괜찮습니다. */
+/* 멈추고 저장합니다. */
 async function recFinish(){
   if (!AL.recording()) return;
   const days = recDays;
@@ -1035,15 +944,7 @@ async function recFinish(){
   if (!out || !out.blob || out.blob.size < 2000) { recSay(AL.t('rcStopped'), false); return; }
 
   try {
-    /* 🔴🔴 2026-09-19 — 통화 번호는 엔진에게 물어봅니다.
-
-       받는 쪽은 주소에 실려 와서 화면이 알지만, **거는 쪽은 모릅니다.**
-       통화를 시작할 때 엔진이 만들어 갖고 있기 때문입니다.
-       그래서 거는 쪽에서만 저장이 막혔습니다.
-
-         null value in column "call_id" ... violates not-null constraint
-
-       ⚠ 화면에 있는 값보다 **엔진이 들고 있는 값**이 늘 맞습니다. */
+    /* 🔴🔴 2026-09-19 — 통화 번호는 엔진에게 물어봅니다(거는 쪽은 화면이 모릅니다). */
     const cid = (AL.call && AL.call.callId) || callId;
     if (!cid) throw new Error('통화 번호를 찾지 못했습니다');
 
@@ -1059,14 +960,7 @@ async function recFinish(){
   }
 }
 
-/* 🔴🔴 2026-09-19 — 녹음 결과는 **따로** 보여줍니다.
-
-   전에는 setStatus 로 가운데 글씨에 썼는데, 통화가 끝나면 곧바로
-   "통화가 끝났습니다" 가 덮어써서 **성공했는지 실패했는지 못 봤습니다.**
-   실패 쪽만 눈에 남아 "양쪽 다 실패" 로 보였습니다.
-
-   ⚠ 결과는 통화 종료와 상관없이 남아 있어야 합니다. 녹음 띠 자리를
-     그대로 써서 색만 바꿉니다. */
+/* 🔴🔴 2026-09-19 — 녹음 결과는 **따로** 보여줍니다. */
 function recSay(msg, ok){
   const bar = el('recBar');
   if (!bar) { setStatus(msg); return; }
@@ -1099,10 +993,7 @@ function onRecSignal(kind, days, who, vid){
   AL.paintText();
   /* 🔴 2026-09-12 — 영상통화면 제목도 영상으로. paintText 뒤에 덮어씁니다. */
   if (callType === 'video') document.title = AL.t('clVideo');
-  /* 🔴 2026-09-12 — 판 번호는 콘솔에만 남깁니다.
-     화면에 찍으면 손님이 볼 이유가 없는 글씨가 뜹니다.
-     ⚠ 무언가 안 될 때 "새 파일이 도는지" 확인하려면 여기를 보세요. */
-  console.log('[call] 화면 판: 20260927a');
+  console.log('[call] 화면 판: 20261005a');
   if (!await AL.requireLogin()) return;
   if (!linkId) { setStatus(AL.t('dtlNotFound')); return; }
 
@@ -1125,19 +1016,13 @@ function onRecSignal(kind, days, who, vid){
       return;
     }
 
-    /* 🔴🔴 2026-09-11 — 이 전화를 "봤다" 고 지금 적어둡니다.
-       전에는 watchIncoming 안에서만 적었습니다. 그래서 잠금화면 알림으로
-       받으면 그 길을 안 지나 "본 적 없는 전화" 로 남았고, 끊고 대화 화면으로
-       돌아오면 watchIncoming 이 3초 뒤 그걸 집어 또 띄웠습니다. */
+    /* 🔴🔴 2026-09-11 — 이 전화를 "봤다" 고 지금 적어둡니다. */
     if (AL.markSeenCall) { try { AL.markSeenCall(callId); } catch (e) {} }
 
-    /* ② 🔴 2026-09-10 — 울리기 전에 물어봅니다.
-       끝난 통화면 한 번도 안 울립니다. 표도 여기서 태웁니다. */
+    /* ② 🔴 2026-09-10 — 울리기 전에 물어봅니다. 끝난 통화면 한 번도 안 울립니다. */
     const st = await checkAlreadyOver();
     if (st === 'over') {
       if (once) burnTicket(once);
-      /* 🔴 2026-09-11 — 끝난 전화의 벨이 계속 울리고 있을 수 있습니다.
-         전화 채널은 알림이 떠 있는 내내 벨을 반복합니다. 여기서 끕니다. */
       if (AL.clearCallNotices) AL.clearCallNotices();
       console.log('[call] 이미 끝난 전화입니다. 울리지 않습니다.');
       setStatus(AL.t('clEnded'));
@@ -1148,17 +1033,16 @@ function onRecSignal(kind, days, who, vid){
 
     if (once) burnTicket(once);
 
+    /* 🔴🔴 2026-10-05 — 이미 [받기] 를 누르고 왔으면(큰 전화 화면 · 이어폰 · 차) 바로 연결.
+       ⚠ 영상통화는 얼굴이 나가는 일이라 지금처럼 고르시게 둡니다(아래 벨 · 단추로). */
+    if (answeredAlready && callType !== 'video') {
+      setStatus(AL.t('clConnected'));
+      answer({});
+      return;
+    }
+
     /* 🔴🔴 2026-09-12 — 소리는 안드로이드에게 맡깁니다.
-
-       앱에서는 알림 채널의 진짜 벨소리가 울립니다. 잠금화면에서도,
-       앱이 잠들어 있어도 확실하게 울립니다.
-       화면은 **진동만** 냅니다. 둘 다 소리를 내면 겹칩니다(함정 59).
-
-       웹오디오로 울려봤는데 연속으로 걸면 세 번째부터 소리가 안 났습니다.
-       폰마다 다르고 믿을 수가 없습니다.
-
-       ⚠ 벨은 받거나 거절하거나 끝날 때 끕니다. 여기서 끄면 화면이 뜨는
-         순간 벨이 뚝 끊깁니다(함정 65).
+       앱에서는 알림 채널의 진짜 벨소리가 울립니다. 화면은 **진동만** 냅니다.
        ⚠ 브라우저에는 알림 채널이 없으므로 화면이 소리를 냅니다. */
     setStatus(AL.t('clRinging'));
     AL.startRinging({ quiet: AL.isNativeApp && AL.isNativeApp() });
@@ -1166,8 +1050,7 @@ function onRecSignal(kind, days, who, vid){
 
   } else {
     /* ── 거는 쪽 ──────────────────────────────────────────────
-       표가 없거나 이미 쓴 표면 걸지 않습니다.
-       뒤로 가기로 돌아온 경우입니다. */
+       표가 없거나 이미 쓴 표면 걸지 않습니다. 뒤로 가기로 돌아온 경우입니다. */
     if (!once || ticketUsed(once)) {
       console.log('[call] 표가 없거나 이미 쓴 표입니다. 걸지 않습니다.', once);
       if (AL.clearCallNotices) AL.clearCallNotices();
@@ -1183,9 +1066,7 @@ function onRecSignal(kind, days, who, vid){
         myFace: view.my_face || '',
       });
     } catch (e) {
-      /* 🔴🔴 2026-09-12 — 조용히 멈추지 않습니다.
-         전에는 console.error 만 하고 화면은 "전화 거는 중…" 그대로였습니다.
-         손님도 저도 무슨 일이 났는지 알 수가 없었습니다. */
+      /* 🔴🔴 2026-09-12 — 조용히 멈추지 않습니다. */
       console.error('[call] 걸기 실패', e);
       setStatus(AL.t('clFailed'));
       el('bytes').textContent = String((e && e.message) || e).slice(0, 90);
@@ -1196,9 +1077,7 @@ function onRecSignal(kind, days, who, vid){
 })();
 
 /* 🔴 2026-09-10 — 화면을 떠날 때 반드시 정리합니다.
-   ⚠ 안드로이드 웹뷰에서는 beforeunload 가 안 불릴 때가 많습니다.
-     그래서 pagehide 를 같이 답니다. 둘 다 불려도 한 번만 돌게 빗장을 겁니다.
-     이걸 놓치면 마이크와 연결이 살아남아, 끊은 뒤에도 잡음이 들립니다. */
+   ⚠ 안드로이드 웹뷰에서는 beforeunload 가 안 불릴 때가 많아 pagehide 를 같이 답니다. */
 var cleanedUp = false;
 function leaveCleanup(){
   ongoingStop();          // 🔴 2026-09-22 — 화면이 닫혀도 알림줄은 꺼야 합니다
