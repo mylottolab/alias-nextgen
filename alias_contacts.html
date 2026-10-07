@@ -110,6 +110,14 @@ document.addEventListener("DOMContentLoaded", function(){
 .tmp-tx small{ display:block; font-size:11.5px; color:var(--dim, inherit); opacity:.95; line-height:1.5; margin-top:2px; }
 .tmp-new{ font-size:12px; font-weight:800; border-radius:20px; padding:6px 11px; background:var(--steel, #2F7DD1); color:#fff; white-space:nowrap; }
 .tmp-group{ margin:0 0 14px; }
+/* 🔴 2026-10-07 — 사람 잇기 단추 넷을 연락처 목록 바로 위에(2 × 2)
+   연락처가 길어지면 [+] 를 눌러 찾기 어려워서, 늘 보이는 자리에 둡니다. */
+.add-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:0 0 14px; }
+.add-grid a{ display:flex; align-items:center; gap:8px; text-decoration:none; color:var(--text, inherit);
+  background:var(--raise, rgba(128,128,128,.10)); border:1px solid var(--line, rgba(128,128,128,.3));
+  border-radius:12px; padding:11px 12px; font-size:13.5px; font-weight:700; line-height:1.3; min-height:46px; }
+.add-grid a:active{ opacity:.7; }
+.add-grid .ai{ font-size:18px; flex:0 0 auto; }
 .tmp-gh{ font-size:12px; font-weight:800; color:var(--dim, inherit); margin:4px 2px 6px; }
 .tmp-row{ display:flex; align-items:center; gap:10px; text-decoration:none; color:var(--text, inherit);
   padding:10px 12px; border-radius:12px; background:var(--raise, rgba(128,128,128,.10));
@@ -157,6 +165,14 @@ document.addEventListener("DOMContentLoaded", function(){
   <div class="tmp-group" id="tmpGroup" style="display:none;">
     <div class="tmp-gh" id="tmpGroupH"></div>
     <div id="tmpList"></div>
+  </div>
+
+  <!-- 🔴 2026-10-07 — 사람 잇기: 임시연락처 바로 밑 · 연락처 바로 위 (오른쪽 위 [+] 에도 그대로 있음) -->
+  <div class="add-grid">
+    <a href="alias_invite.html"><span class="ai">📤</span><span data-t="addInvite"></span></a>
+    <a href="alias_requests.html"><span class="ai">📨</span><span id="qNick">닉네임 연결 요청</span></a>
+    <a href="alias_join.html"><span class="ai">📥</span><span data-t="addJoin"></span></a>
+    <a href="alias_room_new.html"><span class="ai">👥</span><span data-t="grNew"></span></a>
   </div>
 
   <div id="list"></div>
@@ -838,6 +854,7 @@ document.getElementById('plus').addEventListener('click', function(){ showAdd(tr
 if (AL.lang === 'en') {   // 🔴 2026-10-07
   document.getElementById('addNickT').textContent = '📨 Request by nickname';
   document.getElementById('addNickS').textContent = 'Just their nickname — in the app, no number shown';
+  document.getElementById('qNick').textContent = 'Request by nickname';
 }
 document.getElementById('addBg').addEventListener('click', function(){ showAdd(false); });
 
