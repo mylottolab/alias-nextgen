@@ -467,6 +467,7 @@ function paint(keepPos){
   // 검색어나 즐겨찾기로 걸러냅니다. 비어 있으면 전부 보입니다.
   const nowMs = Date.now();
   const show = msgs.filter(function(m){
+    if (hiddenIds && hiddenIds.has(m.id)) return false;      // 🔴 2026-10-08 내 화면에서 지운 것
     // 이미 사라진 것은 검색 결과에도 안 나옵니다.
     if ((findQ || starOnly) && m.expires_at && new Date(m.expires_at).getTime() <= nowMs) return false;
     if (starOnly && !stars[m.id]) return false;
@@ -1057,6 +1058,45 @@ async function send(){
 ------------------------------------------------------------------- */
 /* 🔴 2026-10-07 — 사진 묶음 전체 메뉴 (사진 말고 말풍선 빈 곳을 누를 때)
    ⚠ 한 장만 지우려면 그 사진을 꾹 누르면 됩니다. */
+/* 🔴 2026-10-08 — 받은 것 저장 · 내 화면에서 지우기
+   • 저장: 사진·동영상·음성·파일 모두. 앱이면 폰의 다운로드 폴더로 받습니다.
+   • 내 화면에서 지우기: 받은 것만. 이 폰에만 적어둡니다(보낸 사람 화면은 그대로). */
+function LL(k, e){ return AL.lang === 'en' ? e : k; }
+var HIDE_KEY = 'al_hidden_' + linkId;
+var hiddenIds = (function(){ try { return new Set(JSON.parse(localStorage.getItem(HIDE_KEY) || '[]')); } catch (e) { return new Set(); } })();
+function hideForMe(list){
+  if (!confirm(LL('내 화면에서만 지웁니다. 보낸 사람 화면에는 그대로 남습니다.', 'Remove from your screen only? The sender still sees it.'))) return;
+  list.forEach(function(m){ hiddenIds.add(m.id); });
+  try { localStorage.setItem(HIDE_KEY, JSON.stringify(Array.from(hiddenIds).slice(-3000))); } catch (e) {}
+  paint(true);
+}
+async function saveMedia(list){
+  for (let k = 0; k < list.length; k++) {
+    const m = list[k];
+    if (!m.media_path) continue;
+    try {
+      const url = await AL.mediaUrl(m.media_path);
+      const ext = (m.media_mime || '').split('/')[1] || 'bin';
+      const name = m.media_name || ('burum_' + Date.now() + '_' + (k + 1) + '.' + ext.replace('jpeg', 'jpg'));
+      if (window.AliasNative && typeof AliasNative.download === 'function' && /^https?:/.test(url)) {
+        AliasNative.download(url, name);
+      } else {
+        const a = document.createElement('a');
+        a.href = url; a.download = name; a.rel = 'noopener';
+        if (!/^blob:|^data:/.test(url)) a.target = '_blank';
+        document.body.appendChild(a); a.click(); a.remove();
+      }
+      if (list.length > 1) await new Promise(function(r){ setTimeout(r, 600); });
+    } catch (e) {
+      console.warn('[save]', e);
+      showErr(LL('저장하지 못했습니다: ', 'Could not save: ') + (e.message || e));
+      return;
+    }
+  }
+  showErr(LL('⬇ 내려받기를 시작했습니다. 알림창 · 다운로드 폴더를 보세요.', '⬇ Download started. Check notifications or your Downloads folder.'));
+  setTimeout(clearErr, 3500);
+}
+
 function openTilesMenu(el){
   if (document.querySelector('.pk')) return;   // 🔴 2026-10-08 두 번 열리지 않게
   const ids = Array.from(el.querySelectorAll('img.ph[data-pid]')).map(function(i){ return i.getAttribute('data-pid'); });
@@ -1076,6 +1116,8 @@ function openTilesMenu(el){
 
   const items = [];
   items.push([AL.t('msgReply'), function(){ setReply(head); }]);
+  items.push([en ? ('⬇ Save all ' + list.length + ' photos') : ('⬇ 사진 ' + list.length + '장 모두 저장'), function(){ saveMedia(list); }]);
+  if (!mine) items.push([en ? ('🙈 Remove ' + list.length + ' photos for me') : ('🙈 사진 ' + list.length + '장 내 화면에서 지우기'), function(){ hideForMe(list); }]);
   if (mine) items.push([en ? ('Delete all ' + list.length + ' photos') : ('사진 ' + list.length + '장 모두 삭제'), async function(){
     if (!confirm(en ? ('Delete all ' + list.length + ' photos for everyone?') : ('사진 ' + list.length + '장을 모두 지울까요?'))) return;
     for (const m of list) {
@@ -1121,11 +1163,14 @@ function openMsgMenu(id){
   if (mine && !m.media_path) items.push(['msgEdit', function(){ editMsg(m); }]);
   if (mine) items.push(['msgDelete', function(){ delMsg(m); }]);
   if (!mine) items.push(['msgReport', function(){ reportMsg(m); }]);
+  // 🔴 2026-10-08
+  if (m.media_path) items.splice(1, 0, [LL('⬇ 저장', '⬇ Save'), function(){ saveMedia([m]); }, 'raw']);
+  if (!mine) items.push([LL('🙈 내 화면에서 지우기', '🙈 Remove for me'), function(){ hideForMe([m]); }, 'raw']);
 
   sheet.innerHTML = '<div class="grip"></div>';
   items.forEach(function(it){
     const b = document.createElement('button');
-    b.textContent = AL.t(it[0]);
+    b.textContent = it[2] === 'raw' ? it[0] : AL.t(it[0]);
     b.addEventListener('click', function(){ close(); it[1](); });
     sheet.appendChild(b);
   });
