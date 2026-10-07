@@ -18,6 +18,8 @@
 .tgrid .tcell.more::after{ content:attr(data-more); position:absolute; inset:0; display:flex;
   align-items:center; justify-content:center; background:rgba(0,0,0,.52); color:#fff;
   font-size:20px; font-weight:800; pointer-events:none; }
+.meta .mmore{ border:1px solid var(--line); background:var(--raise); color:var(--text);
+  border-radius:12px; padding:1px 9px; font-size:13px; font-weight:800; line-height:1.4; cursor:pointer; margin:0 2px 3px; }
 .bub.tiles .tcount{ font-size:11.5px; opacity:.7; padding:5px 6px 1px; }
 </style>
 <script src="alias_config.js"></script>
@@ -544,6 +546,11 @@ function paint(keepPos){
       (who ? '<span class="who">' + AL.esc(who) + '</span>' : '') +
       (m._tiles ? tilesHtml(m._tiles, temp) : bubbleHtml(m, gone, temp)) +
       '<div class="meta">' +
+        /* 🔴 2026-10-08 — 동영상·음성·파일·사진 묶음은 말풍선을 눌러도 재생/열기가 먼저라
+           메뉴가 안 열렸습니다(동영상 삭제가 안 되던 까닭). 작은 [⋯] 단추를 붙입니다. */
+        ((!gone && (m._tiles || (m.media_path && m.message_type !== 'photo')))
+          ? '<button class="mmore" data-menu="' + AL.esc(m.id) + '"' + (m._tiles ? ' data-tiles="1"' : '') +
+            ' aria-label="menu">⋯</button><br>' : '') +
         (m._failed
           ? '<button class="retry" data-retry="' + AL.esc(m.id) + '">' +
               AL.esc(AL.t('chatRetry')) + '</button>'
@@ -590,6 +597,18 @@ function paint(keepPos){
       if (e.target.closest('img.ph, video, audio, a, button, .quote')) return;
       if (el.classList.contains('tiles')) { openTilesMenu(el); return; }
       openMsgMenu(el.getAttribute('data-id'));
+    });
+  });
+
+  b.querySelectorAll('[data-menu]').forEach(function(el){
+    el.addEventListener('click', function(e){
+      e.stopPropagation();
+      const id = el.getAttribute('data-menu');
+      if (el.getAttribute('data-tiles')) {
+        const bub = b.querySelector('.bub.tiles[data-id="' + id + '"]');
+        if (bub) { openTilesMenu(bub); return; }
+      }
+      openMsgMenu(id);
     });
   });
 
