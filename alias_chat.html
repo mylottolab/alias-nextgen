@@ -20,6 +20,9 @@
   font-size:20px; font-weight:800; pointer-events:none; }
 .meta .mmore{ border:1px solid var(--line); background:var(--raise); color:var(--text);
   border-radius:12px; padding:1px 9px; font-size:13px; font-weight:800; line-height:1.4; cursor:pointer; margin:0 2px 3px; }
+/* 🔴 2026-10-08 — 꾹 누르는 동안 눌린 티가 나게. 글자 선택이 먼저 끼어들지 않게. */
+#body .bub{ -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; transition:transform .12s, filter .12s; }
+#body .bub.pressing{ transform:scale(.97); filter:brightness(.82); }
 .bub.tiles .tcount{ font-size:11.5px; opacity:.7; padding:5px 6px 1px; }
 </style>
 <script src="alias_config.js"></script>
@@ -591,8 +594,32 @@ function paint(keepPos){
     });
   });
 
+  /* 🔴 2026-10-08 — 말풍선을 **꾹 눌러도** 메뉴가 열립니다(톡 눌러도 그대로).
+     ⚠ 폰은 꾹 누르면 글자 선택을 먼저 시작해서 메뉴가 잘 안 떴습니다. */
+  b.querySelectorAll('.bub[data-id]').forEach(function(el){
+    let tm = null, sx = 0, sy = 0;
+    function stop(){ if (tm) { clearTimeout(tm); tm = null; } el.classList.remove('pressing'); }
+    el.addEventListener('touchstart', function(e){
+      if (e.target.closest('img.ph, video, audio, a, button')) return;
+      const t = e.touches[0]; sx = t.clientX; sy = t.clientY;
+      el.classList.add('pressing');
+      tm = setTimeout(function(){
+        tm = null; el.classList.remove('pressing'); el.dataset.held = '1';
+        if (el.classList.contains('tiles')) openTilesMenu(el); else openMsgMenu(el.getAttribute('data-id'));
+      }, 450);
+    }, { passive: true });
+    el.addEventListener('touchmove', function(e){
+      const t = e.touches[0];
+      if (Math.abs(t.clientX - sx) > 10 || Math.abs(t.clientY - sy) > 10) stop();
+    }, { passive: true });
+    el.addEventListener('touchend', stop);
+    el.addEventListener('touchcancel', stop);
+    el.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  });
+
   b.querySelectorAll('.bub[data-id]').forEach(function(el){
     el.addEventListener('click', function(e){
+      if (el.dataset.held) { delete el.dataset.held; return; }   // 꾹 누른 뒤 손 뗀 것
       // 사진·영상·문서·링크를 누른 것은 그쪽 동작이 먼저입니다.
       if (e.target.closest('img.ph, video, audio, a, button, .quote')) return;
       if (el.classList.contains('tiles')) { openTilesMenu(el); return; }
@@ -632,14 +659,15 @@ function paint(keepPos){
     let tm = null, sx = 0, sy = 0;
     el.addEventListener('touchstart', function(e){
       const t = e.touches[0]; sx = t.clientX; sy = t.clientY;
-      tm = setTimeout(function(){ tm = null; el.dataset.held = '1'; openMsgMenu(pid); }, 550);
+      tm = setTimeout(function(){ tm = null; el.dataset.held = '1'; openMsgMenu(pid); }, 450);
     }, { passive: true });
     el.addEventListener('touchmove', function(e){
       const t = e.touches[0];
       if (tm && (Math.abs(t.clientX - sx) > 10 || Math.abs(t.clientY - sy) > 10)) { clearTimeout(tm); tm = null; }
     }, { passive: true });
     el.addEventListener('touchend', function(){ if (tm) { clearTimeout(tm); tm = null; } });
-    el.addEventListener('contextmenu', function(e){ e.preventDefault(); openMsgMenu(pid); });
+    el.addEventListener('touchcancel', function(){ if (tm) { clearTimeout(tm); tm = null; } });
+    el.addEventListener('contextmenu', function(e){ e.preventDefault(); });
   });
 
   // 사진을 누르면 크게 봅니다. 이 방의 사진 전부를 넘겨볼 수 있게 모아 줍니다.
@@ -1030,6 +1058,7 @@ async function send(){
 /* 🔴 2026-10-07 — 사진 묶음 전체 메뉴 (사진 말고 말풍선 빈 곳을 누를 때)
    ⚠ 한 장만 지우려면 그 사진을 꾹 누르면 됩니다. */
 function openTilesMenu(el){
+  if (document.querySelector('.pk')) return;   // 🔴 2026-10-08 두 번 열리지 않게
   const ids = Array.from(el.querySelectorAll('img.ph[data-pid]')).map(function(i){ return i.getAttribute('data-pid'); });
   // 9장 넘게 묶여 화면에 안 보이는 것까지 챙깁니다.
   const head = msgs.filter(function(x){ return x.id === el.getAttribute('data-id'); })[0];
@@ -1072,6 +1101,7 @@ function openTilesMenu(el){
 }
 
 function openMsgMenu(id){
+  if (document.querySelector('.pk')) return;   // 🔴 2026-10-08 두 번 열리지 않게
   const m = msgs.filter(function(x){ return x.id === id; })[0];
   if (!m || m.deleted_at || String(m.id).indexOf('tmp-') === 0) return;
   const mine = m.sender_side_id === me.sideId;
