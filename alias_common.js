@@ -4414,6 +4414,19 @@ AL.topBar = async function(){
       location.reload();
     }));
 
+    /* 🔴 2026-10-07 — 받은 닉네임 연결 요청이 있으면 [📨 요청 N] */
+    if (tabbed) {
+      try {
+        var rq = await AL.sb.rpc('nick_requests_inbox');
+        var rn = (rq && rq.data && rq.data.length) || 0;
+        if (rn) {
+          var rb = mk((en ? '📨 Requests ' : '📨 요청 ') + rn, function(){ location.href = 'alias_requests.html'; });
+          rb.style.background = 'rgba(242,201,76,.22)'; rb.style.borderColor = 'rgba(242,201,76,.6)';
+          bar.appendChild(rb);
+        }
+      } catch (e) { /* 표가 아직 없으면(SQL 전) 조용히 넘어갑니다 */ }
+    }
+
     /* 🔴 2026-10-05 — [❓ 사용법] 사용설명서(한국어 · 영어) */
     bar.appendChild(mk(en ? '❓ Guide' : '❓ 사용법', function(){
       location.href = 'burum_guide.html?lang=' + (en ? 'en' : 'ko');
@@ -4791,6 +4804,8 @@ AL.registerPush = async function(){
     PN.addListener('pushNotificationActionPerformed', function(a){
       try {
         var d = (a && a.notification && a.notification.data) || {};
+        /* 🔴 2026-10-07 — 닉네임 연결 요청 알림 → 받은 요청 화면 */
+        if (d.kind === 'request') { location.href = 'alias_requests.html'; return; }
         if (!d.link_id) return;
 
         /* 🔴 2026-09-09: 알림 종류에 따라 갈 곳이 다릅니다.
@@ -4833,3 +4848,134 @@ AL.registerPush = async function(){
     return false;
   }
 };
+
+
+/* =====================================================================
+   🔴🔴 2026-10-07 — "번호가 드러나지 않게 전하는 방법" 안내
+   초대 링크 · 임시연락처 링크를 보내는 화면에 붙습니다.
+   ⚠ 카톡 · 문자로 모르는 사람에게 처음 보내면 내 번호 · 프로필이 드러날 수 있습니다.
+   ===================================================================== */
+AL.safeShareTip = function(anchor){
+  try {
+    if (!anchor || !anchor.parentNode || document.getElementById('alSafeTip')) return;
+    var en = AL.lang === 'en';
+    var box = document.createElement('div');
+    box.id = 'alSafeTip';
+    box.style.cssText = 'margin:12px 0;padding:12px 14px;border-radius:12px;font-size:13px;line-height:1.75;' +
+      'background:rgba(242,201,76,.10);border:1px solid rgba(242,201,76,.32);word-break:keep-all';
+    box.innerHTML = en
+      ? '<b>🔒 Share without revealing your number</b><br>' +
+        '· <b>Text messages</b> show your phone number, and <b>KakaoTalk</b> shows your profile to people who aren\'t friends yet.<br>' +
+        '· Safer: paste the link into a <b>marketplace chat</b> (e.g. Danggeun) or a listing, <b>show the QR</b> in person, or <b>print it</b>.<br>' +
+        '· If they already use Burum: <a href="alias_requests.html" style="color:inherit;font-weight:800">📨 send a request by nickname ›</a>'
+      : '<b>🔒 번호가 드러나지 않게 전하는 방법</b><br>' +
+        '· <b>문자</b>로 보내면 내 전화번호가 찍히고, <b>카톡</b>은 친구가 아닌 분에게 내 프로필이 보입니다.<br>' +
+        '· 더 안전한 길: <b>당근 · 번개장터 같은 거래 채팅</b>이나 게시글에 링크 붙이기, 마주 보고 <b>QR 보여주기</b>, <b>인쇄해서 건네기</b><br>' +
+        '· 상대도 부름을 쓴다면: <a href="alias_requests.html" style="color:inherit;font-weight:800">📨 닉네임으로 연결 요청 보내기 ›</a>';
+    anchor.parentNode.insertBefore(box, anchor.nextSibling);
+  } catch (e) {}
+};
+(function(){
+  function go(){
+    var page = (location.pathname.split('/').pop() || '').toLowerCase();
+    if (page === 'alias_invite.html') AL.safeShareTip(document.querySelector('[data-t="invShareNote"]'));
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go();
+})();
+
+/* =====================================================================
+   🔴 2026-10-08 — 영어 보충 (English patch)
+   영어로 볼 때 화면에 남은 한글(번역표를 안 거친 글 · 나중에 뜨는 창 ·
+   알림창)을 영어로 바꿉니다. 한국어로 돌아가면 원래 글로 되돌립니다.
+   ⚠ 대화 내용(말풍선)은 건드리지 않습니다.
+   ⚠ 새 문구는 AL.EN_PATCH 에 '한글': 'English' 한 줄을 더하면 됩니다.
+   ===================================================================== */
+AL.EN_PATCH = {
+  '위브앱솔루션 · 대표 이미화 · 사업자등록번호 206-08-71754': 'Weave App Solution · CEO Mihwa Lee · Business Reg. No. 206-08-71754',
+  '통신판매업신고 2022-수원권선-1701': 'Mail-order Business Reg. 2022-Suwon Gwonseon-1701',
+  '경기도 수원시 권선구 수성로47 10동 501호': '501, Bldg. 10, 47 Suseong-ro, Gwonseon-gu, Suwon-si, Gyeonggi-do, Korea',
+  '이용약관': 'Terms of Service', '개인정보처리방침': 'Privacy Policy', '취소·환불 규정': 'Cancellation & Refund Policy',
+  '사용설명서': 'User guide',
+  '‹ 연락처': '‹ Contacts', '닫기': 'Close', '뒤로': 'Back', '보내기': 'Send', '메시지': 'Message', '상대': 'Other person',
+  /* 통화 중 상태 */
+  '길 찾는 중': 'Finding a route', '길 맞춰보는 중': 'Connecting…', '연결됨': 'Connected',
+  '끊겼습니다 · 다시 붙는 중': 'Disconnected · reconnecting', '길을 못 찾았습니다': 'Could not connect',
+  '🔴 중계 못 받음': '🔴 No relay',
+  /* 오류 */
+  '로그인이 풀렸습니다': 'You were signed out', '설정을 저장하지 못했습니다': 'Could not save settings',
+  '불러오는 중…': 'Loading…', '불러오는 중...': 'Loading…',
+};
+(function(){
+  if (AL._enPatch) return; AL._enPatch = true;
+  var H = /[가-힣]/;
+  function isEN(){ return AL.lang === 'en'; }
+  function tr(s){
+    if (!s || !H.test(s)) return null;
+    var t = s.replace(/\s+/g, ' ').trim();
+    if (Object.prototype.hasOwnProperty.call(AL.EN_PATCH, t)) {
+      return s.match(/^\s*/)[0] + AL.EN_PATCH[t] + s.match(/\s*$/)[0];
+    }
+    var m;
+    if ((m = t.match(/^저장 실패: (.*)$/))) return 'Save failed: ' + m[1];
+    if ((m = t.match(/^끊기: (.*)$/))) return 'Disconnected: ' + m[1];
+    return null;
+  }
+  var touched = [], ATTRS = ['placeholder', 'title', 'aria-label'], obs = null, on = false;
+  function skip(p){
+    return !p || /^(SCRIPT|STYLE|TEXTAREA|NOSCRIPT)$/.test(p.nodeName) || p.isContentEditable ||
+           (p.closest && p.closest('.bub, .msg, #body .sysline, .quote'));
+  }
+  function doText(n){
+    if (n.__en || skip(n.parentNode)) return;
+    var e = tr(n.nodeValue);
+    if (e != null) { touched.push([n, 'text', n.nodeValue]); n.__en = true; n.nodeValue = e; }
+  }
+  function doEl(el){
+    if (!el.getAttribute) return;
+    ATTRS.forEach(function(a){
+      var v = el.getAttribute(a); if (!v) return;
+      var e = tr(v); if (e != null) { touched.push([el, a, v]); el.setAttribute(a, e); }
+    });
+  }
+  function walk(root){
+    if (!root) return;
+    if (root.nodeType === 3) { doText(root); return; }
+    if (root.nodeType !== 1) return;
+    doEl(root);
+    var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT), n;
+    while ((n = w.nextNode())) { if (n.nodeType === 3) doText(n); else doEl(n); }
+  }
+  function start(){
+    if (on || !document.body) return; on = true;
+    walk(document.body);
+    obs = new MutationObserver(function(muts){
+      muts.forEach(function(m){
+        if (m.type === 'characterData') { m.target.__en = false; doText(m.target); return; }
+        if (m.type === 'attributes') { doEl(m.target); return; }
+        m.addedNodes.forEach(walk);
+      });
+    });
+    obs.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ATTRS });
+  }
+  function stop(){
+    if (!on) return; on = false;
+    if (obs) obs.disconnect();
+    for (var i = touched.length - 1; i >= 0; i--) {
+      var t = touched[i];
+      try { if (t[1] === 'text') { if (t[0].__en) { t[0].nodeValue = t[2]; t[0].__en = false; } } else t[0].setAttribute(t[1], t[2]); } catch (e) {}
+    }
+    touched = [];
+  }
+  function sync(){ if (isEN()) start(); else stop(); }
+  var _alert = window.alert, _confirm = window.confirm;
+  function trMsg(s){
+    if (!isEN() || typeof s !== 'string') return s;
+    return s.split('\n').map(function(l){ var e = tr(l); return e == null ? l : e; }).join('\n');
+  }
+  window.alert = function(s){ return _alert.call(window, trMsg(s)); };
+  window.confirm = function(s){ return _confirm.call(window, trMsg(s)); };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ setTimeout(sync, 0); });
+  else setTimeout(sync, 0);
+  document.addEventListener('click', function(){ setTimeout(sync, 80); }, true);
+  AL.enPatchSync = sync;
+})();
