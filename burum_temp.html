@@ -327,6 +327,8 @@ async function loadConvs(c){
       : '<div class="tmp-empty">' + esc(T('noConv')) + '</div>';
   } catch (e) { console.warn('[temp] 연락 온 분을 못 읽었습니다', e); }
 }
+/* 🔴 2026-10-07 — 단추 줄 아래에 "번호가 드러나지 않게 전하는 방법" */
+try { if (AL.safeShareTip) AL.safeShareTip(el('aSend').parentNode); } catch (e) {}
 el('aSend').addEventListener('click', async () => {
   if (!cur) return;
   const text = T('shareText', { d: fmtD(cur.expires_at), url: link(cur.token), c: fmtCode(cur.code) });

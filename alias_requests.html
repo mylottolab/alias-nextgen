@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>부름</title>
+<link rel="stylesheet" href="alias_common.css?v=20261007a">
+<link rel="stylesheet" href="alias_theme.css?v=20261007a">
+<script src="alias_config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="alias_common.js?v=20261007a"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function(){
+  if (typeof AL === "undefined" || typeof AL.t !== "function") {
+    document.body.innerHTML = '<div style="padding:26px;font-family:system-ui,sans-serif;color:#DDE5F0;background:#0E1621;min-height:100vh">' +
+      '<b>alias_common.js 를 못 읽었습니다.</b></div>';
+    return;
+  }
+  AL.bootTheme();
+});
+</script>
+<style>
+/* 🔴 2026-10-07 — 닉네임으로 연결 요청 (공용 CSS 를 안 건드리려고 여기에 둡니다) */
+.rq-card{border:1px solid var(--line, rgba(128,128,128,.3));border-radius:14px;padding:13px 14px;margin:0 0 10px;
+  background:var(--raise, rgba(255,255,255,.04))}
+.rq-top{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px}
+.rq-top .src{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:rgba(143,227,176,.16);color:#8FE3B0}
+.rq-note{margin:6px 0 0;font-size:14px;line-height:1.6;opacity:.9;word-break:break-word}
+.rq-time{font-size:12px;opacity:.6;margin-top:4px}
+.rq-acts{display:flex;gap:8px;margin-top:11px;flex-wrap:wrap}
+.rq-acts button{flex:1;min-width:84px;margin:0;padding:11px 6px;border-radius:11px;font-size:14px;font-weight:700;cursor:pointer;
+  background:rgba(255,255,255,.07);color:inherit;border:1px solid rgba(128,128,128,.35)}
+.rq-acts button.go{background:rgba(143,227,176,.2);color:#8FE3B0;border-color:rgba(143,227,176,.45)}
+.rq-acts button.bad{background:rgba(255,120,120,.12);color:#FFB4B4;border-color:rgba(255,120,120,.4)}
+.rq-st{font-size:12px;font-weight:700;padding:2px 9px;border-radius:999px;margin-left:auto}
+.rq-st.pending{background:rgba(242,201,76,.16);color:#F2C94C}
+.rq-st.accepted{background:rgba(143,227,176,.18);color:#8FE3B0}
+.rq-st.closed,.rq-st.canceled{background:rgba(128,128,128,.18);opacity:.8}
+.rq-me{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;margin:0 0 14px;
+  background:rgba(143,227,176,.10);border:1px solid rgba(143,227,176,.3);font-size:14px}
+.rq-me b{font-size:16px}
+.rq-me button{margin:0 0 0 auto;padding:7px 12px;border-radius:999px;font-size:12.5px;font-weight:700;cursor:pointer;
+  background:transparent;color:inherit;border:1px solid currentColor}
+.rq-empty{opacity:.65;font-size:14px;padding:6px 2px 12px}
+.rq-tip{font-size:13px;line-height:1.7;padding:10px 13px;border-radius:11px;margin:10px 0 0;
+  background:rgba(242,201,76,.10);border:1px solid rgba(242,201,76,.28)}
+</style>
+</head>
+<body data-t-title="ttContacts">
+<div class="wrap">
+
+  <div class="tophead" style="margin-bottom:10px"><a class="backlink" href="alias_contacts.html" id="back"></a></div>
+  <h1 class="h2" id="ttl"></h1>
+  <p class="lede" id="intro"></p>
+
+  <!-- 내 닉네임 — 이것만 알려주면 상대가 요청을 보낼 수 있습니다 -->
+  <div class="rq-me"><span id="meLbl"></span> <b id="meNick"></b><button type="button" id="copyNick"></button></div>
+
+  <!-- ① 받은 요청 -->
+  <div class="sect" id="inTtl"></div>
+  <div id="inbox"><div class="rq-empty" id="inLoading"></div></div>
+
+  <!-- ② 보내기 -->
+  <div class="sect" id="sendTtl"></div>
+  <div class="field">
+    <label for="nick" id="nickLbl"></label>
+    <input id="nick" type="text" maxlength="30" autocomplete="off" autocapitalize="off" spellcheck="false">
+  </div>
+  <div class="field">
+    <label id="faceLbl"></label>
+    <button type="button" class="btn ghost" id="face" style="margin-top:0;text-align:left"></button>
+  </div>
+  <div class="field">
+    <label for="note" id="noteLbl"></label>
+    <input id="note" type="text" maxlength="60" autocomplete="off">
+    <p class="hint" id="noteHint"></p>
+  </div>
+  <button class="btn" id="send"></button>
+  <div id="err" class="err"></div>
+  <div id="ok" class="ok"></div>
+  <p class="rq-tip" id="privTip"></p>
+
+  <!-- ③ 보낸 요청 -->
+  <div class="sect" id="sentTtl"></div>
+  <div id="sent"></div>
+
+</div>
+
+<script>
+/* =====================================================================
+   🔴🔴 2026-10-07 신설 — 닉네임으로 연결 요청 (nick_request.sql 과 짝)
+
+   왜
+     초대 링크 · QR 을 카톡 · 문자로 보내면 그 과정에서 내 번호(또는 카톡 프로필)가
+     드러날 수 있습니다. 그래서 앱 안에서 **상대 닉네임**으로 직접 요청을 보냅니다.
+
+   ⚠ 닉네임이 있든 없든 똑같이 "보냈습니다" 라고 답합니다(서버가 그렇게 합니다).
+     닉네임을 하나씩 넣어 보며 누가 가입했는지 알아내지 못하게 하려는 것입니다.
+   ⚠ 받는 쪽에는 보낸 사람의 **별칭**만 보입니다. 닉네임 · 계정은 안 보입니다.
+   ⚠ 에일리어스콜에서 넘어올 때: alias_requests.html?to=닉네임&src=aliascall
+   ===================================================================== */
+const en = (AL.lang === 'en');
+function L(ko, e){ return en ? e : ko; }
+function el(id){ return document.getElementById(id); }
+const Q = new URLSearchParams(location.search);
+const SRC = Q.get('src') === 'aliascall' ? 'aliascall' : 'burum';
+let me = null, chosen = null;
+
+function paintText(){
+  el('back').textContent = L('‹ 연락처', '‹ Contacts');
+  el('ttl').textContent = L('📨 닉네임으로 연결하기', '📨 Connect by nickname');
+  el('intro').textContent = L(
+    '상대의 부름 닉네임만 알면, 링크를 카톡 · 문자로 보내지 않고도 앱 안에서 바로 연결 요청을 보낼 수 있어요. 번호는 어디에도 드러나지 않습니다.',
+    'If you know someone\'s Burum nickname, send a connection request right here — no need to share a link by text or KakaoTalk. No phone number is ever shown.');
+  el('meLbl').textContent = L('내 닉네임', 'My nickname');
+  el('copyNick').textContent = L('복사', 'Copy');
+  el('inTtl').textContent = L('받은 연결 요청', 'Requests for you');
+  el('inLoading').textContent = L('불러오는 중…', 'Loading…');
+  el('sendTtl').textContent = L('연결 요청 보내기', 'Send a request');
+  el('nickLbl').textContent = L('상대의 부름 닉네임', 'Their Burum nickname');
+  el('nick').placeholder = L('예: 꽃집사장', 'e.g. flowershop');
+  el('faceLbl').textContent = L('상대에게 보일 내 별칭', 'Alias they will see');
+  el('noteLbl').textContent = L('한 줄 인사 (선택)', 'A short note (optional)');
+  el('note').placeholder = L('예: 중고 의자 문의드린 사람입니다', 'e.g. I asked about the used chair');
+  el('noteHint').textContent = L('누가 보냈는지 알아볼 수 있게 적어 주세요. 60자까지.', 'Help them recognise you. Up to 60 characters.');
+  el('send').textContent = L('연결 요청 보내기', 'Send request');
+  el('privTip').textContent = L(
+    '🔒 상대에게는 내 별칭과 인사만 보입니다. 닉네임이 틀렸거나 상대가 받지 않으면 연결되지 않고, 상대가 수락하면 연락처에 나타납니다.',
+    '🔒 They only see your alias and note. If the nickname is wrong or they don\'t accept, nothing happens; once they accept, they appear in your contacts.');
+  el('sentTtl').textContent = L('보낸 요청 (최근 30일)', 'Sent (last 30 days)');
+}
+
+function showErr(m){ el('err').textContent = m; el('err').classList.add('show'); el('ok').classList.remove('show'); }
+function showOk(m){ el('ok').textContent = m; el('ok').classList.add('show'); el('err').classList.remove('show'); }
+
+/* 로그인 주소(…@u.alias.internal) → 닉네임 */
+function nickOf(email){
+  try { return decodeURIComponent(String(email || '').split('@')[0]); } catch (e) { return String(email || '').split('@')[0]; }
+}
+function when(t){ try { return AL.fmtWhen ? AL.fmtWhen(t) : new Date(t).toLocaleString(); } catch (e) { return ''; } }
+
+function paintFace(){
+  el('face').textContent = chosen ? chosen.display_name : L('별칭 고르기', 'Choose an alias');
+}
+el('face').addEventListener('click', async function(){
+  const p = await AL.pickAlias({ currentId: chosen ? chosen.id : null });
+  if (p) { chosen = p; paintFace(); }
+});
+
+el('copyNick').addEventListener('click', async function(){
+  const t = el('meNick').textContent;
+  try { await navigator.clipboard.writeText(t); this.textContent = L('복사됨 ✓', 'Copied ✓'); }
+  catch (e) { prompt(L('복사해 주세요', 'Copy this'), t); }
+});
+
+/* ── ① 받은 요청 ─────────────────────────────────────────────── */
+async function loadInbox(){
+  const box = el('inbox');
+  const r = await AL.sb.rpc('nick_requests_inbox');
+  if (r.error) { box.innerHTML = '<div class="rq-empty">' + AL.esc(r.error.message) + '</div>'; return; }
+  const rows = r.data || [];
+  if (!rows.length) { box.innerHTML = '<div class="rq-empty">' + AL.esc(L('받은 요청이 없습니다.', 'No requests.')) + '</div>'; return; }
+  box.innerHTML = rows.map(function(x){
+    return '<div class="rq-card">' +
+      '<div class="rq-top">' + AL.esc(x.from_name || L('(이름 없음)', '(no name)')) +
+        (x.source === 'aliascall' ? '<span class="src">Aliascall</span>' : '') + '</div>' +
+      (x.note ? '<p class="rq-note">“' + AL.esc(x.note) + '”</p>' : '') +
+      '<div class="rq-time">' + AL.esc(when(x.created_at)) + '</div>' +
+      '<div class="rq-acts">' +
+        '<button class="go" data-ok="' + AL.esc(x.id) + '">' + AL.esc(L('수락', 'Accept')) + '</button>' +
+        '<button data-no="' + AL.esc(x.id) + '">' + AL.esc(L('거절', 'Decline')) + '</button>' +
+        '<button class="bad" data-block="' + AL.esc(x.id) + '">' + AL.esc(L('거절하고 차단', 'Decline & block')) + '</button>' +
+      '</div></div>';
+  }).join('');
+  box.querySelectorAll('[data-ok]').forEach(function(b){ b.addEventListener('click', function(){ accept(b.getAttribute('data-ok'), b); }); });
+  box.querySelectorAll('[data-no]').forEach(function(b){ b.addEventListener('click', function(){ answer(b.getAttribute('data-no'), 'decline'); }); });
+  box.querySelectorAll('[data-block]').forEach(function(b){
+    b.addEventListener('click', function(){
+      if (confirm(L('이 분의 요청을 앞으로 받지 않습니다. 상대에게는 알리지 않습니다.', 'You will no longer receive requests from them. They won\'t be told.')))
+        answer(b.getAttribute('data-block'), 'block');
+    });
+  });
+}
+
+async function answer(id, how){
+  const r = await AL.sb.rpc('nick_request_answer', { p_id: id, p_answer: how, p_persona: null, p_label: null });
+  if (r.error || !(r.data && r.data.ok)) { showErr(L('처리하지 못했습니다.', 'Could not update.')); }
+  await loadInbox();
+}
+
+async function accept(id, btn){
+  /* 이 분에게 쓸 내 별칭 · 상대를 부를 이름을 고릅니다(초대 받기와 같음) */
+  const p = await AL.pickAlias({ note: L('이 분에게 보일 내 별칭을 고르세요', 'Choose the alias this person will see') });
+  if (!p) return;
+  const label = prompt(L('이 분을 어떻게 부를까요? (비워 두면 상대 별칭으로)', 'What should you call them? (blank = their alias)'), '') || null;
+  btn.disabled = true;
+  const r = await AL.sb.rpc('nick_request_answer', { p_id: id, p_answer: 'accept', p_persona: p.id, p_label: label });
+  const out = r.data || {};
+  if (r.error || !out.ok) {
+    btn.disabled = false;
+    showErr(out.error === 'gone' ? L('보낸 분이 별칭을 지워 연결할 수 없습니다.', 'The sender removed that alias.') : L('연결하지 못했습니다.', 'Could not connect.'));
+    return;
+  }
+  location.href = 'alias_chat.html?link=' + encodeURIComponent(out.link_id);
+}
+
+/* ── ② 보내기 ────────────────────────────────────────────────── */
+let sending = false;
+el('send').addEventListener('click', async function(){
+  if (sending) return;
+  const nick = el('nick').value.trim();
+  if (!nick) { showErr(L('상대 닉네임을 적어 주세요.', 'Enter their nickname.')); return; }
+  if (!chosen) { const p = await AL.pickAlias({}); if (!p) return; chosen = p; paintFace(); }
+  sending = true; this.disabled = true;
+  try {
+    const r = await AL.sb.rpc('nick_request_send', {
+      p_email: AL.nicknameToEmail(nick), p_persona: chosen.id,
+      p_note: el('note').value.trim() || null, p_source: SRC,
+    });
+    const out = r.data || {};
+    if (r.error) throw r.error;
+    if (!out.ok) {
+      const m = { own: L('내 닉네임입니다.', 'That is your own nickname.'),
+                  too_many: L('오늘은 더 보낼 수 없습니다(하루 20건). 내일 다시 해 주세요.', 'Daily limit reached (20). Try tomorrow.'),
+                  bad_persona: L('별칭을 다시 골라 주세요.', 'Please choose your alias again.'),
+                  bad_nick: L('닉네임을 다시 확인해 주세요.', 'Please check the nickname.') }[out.error];
+      showErr(m || L('보내지 못했습니다.', 'Could not send.'));
+    } else {
+      showOk(out.again
+        ? L('이미 보낸 요청이 있습니다. 상대가 확인할 때까지 기다려 주세요.', 'You already sent a request. Please wait for them.')
+        : L('보냈습니다. 그 닉네임을 쓰는 분이 수락하면 연락처에 나타납니다.', 'Sent. If someone uses that nickname and accepts, they\'ll appear in your contacts.'));
+      el('nick').value = ''; el('note').value = '';
+      await loadSent();
+    }
+  } catch (e) {
+    console.error(e);
+    showErr(L('보내지 못했습니다. ', 'Could not send. ') + (e.message || ''));
+  } finally { sending = false; this.disabled = false; }
+});
+
+/* ── ③ 보낸 요청 ─────────────────────────────────────────────── */
+async function loadSent(){
+  const box = el('sent');
+  const r = await AL.sb.rpc('nick_requests_sent');
+  const rows = (r && r.data) || [];
+  if (!rows.length) { box.innerHTML = '<div class="rq-empty">' + AL.esc(L('보낸 요청이 없습니다.', 'Nothing sent yet.')) + '</div>'; return; }
+  const ST = { pending: L('기다리는 중', 'Waiting'), accepted: L('연결됨', 'Connected'),
+               closed: L('끝남', 'Closed'), canceled: L('거둠', 'Withdrawn') };
+  box.innerHTML = rows.map(function(x){
+    return '<div class="rq-card">' +
+      '<div class="rq-top">→ ' + AL.esc(nickOf(x.to_key)) +
+        '<span class="rq-st ' + AL.esc(x.status) + '">' + AL.esc(ST[x.status] || x.status) + '</span></div>' +
+      '<div class="rq-time">' + AL.esc(L('내 별칭 ', 'As ') + (x.my_name || '')) + ' · ' + AL.esc(when(x.created_at)) + '</div>' +
+      (x.note ? '<p class="rq-note">“' + AL.esc(x.note) + '”</p>' : '') +
+      (x.status === 'accepted' && x.link_id
+        ? '<div class="rq-acts"><button class="go" data-chat="' + AL.esc(x.link_id) + '">' + AL.esc(L('대화하기', 'Open chat')) + '</button></div>'
+        : x.status === 'pending'
+          ? '<div class="rq-acts"><button data-cancel="' + AL.esc(x.id) + '">' + AL.esc(L('요청 거두기', 'Withdraw')) + '</button></div>'
+          : '') +
+      '</div>';
+  }).join('');
+  box.querySelectorAll('[data-chat]').forEach(function(b){
+    b.addEventListener('click', function(){ location.href = 'alias_chat.html?link=' + encodeURIComponent(b.getAttribute('data-chat')); });
+  });
+  box.querySelectorAll('[data-cancel]').forEach(function(b){
+    b.addEventListener('click', async function(){
+      await AL.sb.rpc('nick_request_cancel', { p_id: b.getAttribute('data-cancel') });
+      loadSent();
+    });
+  });
+}
+
+(async function(){
+  paintText();
+  if (AL.setBack) AL.setBack('alias_contacts.html');
+  me = await AL.requireLogin();
+  if (!me) return;
+  el('meNick').textContent = nickOf(me.email);
+  /* 에일리어스콜에서 넘어온 경우 — 닉네임이 미리 채워집니다 */
+  if (Q.get('to')) el('nick').value = Q.get('to').slice(0, 30);
+  try {
+    const list = await AL.loadAliases();
+    chosen = list.filter(function(a){ return a.is_default; })[0] || list[0] || null;
+  } catch (e) {}
+  paintFace();
+  loadInbox();
+  loadSent();
+  if (AL.startAlerts) AL.startAlerts();
+})();
+</script>
+</body>
+</html>

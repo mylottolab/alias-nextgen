@@ -172,6 +172,11 @@ document.addEventListener("DOMContentLoaded", function(){
     <span data-t="addInvite"></span>
     <small data-t="addInviteSub"></small>
   </a>
+  <!-- 🔴 2026-10-07 — 닉네임으로 연결 요청 (링크를 카톡 · 문자로 안 보내도 됨) -->
+  <a href="alias_requests.html">
+    <span id="addNickT">📨 닉네임으로 연결 요청</span>
+    <small id="addNickS">상대 닉네임만 알면 앱 안에서 바로 · 번호가 드러나지 않습니다</small>
+  </a>
   <a href="alias_join.html">
     <span data-t="addJoin"></span>
     <small data-t="addJoinSub"></small>
@@ -830,6 +835,10 @@ function showAdd(on){
   document.getElementById('addSheet').style.display = on ? '' : 'none';
 }
 document.getElementById('plus').addEventListener('click', function(){ showAdd(true); });
+if (AL.lang === 'en') {   // 🔴 2026-10-07
+  document.getElementById('addNickT').textContent = '📨 Request by nickname';
+  document.getElementById('addNickS').textContent = 'Just their nickname — in the app, no number shown';
+}
 document.getElementById('addBg').addEventListener('click', function(){ showAdd(false); });
 
 /* 알림은 공용(AL.startAlerts)이 냅니다. 여기서는 목록만 다시 그립니다. */
