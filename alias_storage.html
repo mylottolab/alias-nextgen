@@ -105,7 +105,7 @@ document.addEventListener("DOMContentLoaded", function(){
 <script>
 function el(id){ return document.getElementById(id); }
 const PLATFORM = AL.platform();
-const IN_APP = (PLATFORM === 'android');   // ⚠ 아이폰은 App Store 결제를 붙인 뒤에
+const IN_APP = (PLATFORM !== 'web');   // 🔴 2026-10-12 — 아이폰도 App Store 결제로 삽니다
 
 function say(text, ok){
   const m = el('msg');
@@ -202,6 +202,15 @@ el('buyBtn').addEventListener('click', async function(){
   AL.storeRecover();   // 🔴 2026-10-01 — 못 끝낸 용량 영수증이 있으면 지금 받아 정리합니다(앱 버전 12부터)
 
   el('offer').textContent = AL.t('sgBuyDesc');
+  /* 🔴 2026-10-12 — 아이폰 결제창에는 수량 고르기가 없습니다. 한 번에 1GB 씩, 여러 번 사면 더해집니다. */
+  if (PLATFORM === 'ios') {
+    el('offer').textContent = AL.lang === 'en'
+      ? '1GB · 3 months · ₩2,000\nEach purchase adds 1GB. Buy again to add more. Each pack lasts 3 months from the day you buy it.'
+      : '1GB · 3개월 · 2,000원\n한 번 사실 때마다 1GB 씩 더해집니다. 더 필요하시면 여러 번 사시면 됩니다. 산 날부터 3개월 동안 쓰실 수 있고, 묶음마다 끝나는 날이 따로 있습니다.';
+  }
+  el('webOnly').textContent = AL.lang === 'en'
+    ? 'Extra storage can be bought in the Burum app (Android · iPhone).'
+    : '추가 용량은 부름 앱(안드로이드 · 아이폰)에서 사실 수 있습니다.';
   if (IN_APP) {
     el('buyBtn').style.display = '';
     el('buyBtn').textContent = AL.t('sgBuyBtn');
