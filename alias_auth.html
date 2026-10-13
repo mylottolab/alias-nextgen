@@ -167,7 +167,7 @@ const NEXT = new URLSearchParams(location.search).get('next');
 
 function goNext(fallback){
   // ⚠ 우리 화면으로만 보냅니다. 밖에서 준 주소로 튕기면 안 됩니다.
-  if (NEXT && /^alias_[a-z_]+\.html(\?|$)/.test(NEXT)) { location.href = NEXT; return; }
+  if (NEXT && /^(alias|burum)_[a-z_]+\.html(\?|$)/.test(NEXT)) { location.href = NEXT; return; }
   location.href = fallback;
 }
 
