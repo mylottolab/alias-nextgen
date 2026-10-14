@@ -79,11 +79,29 @@ AL.drawQr = function(box, text, px){
 
 
 /* ── QR 읽기 ─────────────────────────────────────────────────────────
-   ⚠ BarcodeDetector 를 씁니다. 안드로이드 크롬은 됩니다.
-     iOS 사파리는 아직 안 됩니다. 그때는 코드를 손으로 넣게 안내합니다.
+   ⚠ 안드로이드 크롬은 BarcodeDetector(내장)를 씁니다.
+   🔴 2026-10-14 — 아이폰(사파리 · 부름 앱)에는 BarcodeDetector 가 없습니다.
+     그때는 jsQR(MIT, 작은 QR 해독기)를 처음 누를 때 한 번만 불러와서
+     카메라 화면을 0.25초마다 한 장씩 읽습니다. 카메라만 되면 어디서나 됩니다.
 ------------------------------------------------------------------- */
+AL.JSQR_URL = 'alias_jsqr.js';   // 우리 사이트에 같이 둡니다(외부 CDN 이 막혀도 되게)
+
 AL.canScanQr = function(){
-  return typeof window.BarcodeDetector !== 'undefined';
+  return typeof window.BarcodeDetector !== 'undefined' ||
+         !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+};
+
+AL.loadJsQr = function(){
+  if (window.jsQR) return Promise.resolve(window.jsQR);
+  if (AL._jsqrP) return AL._jsqrP;
+  AL._jsqrP = new Promise(function(resolve, reject){
+    var s = document.createElement('script');
+    s.src = AL.JSQR_URL; s.async = true;
+    s.onload = function(){ window.jsQR ? resolve(window.jsQR) : reject(new Error('jsQR')); };
+    s.onerror = function(){ AL._jsqrP = null; reject(new Error('jsQR load')); };
+    document.head.appendChild(s);
+  });
+  return AL._jsqrP;
 };
 
 AL.openScanner = function(){
@@ -120,26 +138,63 @@ AL.openScanner = function(){
     var wrap = document.createElement('div'); wrap.className = 'qr-cam';
     var v = document.createElement('video');
     v.autoplay = true; v.playsInline = true; v.muted = true;
+    v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', '');   // 아이폰: 전체화면으로 튀지 않게
     wrap.appendChild(v);
     sheet.appendChild(wrap);
 
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-      .then(function(st){
+    // 닫기 단추 (아이폰은 바깥을 눌러 닫는 걸 잘 모릅니다)
+    var cx = document.createElement('button'); cx.type = 'button'; cx.className = 'pk-go';
+    cx.style.cssText = 'width:100%;margin-top:10px;background:transparent;border:1px solid var(--line,rgba(128,128,128,.4));color:inherit';
+    cx.textContent = AL.lang === 'en' ? 'Close' : '닫기';
+    cx.addEventListener('click', function(){ close(null); });
+    sheet.appendChild(cx);
+
+    function fail(e){
+      console.error('[qr]', e);
+      if (done) return;
+      var n1 = document.createElement('p'); n1.className = 'pk-err';
+      n1.textContent = AL.t('qrCamera'); sheet.insertBefore(n1, cx);
+    }
+
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
+      .then(async function(st){
+        if (done) { st.getTracks().forEach(function(t){ t.stop(); }); return; }
         stream = st;
         v.srcObject = st;
-        var det = new BarcodeDetector({ formats: ['qr_code'] });
-        timer = setInterval(async function(){
+        try { await v.play(); } catch (e) {}
+
+        // ① 내장 해독기 (안드로이드 크롬)
+        if (typeof window.BarcodeDetector !== 'undefined') {
+          var det = new BarcodeDetector({ formats: ['qr_code'] });
+          timer = setInterval(async function(){
+            try {
+              var found = await det.detect(v);
+              if (found && found.length) close(found[0].rawValue);
+            } catch (e) { /* 한 번 실패해도 계속 봅니다 */ }
+          }, 400);
+          return;
+        }
+
+        // ② 아이폰: jsQR 로 한 장씩
+        var jsQR;
+        try { jsQR = await AL.loadJsQr(); } catch (e) { fail(e); return; }
+        if (done) return;
+        var cv = document.createElement('canvas');
+        var ctx = cv.getContext('2d', { willReadFrequently: true });
+        timer = setInterval(function(){
           try {
-            var found = await det.detect(v);
-            if (found && found.length) close(found[0].rawValue);
-          } catch (e) { /* 한 번 실패해도 계속 봅니다 */ }
-        }, 400);
+            var w = v.videoWidth, hh = v.videoHeight;
+            if (!w || !hh) return;
+            var scale = Math.min(1, 720 / Math.max(w, hh));   // 너무 크면 줄여서 빨리
+            cv.width = Math.round(w * scale); cv.height = Math.round(hh * scale);
+            ctx.drawImage(v, 0, 0, cv.width, cv.height);
+            var img = ctx.getImageData(0, 0, cv.width, cv.height);
+            var r = jsQR(img.data, img.width, img.height, { inversionAttempts: 'attemptBoth' });
+            if (r && r.data) close(r.data);
+          } catch (e) { /* 다음 장에서 다시 */ }
+        }, 250);
       })
-      .catch(function(e){
-        console.error('[qr]', e);
-        var n1 = document.createElement('p'); n1.className = 'pk-err';
-        n1.textContent = AL.t('qrCamera'); sheet.appendChild(n1);
-      });
+      .catch(fail);
   });
 };
 

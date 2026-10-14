@@ -318,8 +318,11 @@ html[data-bubble="tail"] .msg.in .bub::after{
 .scene.rain .ground{ height:20px; opacity:.07; border-radius:0; }
 
 /* 배경 위에 내용이 오게 */
-body > .wrap, body > .chat-wrap, body > .tabbar,
-body > .sheet, body > .sheet-bg{ position:relative; z-index:1; }
+/* 🔴 2026-10-14 — .tabbar · .sheet · .sheet-bg 는 빼야 합니다.
+   이 셋은 화면에 고정(position:fixed)이어야 하는데, 여기서 relative 로 덮어써서
+   연락처의 [+] 를 눌러도 메뉴가 화면 맨 아래(목록 끝)에 붙어 안 보였습니다.
+   고정된 것들은 이미 z-index 가 있어 배경(.scene, z-index:-1) 위에 옵니다. */
+body > .wrap, body > .chat-wrap{ position:relative; z-index:1; }
 
 @media (prefers-reduced-motion: reduce){
   .scene{ display:none; }
