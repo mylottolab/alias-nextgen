@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>부름번호</title>
+<link rel="stylesheet" href="alias_common.css?v=20261018a">
+<link rel="stylesheet" href="alias_theme.css?v=20261018a">
+<script src="alias_config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="alias_common.js?v=20261018a"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function(){
+  if (typeof AL === "undefined" || typeof AL.t !== "function") {
+    document.body.innerHTML = '<div style="padding:26px;font-family:system-ui,sans-serif;color:#DDE5F0;background:#0E1621;min-height:100vh">' +
+      '<b>alias_common.js 를 못 읽었습니다.</b></div>';
+    return;
+  }
+  AL.bootTheme();
+});
+</script>
+<style>
+/* 🔴 2026-10-18 — 부름번호(open형) 화면. 공용 CSS 를 안 건드리려고 여기에 둡니다. */
+.bn-tabs{display:flex;gap:6px;margin:0 0 16px}
+.bn-tabs button{flex:1;margin:0;padding:11px 6px;border-radius:11px;font-size:14px;font-weight:700;cursor:pointer;
+  background:rgba(255,255,255,.06);color:inherit;border:1px solid rgba(128,128,128,.3)}
+.bn-tabs button.on{background:rgba(143,227,176,.2);color:#8FE3B0;border-color:rgba(143,227,176,.5)}
+.bn-pane{display:none}.bn-pane.on{display:block}
+.bn-disp{font-size:30px;font-weight:800;letter-spacing:1.5px;text-align:center;min-height:44px;margin:6px 0 4px;
+  font-variant-numeric:tabular-nums;word-break:keep-all}
+.bn-disp small{display:block;font-size:12px;font-weight:600;letter-spacing:0;opacity:.6;margin-top:2px}
+.bn-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:320px;margin:14px auto}
+.bn-pad button{margin:0;height:62px;border-radius:50%;font-size:26px;font-weight:700;cursor:pointer;
+  background:rgba(255,255,255,.07);color:inherit;border:1px solid rgba(128,128,128,.25);aspect-ratio:1/1;width:62px;justify-self:center}
+.bn-go{display:flex;gap:10px;max-width:320px;margin:6px auto 0}
+.bn-go button{flex:1;margin:0;padding:14px 6px;border-radius:14px;font-size:16px;font-weight:800;cursor:pointer;border:none}
+.bn-go .v{background:#3BB273;color:#fff}.bn-go .vv{background:#2F6FB5;color:#fff}
+.bn-msg{margin:14px auto 0;max-width:340px;text-align:center;font-size:14px;line-height:1.6;min-height:22px;word-break:keep-all}
+.bn-sos{margin:26px auto 0;max-width:340px;text-align:center;font-size:12.5px;opacity:.75;line-height:1.6;word-break:keep-all}
+.bn-sos a{display:inline-block;margin:6px 4px 0;padding:6px 14px;border-radius:999px;border:1px solid rgba(255,120,120,.5);
+  color:#FFB4B4;text-decoration:none;font-weight:700}
+.bn-card{border:1px solid rgba(128,128,128,.3);border-radius:14px;padding:13px 14px;margin:0 0 10px;background:rgba(255,255,255,.04)}
+.bn-card .no{font-size:21px;font-weight:800;letter-spacing:1px;font-variant-numeric:tabular-nums}
+.bn-card .row{display:flex;gap:8px;align-items:center;margin-top:9px;flex-wrap:wrap}
+.bn-card select{flex:1;min-width:120px;padding:9px;border-radius:10px;background:rgba(255,255,255,.06);color:inherit;border:1px solid rgba(128,128,128,.35);font-size:14px}
+.bn-card button{margin:0;padding:9px 12px;border-radius:10px;font-size:13.5px;font-weight:700;cursor:pointer;
+  background:rgba(255,255,255,.07);color:inherit;border:1px solid rgba(128,128,128,.35)}
+.bn-card button.go{background:rgba(143,227,176,.2);color:#8FE3B0;border-color:rgba(143,227,176,.45)}
+.bn-card button.bad{background:rgba(255,120,120,.1);color:#FFB4B4;border-color:rgba(255,120,120,.4)}
+.bn-g{display:inline-block;font-size:11.5px;font-weight:800;padding:2px 9px;border-radius:999px;margin-left:8px;vertical-align:middle;letter-spacing:0}
+.bn-g.normal{background:rgba(128,128,128,.2)}.bn-g.silver{background:#C9D1DB;color:#1d2530}
+.bn-g.gold{background:#E2C377;color:#2a1f05}.bn-g.platinum{background:linear-gradient(90deg,#E8E8F0,#B8C4E8);color:#1b2240}
+.bn-chips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}
+.bn-chips button{margin:0;padding:8px 13px;border-radius:999px;font-size:13px;font-weight:700;cursor:pointer;
+  background:rgba(255,255,255,.06);color:inherit;border:1px solid rgba(128,128,128,.3)}
+.bn-chips button.on{background:rgba(242,201,76,.2);color:#F2C94C;border-color:rgba(242,201,76,.5)}
+.bn-list .item{display:flex;align-items:center;gap:10px;padding:11px 4px;border-bottom:1px solid rgba(128,128,128,.18)}
+.bn-list .item .n{flex:1;font-size:18px;font-weight:800;letter-spacing:1px;font-variant-numeric:tabular-nums}
+.bn-list .item .p{font-size:13px;font-weight:700;opacity:.85;white-space:nowrap}
+.bn-list .item button{margin:0;padding:8px 13px;border-radius:10px;font-size:13.5px;font-weight:800;cursor:pointer;
+  background:rgba(143,227,176,.2);color:#8FE3B0;border:1px solid rgba(143,227,176,.45)}
+.bn-note{font-size:12.5px;opacity:.7;line-height:1.6;margin:10px 0;word-break:keep-all}
+.bn-banner{padding:11px 13px;border-radius:12px;margin:0 0 12px;font-size:13.5px;line-height:1.55;word-break:keep-all;
+  background:rgba(242,201,76,.12);border:1px solid rgba(242,201,76,.4)}
+</style>
+</head>
+<body data-t-title="ttContacts">
+<div class="wrap">
+  <div class="tophead" style="margin-bottom:10px"><a class="backlink" href="alias_phone.html" id="back"></a></div>
+  <h1 class="h2" id="ttl"></h1>
+
+  <div class="bn-tabs">
+    <button type="button" data-tab="dial" class="on" id="tDial"></button>
+    <button type="button" data-tab="mine" id="tMine"></button>
+    <button type="button" data-tab="shop" id="tShop"></button>
+  </div>
+
+  <!-- ① 다이얼 -->
+  <div class="bn-pane on" id="pDial">
+    <div class="bn-disp" id="disp">&nbsp;<small id="dispHint"></small></div>
+    <div class="bn-pad" id="pad"></div>
+    <div class="bn-go">
+      <button type="button" class="v" id="callV"></button>
+      <button type="button" class="vv" id="callVV"></button>
+    </div>
+    <div class="bn-msg" id="dialMsg"></div>
+    <div class="bn-sos">
+      <span id="sosTxt"></span><br>
+      <a href="tel:112" id="sos112">🚨 112</a><a href="tel:119" id="sos119">🚑 119</a>
+    </div>
+  </div>
+
+  <!-- ② 내 번호 -->
+  <div class="bn-pane" id="pMine">
+    <div id="hold"></div>
+    <div id="credits"></div>
+    <div id="mine"></div>
+    <div class="sect" id="newTtl"></div>
+    <div id="newBox"></div>
+  </div>
+
+  <!-- ③ 좋은 번호 -->
+  <div class="bn-pane" id="pShop">
+    <div class="bn-banner" id="changeBanner" style="display:none"></div>
+    <div class="bn-chips" id="chips"></div>
+    <div class="field" style="margin-bottom:10px">
+      <input id="digits" type="tel" inputmode="numeric" maxlength="10" autocomplete="off">
+      <p class="hint" id="digitsHint"></p>
+    </div>
+    <div class="bn-list" id="shopList"></div>
+    <button class="btn ghost" id="more"></button>
+    <p class="bn-note" id="shopNote"></p>
+  </div>
+
+  <div id="err" class="err"></div>
+  <div id="ok" class="ok"></div>
+</div>
+
+<script>
+/* =====================================================================
+   🔴🔴 2026-10-18 신설 — 부름번호 (burum_number.sql 과 짝)
+   · 다이얼     번호를 누르면 bn_dial → 아는 사이면 바로 전화, 모르는 번호면 연결 요청
+   · 내 번호    번호마다 보일 별칭 · 받기 방법(연결 요청으로 / 모두 받기 / 번호로 받지 않기) · 바꾸기 · 끄기
+   · 좋은 번호  등급(실버 5,500 · 골드 33,000 · 플래티넘 99,000원)을 고르거나 숫자로 찾아 바로 구매
+   · 돈이 드는 것: 잡아 두기(bn_hold) → 스토어 결제 → 서버가 영수증 확인 뒤 bn_grant
+   · 긴급전화는 부름으로 걸지 않습니다. 폰의 전화 앱으로 넘깁니다(tel:).
+   ===================================================================== */
+const en = (AL.lang === 'en');
+const T = en ? {
+  ttl: 'Burum number', tDial: 'Dial', tMine: 'My numbers', tShop: 'Special numbers',
+  dispHint: '10 digits · Burum users only', callV: '📞 Voice', callVV: '🎥 Video',
+  sos: 'Burum numbers cannot reach emergency services. Use your phone app:',
+  linked: 'Connecting…', requested: 'Connection request sent. You can call as soon as they accept.',
+  again: 'You already sent a request to this number. Please wait for their answer.',
+  notFound: 'This number does not exist or does not take calls by number.', slow: 'Too many tries. Please wait a moment.',
+  own: 'This is your own number.', tooMany: 'You have sent too many requests today.', needDigits: 'Enter all 10 digits.',
+  newTtl: 'Get a number', free: 'Your first number is free. Pick one:', extra: 'Add another number (KRW 3,300). Pick one:',
+  pick: 'Choose', buy: 'Buy', change: 'Change (KRW 3,300)', off: 'Turn off', persona: 'Shown as', mode: 'Calls from unknown numbers',
+  m_request: 'As a connection request (default)', m_all: 'Ring right away (shop / work)', m_off: 'Do not take calls by number',
+  offConfirm: 'Turn off this number? It will not be given to anyone for 6 months, and you cannot get it back.',
+  holdNow: 'Waiting for payment: ', credit: 'Ready to use: ', creditPick: 'Pick a number below to use it.',
+  g_normal: 'Normal', g_silver: 'Silver', g_gold: 'Gold', g_platinum: 'Platinum', all: 'All',
+  priceFree: 'Free (first number)', priceExtra: 'KRW 3,300', digits: 'Numbers you want (e.g. 7777, birthday 0827)',
+  more: 'Show more', shopNote: 'Special numbers are yours while your Burum plan is active, and kept for 180 days after it ends. Payment by App Store / Google Play.',
+  appOnly: 'Purchases work in the Burum app.', bought: 'Purchase complete. Check My numbers — if a number is waiting to be picked, choose it below.', done: 'Done! Your number: ', creditDone: 'Purchased. Pick your number in "My numbers".',
+  changeFor: 'Choose a new number to replace ', cancelChange: 'Cancel',
+  e_taken: 'Someone just took this number. Please pick another.', e_need_plan: 'A Burum plan is needed.', e_fail: 'Something went wrong. Please try again.',
+} : {
+  ttl: '부름번호', tDial: '다이얼', tMine: '내 번호', tShop: '좋은 번호',
+  dispHint: '10자리 · 부름 사용자끼리만 연결', callV: '📞 음성', callVV: '🎥 영상',
+  sos: '부름번호로는 긴급전화가 걸리지 않습니다. 폰의 전화 앱으로 거세요.',
+  linked: '연결하는 중…', requested: '연결 요청을 보냈습니다. 상대가 수락하면 바로 걸 수 있어요.',
+  again: '이 번호에는 이미 요청을 보냈습니다. 답을 기다려 주세요.',
+  notFound: '없는 번호이거나, 번호로 전화를 받지 않는 분입니다.', slow: '너무 많이 눌렀습니다. 잠시 뒤 다시 해 주세요.',
+  own: '내 번호입니다.', tooMany: '오늘은 요청을 너무 많이 보냈습니다.', needDigits: '10자리를 모두 눌러 주세요.',
+  newTtl: '번호 만들기', free: '첫 번호는 무료입니다. 마음에 드는 번호를 고르세요.', extra: '번호 하나 더 (3,300원) — 고르세요.',
+  pick: '고르기', buy: '사기', change: '바꾸기 (3,300원)', off: '끄기', persona: '보일 별칭', mode: '모르는 번호에서 오면',
+  m_request: '연결 요청으로 받기 (기본)', m_all: '바로 울리게 (가게 · 업무용)', m_off: '번호로 받지 않기',
+  offConfirm: '이 번호를 끌까요? 6개월 동안 다른 사람에게도 주지 않고, 다시 되찾을 수 없습니다.',
+  holdNow: '결제 기다리는 번호: ', credit: '쓸 수 있는 번호: ', creditPick: '아래에서 번호를 골라 쓰세요.',
+  g_normal: '일반', g_silver: '실버', g_gold: '골드', g_platinum: '플래티넘', all: '전체',
+  priceFree: '무료 (첫 번호)', priceExtra: '3,300원', digits: '원하는 숫자 (예: 7777, 생일 0827)',
+  more: '더 보기', shopNote: '좋은 번호는 부름 이용권이 있는 동안 내 번호이고, 끝나도 180일 동안 잡아 둡니다. 결제는 App Store · Google Play 로 합니다.',
+  appOnly: '구매는 부름 앱에서 할 수 있어요.', bought: '구매가 끝났습니다. 내 번호를 확인하세요 — 고를 번호가 남아 있으면 아래에서 고르면 됩니다.', done: '완료! 내 번호: ', creditDone: '구매했습니다. "내 번호" 에서 번호를 골라 주세요.',
+  changeFor: '바꿀 새 번호를 고르세요 — 지금 번호 ', cancelChange: '그만두기',
+  e_taken: '방금 다른 분이 가져간 번호입니다. 다른 번호를 골라 주세요.', e_need_plan: '부름 이용권이 필요합니다.', e_fail: '잠시 문제가 생겼습니다. 다시 해 주세요.',
+};
+const PRICE = { silver: 5500, gold: 33000, platinum: 99000 };
+const el = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+const fmt = (n) => { n = String(n || ''); return [n.slice(0, 4), n.slice(4, 7), n.slice(7, 10)].filter(Boolean).join('-'); };
+const won = (v) => en ? 'KRW ' + v.toLocaleString() : v.toLocaleString() + '원';
+const badge = (g) => '<span class="bn-g ' + esc(g) + '">' + esc(T['g_' + g] || g) + '</span>';
+let me = null, aliases = [], wallet = { free_first: true, credits: [] }, mineList = [];
+let typed = '', shopGrade = '', changing = null;   // changing = 바꿀 내 번호(있을 때)
+
+function say(msg, good){ el('err').textContent = good ? '' : (msg || ''); el('ok').textContent = good ? (msg || '') : ''; }
+function errText(code){ return T['e_' + code] || ({ not_found: T.notFound, slow_down: T.slow, own: T.own, too_many: T.tooMany })[code] || T.e_fail; }
+
+/* ── 글자 채우기 ─────────────────────────────────────────── */
+function paintText(){
+  ['ttl', 'tDial', 'tMine', 'tShop', 'callV', 'callVV', 'newTtl', 'more'].forEach((k) => { el(k).textContent = T[k]; });
+  el('dispHint').textContent = T.dispHint; el('sosTxt').textContent = T.sos;
+  el('digits').placeholder = T.digits; el('shopNote').textContent = T.shopNote;
+  const keys = ['1','2','3','4','5','6','7','8','9','*','0','⌫'];
+  el('pad').innerHTML = keys.map((k) => '<button type="button" data-k="' + k + '"' + (k === '*' ? ' style="visibility:hidden"' : '') + '>' + k + '</button>').join('');
+  el('chips').innerHTML = [['', T.all], ['silver', T.g_silver + ' ' + won(5500)], ['gold', T.g_gold + ' ' + won(33000)], ['platinum', T.g_platinum + ' ' + won(99000)]]
+    .map((c) => '<button type="button" data-g="' + c[0] + '"' + (c[0] === shopGrade ? ' class="on"' : '') + '>' + esc(c[1]) + '</button>').join('');
+}
+function paintDisp(){
+  el('disp').innerHTML = (typed ? esc(fmt(typed)) : '&nbsp;') + '<small>' + esc(T.dispHint) + '</small>';
+}
+
+/* ── 탭 ──────────────────────────────────────────────────── */
+function tab(name){
+  document.querySelectorAll('.bn-tabs button').forEach((b) => b.classList.toggle('on', b.dataset.tab === name));
+  ['dial', 'mine', 'shop'].forEach((t) => el('p' + t[0].toUpperCase() + t.slice(1)).classList.toggle('on', t === name));
+  say('');
+  if (name === 'mine') loadMine();
+  if (name === 'shop') loadShop(true);
+  try { history.replaceState(null, '', '#' + name); } catch (e) {}
+}
+
+/* ── ① 다이얼 ─────────────────────────────────────────────── */
+async function dial(kind){
+  el('dialMsg').textContent = '';
+  if (typed.length !== 10) { el('dialMsg').textContent = T.needDigits; return; }
+  if (!await AL.requirePlan()) return;
+  el('dialMsg').textContent = T.linked;
+  const r = await AL.sb.rpc('bn_dial', { p_number: typed, p_persona: null, p_note: null });
+  const d = r.data || {};
+  if (r.error || !d.ok) {
+    if (d.error === 'need_plan') { el('dialMsg').textContent = ''; AL.needPlan(); return; }
+    el('dialMsg').textContent = errText(d.error); return;
+  }
+  if (d.state === 'linked' && d.link_id) {
+    location.href = 'alias_call.html?link=' + encodeURIComponent(d.link_id) + '&type=' + kind +
+      '&once=' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    return;
+  }
+  el('dialMsg').textContent = d.again ? T.again : T.requested;
+}
+
+/* ── ② 내 번호 ────────────────────────────────────────────── */
+async function loadMine(){
+  const [a, b] = await Promise.all([AL.sb.rpc('my_numbers'), AL.sb.rpc('my_number_wallet')]);
+  mineList = a.data || []; wallet = b.data || { free_first: true, credits: [] };
+  const opt = (sel) => aliases.map((x) => '<option value="' + x.id + '"' + (x.id === sel ? ' selected' : '') + '>' + esc(x.display_name) + '</option>').join('');
+  const modes = (m) => ['request', 'all', 'off'].map((k) => '<option value="' + k + '"' + (k === m ? ' selected' : '') + '>' + esc(T['m_' + k]) + '</option>').join('');
+  el('mine').innerHTML = mineList.map((n) =>
+    '<div class="bn-card" data-n="' + n.number + '">' +
+      '<div class="no">' + esc(n.shown) + badge(n.grade) + '</div>' +
+      '<div class="row"><span style="font-size:12.5px;opacity:.7;min-width:72px">' + esc(T.persona) + '</span><select data-p>' + opt(n.persona_id) + '</select></div>' +
+      '<div class="row"><span style="font-size:12.5px;opacity:.7;min-width:72px">' + esc(T.mode) + '</span><select data-m>' + modes(n.mode) + '</select></div>' +
+      '<div class="row"><button type="button" data-copy>📋</button><button type="button" data-change>' + esc(T.change) + '</button>' +
+      '<button type="button" class="bad" data-off>' + esc(T.off) + '</button></div>' +
+    '</div>').join('');
+  el('mine').querySelectorAll('.bn-card').forEach((c) => {
+    const n = c.dataset.n;
+    c.querySelector('[data-p]').onchange = (e) => AL.sb.rpc('bn_set', { p_number: n, p_persona: e.target.value, p_mode: null });
+    c.querySelector('[data-m]').onchange = (e) => AL.sb.rpc('bn_set', { p_number: n, p_persona: null, p_mode: e.target.value });
+    c.querySelector('[data-copy]').onclick = () => { try { navigator.clipboard.writeText('부름 ' + fmt(n)); say('📋 ' + fmt(n), true); } catch (e) {} };
+    c.querySelector('[data-change]').onclick = () => { changing = n; tab('shop'); };
+    c.querySelector('[data-off]').onclick = async () => {
+      if (!confirm(T.offConfirm)) return;
+      await AL.sb.rpc('bn_release', { p_number: n }); loadMine();
+    };
+  });
+  el('hold').innerHTML = wallet.hold ? '<div class="bn-banner">' + esc(T.holdNow) + esc(wallet.hold.shown) + '</div>' : '';
+  el('credits').innerHTML = (wallet.credits || []).length
+    ? '<div class="bn-banner">' + esc(T.credit) + wallet.credits.map((c) => esc(T['g_' + c.kind] || (c.kind === 'extra' ? T.extra.split(' (')[0] : T.change))).join(', ') + '<br>' + esc(T.creditPick) + '</div>' : '';
+  await loadOffers();
+}
+async function loadOffers(){
+  const r = await AL.sb.rpc('bn_offer');
+  const list = r.data || [];
+  const head = wallet.free_first ? T.free : T.extra;
+  el('newBox').innerHTML = '<p class="bn-note">' + esc(head) + '</p><div class="bn-list">' +
+    list.map((x) => '<div class="item"><span class="n">' + esc(x.shown) + '</span><span class="p">' +
+      esc(wallet.free_first ? T.priceFree : T.priceExtra) + '</span><button type="button" data-pick="' + x.number + '">' + esc(T.pick) + '</button></div>').join('') + '</div>';
+  el('newBox').querySelectorAll('[data-pick]').forEach((b) => { b.onclick = () => choose(b.dataset.pick, 'normal'); });
+}
+
+/* ── 고르기 · 사기 — 무료 / 크레딧 / 결제 ────────────────────── */
+function creditFor(kind){ return (wallet.credits || []).filter((c) => c.kind === kind)[0] || null; }
+async function choose(number, grade){
+  say('');
+  if (!await AL.requirePlan()) return;
+  const persona = (aliases[0] || {}).id || null;
+  let kind = grade;
+  if (grade === 'normal') {
+    if (wallet.free_first && !changing) {
+      const r = await AL.sb.rpc('bn_claim_free', { p_number: number, p_persona: persona });
+      return after(r);
+    }
+    kind = changing ? 'change' : 'extra';
+  }
+  /* 이미 산 것(크레딧)이 있으면 결제 없이 그것으로 */
+  const c = creditFor(kind);
+  if (c) {
+    const r = await AL.sb.rpc('bn_use_credit', { p_credit: c.id, p_number: number, p_replace: changing, p_persona: persona });
+    return after(r);
+  }
+  const h = await AL.sb.rpc('bn_hold', { p_number: number, p_kind: kind, p_replace: changing, p_persona: persona });
+  const d = h.data || {};
+  if (h.error || !d.ok) { if (d.error === 'need_plan') return AL.needPlan(); return say(errText(d.error)); }
+  if (!(window.AliasNative && typeof AliasNative.storeBuy === 'function')) return say(T.appOnly);
+  AliasNative.storeBuy(d.sku);     // 결과는 AL.onStoreDone 으로 옵니다
+}
+function after(r){
+  const d = r.data || {};
+  if (r.error || !d.ok) { if (d.error === 'need_plan') return AL.needPlan(); return say(errText(d.error)); }
+  changing = null; say(T.done + (d.shown || ''), true); tab('mine');
+}
+AL.onStoreDone = function(res){
+  if (!res || !res.ok) { if (res && !res.canceled) say(res.error || T.e_fail); return; }
+  changing = null;
+  say(T.bought, true);
+  tab('mine');
+};
+
+/* ── ③ 좋은 번호 ──────────────────────────────────────────── */
+async function loadShop(reset){
+  el('changeBanner').style.display = changing ? '' : 'none';
+  if (changing) {
+    el('changeBanner').innerHTML = esc(T.changeFor) + '<b>' + esc(fmt(changing)) + '</b> <button type="button" id="cc" style="margin:0 0 0 8px;padding:4px 10px;border-radius:8px">' + esc(T.cancelChange) + '</button>';
+    el('cc').onclick = () => { changing = null; loadShop(true); };
+  }
+  const dg = el('digits').value.replace(/\D/g, '');
+  const r = await AL.sb.rpc('bn_search', { p_digits: dg || null, p_grade: shopGrade || null, p_limit: 30 });
+  const list = r.data || [];
+  const html = list.map((x) => {
+    const price = x.grade === 'normal' ? ((wallet.free_first && !changing) ? T.priceFree : T.priceExtra) : won(x.price);
+    return '<div class="item"><span class="n">' + esc(x.shown) + badge(x.grade) + '</span><span class="p">' + esc(price) +
+      '</span><button type="button" data-n="' + x.number + '" data-g="' + x.grade + '">' + esc(x.grade === 'normal' ? T.pick : T.buy) + '</button></div>';
+  }).join('');
+  el('shopList').innerHTML = reset ? html : el('shopList').innerHTML + html;
+  el('shopList').querySelectorAll('[data-n]').forEach((b) => { b.onclick = () => choose(b.dataset.n, b.dataset.g); });
+}
+
+/* ── 시작 ─────────────────────────────────────────────────── */
+(async function(){
+  paintText(); paintDisp();
+  if (AL.setBack) AL.setBack('alias_phone.html');
+  document.querySelectorAll('.bn-tabs button').forEach((b) => { b.onclick = () => tab(b.dataset.tab); });
+  el('pad').onclick = (e) => {
+    const k = e.target && e.target.dataset && e.target.dataset.k; if (!k) return;
+    if (k === '⌫') typed = typed.slice(0, -1); else if (/\d/.test(k) && typed.length < 10 && !(typed === '' && k === '0')) typed += k;
+    paintDisp(); el('dialMsg').textContent = '';
+  };
+  el('callV').onclick = () => dial('voice'); el('callVV').onclick = () => dial('video');
+  el('chips').onclick = (e) => { const g = e.target && e.target.dataset && e.target.dataset.g; if (g === undefined) return; shopGrade = g; paintText(); loadShop(true); };
+  let tmr = null; el('digits').oninput = () => { clearTimeout(tmr); tmr = setTimeout(() => loadShop(true), 350); };
+  el('more').onclick = () => loadShop(false);
+  me = await AL.requireLogin();
+  if (!me) return;
+  try { aliases = await AL.loadAliases(); } catch (e) { aliases = []; }
+  /* 다른 화면에서 번호를 들고 온 경우(alias_number.html?dial=4829051317) */
+  const q = new URLSearchParams(location.search).get('dial');
+  if (q) { typed = q.replace(/\D/g, '').slice(0, 10); paintDisp(); }
+  const h = (location.hash || '').replace('#', '');
+  if (h === 'mine' || h === 'shop') tab(h);
+  try { const w = await AL.sb.rpc('my_number_wallet'); if (w.data) wallet = w.data; } catch (e) {}
+  if (AL.startAlerts) AL.startAlerts();
+})();
+</script>
+</body>
+</html>

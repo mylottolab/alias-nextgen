@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>부름 좋은 번호</title>
+<meta name="description" content="부름번호 — 국가번호 없이 전 세계에서 쓰는 10자리 번호. 외우기 쉬운 좋은 번호를 골라 보세요.">
+<script src="alias_config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="alias_common.js?v=20261018a"></script>
+<style>
+/* 🔴 2026-10-18 — 로그인 없이 보는 공개 "좋은 번호" 목록 (홍보용). 구매는 앱 안에서 합니다. */
+*{box-sizing:border-box}
+body{margin:0;background:#0E1621;color:#EEF2F7;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;word-break:keep-all}
+.w{max-width:560px;margin:0 auto;padding:28px 16px 60px}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px}
+.logo i{width:36px;height:36px;border-radius:50%;background:#8FE3B0;color:#0E1621;display:flex;align-items:center;justify-content:center;font-style:normal}
+h1{font-size:30px;line-height:1.3;margin:26px 0 10px}
+p.l{color:#B8C4D4;line-height:1.7;margin:0 0 20px;font-size:15px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}
+.chips button{padding:9px 14px;border-radius:999px;font-size:13.5px;font-weight:700;cursor:pointer;background:rgba(255,255,255,.06);color:inherit;border:1px solid rgba(255,255,255,.18)}
+.chips button.on{background:rgba(242,201,76,.2);color:#F2C94C;border-color:rgba(242,201,76,.5)}
+input{width:100%;padding:13px 14px;border-radius:12px;font-size:16px;background:rgba(255,255,255,.06);color:inherit;border:1px solid rgba(255,255,255,.18);margin-bottom:12px}
+.it{display:flex;align-items:center;gap:10px;padding:13px 4px;border-bottom:1px solid rgba(255,255,255,.08)}
+.it .n{flex:1;font-size:20px;font-weight:800;letter-spacing:1px;font-variant-numeric:tabular-nums}
+.it .p{font-weight:700;color:#F2C94C;white-space:nowrap}
+.g{display:inline-block;font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;margin-left:8px;vertical-align:middle;letter-spacing:0}
+.g.silver{background:#C9D1DB;color:#1d2530}.g.gold{background:#E2C377;color:#2a1f05}.g.platinum{background:linear-gradient(90deg,#E8E8F0,#B8C4E8);color:#1b2240}.g.normal{background:rgba(255,255,255,.15)}
+.cta{display:block;text-align:center;margin:22px 0 0;padding:15px;border-radius:14px;background:#8FE3B0;color:#0E1621;font-weight:800;text-decoration:none}
+.note{font-size:12.5px;color:#7E8FA6;line-height:1.7;margin-top:18px}
+</style>
+</head>
+<body>
+<div class="w">
+  <div class="logo"><i>부</i>부름</div>
+  <h1 id="h">국가번호 없이,<br>전 세계 같은 번호.</h1>
+  <p class="l" id="lead">부름번호는 10자리입니다. 와이파이만 있으면 부름 사용자끼리 전화 · 메시지가 됩니다. 외우기 쉬운 좋은 번호를 골라 보세요.</p>
+  <div class="chips" id="chips"></div>
+  <input id="d" type="tel" inputmode="numeric" maxlength="10" placeholder="원하는 숫자 (예: 7777, 생일 0827)">
+  <div id="list"></div>
+  <a class="cta" id="cta" href="alias_number.html#shop">부름 앱에서 이 번호 사기</a>
+  <p class="note" id="note">실버 5,500원 · 골드 33,000원 · 플래티넘 99,000원. 구매는 부름 앱(App Store · Google Play)에서 합니다. 부름번호는 부름 사용자끼리만 연결되며 일반 전화 · 긴급전화(112 · 119)는 걸리지 않습니다. 목록은 볼 때마다 바뀌고, 이미 팔린 번호는 나오지 않습니다.</p>
+</div>
+<script>
+(function(){
+  var G = { silver: '실버', gold: '골드', platinum: '플래티넘', normal: '일반' }, grade = '';
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]; }); }
+  function chips(){
+    document.getElementById('chips').innerHTML = [['', '전체'], ['silver', '실버 5,500원'], ['gold', '골드 33,000원'], ['platinum', '플래티넘 99,000원']]
+      .map(function(c){ return '<button type="button" data-g="' + c[0] + '"' + (c[0] === grade ? ' class="on"' : '') + '>' + c[1] + '</button>'; }).join('');
+  }
+  async function load(){
+    var d = document.getElementById('d').value.replace(/\D/g, '');
+    try {
+      var r = await AL.sb.rpc('bn_search', { p_digits: d || null, p_grade: grade || null, p_limit: 40 });
+      document.getElementById('list').innerHTML = (r.data || []).filter(function(x){ return x.grade !== 'normal'; }).map(function(x){
+        return '<div class="it"><span class="n">' + esc(x.shown) + '<span class="g ' + esc(x.grade) + '">' + esc(G[x.grade]) + '</span></span><span class="p">' + Number(x.price).toLocaleString() + '원</span></div>';
+      }).join('') || '<p class="l">조건에 맞는 좋은 번호가 지금은 없습니다. 다른 숫자로 찾아 보세요.</p>';
+    } catch (e) { document.getElementById('list').innerHTML = ''; }
+  }
+  chips();
+  document.getElementById('chips').onclick = function(e){ var g = e.target && e.target.dataset && e.target.dataset.g; if (g === undefined) return; grade = g; chips(); load(); };
+  var t; document.getElementById('d').oninput = function(){ clearTimeout(t); t = setTimeout(load, 350); };
+  load();
+})();
+</script>
+</body>
+</html>
