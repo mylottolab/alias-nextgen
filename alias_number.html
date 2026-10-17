@@ -142,7 +142,7 @@ const T = en ? {
   g_normal: 'Normal', g_silver: 'Silver', g_gold: 'Gold', g_platinum: 'Platinum', all: 'All',
   priceFree: 'Free (first number)', priceExtra: 'KRW 3,300', digits: 'Up to 6 digits you want (e.g. 7777, birthday 0827)',
   more: 'Show more', shopNote: 'A special number stays yours once bought (a Burum plan is needed to use Burum numbers). Payment by App Store / Google Play.',
-  appOnly: 'Purchases work in the Burum app.', pending: 'Payment is still being processed. The number will appear once it is confirmed.', owned: 'A previous purchase is being finished. Please check My numbers in a moment.', bought: 'Purchase complete. Check My numbers — if a number is waiting to be picked, choose it below.', done: 'Done! Your number: ', creditDone: 'Purchased. Pick your number in "My numbers".',
+  appOnly: 'Purchases work in the Burum app.', keep: 'Keep 1 more year (KRW 1,100)', keepTo: 'Kept until', resting: 'Resting', kept: 'Kept for 1 more year: ', pending: 'Payment is still being processed. The number will appear once it is confirmed.', owned: 'A previous purchase is being finished. Please check My numbers in a moment.', bought: 'Purchase complete. Check My numbers — if a number is waiting to be picked, choose it below.', done: 'Done! Your number: ', creditDone: 'Purchased. Pick your number in "My numbers".',
   changeFor: 'Choose a new number to replace ', cancelChange: 'Cancel',
   e_taken: 'Someone just took this number. Please pick another.', e_need_plan: 'A Burum plan is needed.', e_fail: 'Something went wrong. Please try again.',
 } : {
@@ -161,7 +161,7 @@ const T = en ? {
   g_normal: '일반', g_silver: '실버', g_gold: '골드', g_platinum: '플래티넘', all: '전체',
   priceFree: '무료 (첫 번호)', priceExtra: '3,300원', digits: '원하는 숫자 6자리까지 (예: 7777, 생일 0827)',
   more: '더 보기', shopNote: '좋은 번호는 한 번 사면 계속 내 번호입니다(부름번호를 쓰려면 부름 이용권이 필요합니다). 결제는 App Store · Google Play 로 합니다.',
-  appOnly: '구매는 부름 앱에서 할 수 있어요.', pending: '결제가 아직 처리 중입니다. 확인되면 번호가 생깁니다.', owned: '앞서 산 것을 마무리하는 중입니다. 잠시 뒤 내 번호를 확인해 주세요.', bought: '구매가 끝났습니다. 내 번호를 확인하세요 — 고를 번호가 남아 있으면 아래에서 고르면 됩니다.', done: '완료! 내 번호: ', creditDone: '구매했습니다. "내 번호" 에서 번호를 골라 주세요.',
+  appOnly: '구매는 부름 앱에서 할 수 있어요.', keep: '1년 더 잡아 두기 (1,100원)', keepTo: '잡아 두는 날:', resting: '쉬는 중', kept: '1년 더 잡아 두었습니다: ', pending: '결제가 아직 처리 중입니다. 확인되면 번호가 생깁니다.', owned: '앞서 산 것을 마무리하는 중입니다. 잠시 뒤 내 번호를 확인해 주세요.', bought: '구매가 끝났습니다. 내 번호를 확인하세요 — 고를 번호가 남아 있으면 아래에서 고르면 됩니다.', done: '완료! 내 번호: ', creditDone: '구매했습니다. "내 번호" 에서 번호를 골라 주세요.',
   changeFor: '바꿀 새 번호를 고르세요 — 지금 번호 ', cancelChange: '그만두기',
   e_taken: '방금 다른 분이 가져간 번호입니다. 다른 번호를 골라 주세요.', e_need_plan: '부름 이용권이 필요합니다.', e_fail: '잠시 문제가 생겼습니다. 다시 해 주세요.',
 };
@@ -229,10 +229,12 @@ async function loadMine(){
   const modes = (m) => ['request', 'all', 'off'].map((k) => '<option value="' + k + '"' + (k === m ? ' selected' : '') + '>' + esc(T['m_' + k]) + '</option>').join('');
   el('mine').innerHTML = mineList.map((n) =>
     '<div class="bn-card" data-n="' + n.number + '">' +
-      '<div class="no">' + esc(n.shown) + badge(n.grade) + '</div>' +
+      '<div class="no">' + esc(n.shown) + badge(n.grade) + (n.resting ? ' <span class="bn-g" style="background:rgba(255,120,120,.2);color:#FFB4B4">' + esc(T.resting) + '</span>' : '') + '</div>' +
+      (n.keep_to ? '<div style="font-size:12.5px;opacity:.7;margin-top:4px">' + esc(T.keepTo) + ' ' + esc(String(n.keep_to).slice(0, 10)) + '</div>' : '') +
       '<div class="row"><span style="font-size:12.5px;opacity:.7;min-width:72px">' + esc(T.persona) + '</span><select data-p>' + opt(n.persona_id) + '</select></div>' +
       '<div class="row"><span style="font-size:12.5px;opacity:.7;min-width:72px">' + esc(T.mode) + '</span><select data-m>' + modes(n.mode) + '</select></div>' +
       '<div class="row"><button type="button" data-copy>📋</button><button type="button" data-change>' + esc(T.change) + '</button>' +
+      '<button type="button" class="go" data-keep>' + esc(T.keep) + '</button>' +
       '<button type="button" class="bad" data-off>' + esc(T.off) + '</button></div>' +
     '</div>').join('');
   el('mine').querySelectorAll('.bn-card').forEach((c) => {
@@ -241,6 +243,7 @@ async function loadMine(){
     c.querySelector('[data-m]').onchange = (e) => AL.sb.rpc('bn_set', { p_number: n, p_persona: null, p_mode: e.target.value });
     c.querySelector('[data-copy]').onclick = () => { try { navigator.clipboard.writeText('부름 ' + fmt(n)); say('📋 ' + fmt(n), true); } catch (e) {} };
     c.querySelector('[data-change]').onclick = () => { changing = n; tab('shop'); };
+    c.querySelector('[data-keep]').onclick = () => keepMore(n);
     c.querySelector('[data-off]').onclick = async () => {
       if (!confirm(T.offConfirm)) return;
       await AL.sb.rpc('bn_release', { p_number: n }); loadMine();
@@ -248,7 +251,7 @@ async function loadMine(){
   });
   el('hold').innerHTML = wallet.hold ? '<div class="bn-banner">' + esc(T.holdNow) + esc(wallet.hold.shown) + '</div>' : '';
   el('credits').innerHTML = (wallet.credits || []).length
-    ? '<div class="bn-banner">' + esc(T.credit) + wallet.credits.map((c) => esc(T['g_' + c.kind] || (c.kind === 'extra' ? T.extra.split(' (')[0] : T.change))).join(', ') + '<br>' + esc(T.creditPick) + '</div>' : '';
+    ? '<div class="bn-banner">' + esc(T.credit) + wallet.credits.map((c) => esc(T['g_' + c.kind] || (c.kind === 'extra' ? T.extra.split(' (')[0] : c.kind === 'keep' ? T.keep : T.change))).join(', ') + '<br>' + esc(T.creditPick) + '</div>' : '';
   await loadOffers();
 }
 async function loadOffers(){
@@ -291,10 +294,21 @@ async function choose(number, grade){
   if (!(window.AliasNative && typeof AliasNative.storeBuy === 'function')) return say(T.appOnly);
   AliasNative.storeBuy(d.sku);     // 결과는 AL.onStoreDone 으로 옵니다
 }
+/* 1년 더 잡아 두기 (1,100원) — 이용권을 쉬는 분도 살 수 있습니다(이용권 검사 없음) */
+async function keepMore(number){
+  say('');
+  const c = (wallet.credits || []).filter((x) => x.kind === 'keep')[0];
+  if (c) return after(await AL.sb.rpc('bn_use_credit', { p_credit: c.id, p_number: number, p_replace: null, p_persona: null }), true);
+  const h = await AL.sb.rpc('bn_hold', { p_number: number, p_kind: 'keep', p_replace: null, p_persona: null });
+  const d = h.data || {};
+  if (h.error || !d.ok) return say(errText(d.error));
+  if (!(window.AliasNative && typeof AliasNative.storeBuy === 'function')) return say(T.appOnly);
+  AliasNative.storeBuy(d.sku);
+}
 function after(r){
   const d = r.data || {};
   if (r.error || !d.ok) { if (d.error === 'need_plan') return AL.needPlan(); return say(errText(d.error)); }
-  changing = null; say(T.done + (d.shown || ''), true); tab('mine');
+  changing = null; say(d.kept ? T.kept + (d.shown || '') : T.done + (d.shown || ''), true); tab('mine');
 }
 AL.onStoreDone = function(res){
   if (!res || !res.ok) {
