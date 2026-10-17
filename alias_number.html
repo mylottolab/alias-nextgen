@@ -104,7 +104,7 @@ document.addEventListener("DOMContentLoaded", function(){
     <div class="bn-banner" id="changeBanner" style="display:none"></div>
     <div class="bn-chips" id="chips"></div>
     <div class="field" style="margin-bottom:10px">
-      <input id="digits" type="tel" inputmode="numeric" maxlength="10" autocomplete="off">
+      <input id="digits" type="tel" inputmode="numeric" maxlength="6" autocomplete="off">
       <p class="hint" id="digitsHint"></p>
     </div>
     <div class="bn-list" id="shopList"></div>
@@ -140,9 +140,9 @@ const T = en ? {
   offConfirm: 'Turn off this number? It will not be given to anyone for 6 months, and you cannot get it back.',
   holdNow: 'Waiting for payment: ', credit: 'Ready to use: ', creditPick: 'Pick a number below to use it.',
   g_normal: 'Normal', g_silver: 'Silver', g_gold: 'Gold', g_platinum: 'Platinum', all: 'All',
-  priceFree: 'Free (first number)', priceExtra: 'KRW 3,300', digits: 'Numbers you want (e.g. 7777, birthday 0827)',
-  more: 'Show more', shopNote: 'Special numbers are yours while your Burum plan is active, and kept for 180 days after it ends. Payment by App Store / Google Play.',
-  appOnly: 'Purchases work in the Burum app.', bought: 'Purchase complete. Check My numbers — if a number is waiting to be picked, choose it below.', done: 'Done! Your number: ', creditDone: 'Purchased. Pick your number in "My numbers".',
+  priceFree: 'Free (first number)', priceExtra: 'KRW 3,300', digits: 'Up to 6 digits you want (e.g. 7777, birthday 0827)',
+  more: 'Show more', shopNote: 'A special number stays yours once bought (a Burum plan is needed to use Burum numbers). Payment by App Store / Google Play.',
+  appOnly: 'Purchases work in the Burum app.', pending: 'Payment is still being processed. The number will appear once it is confirmed.', owned: 'A previous purchase is being finished. Please check My numbers in a moment.', bought: 'Purchase complete. Check My numbers — if a number is waiting to be picked, choose it below.', done: 'Done! Your number: ', creditDone: 'Purchased. Pick your number in "My numbers".',
   changeFor: 'Choose a new number to replace ', cancelChange: 'Cancel',
   e_taken: 'Someone just took this number. Please pick another.', e_need_plan: 'A Burum plan is needed.', e_fail: 'Something went wrong. Please try again.',
 } : {
@@ -159,9 +159,9 @@ const T = en ? {
   offConfirm: '이 번호를 끌까요? 6개월 동안 다른 사람에게도 주지 않고, 다시 되찾을 수 없습니다.',
   holdNow: '결제 기다리는 번호: ', credit: '쓸 수 있는 번호: ', creditPick: '아래에서 번호를 골라 쓰세요.',
   g_normal: '일반', g_silver: '실버', g_gold: '골드', g_platinum: '플래티넘', all: '전체',
-  priceFree: '무료 (첫 번호)', priceExtra: '3,300원', digits: '원하는 숫자 (예: 7777, 생일 0827)',
-  more: '더 보기', shopNote: '좋은 번호는 부름 이용권이 있는 동안 내 번호이고, 끝나도 180일 동안 잡아 둡니다. 결제는 App Store · Google Play 로 합니다.',
-  appOnly: '구매는 부름 앱에서 할 수 있어요.', bought: '구매가 끝났습니다. 내 번호를 확인하세요 — 고를 번호가 남아 있으면 아래에서 고르면 됩니다.', done: '완료! 내 번호: ', creditDone: '구매했습니다. "내 번호" 에서 번호를 골라 주세요.',
+  priceFree: '무료 (첫 번호)', priceExtra: '3,300원', digits: '원하는 숫자 6자리까지 (예: 7777, 생일 0827)',
+  more: '더 보기', shopNote: '좋은 번호는 한 번 사면 계속 내 번호입니다(부름번호를 쓰려면 부름 이용권이 필요합니다). 결제는 App Store · Google Play 로 합니다.',
+  appOnly: '구매는 부름 앱에서 할 수 있어요.', pending: '결제가 아직 처리 중입니다. 확인되면 번호가 생깁니다.', owned: '앞서 산 것을 마무리하는 중입니다. 잠시 뒤 내 번호를 확인해 주세요.', bought: '구매가 끝났습니다. 내 번호를 확인하세요 — 고를 번호가 남아 있으면 아래에서 고르면 됩니다.', done: '완료! 내 번호: ', creditDone: '구매했습니다. "내 번호" 에서 번호를 골라 주세요.',
   changeFor: '바꿀 새 번호를 고르세요 — 지금 번호 ', cancelChange: '그만두기',
   e_taken: '방금 다른 분이 가져간 번호입니다. 다른 번호를 골라 주세요.', e_need_plan: '부름 이용권이 필요합니다.', e_fail: '잠시 문제가 생겼습니다. 다시 해 주세요.',
 };
@@ -262,7 +262,11 @@ async function loadOffers(){
 }
 
 /* ── 고르기 · 사기 — 무료 / 크레딧 / 결제 ────────────────────── */
-function creditFor(kind){ return (wallet.credits || []).filter((c) => c.kind === kind)[0] || null; }
+/* 번호 하나 더 · 바꾸기는 값이 같아 서로 바꿔 씁니다(서버도 같은 규칙) */
+function creditFor(kind){
+  const ok = (kind === 'extra' || kind === 'change') ? ['extra', 'change'] : [kind];
+  return (wallet.credits || []).filter((c) => ok.indexOf(c.kind) >= 0)[0] || null;
+}
 async function choose(number, grade){
   say('');
   if (!await AL.requirePlan()) return;
@@ -293,7 +297,12 @@ function after(r){
   changing = null; say(T.done + (d.shown || ''), true); tab('mine');
 }
 AL.onStoreDone = function(res){
-  if (!res || !res.ok) { if (res && !res.canceled) say(res.error || T.e_fail); return; }
+  if (!res || !res.ok) {
+    if (!res || res.canceled) return;
+    if (res.pending) return say(T.pending, true);
+    if (res.owned || res.cleared) { say(T.owned); return loadMine(); }
+    return say(res.error || T.e_fail);
+  }
   changing = null;
   say(T.bought, true);
   tab('mine');
