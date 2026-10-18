@@ -361,6 +361,9 @@ async function loadShop(reset){
   const list = r.data || [];
   const html = list.map((x) => {
     const price = x.grade === 'normal' ? ((wallet.free_first && !changing) ? T.priceFree : T.priceExtra) : won(x.price);
+    /* 🔴 2026-10-19 — 회사 보유분은 SOLD OUT (고를 수 없음) */
+    if (x.sold) return '<div class="item" style="opacity:.55"><span class="n" style="text-decoration:line-through;text-decoration-thickness:1px">' + esc(x.shown) + badge(x.grade) +
+      '</span><span class="p">' + esc(won(x.price)) + '</span><span style="padding:8px 10px;border-radius:10px;font-size:12px;font-weight:900;letter-spacing:.5px;color:#FFB4B4;border:1px solid rgba(255,140,140,.5)">SOLD OUT</span></div>';
     return '<div class="item"><span class="n">' + esc(x.shown) + badge(x.grade) + '</span><span class="p">' + esc(price) +
       '</span><button type="button" data-n="' + x.number + '" data-g="' + x.grade + '">' + esc(x.grade === 'normal' ? T.pick : T.buy) + '</button></div>';
   }).join('');

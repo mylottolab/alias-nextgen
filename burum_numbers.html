@@ -54,6 +54,7 @@ input{width:100%;padding:13px 14px;border-radius:12px;font-size:16px;background:
     try {
       var r = await AL.sb.rpc('bn_search', { p_digits: d || null, p_grade: grade || null, p_limit: 40 });
       document.getElementById('list').innerHTML = (r.data || []).filter(function(x){ return x.grade !== 'normal'; }).map(function(x){
+        if (x.sold) return '<div class="it" style="opacity:.55"><span class="n" style="text-decoration:line-through;text-decoration-thickness:1px">' + esc(x.shown) + '<span class="g ' + esc(x.grade) + '">' + esc(G[x.grade]) + '</span></span><span class="p" style="color:#FFB4B4">SOLD OUT</span></div>';
         return '<div class="it"><span class="n">' + esc(x.shown) + '<span class="g ' + esc(x.grade) + '">' + esc(G[x.grade]) + '</span></span><span class="p">' + Number(x.price).toLocaleString() + '원</span></div>';
       }).join('') || '<p class="l">조건에 맞는 좋은 번호가 지금은 없습니다. 다른 숫자로 찾아 보세요.</p>';
     } catch (e) { document.getElementById('list').innerHTML = ''; }
