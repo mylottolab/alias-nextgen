@@ -145,6 +145,24 @@ document.addEventListener("DOMContentLoaded", function(){
 #pickbox button:active{background:rgba(255,255,255,.12)}
 #pickbox .sep{height:1px;margin:6px 4px;background:rgba(255,255,255,.11)}
 #pickbox button.warn{color:#FFB4B4}
+/* 🔴 2026-10-18 전화번호부 — 부름번호로 저장한 사람 · 저장 창 */
+.phbtns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.phbtns a,.phbtns button{appearance:none;-webkit-appearance:none;cursor:pointer;margin:0;padding:8px 12px;border-radius:999px;
+  font-size:13px;font-weight:800;text-decoration:none;white-space:nowrap;
+  background:rgba(143,227,176,.18);color:#8FE3B0;border:1px solid rgba(143,227,176,.45)}
+.prow .pav.bn{background:rgba(143,227,176,.16);color:#8FE3B0;font-size:20px}
+.psub .bnno{color:#8FE3B0;font-weight:700;font-variant-numeric:tabular-nums}
+.psub .wait{color:#F2C94C}
+#pickbox .frm{padding:4px 10px 10px}
+#pickbox .frm label{display:block;font-size:12.5px;opacity:.75;margin:10px 2px 5px}
+#pickbox .frm input,#pickbox .frm select{width:100%;box-sizing:border-box;padding:12px;border-radius:10px;font-size:16px;
+  background:rgba(255,255,255,.07);color:#EEF2F7;border:1px solid rgba(255,255,255,.18)}
+#pickbox .frm .go{display:block;width:100%;margin-top:14px;text-align:center;padding:13px;border-radius:12px;
+  background:#8FE3B0;color:#0E1621;font-weight:800}
+#pickbox .frm .msg{min-height:1.2em;margin-top:8px;font-size:13px;color:#FFB4B4}
+.phinfo{display:none;margin:0 2px 12px;padding:11px 13px;border-radius:10px;background:rgba(143,227,176,.12);
+  color:#BFF0D2;font-size:13.5px;line-height:1.6}
+.phinfo.show{display:block}
 </style>
 </head>
 
@@ -152,12 +170,14 @@ document.addEventListener("DOMContentLoaded", function(){
 <div class="phwrap">
 
   <div class="phtop">
-    <h1 data-t="phTitle"></h1>
+    <h1 id="phH"></h1>
     <!-- 🔴 2026-10-18 부름번호 — 번호로 걸기 · 내 번호 · 좋은 번호 -->
-    <a href="alias_number.html" id="bnLink" style="padding:8px 13px;border-radius:999px;font-size:13.5px;font-weight:800;text-decoration:none;
-       background:rgba(143,227,176,.18);color:#8FE3B0;border:1px solid rgba(143,227,176,.45)">🔢 부름번호</a>
+    <div class="phbtns">
+      <button type="button" id="bnSave">＋ 번호 저장</button>
+      <a href="alias_number.html" id="bnLink">🔢 부름번호</a>
+    </div>
   </div>
-  <script>try{ if (window.AL && AL.lang === 'en') document.getElementById('bnLink').textContent = '🔢 Burum number'; }catch(e){}</script>
+  <div class="phinfo" id="info"></div>
 
   <input class="phfind" id="q" type="search" autocomplete="off" data-t-ph="phSearch">
 
@@ -209,6 +229,45 @@ let extra = {};        // my_side_id → { starred, speed_dial, pin_order }
 let myFaces = {};      // 🔴 2026-09-13 — 내 별칭 이름 → 사진 경로
 let editing = false;   // 번호 바꾸기 모드
 let pickSlot = null;   // 지금 채우려는 번호
+/* 🔴 2026-10-18 — 부름번호로 저장한 사람들(bn_book). link_id 가 있으면 이미 이어진 사이 */
+let book = [];
+const KR = (AL.lang !== 'en');
+const BT = KR ? {
+  title: '전화번호부', save: '＋ 번호 저장', num: '🔢 부름번호', no: '부름번호 (10자리)', name: '이름', slot: '단축번호',
+  none: '없음', ok: '저장', del: '이 번호 지우기', edit: '저장한 번호 고치기', add: '부름번호 저장',
+  wait: '수락 전', needNo: '부름번호 10자리를 넣어 주세요.', delAsk: '전화번호부에서 지울까요?',
+  requested: '연결 요청을 보냈습니다. 상대가 수락하면 바로 걸 수 있어요.', again: '이미 요청을 보냈습니다. 답을 기다려 주세요.',
+  notFound: '없는 번호이거나 지금은 받지 않는 번호입니다.', slow: '잠시 뒤에 다시 걸어 주세요.', own: '내 번호입니다.',
+  pickNo: '부름번호로 저장한 사람', noSql: '전화번호부 준비가 아직 안 됐습니다(서버). 잠시 뒤 다시 열어 주세요.'
+} : {
+  title: 'Phone book', save: '+ Save number', num: '🔢 Burum number', no: 'Burum number (10 digits)', name: 'Name', slot: 'Speed dial',
+  none: 'None', ok: 'Save', del: 'Delete this number', edit: 'Edit saved number', add: 'Save a Burum number',
+  wait: 'not accepted yet', needNo: 'Please enter a 10-digit Burum number.', delAsk: 'Delete from your phone book?',
+  requested: 'Connection request sent. You can call as soon as they accept.', again: 'You already sent a request. Please wait for their answer.',
+  notFound: 'This number does not exist or is not taking calls now.', slow: 'Please try again in a moment.', own: 'This is your own number.',
+  pickNo: 'Saved Burum numbers', noSql: 'The phone book is not ready on the server yet. Please try again shortly.'
+};
+function fmtNo(n){ n = String(n || ''); return n.length === 10 ? n.slice(0, 4) + '-' + n.slice(4, 7) + '-' + n.slice(7) : n; }
+function info(msg){ const el = document.getElementById('info'); el.textContent = msg || ''; el.classList.toggle('show', !!msg); }
+/* 이미 연락처에 있는 사이면 그 줄과 합치고, 아니면 따로 한 줄 */
+function bookLinked(b){ return b.link_id && rows.some(function(r){ return r.link_id === b.link_id; }); }
+function bookFor(linkId){ return book.filter(function(b){ return b.link_id === linkId; })[0] || null; }
+function bookOnly(){ return book.filter(function(b){ return !bookLinked(b); }); }
+
+/* 저장한 번호로 걸기 — 이어진 사이면 바로, 아니면 연결 요청(부름번호 다이얼과 같음) */
+async function dialNo(b, kind){
+  if (b.link_id) { if (kind === 'chat') return chatTo(b.link_id); return callTo(b.link_id, kind); }
+  if (kind === 'chat') { location.href = 'alias_number.html?dial=' + b.number + '&msg=1'; return; }
+  if (!await AL.requirePlan()) return;
+  const r = await AL.sb.rpc('bn_dial', { p_number: b.number, p_persona: null, p_note: null });
+  const d = r.data || {};
+  if (r.error || !d.ok) {
+    if (d.error === 'need_plan') { AL.needPlan(); return; }
+    info(d.error === 'slow_down' ? BT.slow : d.error === 'own' ? BT.own : BT.notFound); return;
+  }
+  if (d.state === 'linked' && d.link_id) { await reload(); return callTo(d.link_id, kind); }
+  info(d.again ? BT.again : BT.requested);
+}
 
 function showErr(msg){
   const el = document.getElementById('err');
@@ -248,6 +307,8 @@ function bySpeed(){
     const n = ex(r).speed_dial;
     if (n) map[n] = r;
   });
+  /* 🔴 2026-10-18 — 저장한 부름번호도 같은 아홉 칸을 씁니다 */
+  book.forEach(function(b){ if (b.speed_dial && !map[b.speed_dial]) map[b.speed_dial] = { _book: b }; });
   return map;
 }
 
@@ -258,7 +319,7 @@ function paintPad(){
     const r = map[n];
     html += '<button class="slot ' + (r ? 'set' : 'blank') + '" data-slot="' + n + '">' +
       '<span class="num">' + n + '</span>' +
-      '<span class="who">' + AL.esc(r ? nameOf(r) : AL.t('phEmptySlot')) + '</span>' +
+      '<span class="who">' + AL.esc(r ? (r._book ? '🔢 ' + r._book.label : nameOf(r)) : AL.t('phEmptySlot')) + '</span>' +
     '</button>';
   }
   const pad = document.getElementById('pad');
@@ -272,6 +333,7 @@ function paintPad(){
       /* 번호를 바꾸는 중에는 전화가 걸리면 안 됩니다.
          고치려다 엉뚱한 사람에게 거는 사고를 막습니다. */
       if (editing || !r) { openPicker(n, r); return; }
+      if (r._book) { dialNo(r._book, 'voice'); return; }
       callTo(r.link_id);
     });
   });
@@ -301,12 +363,16 @@ function visible(){
 
 function paintList(){
   const box = document.getElementById('list');
-  if (!rows.length) {
+  const q = document.getElementById('q').value.trim().toLowerCase();
+  const bl = bookOnly().filter(function(b){
+    return !q || b.label.toLowerCase().indexOf(q) >= 0 || b.number.indexOf(q.replace(/\D/g, '') || '@') >= 0;
+  });
+  if (!rows.length && !book.length) {
     box.innerHTML = '<div class="phnote">' + AL.esc(AL.t('phEmpty')) + '</div>';
     return;
   }
   const list = visible();
-  if (!list.length) {
+  if (!list.length && !bl.length) {
     box.innerHTML = '<div class="phnote">' + AL.esc(AL.t('phNoMatch')) + '</div>';
     return;
   }
@@ -336,7 +402,8 @@ function paintList(){
             : '') +
         '</div>' +
         '<div class="psub">' + AL.esc(AL.fmtWhen(r.last_activity_at)) +
-          (room ? ' · ' + AL.esc(AL.t('phRoomOnly')) : '') + '</div>' +
+          (room ? ' · ' + AL.esc(AL.t('phRoomOnly')) : '') +
+          (bookFor(r.link_id) ? ' · <span class="bnno">🔢 ' + AL.esc(fmtNo(bookFor(r.link_id).number)) + '</span>' : '') + '</div>' +
       '</div>' +
       '<button class="act call' + (room ? ' off' : '') + '" data-call="' + AL.esc(r.link_id) +
         '" aria-label="' + AL.esc(AL.t('ariaCall')) + '">☏</button>' +
@@ -346,7 +413,26 @@ function paintList(){
       '<button class="act" data-msg="' + AL.esc(r.link_id) +
         '" aria-label="' + AL.esc(AL.t('ariaMsg')) + '">💬</button>' +
     '</div>';
+  }).join('') + bl.map(function(b){
+    /* 🔴 2026-10-18 — 부름번호로만 저장한 사람. 이름을 누르면 고치기 */
+    return '<div class="prow">' +
+      '<div class="pav bn">🔢</div>' +
+      '<div class="pmid" data-bedit="' + b.number + '">' +
+        '<div class="pname">' + (b.speed_dial ? '<span class="spd">' + b.speed_dial + '</span>' : '') + AL.esc(b.label) + '</div>' +
+        '<div class="psub"><span class="bnno">' + AL.esc(fmtNo(b.number)) + '</span>' +
+          (b.link_id ? '' : ' · <span class="wait">' + AL.esc(BT.wait) + '</span>') + '</div>' +
+      '</div>' +
+      '<button class="act call" data-bcall="' + b.number + '" aria-label="call">☏</button>' +
+      '<button class="act" data-bvcall="' + b.number + '" aria-label="video">📹</button>' +
+      '<button class="act" data-bmsg="' + b.number + '" aria-label="message">💬</button>' +
+    '</div>';
   }).join('');
+
+  const bk = function(n){ return book.filter(function(b){ return b.number === n; })[0]; };
+  box.querySelectorAll('[data-bedit]').forEach(function(el){ el.addEventListener('click', function(){ openSave(bk(el.getAttribute('data-bedit'))); }); });
+  box.querySelectorAll('[data-bcall]').forEach(function(el){ el.addEventListener('click', function(){ dialNo(bk(el.getAttribute('data-bcall')), 'voice'); }); });
+  box.querySelectorAll('[data-bvcall]').forEach(function(el){ el.addEventListener('click', function(){ dialNo(bk(el.getAttribute('data-bvcall')), 'video'); }); });
+  box.querySelectorAll('[data-bmsg]').forEach(function(el){ el.addEventListener('click', function(){ dialNo(bk(el.getAttribute('data-bmsg')), 'chat'); }); });
 
   AL.paintFaces(box);   // 🔴 2026-09-13
 
@@ -391,6 +477,12 @@ function openPicker(n, cur){
         AL.esc(nameOf(r)) + AL.esc(tag) + '</button>';
     }).join('');
   }
+  const bo = bookOnly();
+  if (bo.length) {
+    html += '<div class="sep"></div><div class="ttl">' + AL.esc(BT.pickNo) + '</div>' + bo.map(function(b){
+      return '<button data-pickbook="' + b.number + '">🔢 ' + AL.esc(b.label) + (b.speed_dial ? ' (' + b.speed_dial + ')' : '') + '</button>';
+    }).join('');
+  }
   if (cur) {
     html += '<div class="sep"></div>' +
       '<button class="warn" data-clear="1">' + AL.esc(AL.t('phClear')) + '</button>';
@@ -404,21 +496,37 @@ function openPicker(n, cur){
   box.querySelectorAll('[data-pick]').forEach(function(el){
     el.addEventListener('click', function(){ setSpeed(el.getAttribute('data-pick')); });
   });
+  box.querySelectorAll('[data-pickbook]').forEach(function(el){
+    el.addEventListener('click', function(){ setSpeed(null, el.getAttribute('data-pickbook')); });
+  });
   box.querySelectorAll('[data-clear]').forEach(function(el){
     el.addEventListener('click', function(){ setSpeed(null); });
   });
 }
 
-async function setSpeed(linkId){
+async function setSpeed(linkId, bookNo){
   const n = pickSlot;
   try {
     const map = bySpeed();
     const cur = map[n];                                   // 지금 이 번호를 쓰는 사람
 
+    /* 🔴 2026-10-18 — 저장한 부름번호에 주기: 서버가 그 칸을 쓰던 연락처를 비웁니다 */
+    if (bookNo) {
+      const b = book.filter(function(x){ return x.number === bookNo; })[0];
+      const r = await AL.sb.rpc('bn_book_save', { p_number: bookNo, p_label: b ? b.label : '', p_speed: n });
+      if (r.error || !(r.data || {}).ok) throw (r.error || new Error((r.data || {}).error || 'save'));
+      showPick(false); await reload(); return;
+    }
+    /* 칸을 저장한 번호가 쓰고 있었으면 그 번호의 칸을 비웁니다 */
+    if (cur && cur._book) {
+      const r = await AL.sb.rpc('bn_book_save', { p_number: cur._book.number, p_label: cur._book.label, p_speed: null });
+      if (r.error) throw r.error;
+    }
+
     /* ⚠ 한 사람이 같은 번호를 둘 가질 수 없게 DB 에 막아뒀습니다.
        그러니 쓰던 사람을 **먼저 비우고** 나서 넣어야 합니다.
        순서를 바꾸면 "이미 있다" 는 오류가 납니다. */
-    if (cur) {
+    if (cur && !cur._book) {
       const c = await AL.sb.from('link_sides')
         .update({ speed_dial: null }).eq('id', cur.my_side_id).select('id');
       if (c.error) throw c.error;
@@ -428,6 +536,7 @@ async function setSpeed(linkId){
       const r = rows.filter(function(x){ return x.link_id === linkId; })[0];
       if (r) {
         /* 그 사람이 다른 번호를 갖고 있었으면 그건 비워집니다. 한 사람에 한 번호. */
+        try { await AL.sb.rpc('bn_book_free_slot', { p_speed: n }); } catch (e) {}
         const u = await AL.sb.from('link_sides')
           .update({ speed_dial: n }).eq('id', r.my_side_id).select('id');
         if (u.error) throw u.error;
@@ -442,6 +551,35 @@ async function setSpeed(linkId){
     showPick(false);
     showErr(AL.t('errGeneric', { msg: e.message || String(e) }));
   }
+}
+
+/* ── 부름번호 저장 · 고치기 창 ───────────────────────────────────── */
+function openSave(b, preset){
+  const isNew = !b;
+  b = b || { number: preset || '', label: '', speed_dial: null };
+  let opts = '<option value="">' + AL.esc(BT.none) + '</option>';
+  for (let i = 1; i <= 9; i++) opts += '<option value="' + i + '"' + (b.speed_dial === i ? ' selected' : '') + '>' + i + '</option>';
+  const box = document.getElementById('pickbox');
+  box.innerHTML = '<div class="ttl">' + AL.esc(isNew ? BT.add : BT.edit) + '</div><div class="frm">' +
+    '<label>' + AL.esc(BT.no) + '</label><input id="fNo" type="tel" inputmode="numeric" maxlength="12" value="' + AL.esc(fmtNo(b.number)) + '"' + (isNew ? '' : ' readonly') + '>' +
+    '<label>' + AL.esc(BT.name) + '</label><input id="fName" maxlength="30" value="' + AL.esc(b.label) + '">' +
+    '<label>' + AL.esc(BT.slot) + '</label><select id="fSlot">' + opts + '</select>' +
+    '<button class="go" id="fGo">' + AL.esc(BT.ok) + '</button><div class="msg" id="fMsg"></div></div>' +
+    (isNew ? '' : '<div class="sep"></div><button class="warn" id="fDel">' + AL.esc(BT.del) + '</button>');
+  box.scrollTop = 0; showPick(true);
+  document.getElementById('fGo').onclick = async function(){
+    const no = document.getElementById('fNo').value.replace(/\D/g, '');
+    if (!/^[1-9][0-9]{9}$/.test(no)) { document.getElementById('fMsg').textContent = BT.needNo; return; }
+    const sl = document.getElementById('fSlot').value;
+    const r = await AL.sb.rpc('bn_book_save', { p_number: no, p_label: document.getElementById('fName').value, p_speed: sl ? parseInt(sl, 10) : null });
+    if (r.error || !(r.data || {}).ok) { document.getElementById('fMsg').textContent = r.error ? BT.noSql : BT.needNo; return; }
+    showPick(false); await reload();
+  };
+  const del = document.getElementById('fDel');
+  if (del) del.onclick = async function(){
+    if (!confirm(BT.delAsk)) return;
+    await AL.sb.rpc('bn_book_delete', { p_number: b.number }); showPick(false); await reload();
+  };
 }
 
 /* ── 읽어오기 ───────────────────────────────────────────────────── */
@@ -467,6 +605,9 @@ async function reload(){
 
     myFaces = await AL.myFaceMap();   // 🔴 2026-09-13
 
+    /* 🔴 2026-10-18 — 저장한 부름번호. 못 읽어도 연락처는 그립니다 */
+    try { const bb = await AL.sb.rpc('bn_book'); book = bb.error ? [] : (bb.data || []); } catch (e) { book = []; }
+
     paint();
   } catch (e) {
     console.error(e);
@@ -486,10 +627,17 @@ document.getElementById('setupLink').textContent =
 
 (async function(){
   AL.paintText();
+  document.getElementById('phH').textContent = BT.title;
+  document.getElementById('bnSave').textContent = BT.save;
+  document.getElementById('bnLink').textContent = BT.num;
+  document.getElementById('bnSave').addEventListener('click', function(){ openSave(null); });
   /* 🔴 2026-09-18 — 폰의 ◁ 를 누르면 앱이 나가지 않고 돌아갑니다. */
   AL.setBack('alias_contacts.html');
   if (!await AL.requireLogin()) return;
   await reload();
+  /* 부름번호 다이얼에서 [저장] 으로 온 경우 (alias_phone.html?save=4829051317) */
+  const sv = new URLSearchParams(location.search).get('save');
+  if (sv) { const ex0 = book.filter(function(b){ return b.number === sv; })[0]; openSave(ex0 || null, ex0 ? '' : sv); }
 
   AL.showPlanBar();   // 🔴 2026-09-14
   AL.showPushBar();   // 🔴 2026-09-15 — 전화를 못 받는 상태면 알립니다

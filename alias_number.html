@@ -70,7 +70,7 @@ document.addEventListener("DOMContentLoaded", function(){
 </head>
 <body data-t-title="ttContacts">
 <div class="wrap">
-  <div class="tophead" style="margin-bottom:10px"><a class="backlink" href="alias_contacts.html" id="back"></a></div>
+  <div class="tophead" style="margin-bottom:10px"><a class="backlink" href="alias_phone.html" id="back"></a></div>
   <h1 class="h2" id="ttl"></h1>
 
   <div class="bn-tabs">
@@ -95,6 +95,8 @@ document.addEventListener("DOMContentLoaded", function(){
       <button type="button" id="noteGo"></button>
     </div>
     <div class="bn-msg" id="dialMsg"></div>
+    <!-- 🔴 2026-10-18 — 누른 번호를 전화번호부에 저장 -->
+    <div style="text-align:center;margin-top:8px"><a href="#" id="saveNo" style="font-size:13.5px;font-weight:700;color:#8FE3B0"></a></div>
     <div class="bn-sos">
       <span id="sosTxt"></span><br>
       <a href="tel:112" id="sos112">🚨 112</a><a href="tel:119" id="sos119">🚑 119</a>
@@ -139,7 +141,7 @@ document.addEventListener("DOMContentLoaded", function(){
 const en = (AL.lang === 'en');
 const T = en ? {
   ttl: 'Burum number', tDial: 'Dial', tMine: 'My numbers', tShop: 'Special numbers',
-  dispHint: '10 digits · Burum users only', callV: '📞 Voice', callVV: '🎥 Video', callM: '💬 Text',
+  dispHint: '10 digits · Burum users only', callV: '📞 Voice', callVV: '🎥 Video', callM: '💬 Text', saveNo: '💾 Save this number to the phone book',
   notePh: 'Message (up to 60 characters)', noteHint: 'If you already know each other, the chat opens right away. Otherwise this message goes with your connection request.', noteGo: 'Send', requestedM: 'Your message was sent with a connection request. You can chat as soon as they accept.',
   sos: 'Burum numbers cannot reach emergency services. Use your phone app:',
   linked: 'Connecting…', requested: 'Connection request sent. You can call as soon as they accept.',
@@ -159,7 +161,7 @@ const T = en ? {
   e_taken: 'Someone just took this number. Please pick another.', e_need_plan: 'A Burum plan is needed.', e_fail: 'Something went wrong. Please try again.',
 } : {
   ttl: '부름번호', tDial: '다이얼', tMine: '내 번호', tShop: '좋은 번호',
-  dispHint: '10자리 · 부름 사용자끼리만 연결', callV: '📞 음성', callVV: '🎥 영상', callM: '💬 문자',
+  dispHint: '10자리 · 부름 사용자끼리만 연결', callV: '📞 음성', callVV: '🎥 영상', callM: '💬 문자', saveNo: '💾 이 번호를 전화번호부에 저장',
   notePh: '보낼 메시지 (60자까지)', noteHint: '이미 아는 사이면 바로 대화방이 열립니다. 모르는 번호면 이 메시지가 연결 요청과 함께 갑니다.', noteGo: '보내기', requestedM: '메시지를 연결 요청과 함께 보냈습니다. 상대가 수락하면 바로 대화할 수 있어요.',
   sos: '부름번호로는 긴급전화가 걸리지 않습니다. 폰의 전화 앱으로 거세요.',
   linked: '연결하는 중…', requested: '연결 요청을 보냈습니다. 상대가 수락하면 바로 걸 수 있어요.',
@@ -192,7 +194,7 @@ function errText(code){ return T['e_' + code] || ({ not_found: T.notFound, slow_
 
 /* ── 글자 채우기 ─────────────────────────────────────────── */
 function paintText(){
-  ['ttl', 'tDial', 'tMine', 'tShop', 'callV', 'callVV', 'callM', 'noteHint', 'noteGo', 'newTtl', 'more'].forEach((k) => { el(k).textContent = T[k]; });
+  ['ttl', 'tDial', 'tMine', 'tShop', 'callV', 'callVV', 'callM', 'saveNo', 'noteHint', 'noteGo', 'newTtl', 'more'].forEach((k) => { el(k).textContent = T[k]; });
   el('dispHint').textContent = T.dispHint; el('sosTxt').textContent = T.sos;
   el('digits').placeholder = T.digits; el('shopNote').textContent = T.shopNote;
   const keys = ['1','2','3','4','5','6','7','8','9','*','0','⌫'];
@@ -363,7 +365,7 @@ async function loadShop(reset){
 /* ── 시작 ─────────────────────────────────────────────────── */
 (async function(){
   paintText(); paintDisp();
-  if (AL.setBack) AL.setBack('alias_contacts.html');
+  if (AL.setBack) AL.setBack('alias_phone.html');
   document.querySelectorAll('.bn-tabs button').forEach((b) => { b.onclick = () => tab(b.dataset.tab); });
   el('pad').onclick = (e) => {
     const k = e.target && e.target.dataset && e.target.dataset.k; if (!k) return;
@@ -374,6 +376,7 @@ async function loadShop(reset){
   el('noteTx').placeholder = T.notePh;
   el('callM').onclick = () => { el('dialMsg').textContent = ''; if (typed.length !== 10) { el('dialMsg').textContent = T.needDigits; return; } el('noteBox').classList.toggle('on'); if (el('noteBox').classList.contains('on')) el('noteTx').focus(); };
   el('noteGo').onclick = () => dial('chat');
+  el('saveNo').onclick = (e) => { e.preventDefault(); if (typed.length !== 10) { el('dialMsg').textContent = T.needDigits; return; } location.href = 'alias_phone.html?save=' + typed; };
   el('chips').onclick = (e) => { const g = e.target && e.target.dataset && e.target.dataset.g; if (g === undefined) return; shopGrade = g; paintText(); loadShop(true); };
   let tmr = null; el('digits').oninput = () => { clearTimeout(tmr); tmr = setTimeout(() => loadShop(true), 350); };
   el('more').onclick = () => loadShop(false);
@@ -383,6 +386,7 @@ async function loadShop(reset){
   /* 다른 화면에서 번호를 들고 온 경우(alias_number.html?dial=4829051317) */
   const q = new URLSearchParams(location.search).get('dial');
   if (q) { typed = q.replace(/\D/g, '').slice(0, 10); paintDisp(); }
+  if (q && new URLSearchParams(location.search).get('msg')) { el('noteBox').classList.add('on'); }
   const h = (location.hash || '').replace('#', '');
   if (h === 'mine' || h === 'shop') tab(h);
   try { const w = await AL.sb.rpc('my_number_wallet'); if (w.data) wallet = w.data; } catch (e) {}
