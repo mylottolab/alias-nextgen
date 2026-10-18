@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>부름번호 회사 보유분</title>
+<title>부름 관리자 — 번호 · 선물</title>
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="alias_common.js"></script>
@@ -41,16 +41,55 @@ td button{ border:none; border-radius:8px; padding:7px 12px; font-size:13px; fon
 #dlg label{ display:block; font-size:12.5px; color:var(--soft); margin:10px 0 5px; }
 #dlg input[type=text]{ width:100%; border:1px solid var(--line); border-radius:10px; padding:11px 12px; font:inherit; }
 #dlg .row{ display:flex; gap:8px; margin-top:16px; } #dlg .row button{ flex:1; border:none; border-radius:10px; padding:12px; font-weight:700; cursor:pointer; }
+label.gl{ display:block; font-size:12.5px; color:var(--soft); } label.gl input, label.gl select{ display:block; width:100%; margin-top:5px; border:1px solid var(--line); border-radius:10px; padding:10px 11px; font:inherit; font-size:14.5px; color:var(--ink); background:#fff; }
 #dlg .msg{ min-height:1.2em; margin-top:8px; font-size:13px; color:var(--bad); }
 </style>
 </head>
 <body>
 <header>
-  <h1>🔢 부름번호 회사 보유분</h1>
+  <h1>부름 관리자</h1>
   <a href="burum_admin_stats.html">← 일일 통계</a>
 </header>
 <main>
+  <!-- 🔴 2026-10-19 — 탭: 회사 보유 번호 · 이용권 선물 · (에일리어스콜은 그쪽 관리자 화면) -->
+  <div class="bar" id="tabs" style="margin-bottom:18px">
+    <button type="button" data-tab="num" class="on">🔢 회사 보유 번호</button>
+    <button type="button" data-tab="gift">🎁 이용권 선물</button>
+    <a href="https://aliascall.com/aliascall_admin_dashboard.html" target="_blank" rel="noopener" style="margin-left:auto;font-size:13.5px;font-weight:700;color:var(--acc)">에일리어스콜 이용권 부여 ↗</a>
+  </div>
   <div class="err" id="err"></div>
+
+  <div id="paneGift" style="display:none">
+    <section style="padding:16px">
+      <div style="font-weight:800;margin-bottom:4px">이용권 · 상품을 결제 없이 드리기</div>
+      <div class="sum">회사 발전에 기여한 분 · 협력사 · 이벤트 당첨자 등에게 드립니다. 모든 선물은 기록되고 매출에는 잡히지 않습니다.</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:10px">
+        <label class="gl">받을 분 로그인 닉네임<input type="text" id="gNick" autocomplete="off" placeholder="예: 방장"></label>
+        <label class="gl">무엇을
+          <select id="gKind">
+            <option value="plan">부름 이용권</option>
+            <option value="storage">추가 용량</option>
+            <option value="platinum">부름번호 · 좋은 번호 플래티넘</option>
+            <option value="gold">부름번호 · 좋은 번호 골드</option>
+            <option value="silver">부름번호 · 좋은 번호 실버</option>
+            <option value="extra">부름번호 · 번호 하나 더</option>
+            <option value="change">부름번호 · 번호 바꾸기</option>
+            <option value="keep">부름번호 · 1년 더 잡아 두기</option>
+          </select></label>
+        <label class="gl" id="gMonthsW">기간
+          <select id="gMonths"><option value="1">1개월</option><option value="3">3개월</option><option value="6">6개월</option><option value="12" selected>12개월</option><option value="24">24개월</option><option value="36">36개월</option></select></label>
+        <label class="gl" id="gGbW" style="display:none">용량
+          <select id="gGb"><option value="1">1GB</option><option value="3">3GB</option><option value="5" selected>5GB</option><option value="10">10GB</option><option value="20">20GB</option><option value="50">50GB</option></select></label>
+      </div>
+      <label class="gl" style="margin-top:10px">사유 (꼭 적어 주세요)<input type="text" id="gNote" autocomplete="off" placeholder="예: 협력사 대표 · 10월 행사 당첨"></label>
+      <div class="sum" id="gHint" style="margin-top:8px"></div>
+      <div style="display:flex;align-items:center;gap:12px;margin-top:12px"><button type="button" id="gGo" style="border:none;border-radius:10px;padding:12px 20px;font-weight:800;background:var(--acc);color:#fff;cursor:pointer">선물하기</button><span id="gMsg" style="font-size:13.5px"></span></div>
+    </section>
+    <div style="font-weight:800;margin:20px 0 8px">최근 선물 내역</div>
+    <section><table><thead><tr><th>받은 분</th><th>내용</th><th>사유</th><th>일시</th></tr></thead><tbody id="gHist"><tr><td colspan="4">불러오는 중…</td></tr></tbody></table></section>
+  </div>
+
+  <div id="paneNum">
   <div class="bar" id="grades">
     <button type="button" data-g="" class="on">전체</button>
     <button type="button" data-g="platinum">플래티넘</button>
@@ -73,6 +112,7 @@ td button{ border:none; border-radius:8px; padding:7px 12px; font-size:13px; fon
   <button type="button" class="more" id="more" style="display:none">더 보기</button>
   <p class="sum">보유분은 일반 판매에서 빠져 있고, "좋은 번호" 목록에는 몇 개씩 SOLD OUT 으로 보입니다.
      부여하면 그 가입자의 "내 번호"에 바로 생깁니다. "영구 보관"이면 이용권이 끝나도 번호가 쉬지 않습니다.</p>
+  </div>
 </main>
 
 <div id="dlgBg"></div>
@@ -143,6 +183,47 @@ el('grades').onclick = (e) => { const b = e.target.closest('button'); if (!b) re
 el('states').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; state = b.dataset.s; el('states').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); load(true); };
 let t; el('q').oninput = () => { clearTimeout(t); t = setTimeout(() => load(true), 350); };
 el('more').onclick = () => load(false);
+
+/* ── 🎁 이용권 선물 ─────────────────────────────────────────── */
+const GERR = { need_note: '사유를 적어 주세요.', no_user: '그 닉네임으로 가입한 분이 없습니다.', bad_months: '기간을 다시 골라 주세요.', bad_gb: '용량을 다시 골라 주세요.' };
+const GHINT = { plan: '지금 이용권(또는 무료 체험)이 끝나는 날 뒤로 이어서 늘어납니다.',
+  storage: '선물한 날부터 정한 기간 동안 저장 공간이 늘어납니다.',
+  keep: '받은 분이 "내 번호"에서 잡아 둘 번호를 고르면 1년이 더해집니다.' };
+function giftForm(){
+  const k = el('gKind').value;
+  el('gMonthsW').style.display = (k === 'plan' || k === 'storage') ? '' : 'none';
+  el('gGbW').style.display = k === 'storage' ? '' : 'none';
+  el('gHint').textContent = GHINT[k] || '받은 분의 "내 번호"에 "쓸 수 있는 번호"로 생기고, 받은 분이 직접 번호를 고릅니다.';
+}
+el('gKind').onchange = giftForm; giftForm();
+async function loadGifts(){
+  const { data, error } = await AL.sb.rpc('admin_gift_history', { p_limit: 50 });
+  if (error) { el('gHist').innerHTML = '<tr><td colspan="4">' + (/admin_gift_history/.test(error.message || '') ? '6_admin_gifts.sql 을 먼저 넣어 주세요.' : esc(error.message)) + '</td></tr>'; return; }
+  el('gHist').innerHTML = (data || []).map((r) => '<tr><td>' + esc(nick(r.nickname)) + '</td><td>' + esc(r.detail) + '</td><td>' + esc(r.note || '') + '</td><td style="white-space:nowrap">' + esc(new Date(r.at).toLocaleString('ko-KR')) + '</td></tr>').join('')
+    || '<tr><td colspan="4">아직 선물한 내역이 없습니다.</td></tr>';
+}
+el('gGo').onclick = async () => {
+  const n = el('gNick').value.trim(), k = el('gKind').value, note = el('gNote').value.trim();
+  if (!n) { el('gMsg').textContent = '닉네임을 넣어 주세요.'; return; }
+  if (!note) { el('gMsg').textContent = '사유를 적어 주세요.'; return; }
+  const what = el('gKind').selectedOptions[0].textContent + ((k === 'plan' || k === 'storage') ? ' · ' + el('gMonths').selectedOptions[0].textContent : '') + (k === 'storage' ? ' · ' + el('gGb').value + 'GB' : '');
+  if (!confirm('"' + n + '" 님께\n' + what + '\n을(를) 결제 없이 드립니다. 계속할까요?')) return;
+  el('gGo').disabled = true; el('gMsg').textContent = '처리 중…';
+  const { data, error } = await AL.sb.rpc('admin_gift', { p_email: AL.nicknameToEmail(n), p_kind: k,
+    p_months: (k === 'plan' || k === 'storage') ? Number(el('gMonths').value) : null, p_gb: k === 'storage' ? Number(el('gGb').value) : null, p_note: note });
+  el('gGo').disabled = false;
+  if (error || !(data || {}).ok) { el('gMsg').style.color = 'var(--bad)'; el('gMsg').textContent = error ? error.message : (GERR[data.error] || data.error); return; }
+  el('gMsg').style.color = 'var(--ok)';
+  el('gMsg').textContent = '✓ ' + data.detail + ' 선물 완료' + (data.until ? ' (' + new Date(data.until).toLocaleDateString('ko-KR') + '까지)' : '');
+  el('gNote').value = ''; loadGifts();
+};
+el('tabs').onclick = (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  el('tabs').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+  el('paneNum').style.display = b.dataset.tab === 'num' ? '' : 'none';
+  el('paneGift').style.display = b.dataset.tab === 'gift' ? '' : 'none';
+  if (b.dataset.tab === 'gift') loadGifts();
+};
 
 (async function(){
   if (!window.AL || !AL.sb) { showErr('alias_common.js 를 읽지 못했습니다.'); return; }
