@@ -91,6 +91,14 @@ tr.sum td{ font-weight:800; border-top:2px solid var(--ink); }
     <h2>날짜별 · 상품별 매출</h2>
     <div class="tw"><table id="prodDay"><thead><tr><th>날짜</th><th>상품</th><th>결제 방법</th><th>건수</th><th>매출</th></tr></thead><tbody></tbody></table></div>
   </section>
+  <!-- 🔴 2026-10-18 부름번호 -->
+  <section id="bnSec">
+    <h2>🔢 부름번호</h2>
+    <div class="cards" id="bnCards" style="margin-bottom:12px"></div>
+    <div class="tw"><table id="bnSold"><thead><tr><th>상품 (기간 합계)</th><th>건수</th><th>매출(정가)</th></tr></thead><tbody></tbody></table></div>
+    <div class="tw" style="margin-top:12px"><table id="bnDaily"><thead><tr><th>날짜</th><th>판매 건수</th><th>매출(정가)</th></tr></thead><tbody></tbody></table></div>
+    <p style="font-size:12px;color:var(--soft);margin:10px 0 0">판매는 결제가 확인되어 생긴 "쓸 수 있는 번호" 기준 · 정가로 계산(스토어 수수료 · 부가세 빼기 전) · 번호 누른 기록은 90일만 보관</p>
+  </section>
   <p style="font-size:12px;color:var(--soft)">한국 시간 기준 · 매출은 결제 완료 건만 · 환불된 건은 결제한 날에 환불로 잡힙니다 · 이 화면은 관리자만 볼 수 있습니다.</p>
 </main>
 
@@ -123,6 +131,7 @@ async function load(){
     return;
   }
   last = data; paint(data);
+  loadNumbers();
 }
 
 function paint(data){
@@ -186,7 +195,33 @@ el('go').addEventListener('click', () => { document.querySelectorAll('.bar .r').
 
 // ⚠ 부름은 앱과 같은 로그인을 씁니다. 관리자 여부는 서버(admin_daily_stats)가 admins 표로 확인합니다.
 const SB = () => AL.sb;
-const NAME = (p) => p;
+const PNAME = { burum_number_silver: '부름 좋은 번호 · 실버', burum_number_gold: '부름 좋은 번호 · 골드', burum_number_platinum: '부름 좋은 번호 · 플래티넘',
+  burum_number_extra: '부름번호 하나 더', burum_number_change: '부름번호 바꾸기', burum_number_keep: '부름번호 1년 더 잡아 두기' };
+const KNAME = { silver: '좋은 번호 · 실버', gold: '좋은 번호 · 골드', platinum: '좋은 번호 · 플래티넘', extra: '번호 하나 더', change: '번호 바꾸기', keep: '1년 더 잡아 두기', normal: '일반' };
+const NAME = (p) => PNAME[p] || p;
+/* 🔴 2026-10-18 — 부름번호 통계. 서버에 함수가 아직 없으면 이 칸만 조용히 안내합니다 */
+async function loadNumbers(){
+  const sec = el('bnSec');
+  const { data, error } = await SB().rpc('admin_number_stats', { p_from: el('from').value || null, p_to: el('to').value || null });
+  if (error) { el('bnCards').innerHTML = '<div class="msg" style="grid-column:1/-1">부름번호 통계를 읽지 못했습니다' + (/admin_number_stats/.test(error.message || '') ? ' (2_burum_phonebook.sql 을 넣으면 보입니다)' : '') + '.</div>'; return; }
+  const d = data || {}; const act = d.active || {}; const un = d.unused || {};
+  const actN = Object.values(act).reduce((a, b) => a + Number(b), 0);
+  const unN = Object.values(un).reduce((a, b) => a + Number(b), 0);
+  const soldN = (d.sold || []).reduce((a, x) => a + x.n, 0), soldK = (d.sold || []).reduce((a, x) => a + Number(x.krw), 0);
+  el('bnCards').innerHTML = [
+    ['쓰는 번호', actN.toLocaleString() + '개', '일반 ' + (act.normal || 0) + ' · 실버 ' + (act.silver || 0) + ' · 골드 ' + (act.gold || 0) + ' · 플래티넘 ' + (act.platinum || 0)],
+    ['번호 가진 회원', (d.holders || 0).toLocaleString() + '명', '쉬는 번호 ' + (d.resting || 0) + '개'],
+    ['기간 판매', soldN + '건', fmtAmt(soldK, 'KRW')],
+    ['기간 무료 번호', (d.free_period || 0) + '개', '지금까지 ' + (d.free_total || 0) + '개'],
+    ['아직 안 고른 번호', unN + '개', Object.entries(un).map(([k, v]) => (KNAME[k] || k) + ' ' + v).join(' · ') || '없음'],
+    ['번호로 걸기', ((d.dials || {}).hit || 0) + '번', '없는 번호 ' + ((d.dials || {}).miss || 0) + '번 · 전화번호부 ' + (d.book_entries || 0) + '개'],
+  ].map((c) => '<div class="card"><div class="k">' + esc(c[0]) + '</div><div class="v">' + esc(c[1]) + '</div><div class="s">' + esc(c[2]) + '</div></div>').join('');
+  el('bnSold').querySelector('tbody').innerHTML = (d.sold || []).length
+    ? d.sold.map((x) => '<tr><td class="l">' + esc(KNAME[x.kind] || x.kind) + '</td><td>' + x.n + '</td><td>' + esc(fmtAmt(x.krw, 'KRW')) + '</td></tr>').join('') +
+      '<tr class="sum"><td>합계</td><td>' + soldN + '</td><td>' + esc(fmtAmt(soldK, 'KRW')) + '</td></tr>'
+    : '<tr><td colspan="3" class="msg">이 기간에는 부름번호 판매가 없습니다.</td></tr>';
+  el('bnDaily').querySelector('tbody').innerHTML = (d.daily || []).map((x) => '<tr><td>' + esc(x.day) + '</td><td>' + x.n + '</td><td>' + esc(fmtAmt(x.krw, 'KRW')) + '</td></tr>').join('');
+}
 async function START(){
   if (!window.AL || !AL.sb) { showErr('alias_common.js 를 읽지 못했습니다.'); return; }
   const { data: { session } } = await AL.sb.auth.getSession();

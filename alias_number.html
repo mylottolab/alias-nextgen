@@ -123,6 +123,7 @@ document.addEventListener("DOMContentLoaded", function(){
     <div class="bn-list" id="shopList"></div>
     <button class="btn ghost" id="more"></button>
     <p class="bn-note" id="shopNote"></p>
+    <p class="bn-note"><a href="burum_terms.html" style="color:#8FE3B0">이용약관</a> · <a href="burum_refund.html" style="color:#8FE3B0">취소·환불 규정</a></p>
   </div>
 
   <div id="err" class="err"></div>
@@ -155,7 +156,7 @@ const T = en ? {
   holdNow: 'Waiting for payment: ', credit: 'Ready to use: ', creditPick: 'Pick a number below to use it.',
   g_normal: 'Normal', g_silver: 'Silver', g_gold: 'Gold', g_platinum: 'Platinum', all: 'All',
   priceFree: 'Free (first number)', priceExtra: 'KRW 3,300', digits: 'Up to 6 digits you want (e.g. 7777, birthday 0827)',
-  more: 'Show more', shopNote: 'A special number stays yours once bought (a Burum plan is needed to use Burum numbers). Payment by App Store / Google Play.',
+  more: 'Show more', shopNote: 'A Burum plan (or free trial) is needed to use Burum numbers. After your plan ends, a regular number is kept for 90 days and a special number for 180 days. Payment by App Store / Google Play. Refund: within 7 days if the number has not been connected yet; once it has been used, refunds are limited.',
   appOnly: 'Purchases work in the Burum app.', keep: 'Keep 1 more year (KRW 1,100)', keepTo: 'Kept until', resting: 'Resting', kept: 'Kept for 1 more year: ', pending: 'Payment is still being processed. The number will appear once it is confirmed.', owned: 'A previous purchase is being finished. Please check My numbers in a moment.', bought: 'Purchase complete. Check My numbers — if a number is waiting to be picked, choose it below.', done: 'Done! Your number: ', creditDone: 'Purchased. Pick your number in "My numbers".',
   changeFor: 'Choose a new number to replace ', cancelChange: 'Cancel',
   e_taken: 'Someone just took this number. Please pick another.', e_need_plan: 'A Burum plan is needed.', e_fail: 'Something went wrong. Please try again.',
@@ -175,7 +176,7 @@ const T = en ? {
   holdNow: '결제 기다리는 번호: ', credit: '쓸 수 있는 번호: ', creditPick: '아래에서 번호를 골라 쓰세요.',
   g_normal: '일반', g_silver: '실버', g_gold: '골드', g_platinum: '플래티넘', all: '전체',
   priceFree: '무료 (첫 번호)', priceExtra: '3,300원', digits: '원하는 숫자 6자리까지 (예: 7777, 생일 0827)',
-  more: '더 보기', shopNote: '좋은 번호는 한 번 사면 계속 내 번호입니다(부름번호를 쓰려면 부름 이용권이 필요합니다). 결제는 App Store · Google Play 로 합니다.',
+  more: '더 보기', shopNote: '부름번호는 이용권(무료 체험 포함)이 있어야 쓸 수 있습니다. 이용권이 끝나도 일반 번호는 90일, 좋은 번호는 180일 동안 잡아 둡니다. 결제는 App Store · Google Play 로 합니다. 환불: 7일 이내이고 그 번호로 아직 연결된 적이 없으면 전액 환불, 쓰기 시작한 뒤에는 청약철회가 제한됩니다.',
   appOnly: '구매는 부름 앱에서 할 수 있어요.', keep: '1년 더 잡아 두기 (1,100원)', keepTo: '잡아 두는 날:', resting: '쉬는 중', kept: '1년 더 잡아 두었습니다: ', pending: '결제가 아직 처리 중입니다. 확인되면 번호가 생깁니다.', owned: '앞서 산 것을 마무리하는 중입니다. 잠시 뒤 내 번호를 확인해 주세요.', bought: '구매가 끝났습니다. 내 번호를 확인하세요 — 고를 번호가 남아 있으면 아래에서 고르면 됩니다.', done: '완료! 내 번호: ', creditDone: '구매했습니다. "내 번호" 에서 번호를 골라 주세요.',
   changeFor: '바꿀 새 번호를 고르세요 — 지금 번호 ', cancelChange: '그만두기',
   e_taken: '방금 다른 분이 가져간 번호입니다. 다른 번호를 골라 주세요.', e_need_plan: '부름 이용권이 필요합니다.', e_fail: '잠시 문제가 생겼습니다. 다시 해 주세요.',
