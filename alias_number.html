@@ -34,7 +34,11 @@ document.addEventListener("DOMContentLoaded", function(){
   background:rgba(255,255,255,.07);color:inherit;border:1px solid rgba(128,128,128,.25);aspect-ratio:1/1;width:62px;justify-self:center}
 .bn-go{display:flex;gap:10px;max-width:320px;margin:6px auto 0}
 .bn-go button{flex:1;margin:0;padding:14px 6px;border-radius:14px;font-size:16px;font-weight:800;cursor:pointer;border:none}
-.bn-go .v{background:#3BB273;color:#fff}.bn-go .vv{background:#2F6FB5;color:#fff}
+.bn-go .v{background:#3BB273;color:#fff}.bn-go .vv{background:#2F6FB5;color:#fff}.bn-go .m{background:#8FE3B0;color:#0E1621}
+.bn-note{display:none;max-width:320px;margin:10px auto 0}.bn-note.on{display:block}
+.bn-note textarea{width:100%;box-sizing:border-box;min-height:64px;padding:11px 12px;border-radius:12px;font-size:15px;font-family:inherit;background:rgba(255,255,255,.06);color:inherit;border:1px solid rgba(255,255,255,.2);resize:vertical}
+.bn-note small{display:block;font-size:12px;opacity:.7;margin:4px 2px 8px;line-height:1.5}
+.bn-note button{width:100%;margin:0;padding:13px;border-radius:12px;border:none;font-size:15px;font-weight:800;background:#8FE3B0;color:#0E1621;cursor:pointer}
 .bn-msg{margin:14px auto 0;max-width:340px;text-align:center;font-size:14px;line-height:1.6;min-height:22px;word-break:keep-all}
 .bn-sos{margin:26px auto 0;max-width:340px;text-align:center;font-size:12.5px;opacity:.75;line-height:1.6;word-break:keep-all}
 .bn-sos a{display:inline-block;margin:6px 4px 0;padding:6px 14px;border-radius:999px;border:1px solid rgba(255,120,120,.5);
@@ -82,6 +86,13 @@ document.addEventListener("DOMContentLoaded", function(){
     <div class="bn-go">
       <button type="button" class="v" id="callV"></button>
       <button type="button" class="vv" id="callVV"></button>
+      <button type="button" class="m" id="callM"></button>
+    </div>
+    <!-- 🔴 2026-10-18 — 💬 문자: 아는 사이면 바로 대화방, 모르는 번호면 이 글이 연결 요청에 함께 갑니다 -->
+    <div class="bn-note" id="noteBox">
+      <textarea id="noteTx" maxlength="60"></textarea>
+      <small id="noteHint"></small>
+      <button type="button" id="noteGo"></button>
     </div>
     <div class="bn-msg" id="dialMsg"></div>
     <div class="bn-sos">
@@ -128,7 +139,8 @@ document.addEventListener("DOMContentLoaded", function(){
 const en = (AL.lang === 'en');
 const T = en ? {
   ttl: 'Burum number', tDial: 'Dial', tMine: 'My numbers', tShop: 'Special numbers',
-  dispHint: '10 digits · Burum users only', callV: '📞 Voice', callVV: '🎥 Video',
+  dispHint: '10 digits · Burum users only', callV: '📞 Voice', callVV: '🎥 Video', callM: '💬 Text',
+  notePh: 'Message (up to 60 characters)', noteHint: 'If you already know each other, the chat opens right away. Otherwise this message goes with your connection request.', noteGo: 'Send', requestedM: 'Your message was sent with a connection request. You can chat as soon as they accept.',
   sos: 'Burum numbers cannot reach emergency services. Use your phone app:',
   linked: 'Connecting…', requested: 'Connection request sent. You can call as soon as they accept.',
   again: 'You already sent a request to this number. Please wait for their answer.',
@@ -147,7 +159,8 @@ const T = en ? {
   e_taken: 'Someone just took this number. Please pick another.', e_need_plan: 'A Burum plan is needed.', e_fail: 'Something went wrong. Please try again.',
 } : {
   ttl: '부름번호', tDial: '다이얼', tMine: '내 번호', tShop: '좋은 번호',
-  dispHint: '10자리 · 부름 사용자끼리만 연결', callV: '📞 음성', callVV: '🎥 영상',
+  dispHint: '10자리 · 부름 사용자끼리만 연결', callV: '📞 음성', callVV: '🎥 영상', callM: '💬 문자',
+  notePh: '보낼 메시지 (60자까지)', noteHint: '이미 아는 사이면 바로 대화방이 열립니다. 모르는 번호면 이 메시지가 연결 요청과 함께 갑니다.', noteGo: '보내기', requestedM: '메시지를 연결 요청과 함께 보냈습니다. 상대가 수락하면 바로 대화할 수 있어요.',
   sos: '부름번호로는 긴급전화가 걸리지 않습니다. 폰의 전화 앱으로 거세요.',
   linked: '연결하는 중…', requested: '연결 요청을 보냈습니다. 상대가 수락하면 바로 걸 수 있어요.',
   again: '이 번호에는 이미 요청을 보냈습니다. 답을 기다려 주세요.',
@@ -179,7 +192,7 @@ function errText(code){ return T['e_' + code] || ({ not_found: T.notFound, slow_
 
 /* ── 글자 채우기 ─────────────────────────────────────────── */
 function paintText(){
-  ['ttl', 'tDial', 'tMine', 'tShop', 'callV', 'callVV', 'newTtl', 'more'].forEach((k) => { el(k).textContent = T[k]; });
+  ['ttl', 'tDial', 'tMine', 'tShop', 'callV', 'callVV', 'callM', 'noteHint', 'noteGo', 'newTtl', 'more'].forEach((k) => { el(k).textContent = T[k]; });
   el('dispHint').textContent = T.dispHint; el('sosTxt').textContent = T.sos;
   el('digits').placeholder = T.digits; el('shopNote').textContent = T.shopNote;
   const keys = ['1','2','3','4','5','6','7','8','9','*','0','⌫'];
@@ -207,18 +220,24 @@ async function dial(kind){
   if (typed.length !== 10) { el('dialMsg').textContent = T.needDigits; return; }
   if (!await AL.requirePlan()) return;
   el('dialMsg').textContent = T.linked;
-  const r = await AL.sb.rpc('bn_dial', { p_number: typed, p_persona: null, p_note: null });
+  const note = kind === 'chat' ? el('noteTx').value.trim() : '';
+  const r = await AL.sb.rpc('bn_dial', { p_number: typed, p_persona: null, p_note: note || null });
   const d = r.data || {};
   if (r.error || !d.ok) {
     if (d.error === 'need_plan') { el('dialMsg').textContent = ''; AL.needPlan(); return; }
     el('dialMsg').textContent = errText(d.error); return;
+  }
+  if (d.state === 'linked' && d.link_id && kind === 'chat') {
+    location.href = 'alias_chat.html?link=' + encodeURIComponent(d.link_id);
+    return;
   }
   if (d.state === 'linked' && d.link_id) {
     location.href = 'alias_call.html?link=' + encodeURIComponent(d.link_id) + '&type=' + kind +
       '&once=' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
     return;
   }
-  el('dialMsg').textContent = d.again ? T.again : T.requested;
+  el('dialMsg').textContent = d.again ? T.again : (kind === 'chat' ? T.requestedM : T.requested);
+  if (kind === 'chat' && !d.again) { el('noteTx').value = ''; el('noteBox').classList.remove('on'); }
 }
 
 /* ── ② 내 번호 ────────────────────────────────────────────── */
@@ -352,6 +371,9 @@ async function loadShop(reset){
     paintDisp(); el('dialMsg').textContent = '';
   };
   el('callV').onclick = () => dial('voice'); el('callVV').onclick = () => dial('video');
+  el('noteTx').placeholder = T.notePh;
+  el('callM').onclick = () => { el('dialMsg').textContent = ''; if (typed.length !== 10) { el('dialMsg').textContent = T.needDigits; return; } el('noteBox').classList.toggle('on'); if (el('noteBox').classList.contains('on')) el('noteTx').focus(); };
+  el('noteGo').onclick = () => dial('chat');
   el('chips').onclick = (e) => { const g = e.target && e.target.dataset && e.target.dataset.g; if (g === undefined) return; shopGrade = g; paintText(); loadShop(true); };
   let tmr = null; el('digits').oninput = () => { clearTimeout(tmr); tmr = setTimeout(() => loadShop(true), 350); };
   el('more').onclick = () => loadShop(false);
