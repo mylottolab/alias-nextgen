@@ -66,7 +66,7 @@ document.addEventListener("DOMContentLoaded", function(){
 </head>
 <body data-t-title="ttContacts">
 <div class="wrap">
-  <div class="tophead" style="margin-bottom:10px"><a class="backlink" href="alias_phone.html" id="back"></a></div>
+  <div class="tophead" style="margin-bottom:10px"><a class="backlink" href="alias_contacts.html" id="back"></a></div>
   <h1 class="h2" id="ttl"></h1>
 
   <div class="bn-tabs">
@@ -344,7 +344,7 @@ async function loadShop(reset){
 /* ── 시작 ─────────────────────────────────────────────────── */
 (async function(){
   paintText(); paintDisp();
-  if (AL.setBack) AL.setBack('alias_phone.html');
+  if (AL.setBack) AL.setBack('alias_contacts.html');
   document.querySelectorAll('.bn-tabs button').forEach((b) => { b.onclick = () => tab(b.dataset.tab); });
   el('pad').onclick = (e) => {
     const k = e.target && e.target.dataset && e.target.dataset.k; if (!k) return;
