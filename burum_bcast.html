@@ -198,7 +198,8 @@ function openEdit(g){
   editing = g || null;
   el('eH').textContent = g ? T.eEdit : T.eNew;
   el('eName').value = g ? g.name : '';
-  picked = new Set(g ? (g.members || []) : []);
+  /* 🔴 2026-10-19 — 새 그룹은 1:1 연락처를 모두 넣은 채로 시작합니다(손님 요청). 빼고 싶은 사람만 체크를 풉니다. */
+  picked = new Set(g ? (g.members || []) : people.map(p => p.id));
   el('eQ').value = ''; el('eMsg').textContent = '';
   paintPeople(); show('eDlg', true);
 }
