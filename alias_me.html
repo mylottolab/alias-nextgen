@@ -79,6 +79,9 @@ document.addEventListener("DOMContentLoaded", function(){
     <h1 class="h2" data-t="meTitle"></h1>
   </div>
 
+  <!-- 🔴 2026-10-19 — 처음 가입한 분 길잡이(1:1 연락처가 하나도 없을 때만) -->
+  <div id="firstGuide" style="display:none"></div>
+
   <div class="sect" data-t="meAliases"></div>
   <p class="lede" data-t="aliasIntro"></p>
   <ul class="list" id="list"></ul>
@@ -900,6 +903,61 @@ async function paintStorageRow(){
   } catch (e) {}
   AL.showExpiringBar();   // 🔴 2026-09-19 — 곧 지워질 녹음
   AL.startAlerts();      // 어느 화면에 있든 새 메시지를 알려줍니다
+})();
+</script>
+<script>
+/* =====================================================================
+   🔴🔴 2026-10-19 — "나" 화면 처음 길잡이 (손님: 처음 가입한 분들이 이 화면에서 헤맨다)
+   ① 내 기본 별칭 만들기  ② 나머지 설정은 지금 · 나중 아무 때나  ③ 사람과 잇기(연락처 환영 카드와 같은 세 가지)
+   보이는 때: 1:1 로 이어진 사람이 아직 없을 때만. 한 명이라도 이어지면 저절로 사라집니다.
+   ===================================================================== */
+(async function(){
+  const ko = AL.lang !== 'en';
+  const L = (k, e) => ko ? k : e;
+  const host = document.getElementById('firstGuide');
+  async function paint(){
+    try {
+      const s = (await AL.sb.auth.getSession()).data.session;
+      if (!s) return;
+      const c = await AL.sb.rpc('my_contacts');
+      const people = ((c && c.data) || []).filter(r => r.kind !== 'group');
+      if (people.length) { host.style.display = 'none'; return; }
+      let al = [];
+      try { al = await AL.loadAliases(); } catch (e) {}
+      const has = al.length > 0;
+      const nick = decodeURIComponent(String(s.user.email || '').split('@')[0]);
+      const step = (n, on, done) => '<div style="display:flex;gap:10px;align-items:flex-start;margin:0 0 12px;opacity:' + (on || done ? 1 : .8) + '">' +
+        '<span style="flex:0 0 28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;' +
+        (done ? 'background:#3BB273;color:#fff' : 'background:#F2C94C;color:#1b1b1b') + '">' + (done ? '✓' : n) + '</span><div style="flex:1">';
+      const big = 'display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:12px;margin:7px 0 0;text-decoration:none;color:inherit;background:rgba(255,255,255,.06);border:1px solid rgba(128,128,128,.35)';
+      host.innerHTML = '<div style="border-radius:16px;padding:15px 15px 6px;margin:0 0 18px;background:rgba(242,201,76,.10);border:2px solid rgba(242,201,76,.65);word-break:keep-all;line-height:1.6">' +
+        '<div style="font-size:18px;font-weight:900;margin:0 0 12px">🧭 ' + L('처음 오셨나요? 이 화면에서는 이것만 하시면 됩니다', 'New here? This is all you need to do') + '</div>' +
+
+        step(1, !has, has) + '<b style="font-size:16px">' + L('상대에게 보일 내 기본 별칭을 정하세요', 'Choose your main alias — the name people will see') + '</b><br>' +
+          (has ? '<span style="font-size:14px">' + L('✅ 별칭 <b>' + AL.esc(al[0].display_name || al[0].name || '') + '</b> 이(가) 준비되었습니다.', '✅ Your alias <b>' + AL.esc(al[0].display_name || al[0].name || '') + '</b> is ready.') + '</span>'
+               : '<span style="font-size:14px">' + L('아래 <b>별칭 만들기</b> 칸에 이름(예: 김사장 · 철수아빠)을 적고 <b>[별칭 만들기]</b> 단추를 누르세요.', 'Type a name under <b>Create alias</b> below and tap <b>[Create alias]</b>.') + '</span>' +
+                 '<br><button type="button" id="fgGo" style="margin:8px 0 0;padding:9px 14px;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;border:none;background:#F2C94C;color:#1b1b1b">' + L('▼ 별칭 만들러 가기', '▼ Go to Create alias') + '</button>') +
+        '</div></div>' +
+
+        step(2, false, false) + '<b style="font-size:16px">' + L('나머지 설정은 지금 하셔도, 나중에 하셔도 됩니다', 'Other settings can wait') + '</b><br>' +
+          '<span style="font-size:14px;opacity:.85">' + L('언어 · 화면 모양 · 글씨 크기 · 이용권 등은 언제든 이 "나" 화면에서 바꿀 수 있어요.', 'Language, look, text size and plans can be changed here any time.') + '</span></div></div>' +
+
+        step(3, has, false) + '<b style="font-size:16px">' + L('이제 원하는 분과 이어지세요 — 아래 중 하나만', 'Now connect with someone — pick one') + '</b>' +
+          '<a href="alias_invite.html" style="' + big + '"><span style="font-size:22px">📤</span><span><b>' + L('내 초대 링크 보내기', 'Send my invite link') + '</b><br><small style="opacity:.75">' + L('카톡 · 문자로 보내면, 상대가 누르고 가입하는 순간 바로 이어집니다', 'They tap it, sign up, and you\'re connected') + '</small></span></a>' +
+          '<a href="alias_requests.html" style="' + big + '"><span style="font-size:22px">📨</span><span><b>' + L('닉네임으로 연결 요청', 'Request by nickname') + '</b><br><small style="opacity:.75">' + L('상대 닉네임을 알면 바로 요청 · 수락하면 이어집니다', 'Connected when they accept') + '</small></span></a>' +
+          '<a href="alias_join.html" style="' + big + '"><span style="font-size:22px">📥</span><span><b>' + L('받은 초대 코드 넣기 · QR', 'Enter an invite code · QR') + '</b><br><small style="opacity:.75">' + L('코드 · QR 찍기 · 사진으로 받은 QR 모두 여기서', 'Code, QR scan or a QR photo') + '</small></span></a>' +
+          (nick ? '<div style="font-size:13.5px;margin-top:9px">' + L('내 닉네임', 'My nickname') + ': <b>' + AL.esc(nick) + '</b> — ' + L('이걸 알려 주면 상대가 나에게 요청할 수 있어요. 요청은 연락처 맨 위에 뜹니다.', 'share it so people can request you; requests appear at the top of Contacts.') + '</div>' : '') +
+        '</div></div>' +
+      '</div>';
+      host.style.display = 'block';
+      const go = document.getElementById('fgGo');
+      if (go) go.onclick = () => { const n = document.getElementById('name'); if (n) { n.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => n.focus(), 350); } };
+    } catch (e) { console.warn('[firstGuide]', e); }
+  }
+  setTimeout(paint, 300);
+  /* 별칭을 만들면 1번을 ✓ 로 바꿉니다 */
+  const mk = document.getElementById('make');
+  if (mk) mk.addEventListener('click', () => setTimeout(paint, 1500));
 })();
 </script>
 </body>
