@@ -153,7 +153,7 @@ const T = en ? {
   again: 'You already sent a request to this number. Please wait for their answer.',
   notFound: 'This number does not exist or does not take calls by number.', slow: 'Too many tries. Please wait a moment.',
   own: 'This is your own number.', tooMany: 'You have sent too many requests today.', needDigits: 'Enter all 10 digits.',
-  newTtl: 'Get a number', reroll: 'Other numbers', rerollHint: 'Not your style? Tap 🔄 for 3 new numbers.', free: 'Your first number is free. Pick one:', extra: 'Add another number (KRW 3,300). Pick one:',
+  newTtl: 'Get a number', reroll: 'Other numbers', rerollHint: 'Not your style? Tap 🔄 for 3 new numbers.', moreHow: 'Need more than one number? After you pick your first number, come back here (My numbers → Get a number): each additional number is KRW 3,300 (one-time). Easy-to-remember numbers are in the Special numbers tab — Silver 5,500 · Gold 33,000 · Platinum 99,000.', free: 'Your first number is free. Pick one:', extra: 'Add another number (KRW 3,300). Pick one:',
   pick: 'Choose', buy: 'Buy', change: 'Change (KRW 3,300)', off: 'Turn off', persona: 'Shown as', mode: 'Calls from unknown numbers',
   m_request: 'As a connection request (default)', m_all: 'Ring right away (shop / work)', m_off: 'Do not take calls by number',
   offConfirm: 'Turn off this number? It will not be given to anyone for 6 months, and you cannot get it back.',
@@ -173,7 +173,7 @@ const T = en ? {
   again: '이 번호에는 이미 요청을 보냈습니다. 답을 기다려 주세요.',
   notFound: '없는 번호이거나, 번호로 전화를 받지 않는 분입니다.', slow: '너무 많이 눌렀습니다. 잠시 뒤 다시 해 주세요.',
   own: '내 번호입니다.', tooMany: '오늘은 요청을 너무 많이 보냈습니다.', needDigits: '10자리를 모두 눌러 주세요.',
-  newTtl: '번호 만들기', reroll: '다른 번호', rerollHint: '마음에 드는 번호가 없으면 🔄 다른 번호를 누르세요. 새 번호 3개가 나옵니다.', free: '첫 번호는 무료입니다. 마음에 드는 번호를 고르세요.', extra: '번호 하나 더 (3,300원) — 고르세요.',
+  newTtl: '번호 만들기', reroll: '다른 번호', rerollHint: '마음에 드는 번호가 없으면 🔄 다른 번호를 누르세요. 새 번호 3개가 나옵니다.', moreHow: '📌 번호가 더 필요하신가요? 첫 번호를 고른 뒤 이 자리(내 번호 → 번호 만들기)에 다시 오시면, 번호 하나 더를 3,300원(한 번 결제)에 고르실 수 있어요. 외우기 쉬운 번호는 [좋은 번호] 탭에서 — 실버 5,500원 · 골드 33,000원 · 플래티넘 99,000원.', free: '첫 번호는 무료입니다. 마음에 드는 번호를 고르세요.', extra: '번호 하나 더 (3,300원) — 고르세요.',
   pick: '고르기', buy: '사기', change: '바꾸기 (3,300원)', off: '끄기', persona: '보일 별칭', mode: '모르는 번호에서 오면',
   m_request: '연결 요청으로 받기 (기본)', m_all: '바로 울리게 (가게 · 업무용)', m_off: '번호로 받지 않기',
   offConfirm: '이 번호를 끌까요? 6개월 동안 다른 사람에게도 주지 않고, 다시 되찾을 수 없습니다.',
@@ -287,7 +287,8 @@ async function loadOffers(){
   el('newBox').innerHTML = '<p class="bn-note">' + esc(head) + '</p><div class="bn-list">' +
     list.map((x) => '<div class="item"><span class="n">' + esc(x.shown) + '</span><span class="p">' +
       esc(wallet.free_first ? T.priceFree : T.priceExtra) + '</span><button type="button" data-pick="' + x.number + '">' + esc(T.pick) + '</button></div>').join('') + '</div>' +
-    '<p class="bn-note" style="opacity:.75">' + esc(T.rerollHint) + '</p>';
+    '<p class="bn-note" style="opacity:.75">' + esc(T.rerollHint) + '</p>' +
+    (wallet.free_first ? '<p class="bn-note" style="opacity:.95;padding:11px 13px;border-radius:12px;background:rgba(143,227,176,.10);border:1px solid rgba(143,227,176,.3)">' + esc(T.moreHow) + '</p>' : '');
   el('newBox').querySelectorAll('[data-pick]').forEach((b) => { b.onclick = () => choose(b.dataset.pick, 'normal'); });
 }
 
