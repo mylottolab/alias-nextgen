@@ -290,9 +290,25 @@ let me = null, view = null;
 let muted = false;
 /* 🔴 2026-10-05 (2-3) — 스피커로 듣는 중인가. 영상은 처음부터 스피커, 음성은 수화기(귀에 대고) */
 let speakerOn = (callType === 'video');
+/* 🔴 2026-10-19 — 폰이 알려 주는 "지금 소리가 실제로 나가는 곳" (speaker · receiver · bt · headset)
+   스피커를 켰는데 receiver 면 단추에 "안 바뀜" 이 보입니다. */
+let audioRoute = '';
+AL.onAudioRoute = function(r){
+  if (r === audioRoute) return;
+  audioRoute = r;
+  try { paintActs(); } catch (e) {}
+};
 let tick = null, t0 = null;
 
 function el(id){ return document.getElementById(id); }
+
+function routeNote(en){
+  if (!audioRoute) return '';
+  const ko = { speaker: '아래 스피커', receiver: '귀(수화기)', bt: '블루투스', headset: '이어폰', other: '기타' };
+  const enm = { speaker: 'loudspeaker', receiver: 'earpiece', bt: 'Bluetooth', headset: 'headset', other: 'other' };
+  if (speakerOn && audioRoute === 'receiver') return en ? ' · not switched' : ' · 안 바뀜';
+  return ' · ' + (en ? enm : ko)[audioRoute];
+}
 
 function setStatus(text){ el('st').textContent = text || ''; }
 
@@ -403,7 +419,7 @@ function paintActs(){
   if (window.AliasNative && typeof AliasNative.setSpeaker === 'function') {
     const en = AL.lang === 'en';
     box.appendChild(btn('rbtn plain' + (speakerOn ? ' on' : ''), speakerOn ? '🔊' : '🔈',
-      speakerOn ? (en ? 'Speaker on' : '스피커 켜짐') : (en ? 'Speaker' : '스피커'), function(){
+      (speakerOn ? (en ? 'Speaker on' : '스피커 켜짐') : (en ? 'Speaker' : '스피커')) + routeNote(en), function(){
         speakerOn = !speakerOn;
         try { AliasNative.setSpeaker(speakerOn); } catch (e) { console.warn('[call] 스피커 바꾸기 실패', e); }
         paintActs();
