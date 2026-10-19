@@ -155,6 +155,10 @@ document.addEventListener("DOMContentLoaded", function(){
 
   <div id="twin" class="ok" data-t="cntSamePeer"></div>
 
+  <!-- 🔴 2026-10-19 — 첫 접속을 쉽게: ① 받은 연결 요청을 맨 위에 크게(그 자리에서 수락) ② 연락처가 비었으면 환영 안내 -->
+  <div id="rqTop"></div>
+  <div id="welcome" style="display:none"></div>
+
   <!-- 🔴 2026-10-19 순서: 전화번호부 → 동시통보 → 임시연락처 (손님 요청)
        🔴 2026-10-01 — 1회용 임시연락처 입구와 [임시] 묶음
        잠깐 쓸 연락처(중고거래 · 소개팅 · 매물)는 정식 연락처와 섞지 않고 따로 보입니다. -->
@@ -780,6 +784,8 @@ async function reload(){
     const res = await AL.sb.rpc('my_contacts');
     if (res.error) throw res.error;
     rows = res.data || [];
+    /* 🔴 2026-10-19 — 받은 요청 카드 · 환영 안내(아래 읽기가 실패해도 먼저 그립니다) */
+    try { if (window.bnOnboard) window.bnOnboard(rows); } catch (e) { console.warn('[onboard]', e); }   // 🔴 2026-10-19
 
     /* 🔴 2026-09-12 — 별표 · 단축번호 · 고정순서를 따로 읽어 붙입니다.
        my_contacts 함수를 안 건드리려는 것입니다. 위 설명 참고.
@@ -904,6 +910,93 @@ document.getElementById('addBg').addEventListener('click', function(){ showAdd(f
       '&type=' + encodeURIComponent(c.call_type) +
       '&once=' + encodeURIComponent(c.call_id);
   });
+})();
+</script>
+<script>
+/* =====================================================================
+   🔴🔴 2026-10-19 — 첫 접속을 쉽게 (손님: "가입자가 편하게 들어와 바로 누군가와 이어지게")
+   ① 받은 닉네임 연결 요청 → 연락처 맨 위에 큰 카드, [수락] 한 번이면 바로 대화방으로
+      (별칭이 하나뿐이면 고르는 단계도 건너뜁니다)
+   ② 1:1 연락처가 하나도 없으면 → 환영 카드: 내 닉네임(복사) · 초대 링크 · 닉네임 요청 · 초대 코드
+   ⚠ 못 읽어도 연락처 화면은 그대로입니다(조용히 넘어감)
+   ===================================================================== */
+(function(){
+  const ko = AL.lang !== 'en';
+  const L = (k, e) => ko ? k : e;
+  const box = (id) => document.getElementById(id);
+  const card = 'border-radius:16px;padding:14px 15px;margin:0 0 12px;word-break:keep-all;';
+  const btnS = 'margin:0;padding:11px 14px;border-radius:12px;font-size:14.5px;font-weight:800;cursor:pointer;border:1px solid rgba(128,128,128,.35);background:rgba(255,255,255,.07);color:inherit';
+  const goS  = 'margin:0;padding:11px 16px;border-radius:12px;font-size:14.5px;font-weight:800;cursor:pointer;border:none;background:#8FE3B0;color:#0E1621';
+
+  async function myAlias(note){
+    let list = [];
+    try { list = await AL.loadAliases(); } catch (e) {}
+    if (list.length === 1) return list[0];
+    return await AL.pickAlias({ note: note });
+  }
+
+  async function paintRequests(){
+    const host = box('rqTop'); if (!host) return;
+    let rows = [];
+    try { const r = await AL.sb.rpc('nick_requests_inbox'); rows = (r && r.data) || []; } catch (e) { rows = []; }
+    if (!rows.length) { host.innerHTML = ''; return; }
+    const shown = rows.slice(0, 3);
+    host.innerHTML = shown.map(x =>
+      '<div style="' + card + 'background:rgba(242,201,76,.13);border:1.5px solid rgba(242,201,76,.6)">' +
+        '<div style="font-size:16px;font-weight:800">📨 ' + AL.esc(x.from_name || L('(이름 없음)', '(no name)')) + L('님이 연결을 원합니다', ' wants to connect') + '</div>' +
+        (x.note ? '<div style="font-size:13.5px;opacity:.85;margin-top:4px">“' + AL.esc(x.note) + '”</div>' : '') +
+        '<div style="display:flex;gap:8px;margin-top:11px;flex-wrap:wrap">' +
+          '<button type="button" style="' + goS + '" data-rq-ok="' + AL.esc(x.id) + '">' + L('수락하고 대화하기', 'Accept & chat') + '</button>' +
+          '<button type="button" style="' + btnS + '" data-rq-no="' + AL.esc(x.id) + '">' + L('거절', 'Decline') + '</button>' +
+        '</div></div>').join('') +
+      (rows.length > shown.length ? '<a href="alias_requests.html" style="display:block;text-align:center;margin:-4px 0 12px;font-size:13.5px;font-weight:700">' +
+        L('받은 요청 ' + rows.length + '건 모두 보기 ›', 'See all ' + rows.length + ' requests ›') + '</a>' : '');
+    host.querySelectorAll('[data-rq-ok]').forEach(b => b.onclick = async () => {
+      const p = await myAlias(L('이 분에게 보일 내 별칭을 고르세요', 'Choose the alias this person will see'));
+      if (!p) return;
+      b.disabled = true;
+      const r = await AL.sb.rpc('nick_request_answer', { p_id: b.dataset.rqOk, p_answer: 'accept', p_persona: p.id, p_label: null });
+      const out = (r && r.data) || {};
+      if (r.error || !out.ok) { b.disabled = false; alert(out.error === 'gone' ? L('보낸 분이 별칭을 지워 연결할 수 없습니다.', 'The sender removed that alias.') : L('연결하지 못했습니다. 잠시 뒤 다시 해 주세요.', 'Could not connect. Please try again.')); return; }
+      location.href = 'alias_chat.html?link=' + encodeURIComponent(out.link_id);
+    });
+    host.querySelectorAll('[data-rq-no]').forEach(b => b.onclick = async () => {
+      if (!confirm(L('이 요청을 거절할까요? 상대에게는 따로 알리지 않습니다.', 'Decline this request? They will not be told.'))) return;
+      await AL.sb.rpc('nick_request_answer', { p_id: b.dataset.rqNo, p_answer: 'decline', p_persona: null, p_label: null });
+      paintRequests();
+    });
+  }
+
+  async function paintWelcome(rows){
+    const host = box('welcome'); if (!host) return;
+    const people = (rows || []).filter(r => r.kind !== 'group');
+    if (people.length) { host.style.display = 'none'; return; }
+    let nick = '';
+    try { const s = (await AL.sb.auth.getSession()).data.session; nick = decodeURIComponent(String(s.user.email).split('@')[0]); } catch (e) {}
+    const big = 'display:flex;align-items:center;gap:12px;padding:14px 14px;border-radius:14px;margin:0 0 9px;text-decoration:none;color:inherit;' +
+                'background:rgba(255,255,255,.06);border:1px solid rgba(128,128,128,.35)';
+    host.innerHTML = '<div style="' + card + 'background:rgba(143,227,176,.10);border:1.5px solid rgba(143,227,176,.5)">' +
+      '<div style="font-size:19px;font-weight:800">👋 ' + L('부름에 오신 것을 환영합니다', 'Welcome to Burum') + '</div>' +
+      '<div style="font-size:14px;opacity:.85;margin:5px 0 12px;line-height:1.6">' +
+        L('아는 사람과 한 번만 이어지면 바로 대화 · 전화할 수 있어요. 아래 셋 중 하나만 하시면 됩니다.', 'Connect with someone once and you can chat and call right away. Just pick one below.') + '</div>' +
+      '<a href="alias_invite.html" style="' + big + '"><span style="font-size:26px">📤</span><span><b style="font-size:15.5px">' + L('내 초대 링크 보내기', 'Send my invite link') + '</b><br><small style="opacity:.75">' +
+        L('카톡 · 문자로 보내면, 상대가 누르고 가입하는 순간 바로 이어집니다', 'Send by text — when they tap it and sign up, you\'re connected') + '</small></span></a>' +
+      '<a href="alias_requests.html" style="' + big + '"><span style="font-size:26px">📨</span><span><b style="font-size:15.5px">' + L('닉네임으로 연결 요청', 'Request by nickname') + '</b><br><small style="opacity:.75">' +
+        L('상대 닉네임을 알면 바로 요청 · 상대가 수락하면 이어집니다', 'Know their nickname? Send a request — connected when they accept') + '</small></span></a>' +
+      '<a href="alias_join.html" style="' + big + '"><span style="font-size:26px">📥</span><span><b style="font-size:15.5px">' + L('받은 초대 코드 넣기 · QR 찍기', 'Enter an invite code · scan QR') + '</b><br><small style="opacity:.75">' +
+        L('누군가에게 코드나 QR 을 받았다면 여기서', 'Got a code or QR from someone? Use it here') + '</small></span></a>' +
+      (nick ? '<div style="margin-top:10px;font-size:13.5px;line-height:1.6;opacity:.9">' + L('내 닉네임', 'My nickname') + ': <b id="wNick">' + AL.esc(nick) + '</b> ' +
+        '<button type="button" id="wCopy" style="margin:0 0 0 4px;padding:4px 10px;border-radius:8px;font-size:12.5px;cursor:pointer;background:transparent;color:inherit;border:1px solid rgba(128,128,128,.45)">' + L('복사', 'Copy') + '</button>' +
+        '<br><small style="opacity:.75">' + L('이 닉네임을 알려 주면, 상대가 나에게 연결 요청을 보낼 수 있어요. 요청이 오면 이 화면 맨 위에 바로 뜹니다.', 'Share it so people can send you a request — it shows up right here at the top.') + '</small></div>' : '') +
+      '</div>';
+    host.style.display = 'block';
+    const c = box('wCopy');
+    if (c) c.onclick = async () => { try { await navigator.clipboard.writeText(nick); c.textContent = L('복사됨 ✓', 'Copied ✓'); } catch (e) { prompt(L('복사해 주세요', 'Copy this'), nick); } };
+  }
+
+  window.bnOnboard = function(rows){ paintRequests(); paintWelcome(rows); };
+  /* 화면에 돌아올 때마다 요청을 다시 봅니다(알림을 보고 돌아온 경우) */
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') paintRequests(); });
 })();
 </script>
 </body>

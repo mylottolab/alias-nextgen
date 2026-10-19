@@ -189,6 +189,8 @@ async function join(){
       return;
     }
 
+    /* 🔴 2026-10-19 — 이어지면 바로 그 사람과의 대화방으로(첫 접속을 짧게) */
+    if (out.link_id) { location.href = 'alias_chat.html?link=' + encodeURIComponent(out.link_id); return; }
     document.getElementById('formPart').style.display = 'none';
     document.getElementById('donePart').classList.add('on');
 
@@ -262,6 +264,15 @@ document.getElementById('label').addEventListener('keydown', function(e){
   if (!AL.canScanQr()) document.getElementById('scanBtn').style.display = 'none';
   paintFaces();
   AL.startAlerts();      // 어느 화면에 있든 새 메시지를 알려줍니다
+
+  /* 🔴🔴 2026-10-19 — 초대 링크로 왔으면 [연결] 을 따로 누르지 않아도 바로 잇습니다.
+     (링크 누름 → 가입 → 별칭 하나 → 곧바로 초대한 사람과의 대화방)
+     부를 이름은 비워 두면 상대 별칭으로 들어갑니다. 나중에 연락처에서 바꿀 수 있습니다.
+     ⚠ 한 번만 — 실패하면 화면에 남아 손님이 직접 누를 수 있습니다. */
+  if (fromUrl && aliases.length && !sessionStorage.getItem('autojoin_' + fromUrl)) {
+    try { sessionStorage.setItem('autojoin_' + fromUrl, '1'); } catch (e) {}
+    join();
+  }
 })();
 </script>
 </body>
