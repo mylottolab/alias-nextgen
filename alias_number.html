@@ -105,6 +105,18 @@ document.addEventListener("DOMContentLoaded", function(){
 
   <!-- ② 내 번호 -->
   <div class="bn-pane" id="pMine">
+    <div id="xfer"></div>
+<!-- 🔴 2026-10-19 명의 이전 신청 창 -->
+<div id="xBg" style="display:none;position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.55)"></div>
+<div id="xDlg" style="display:none;position:fixed;z-index:81;left:50%;top:50%;transform:translate(-50%,-50%);width:min(400px,90vw);max-height:84vh;overflow:auto;padding:18px;border-radius:16px;background:#1B2430;color:#EEF2F7;border:1px solid rgba(255,255,255,.14)">
+  <div style="font-weight:800;font-size:16px" id="xTtl"></div>
+  <div style="font-size:24px;font-weight:800;letter-spacing:1px;margin:6px 0 10px" id="xNum"></div>
+  <div style="font-size:13px;line-height:1.65;opacity:.85" id="xHow"></div>
+  <label style="display:block;font-size:12.5px;opacity:.75;margin:12px 0 5px" id="xLbl"></label>
+  <input id="xNick" autocomplete="off" style="width:100%;box-sizing:border-box;padding:12px;border-radius:10px;font-size:16px;background:rgba(255,255,255,.07);color:inherit;border:1px solid rgba(255,255,255,.2)">
+  <div style="display:flex;gap:8px;margin-top:14px"><button type="button" id="xNo" style="flex:1;margin:0;padding:12px;border-radius:10px;background:rgba(255,255,255,.08);color:inherit;border:1px solid rgba(255,255,255,.2)"></button><button type="button" id="xGo" style="flex:1;margin:0;padding:12px;border-radius:10px;border:none;background:#8FE3B0;color:#0E1621;font-weight:800"></button></div>
+  <div id="xMsg" style="min-height:1.2em;margin-top:8px;font-size:13px;color:#FFB4B4"></div>
+</div>
     <div id="hold"></div>
     <div id="credits"></div>
     <div id="mine"></div>
@@ -153,7 +165,11 @@ const T = en ? {
   again: 'You already sent a request to this number. Please wait for their answer.',
   notFound: 'This number does not exist or does not take calls by number.', slow: 'Too many tries. Please wait a moment.',
   own: 'This is your own number.', tooMany: 'You have sent too many requests today.', needDigits: 'Enter all 10 digits.',
-  newTtl: 'Get a number', reroll: 'Other numbers', rerollHint: 'Not your style? Tap 🔄 for 3 new numbers.', moreHow: 'Need more than one number? After you pick your first number, come back here (My numbers → Get a number): each additional number is KRW 3,300 (one-time). Easy-to-remember numbers are in the Special numbers tab — Silver 5,500 · Gold 33,000 · Platinum 99,000.', free: 'Your first number is free. Pick one:', extra: 'Add another number (KRW 3,300). Pick one:',
+  newTtl: 'Get a number', reroll: 'Other numbers', rerollHint: 'Not your style? Tap 🔄 for 3 new numbers.', xBtn: '🔁 Transfer', xTtl: 'Transfer this number', xLbl: "Receiver's login nickname", xGo: 'Send request', xNo: 'Close',
+  xHow: 'How it works: 1) You send a request with the receiver\'s nickname. 2) The receiver accepts and pays the transfer fee of KRW 5,500 in the app. 3) Once paid, the number moves to the receiver automatically. Any price between you two is up to you — Burum is not involved. Requests expire after 7 days; you can cancel until it is paid. Numbers gifted by the company cannot be transferred.',
+  xHead: 'Number transfers', xIn: 'wants to transfer this number to you', xOut: 'Waiting for', xOut2: 'to accept and pay', xAccept: 'Accept · pay KRW 5,500', xDecline: 'Decline', xCancel: 'Cancel',
+  xSent: 'Transfer request sent. The number moves once the receiver pays the fee.', xDone: 'Transfer complete: ', xSt_done: 'Transferred', xSt_cancelled: 'Cancelled', xSt_declined: 'Declined', xSt_expired: 'Expired', xFeePaid: 'You have a paid transfer fee — accepting a transfer will use it right away.',
+  e_not_owner: 'Only the owner of the number can transfer it.', e_gift_number: 'Numbers gifted by the company cannot be transferred.', e_no_user: 'No member with that nickname.', e_self: 'You cannot transfer to yourself.', e_pending: 'A transfer request for this number is already open.', e_expired: 'This request is no longer valid.', e_seller_gone: 'The sender no longer owns this number.', moreHow: 'Need more than one number? After you pick your first number, come back here (My numbers → Get a number): each additional number is KRW 3,300 (one-time). Easy-to-remember numbers are in the Special numbers tab — Silver 5,500 · Gold 33,000 · Platinum 99,000.', free: 'Your first number is free. Pick one:', extra: 'Add another number (KRW 3,300). Pick one:',
   pick: 'Choose', buy: 'Buy', change: 'Change (KRW 3,300)', off: 'Turn off', persona: 'Shown as', mode: 'Calls from unknown numbers',
   m_request: 'As a connection request (default)', m_all: 'Ring right away (shop / work)', m_off: 'Do not take calls by number',
   offConfirm: 'Turn off this number? It will not be given to anyone for 6 months, and you cannot get it back.',
@@ -173,7 +189,11 @@ const T = en ? {
   again: '이 번호에는 이미 요청을 보냈습니다. 답을 기다려 주세요.',
   notFound: '없는 번호이거나, 번호로 전화를 받지 않는 분입니다.', slow: '너무 많이 눌렀습니다. 잠시 뒤 다시 해 주세요.',
   own: '내 번호입니다.', tooMany: '오늘은 요청을 너무 많이 보냈습니다.', needDigits: '10자리를 모두 눌러 주세요.',
-  newTtl: '번호 만들기', reroll: '다른 번호', rerollHint: '마음에 드는 번호가 없으면 🔄 다른 번호를 누르세요. 새 번호 3개가 나옵니다.', moreHow: '📌 번호가 더 필요하신가요? 첫 번호를 고른 뒤 이 자리(내 번호 → 번호 만들기)에 다시 오시면, 번호 하나 더를 3,300원(한 번 결제)에 고르실 수 있어요. 외우기 쉬운 번호는 [좋은 번호] 탭에서 — 실버 5,500원 · 골드 33,000원 · 플래티넘 99,000원.', free: '첫 번호는 무료입니다. 마음에 드는 번호를 고르세요.', extra: '번호 하나 더 (3,300원) — 고르세요.',
+  newTtl: '번호 만들기', reroll: '다른 번호', rerollHint: '마음에 드는 번호가 없으면 🔄 다른 번호를 누르세요. 새 번호 3개가 나옵니다.', xBtn: '🔁 명의 이전', xTtl: '이 번호를 다른 분께 넘기기', xLbl: '받을 분의 로그인 닉네임', xGo: '이전 신청', xNo: '닫기',
+  xHow: '진행 방법: ① 받을 분의 닉네임으로 신청합니다. ② 받는 분이 앱에서 수락하고 이전 수수료 5,500원을 결제합니다. ③ 결제가 확인되면 번호가 자동으로 넘어갑니다. 두 분 사이의 가격은 부름이 관여하지 않습니다. 신청은 7일 동안 유효하고, 결제 전까지 취소할 수 있습니다. 회사가 선물한 번호는 넘길 수 없습니다.',
+  xHead: '명의 이전', xIn: '님이 이 번호를 넘기려 합니다', xOut: '', xOut2: '님의 수락 · 결제를 기다리는 중', xAccept: '수락하고 5,500원 결제', xDecline: '거절', xCancel: '신청 취소',
+  xSent: '이전을 신청했습니다. 받는 분이 수수료를 결제하면 번호가 넘어갑니다.', xDone: '명의 이전 완료: ', xSt_done: '이전 완료', xSt_cancelled: '취소됨', xSt_declined: '거절됨', xSt_expired: '기간 지남', xFeePaid: '결제해 둔 이전 수수료가 있습니다 — 이전을 수락하면 바로 쓰입니다.',
+  e_not_owner: '번호 주인만 넘길 수 있습니다.', e_gift_number: '회사가 선물한 번호는 넘길 수 없습니다.', e_no_user: '그 닉네임으로 가입한 분이 없습니다.', e_self: '나에게는 넘길 수 없습니다.', e_pending: '이 번호는 이미 이전 신청이 진행 중입니다.', e_expired: '더 이상 유효하지 않은 신청입니다.', e_seller_gone: '넘기는 분이 이 번호를 더 이상 갖고 있지 않습니다.', moreHow: '📌 번호가 더 필요하신가요? 첫 번호를 고른 뒤 이 자리(내 번호 → 번호 만들기)에 다시 오시면, 번호 하나 더를 3,300원(한 번 결제)에 고르실 수 있어요. 외우기 쉬운 번호는 [좋은 번호] 탭에서 — 실버 5,500원 · 골드 33,000원 · 플래티넘 99,000원.', free: '첫 번호는 무료입니다. 마음에 드는 번호를 고르세요.', extra: '번호 하나 더 (3,300원) — 고르세요.',
   pick: '고르기', buy: '사기', change: '바꾸기 (3,300원)', off: '끄기', persona: '보일 별칭', mode: '모르는 번호에서 오면',
   m_request: '연결 요청으로 받기 (기본)', m_all: '바로 울리게 (가게 · 업무용)', m_off: '번호로 받지 않기',
   offConfirm: '이 번호를 끌까요? 6개월 동안 다른 사람에게도 주지 않고, 다시 되찾을 수 없습니다.',
@@ -261,6 +281,7 @@ async function loadMine(){
       '<div class="row"><span style="font-size:12.5px;opacity:.7;min-width:72px">' + esc(T.mode) + '</span><select data-m>' + modes(n.mode) + '</select></div>' +
       '<div class="row"><button type="button" data-copy>📋</button><button type="button" data-change>' + esc(T.change) + '</button>' +
       '<button type="button" class="go" data-keep>' + esc(T.keep) + '</button>' +
+      '<button type="button" data-xfer>' + esc(T.xBtn) + '</button>' +
       '<button type="button" class="bad" data-off>' + esc(T.off) + '</button></div>' +
     '</div>').join('');
   el('mine').querySelectorAll('.bn-card').forEach((c) => {
@@ -270,14 +291,18 @@ async function loadMine(){
     c.querySelector('[data-copy]').onclick = () => { try { navigator.clipboard.writeText('부름 ' + fmt(n)); say('📋 ' + fmt(n), true); } catch (e) {} };
     c.querySelector('[data-change]').onclick = () => { changing = n; tab('shop'); };
     c.querySelector('[data-keep]').onclick = () => keepMore(n);
+    c.querySelector('[data-xfer]').onclick = () => xOpen(n);
     c.querySelector('[data-off]').onclick = async () => {
       if (!confirm(T.offConfirm)) return;
       await AL.sb.rpc('bn_release', { p_number: n }); loadMine();
     };
   });
   el('hold').innerHTML = wallet.hold ? '<div class="bn-banner">' + esc(T.holdNow) + esc(wallet.hold.shown) + '</div>' : '';
-  el('credits').innerHTML = (wallet.credits || []).length
-    ? '<div class="bn-banner">' + esc(T.credit) + wallet.credits.map((c) => esc(T['g_' + c.kind] || (c.kind === 'extra' ? T.extra.split(' (')[0] : c.kind === 'keep' ? T.keep : T.change))).join(', ') + '<br>' + esc(T.creditPick) + '</div>' : '';
+  const xc = (wallet.credits || []).filter((c) => c.kind === 'transfer').length;
+  wallet.credits = (wallet.credits || []).filter((c) => c.kind !== 'transfer');
+  el('credits').innerHTML = (xc ? '<div class="bn-banner">' + esc(T.xFeePaid) + '</div>' : '') + ((wallet.credits || []).length
+    ? '<div class="bn-banner">' + esc(T.credit) + wallet.credits.map((c) => esc(T['g_' + c.kind] || (c.kind === 'extra' ? T.extra.split(' (')[0] : c.kind === 'keep' ? T.keep : T.change))).join(', ') + '<br>' + esc(T.creditPick) + '</div>' : '');
+  await loadTransfers();
   await loadOffers();
 }
 async function loadOffers(){
@@ -290,6 +315,50 @@ async function loadOffers(){
     '<p class="bn-note" style="opacity:.75">' + esc(T.rerollHint) + '</p>' +
     (wallet.free_first ? '<p class="bn-note" style="opacity:.95;padding:11px 13px;border-radius:12px;background:rgba(143,227,176,.10);border:1px solid rgba(143,227,176,.3)">' + esc(T.moreHow) + '</p>' : '');
   el('newBox').querySelectorAll('[data-pick]').forEach((b) => { b.onclick = () => choose(b.dataset.pick, 'normal'); });
+}
+
+/* ── 🔴 2026-10-19 명의 이전 ───────────────────────────────── */
+const nickOf = (x) => { try { return decodeURIComponent(x || ''); } catch (e) { return x || ''; } };
+async function loadTransfers(){
+  let r; try { r = await AL.sb.rpc('bn_transfers_mine'); } catch (e) { r = {}; }
+  const list = (r && r.data) || [];
+  if (!list.length) { el('xfer').innerHTML = ''; return; }
+  const open = list.filter((t) => t.status === 'offered' || t.status === 'accepted');
+  const past = list.filter((t) => !(t.status === 'offered' || t.status === 'accepted')).slice(0, 5);
+  el('xfer').innerHTML = '<div class="sect" style="margin-top:6px">' + esc(T.xHead) + '</div>' +
+    open.map((t) => '<div class="bn-card"><div class="no">' + esc(t.shown) + badge(t.grade) + '</div>' +
+      (t.role === 'buyer'
+        ? '<div style="font-size:13.5px;margin-top:6px"><b>' + esc(nickOf(t.other)) + '</b> ' + esc(T.xIn) + '</div><div class="row"><button type="button" class="go" data-xa="' + t.id + '">' + esc(T.xAccept) + '</button><button type="button" class="bad" data-xc="' + t.id + '">' + esc(T.xDecline) + '</button></div>'
+        : '<div style="font-size:13.5px;margin-top:6px">' + esc(T.xOut) + ' <b>' + esc(nickOf(t.other)) + '</b>' + esc(T.xOut2) + '</div><div class="row"><button type="button" class="bad" data-xc="' + t.id + '">' + esc(T.xCancel) + '</button></div>') +
+      '</div>').join('') +
+    past.map((t) => '<div style="font-size:12.5px;opacity:.7;margin:2px 2px 6px">' + esc(t.shown) + ' · ' + (t.role === 'seller' ? '→ ' : '← ') + esc(nickOf(t.other)) + ' · ' + esc(T['xSt_' + t.status] || t.status) + ' · ' + esc(String(t.done_at || t.created_at).slice(0, 10)) + '</div>').join('');
+  el('xfer').querySelectorAll('[data-xa]').forEach((b) => { b.onclick = () => xAccept(b.dataset.xa); });
+  el('xfer').querySelectorAll('[data-xc]').forEach((b) => { b.onclick = async () => { await AL.sb.rpc('bn_transfer_cancel', { p_id: b.dataset.xc }); loadMine(); }; });
+}
+let xNumber = null;
+function xShow(on){ el('xBg').style.display = el('xDlg').style.display = on ? 'block' : 'none'; }
+function xOpen(n){
+  xNumber = n; el('xTtl').textContent = T.xTtl; el('xNum').textContent = fmt(n); el('xHow').textContent = T.xHow;
+  el('xLbl').textContent = T.xLbl; el('xGo').textContent = T.xGo; el('xNo').textContent = T.xNo; el('xNick').value = ''; el('xMsg').textContent = '';
+  xShow(true);
+}
+async function xSend(){
+  const nk = el('xNick').value.trim(); if (!nk) return;
+  el('xGo').disabled = true;
+  const r = await AL.sb.rpc('bn_transfer_offer', { p_number: xNumber, p_buyer_email: AL.nicknameToEmail(nk) });
+  el('xGo').disabled = false;
+  const d = r.data || {};
+  if (r.error || !d.ok) { el('xMsg').textContent = errText(d.error); return; }
+  xShow(false); say(T.xSent, true); loadMine();
+}
+async function xAccept(id){
+  say('');
+  const r = await AL.sb.rpc('bn_transfer_accept', { p_id: id });
+  const d = r.data || {};
+  if (r.error || !d.ok) { if (d.error === 'need_plan') return AL.needPlan(); say(errText(d.error)); return loadMine(); }
+  if (d.transferred) { say(T.xDone + (d.shown || ''), true); return loadMine(); }
+  if (!(window.AliasNative && typeof AliasNative.storeBuy === 'function')) return say(T.appOnly);
+  AliasNative.storeBuy(d.sku || 'burum_number_transfer');   // 결제가 확인되면 서버가 자동으로 넘깁니다
 }
 
 /* ── 고르기 · 사기 — 무료 / 크레딧 / 결제 ────────────────────── */
@@ -346,7 +415,7 @@ AL.onStoreDone = function(res){
     return say(res.error || T.e_fail);
   }
   changing = null;
-  say(T.bought, true);
+  say(res.sku === 'burum_number_transfer' ? T.xDone : T.bought, true);
   tab('mine');
 };
 
@@ -387,6 +456,7 @@ async function loadShop(reset){
   el('callM').onclick = () => { el('dialMsg').textContent = ''; if (typed.length !== 10) { el('dialMsg').textContent = T.needDigits; return; } el('noteBox').classList.toggle('on'); if (el('noteBox').classList.contains('on')) el('noteTx').focus(); };
   el('noteGo').onclick = () => dial('chat');
   el('rerollT').textContent = T.reroll;
+  el('xNo').onclick = () => xShow(false); el('xBg').onclick = () => xShow(false); el('xGo').onclick = xSend;
   let spin = 0;
   el('reroll').onclick = async () => { spin += 360; el('rerollIc').style.transform = 'rotate(' + spin + 'deg)'; await loadOffers(); };
   el('saveNo').onclick = (e) => { e.preventDefault(); if (typed.length !== 10) { el('dialMsg').textContent = T.needDigits; return; } location.href = 'alias_phone.html?save=' + typed; };
