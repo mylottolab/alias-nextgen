@@ -66,6 +66,7 @@ document.addEventListener("DOMContentLoaded", function(){
   <div class="tophead" style="margin-bottom:10px"><a class="backlink" href="alias_contacts.html" id="back"></a></div>
   <h1 class="h2" id="h1"></h1>
   <p class="bc-intro" id="intro"></p>
+  <div class="bc-card" id="resume" style="display:none;border-color:rgba(242,201,76,.55);background:rgba(242,201,76,.10)"></div>
   <button class="bc-new" id="newBtn"></button>
   <div id="list"></div>
   <div class="bc-log" id="log"></div>
@@ -112,6 +113,8 @@ const T = en ? {
   sPh: 'Message', sNote: 'Locked (end-to-end encrypted) chats can\'t be included — send there directly. Each person sees it as a normal message from you.',
   sGo: 'Send', noTx: 'Please write a message.', sending: (i, n) => 'Sending… ' + i + ' / ' + n,
   done: (ok, sk, fl) => '✅ Sent to ' + ok + (sk ? ' · skipped ' + sk + ' locked' : '') + (fl ? ' · ' + fl + ' failed' : ''),
+  keepOpen: 'Sending… keep Burum open. If the screen turns off or you leave, it pauses and continues from where it stopped when you come back.',
+  resumeTx: (g, a, b) => '⏸ Broadcast to <b>' + esc(g) + '</b> paused at ' + a + ' / ' + b + '.', resumeGo: (n) => '▶ Continue (' + n + ' left)', resumeNo: 'Stop', resumeAsk: 'Stop this broadcast? People not yet reached won\'t get it.',
   close: 'Close', recent: 'Recent broadcasts', nobody: 'Nobody to send to in this group (people may have disconnected).'
 } : {
   back: '‹ 연락처', h1: '📢 동시통보', intro: '아는 사람들을 미리 그룹으로 묶어 두고, 필요할 때 메시지 한 번으로 그룹 전체에 보냅니다. 받는 사람은 각자 나와의 1:1 대화방에서 받고, 누구누구에게 함께 갔는지는 보이지 않습니다.',
@@ -125,6 +128,8 @@ const T = en ? {
   sPh: '보낼 메시지', sNote: '잠긴 방(종단 암호화)은 함께 보낼 수 없어 빠집니다. 그 방에서 직접 보내 주세요. 받는 사람에게는 나에게서 온 보통 메시지로 보입니다.',
   sGo: '보내기', noTx: '메시지를 적어 주세요.', sending: (i, n) => '보내는 중… ' + i + ' / ' + n,
   done: (ok, sk, fl) => '✅ ' + ok + '명에게 보냈습니다' + (sk ? ' · 잠긴 방 ' + sk + '곳 빠짐' : '') + (fl ? ' · ' + fl + '명 실패' : ''),
+  keepOpen: '보내는 중에는 부름을 켜 두세요. 화면이 꺼지거나 다른 곳으로 나가면 잠시 멈췄다가, 다시 열면 멈춘 곳부터 이어서 보냅니다(같은 사람에게 두 번 가지 않습니다).',
+  resumeTx: (g, a, b) => '⏸ <b>' + esc(g) + '</b> 동시통보가 ' + a + ' / ' + b + '명에서 멈춰 있습니다.', resumeGo: (n) => '▶ 이어 보내기 (남은 ' + n + '명)', resumeNo: '그만두기', resumeAsk: '이 동시통보를 그만둘까요? 아직 못 받은 사람에게는 가지 않습니다.',
   close: '닫기', recent: '최근 보낸 동시통보', nobody: '이 그룹에 보낼 사람이 없습니다(연결이 끊겼을 수 있습니다).'
 };
 
@@ -221,7 +226,7 @@ el('eGo').onclick = async () => {
 /* ── 보내기 ── */
 let sendGroup = null, targets = [];
 async function openSend(g){
-  sendGroup = g; el('sH').textContent = T.sH(g.name); el('sMsg').textContent = ''; el('sTx').value = '';
+  sendGroup = g; el('sH').textContent = T.sH(g.name); el('sMsg').textContent = ''; el('sNote').textContent = T.sNote; el('sTx').value = '';
   el('sBarW').style.display = 'none'; el('sGo').style.display = ''; el('sGo').disabled = false; el('sTx').disabled = false;
   const r = await AL.sb.rpc('bc_targets', { p_id: g.id });
   targets = (r && r.data) || [];
@@ -231,32 +236,89 @@ async function openSend(g){
   show('sDlg', true); el('sTx').focus();
 }
 el('sNo').onclick = () => { if (!sendingNow) show('sDlg', false); };
+/* 🔴 2026-10-19 — 1,000명까지. 보내는 동안:
+   ① 화면이 저절로 꺼지지 않게 붙잡습니다(되는 폰에서만 · Wake Lock)
+   ② 그래도 화면이 꺼지거나 홈으로 나가면 그 자리에서 멈췄다가, 다시 열면 **남은 사람부터 이어서** 보냅니다
+      (보낸 사람 · 남은 사람을 이 폰에 적어 둡니다 → 두 번 가지 않습니다)
+   ③ 잠깐 끊겨 실패하면 한 번 더 보내 봅니다 */
+const JOB_KEY = 'burum_bcast_job_v1';
+function jobGet(){ try { const j = JSON.parse(localStorage.getItem(JOB_KEY) || 'null'); if (j && Date.now() - j.at < 24 * 3600e3 && j.left && j.left.length) return j; } catch (e) {} return null; }
+function jobPut(j){ try { if (j) localStorage.setItem(JOB_KEY, JSON.stringify(j)); else localStorage.removeItem(JOB_KEY); } catch (e) {} }
+let wake = null;
+async function wakeOn(){ try { if (navigator.wakeLock && !wake) { wake = await navigator.wakeLock.request('screen'); wake.addEventListener('release', () => { wake = null; }); } } catch (e) { wake = null; } }
+function wakeOff(){ try { if (wake) wake.release(); } catch (e) {} wake = null; }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && sendingNow) wakeOn(); });
+
+async function sendOne(linkId, text){
+  for (let k = 0; k < 2; k++) {
+    try { await AL.callFn('alias-message-send', { linkId: linkId, text: text, enc: null, replyTo: null, expiresInHours: null }); return true; }
+    catch (e) {
+      console.warn('[bcast] 실패' + (k ? '(다시)' : ''), linkId, e);
+      // 화면이 꺼져 있던 사이면 켜질 때까지 기다렸다가 다시
+      while (document.visibilityState !== 'visible') await new Promise(r => setTimeout(r, 1000));
+      await new Promise(r => setTimeout(r, 1200));
+    }
+  }
+  return false;
+}
+
+async function runJob(job){
+  sendingNow = true; el('sGo').disabled = true; el('sTx').disabled = true; el('sNo').disabled = true;
+  el('sBarW').style.display = 'block'; el('sGo').style.display = 'none';
+  await wakeOn();
+  const total = job.total;
+  while (job.left.length) {
+    const id = job.left[0];
+    el('sMsg').textContent = T.sending(total - job.left.length + 1, total);
+    const ok = await sendOne(id, job.text);
+    if (ok) job.ok++; else job.fail++;
+    job.left.shift(); job.at = Date.now(); jobPut(job);
+    el('sBar').style.width = Math.round((total - job.left.length) * 100 / total) + '%';
+    await new Promise(r => setTimeout(r, 120));   // 서버를 한꺼번에 두드리지 않게
+  }
+  try { await AL.sb.rpc('bc_log_add', { p_id: job.gid, p_sent: job.ok, p_skipped: job.skipped, p_failed: job.fail }); } catch (e) {}
+  jobPut(null); wakeOff();
+  sendingNow = false; el('sNo').disabled = false;
+  el('sMsg').textContent = T.done(job.ok, job.skipped, job.fail);
+  el('resume').style.display = 'none';
+  load();
+}
+
 el('sGo').onclick = async () => {
   const text = el('sTx').value.trim();
   if (!text) { el('sMsg').textContent = T.noTx; return; }
   if (!await AL.requirePlan()) return;
-  const list = targets.filter(t => !t.locked);
-  const skipped = targets.length - list.length;
-  sendingNow = true; el('sGo').disabled = true; el('sTx').disabled = true; el('sNo').disabled = true;
-  el('sBarW').style.display = 'block';
-  let ok = 0, fail = 0;
-  for (let i = 0; i < list.length; i++) {
-    el('sMsg').textContent = T.sending(i + 1, list.length);
-    try { await AL.callFn('alias-message-send', { linkId: list[i].link_id, text: text, enc: null, replyTo: null, expiresInHours: null }); ok++; }
-    catch (e) { console.warn('[bcast] 실패', list[i].link_id, e); fail++; }
-    el('sBar').style.width = Math.round((i + 1) * 100 / list.length) + '%';
-    await new Promise(r => setTimeout(r, 120));   // 서버를 한꺼번에 두드리지 않게
-  }
-  try { await AL.sb.rpc('bc_log_add', { p_id: sendGroup.id, p_sent: ok, p_skipped: skipped, p_failed: fail }); } catch (e) {}
-  sendingNow = false; el('sNo').disabled = false; el('sGo').style.display = 'none';
-  el('sMsg').textContent = T.done(ok, skipped, fail);
-  load();
+  const list = targets.filter(t => !t.locked).map(t => t.link_id);
+  const job = { gid: sendGroup.id, gname: sendGroup.name, text: text, left: list, total: list.length,
+                ok: 0, fail: 0, skipped: targets.length - list.length, at: Date.now() };
+  jobPut(job);
+  el('sNote').textContent = T.keepOpen;
+  await runJob(job);
 };
+
+/* 보내다 멈춘 것이 있으면 맨 위에 [이어 보내기] */
+function paintResume(){
+  const j = jobGet(), box = el('resume');
+  if (!j || sendingNow) { box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  box.innerHTML = T.resumeTx(j.gname, j.total - j.left.length, j.total) +
+    '<div class="bc-row" style="display:flex;gap:8px;margin-top:9px"><button class="go" id="rGo">' + T.resumeGo(j.left.length) + '</button><button id="rNo">' + T.resumeNo + '</button></div>';
+  el('rGo').onclick = async () => {
+    if (!await AL.requirePlan()) return;
+    sendGroup = { id: j.gid, name: j.gname };
+    el('sH').textContent = T.sH(j.gname); el('sWho').textContent = ''; el('sTx').value = j.text; el('sNote').textContent = T.keepOpen;
+    el('sBar').style.width = Math.round((j.total - j.left.length) * 100 / j.total) + '%';
+    show('sDlg', true); box.style.display = 'none';
+    await runJob(j);
+  };
+  el('rNo').onclick = () => { if (confirm(T.resumeAsk)) { jobPut(null); paintResume(); } };
+}
 
 const me = await AL.requireLogin();
 if (!me) return;
 await loadPeople();
 await load();
+paintResume();
 if (AL.startAlerts) AL.startAlerts();
 })();
 </script>
