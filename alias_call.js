@@ -544,6 +544,7 @@ AL.reviveMic = async function(){
     try { if (t) { AL.call.local.removeTrack(t); t.stop(); } } catch (e) {}
     AL.call.local.addTrack(nt);
     console.log('[call] 마이크를 다시 잡았습니다');
+    AL.boostSend();   // 🔴 2026-10-19 — 새 마이크도 키워 보냅니다
   } catch (e) {
     console.warn('[call] 마이크 다시 잡기 실패', e);
   }
@@ -711,6 +712,7 @@ AL.startCall = async function(opts){
     AL.call.pc.addTrack(t, AL.call.local);
   });
   await capVideo();   // 🔴 2026-09-12
+  AL.boostSend();     // 🔴 2026-10-19 — 내 목소리를 키워 보냅니다
 
   // 4) offer
   var offer = await AL.call.pc.createOffer();
@@ -830,6 +832,7 @@ AL.answerCall = async function(opts){
     AL.call.pc.addTrack(t, AL.call.local);
   });
   await capVideo();   // 🔴 2026-09-12
+  AL.boostSend();     // 🔴 2026-10-19 — 내 목소리를 키워 보냅니다
 
   await AL.sb.from('calls')
     .update({ answered_at: new Date().toISOString() }).eq('id', opts.callId);
@@ -1264,6 +1267,7 @@ function cleanup(){
     try { if (AL._rec.mr.state !== 'inactive') AL._rec.mr.stop(); } catch (e) {}
     try { AL._rec.ctx.close(); } catch (e) {}
   }
+  AL.boostStop();   // 🔴 2026-10-19
   AL.call.remoteV = null;   // 🔴 2026-09-12
   if (AL.call.local) {
     AL.call.local.getTracks().forEach(function(t){ try { t.stop(); } catch (e) {} });
@@ -1545,6 +1549,96 @@ AL.recordUrl = async function(path){
   } catch (e) {
     console.warn('[rec] 주소를 못 받았습니다', e);
     return null;
+  }
+};
+
+/* =====================================================================
+   🔴🔴 2026-10-19 신설 — 내 목소리를 키워 보냅니다 (스피커폰 소리가 작다)
+
+   왜   아이폰 · 안드로이드 모두 스피커를 켜도 상대 목소리가 작았습니다.
+        폰의 통화용 메아리 제거가 스피커에서 소리를 줄이고, 마이크로 잡힌
+        목소리 자체도 작게 나갔습니다. 받는 쪽 폰 볼륨을 최대로 해도 작았습니다.
+   어떻게  보내기 직전에 마이크 소리를 키우고(GainNode), 너무 커서 찢어지지 않게
+        눌러 줍니다(DynamicsCompressor = 리미터). 메아리 제거 · 잡음 줄이기는
+        그 전에 이미 끝난 소리라 그대로입니다.
+   ⚠ 안전장치 — 소리 상자가 안 돌거나(아이폰이 멈춤), 키운 소리가 4초 동안
+     완전히 0 이면 **원래 마이크로 바로 되돌립니다.** 통화가 무음이 되는 일은 없습니다.
+   ⚠ 음소거는 그대로 됩니다(원래 마이크를 끄면 키운 소리도 0).
+   ⚠ 끄기 / 세기: localStorage 'burum_boost' = '0'(끔) · '1.5' · '2.5'(기본) · '3'
+   ===================================================================== */
+AL.boost = null;
+
+AL.boostStop = function(){
+  var b = AL.boost; AL.boost = null;
+  if (!b) return;
+  try { clearTimeout(b.check); } catch (e) {}
+  try { b.out.stop(); } catch (e) {}
+  try { b.ctx.close(); } catch (e) {}
+};
+
+AL.boostSend = async function(){
+  var b = null;
+  try {
+    var lv = 2.5;
+    try { var v = localStorage.getItem('burum_boost'); if (v !== null && v !== '') lv = parseFloat(v); } catch (e) {}
+    if (!(lv > 1)) return;
+    if (lv > 4) lv = 4;
+    var Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx || !window.MediaStream || !AL.call.pc || !AL.call.local) return;
+    var raw = AL.call.local.getAudioTracks()[0];
+    var snd = AL.call.pc.getSenders().filter(function(x){ return x.track && x.track.kind === 'audio'; })[0];
+    if (!raw || !snd) return;
+
+    AL.boostStop();
+    var ctx = new Ctx();
+    if (!ctx.createMediaStreamDestination) { try { ctx.close(); } catch (e) {} return; }
+    if (ctx.state !== 'running') {
+      try { await Promise.race([ctx.resume(), new Promise(function(r){ setTimeout(r, 800); })]); } catch (e) {}
+    }
+    if (ctx.state !== 'running' || !AL.call.pc) { try { ctx.close(); } catch (e) {} return; }
+
+    var src = ctx.createMediaStreamSource(new MediaStream([raw]));
+    var g = ctx.createGain(); g.gain.value = lv;
+    var lim = ctx.createDynamicsCompressor();
+    lim.threshold.value = -6; lim.knee.value = 0; lim.ratio.value = 20;
+    lim.attack.value = 0.003; lim.release.value = 0.25;
+    var an = ctx.createAnalyser(); an.fftSize = 512;
+    var dest = ctx.createMediaStreamDestination();
+    src.connect(g); g.connect(lim); lim.connect(dest); lim.connect(an);
+    var out = dest.stream.getAudioTracks()[0];
+    if (!out) { try { ctx.close(); } catch (e) {} return; }
+
+    b = { ctx: ctx, out: out, raw: raw, snd: snd, check: null };
+    var back = function(why){
+      if (AL.boost !== b) return;
+      console.warn('[call] 목소리 키우기 끔 — ' + why);
+      try { if (b.snd.track === b.out) b.snd.replaceTrack(b.raw); } catch (e) {}
+      AL.boostStop();
+    };
+    ctx.onstatechange = function(){ if (ctx.state !== 'running') back('소리 상자 멈춤(' + ctx.state + ')'); };
+
+    AL.boost = b;
+    await snd.replaceTrack(out);
+    console.log('[call] 목소리 키워 보내기 ×' + lv);
+
+    /* 4초 동안 키운 소리가 정말 나오는지 봅니다. 완전히 0 이면 되돌립니다. */
+    var buf = new Float32Array(an.fftSize), t0 = Date.now();
+    var look = function(){
+      if (AL.boost !== b) return;
+      if (!raw.enabled) { t0 = Date.now(); b.check = setTimeout(look, 300); return; }   // 음소거 중엔 판단 안 함
+      var heard = false;
+      try { an.getFloatTimeDomainData(buf); } catch (e) { heard = true; }
+      for (var i = 0; i < buf.length && !heard; i++) if (buf[i] !== 0) heard = true;
+      if (heard) { console.log('[call] 키운 소리 확인'); return; }
+      if (Date.now() - t0 > 4000) { back('키운 소리가 0'); return; }
+      b.check = setTimeout(look, 200);
+    };
+    look();
+  } catch (e) {
+    console.warn('[call] 목소리 키우기 실패 — 원래 마이크로 갑니다', e);
+    try { if (b && b.snd.track === b.out) await b.snd.replaceTrack(b.raw); } catch (e2) {}
+    if (AL.boost === b) AL.boostStop();
+    else if (b) { try { b.ctx.close(); } catch (e3) {} }
   }
 };
 
