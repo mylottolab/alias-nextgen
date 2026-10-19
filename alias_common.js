@@ -4385,9 +4385,15 @@ AL.topBar = async function(){
        ⚠ 통화 · 대화 · 걸기처럼 화면을 꽉 채우는 곳에는 넣지 않습니다(누르다 통화가 끊기지 않게). */
     var page = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
     var SKIP = ['alias_call.html', 'alias_chat.html', 'alias_phone.html', 'burum_t.html', 'burum_temp_chat.html'];
-    if (SKIP.indexOf(page) >= 0) return;
-    var wrap = document.querySelector('.wrap') || document.body;
+    /* 🔴 2026-10-19 — 대화 · 전화번호부 화면에도 [MyPage] [로그아웃] 만 작게(손님 요청: 아이디 여러 개 쓰는 분은 바꾸려면 로그아웃이 필요)
+       ⚠ 주간/야간 · EN · 사용법은 이 두 화면에 넣지 않습니다(화면이 꽉 차 있음). */
+    var ACCT_ONLY = ['alias_chat.html', 'alias_phone.html'];
+    var acctOnly = ACCT_ONLY.indexOf(page) >= 0;
+    if (SKIP.indexOf(page) >= 0 && !acctOnly) return;
+    var wrap = document.querySelector('.wrap') || document.querySelector('.phwrap') || document.body;
     var tabbed = document.body.classList.contains('tabbed');
+    /* MyPage · 로그아웃을 붙일 화면: 아래 탭 화면 + 대화 · 전화번호부 · 부름번호 · 동시통보 */
+    var wantAcct = tabbed || acctOnly || ['alias_number.html', 'burum_bcast.html'].indexOf(page) >= 0;
     var en = AL.lang === 'en';
     var bar = document.createElement('div');
     bar.id = 'alTopBar';
@@ -4396,6 +4402,7 @@ AL.topBar = async function(){
                'font-size:12.5px;font-weight:700;background:rgba(128,128,128,.12);color:inherit;border:1px solid rgba(128,128,128,.35);white-space:nowrap';
     var mk = function(text, fn){ var b = document.createElement('button'); b.type = 'button'; b.style.cssText = pill; b.textContent = text; b.addEventListener('click', fn); return b; };
 
+    if (!acctOnly) {
     /* ☀️ / 🌙 — 지금 화면의 반대로 바꿉니다(설정의 "모드" 와 같은 곳에 저장) */
     var dark = document.documentElement.getAttribute('data-mode') !== 'light';
     bar.appendChild(mk(dark ? (en ? '☀️ Day' : '☀️ 주간') : (en ? '🌙 Night' : '🌙 야간'), async function(){
@@ -4432,14 +4439,33 @@ AL.topBar = async function(){
       location.href = 'burum_guide.html?lang=' + (en ? 'en' : 'ko');
     }));
 
-    /* 연락처 · 통화 기록 · 나 — MyPage · 로그인/로그아웃 (2026-10-01) */
-    if (tabbed) {
+    }   // !acctOnly
+
+    /* 연락처 · 통화 기록 · 나 — MyPage · 로그인/로그아웃 (2026-10-01) · 2026-10-19 대화 · 전화번호부 · 부름번호 · 동시통보에도 */
+    if (wantAcct) {
       var sess = null; try { sess = (await AL.sb.auth.getSession()).data.session; } catch (e) {}
+      /* 지금 들어와 있는 닉네임 — 아이디를 여러 개 쓰는 분이 헷갈리지 않게 */
+      if (sess && sess.user && sess.user.email) {
+        try {
+          var nk = decodeURIComponent(String(sess.user.email).split('@')[0]);
+          var tag = document.createElement('span');
+          tag.style.cssText = 'align-self:center;font-size:12px;opacity:.7;margin-right:auto;max-width:40vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+          tag.textContent = (en ? 'Signed in: ' : '로그인: ') + nk;
+          bar.insertBefore(tag, bar.firstChild);
+        } catch (e) {}
+      }
       if (sess) bar.appendChild(mk('👤 MyPage', function(){ AL.openMyPage(); }));
       bar.appendChild(mk(sess ? (en ? 'Log out' : '로그아웃') : (en ? 'Log in' : '로그인'), function(){
         if (sess) { if (confirm(AL.t('outAsk'))) AL.signOut(); }
         else location.href = 'alias_auth.html?next=' + encodeURIComponent(page + location.search);
       }));
+    }
+    if (acctOnly) {
+      bar.style.margin = '0 0 4px'; bar.style.padding = '4px 10px 0'; bar.style.flexWrap = 'nowrap'; bar.style.gap = '6px';
+      Array.prototype.forEach.call(bar.querySelectorAll('button'), function(b){ b.style.padding = '5px 10px'; b.style.fontSize = '12px'; });
+      var tg = bar.querySelector('span'); if (tg) tg.style.maxWidth = '34vw';
+      var ct = document.querySelector('.chat-top');
+      if (ct && ct.parentNode) { ct.parentNode.insertBefore(bar, ct.nextSibling); return; }
     }
     wrap.insertBefore(bar, wrap.firstChild);
   } catch (e) { console.warn('[topbar]', e); }

@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>동시통보</title>
+<link rel="stylesheet" href="alias_common.css?v=20261018a">
+<link rel="stylesheet" href="alias_theme.css?v=20261018a">
+<script src="alias_config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="alias_common.js?v=20261019d"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function(){
+  if (typeof AL === "undefined" || typeof AL.t !== "function") {
+    document.body.innerHTML = '<div style="padding:26px;font-family:system-ui,sans-serif;color:#DDE5F0;background:#0E1621;min-height:100vh">' +
+      '<b>alias_common.js 를 못 읽었습니다.</b></div>';
+    return;
+  }
+  AL.bootTheme();
+});
+</script>
+<style>
+/* 🔴 2026-10-19 — 동시통보: 그룹을 미리 만들어 두고, 필요할 때 한 번에 보냅니다.
+   받는 사람에게는 각자의 1:1 대화방에 보통 메시지로 들어갑니다(다른 받는 사람은 안 보임). */
+.bc-intro{font-size:13.5px;line-height:1.65;opacity:.8;margin:0 0 14px;word-break:keep-all}
+.bc-new{width:100%;margin:0 0 14px;padding:13px;border-radius:13px;font-size:15px;font-weight:800;cursor:pointer;
+  background:rgba(143,227,176,.18);color:#8FE3B0;border:1px dashed rgba(143,227,176,.55)}
+.bc-card{border:1px solid rgba(128,128,128,.3);border-radius:14px;padding:13px 14px;margin:0 0 10px;background:rgba(255,255,255,.04)}
+.bc-card .nm{font-size:17px;font-weight:800;word-break:keep-all}
+.bc-card .ct{font-size:12.5px;opacity:.7;margin-top:2px}
+.bc-card .bc-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.bc-card button{margin:0;padding:9px 13px;border-radius:10px;font-size:13.5px;font-weight:700;cursor:pointer;
+  background:rgba(255,255,255,.07);color:inherit;border:1px solid rgba(128,128,128,.35)}
+.bc-card button.go{background:#8FE3B0;color:#0E1621;border-color:#8FE3B0;font-weight:800}
+.bc-card button.bad{background:rgba(255,120,120,.1);color:#FFB4B4;border-color:rgba(255,120,120,.4)}
+.bc-empty{text-align:center;opacity:.7;font-size:14px;padding:24px 8px;line-height:1.7;word-break:keep-all}
+.bc-log{margin-top:22px;font-size:12.5px;opacity:.75;line-height:1.7}
+.bc-log b{font-size:13px}
+/* 대화 상자 */
+.bc-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;display:none}
+.bc-dlg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(440px,calc(100vw - 28px));max-height:calc(100vh - 40px);
+  overflow:auto;z-index:51;display:none;border-radius:18px;padding:18px 16px;background:var(--raise,#182231);color:inherit;
+  border:1px solid rgba(128,128,128,.35);box-sizing:border-box}
+.bc-dlg h3{margin:0 0 10px;font-size:18px}
+.bc-dlg input[type=text],.bc-dlg input[type=search],.bc-dlg textarea{width:100%;box-sizing:border-box;padding:11px 12px;border-radius:11px;font-size:15px;
+  font-family:inherit;background:rgba(255,255,255,.06);color:inherit;border:1px solid rgba(128,128,128,.35);margin:0 0 10px}
+.bc-dlg textarea{min-height:110px;resize:vertical}
+.bc-ppl{max-height:46vh;overflow:auto;border:1px solid rgba(128,128,128,.25);border-radius:12px;padding:4px 8px;margin:0 0 10px}
+.bc-ppl label{display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid rgba(128,128,128,.15);font-size:15px;cursor:pointer}
+.bc-ppl label:last-child{border-bottom:none}
+.bc-ppl input{width:20px;height:20px;margin:0;flex:0 0 auto}
+.bc-ppl .lk{font-size:11.5px;opacity:.65;margin-left:auto;white-space:nowrap}
+.bc-sel{display:flex;justify-content:space-between;align-items:center;font-size:13px;opacity:.85;margin:0 0 8px}
+.bc-sel button{margin:0;padding:5px 10px;border-radius:8px;font-size:12.5px;cursor:pointer;background:transparent;color:inherit;border:1px solid rgba(128,128,128,.4)}
+.bc-btns{display:flex;gap:8px}
+.bc-btns button{flex:1;margin:0;padding:13px;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer;border:1px solid rgba(128,128,128,.35);background:rgba(255,255,255,.06);color:inherit}
+.bc-btns button.go{background:#8FE3B0;color:#0E1621;border-color:#8FE3B0}
+.bc-msg{font-size:13.5px;line-height:1.6;min-height:20px;margin:0 0 10px;word-break:keep-all}
+.bc-note{font-size:12.5px;opacity:.7;line-height:1.6;margin:0 0 10px;word-break:keep-all}
+.bc-bar{height:8px;border-radius:99px;background:rgba(128,128,128,.25);overflow:hidden;margin:4px 0 10px}
+.bc-bar i{display:block;height:100%;width:0;background:#8FE3B0;transition:width .2s}
+</style>
+</head>
+<body data-t-title="ttContacts">
+<div class="wrap">
+  <div class="tophead" style="margin-bottom:10px"><a class="backlink" href="alias_contacts.html" id="back"></a></div>
+  <h1 class="h2" id="h1"></h1>
+  <p class="bc-intro" id="intro"></p>
+  <button class="bc-new" id="newBtn"></button>
+  <div id="list"></div>
+  <div class="bc-log" id="log"></div>
+</div>
+
+<div class="bc-bg" id="bg"></div>
+
+<!-- 그룹 만들기 · 고치기 -->
+<div class="bc-dlg" id="eDlg">
+  <h3 id="eH"></h3>
+  <input type="text" id="eName" maxlength="30">
+  <div class="bc-sel"><span id="eCnt"></span><span><button type="button" id="eAll"></button> <button type="button" id="eNone"></button></span></div>
+  <input type="search" id="eQ" autocomplete="off">
+  <div class="bc-ppl" id="ePpl"></div>
+  <div class="bc-msg" id="eMsg"></div>
+  <div class="bc-btns"><button type="button" id="eNo"></button><button type="button" class="go" id="eGo"></button></div>
+</div>
+
+<!-- 보내기 -->
+<div class="bc-dlg" id="sDlg">
+  <h3 id="sH"></h3>
+  <div class="bc-note" id="sWho"></div>
+  <textarea id="sTx" maxlength="2000"></textarea>
+  <div class="bc-note" id="sNote"></div>
+  <div class="bc-bar" id="sBarW" style="display:none"><i id="sBar"></i></div>
+  <div class="bc-msg" id="sMsg"></div>
+  <div class="bc-btns"><button type="button" id="sNo"></button><button type="button" class="go" id="sGo"></button></div>
+</div>
+
+<script>
+(async function(){
+const en = (AL.lang === 'en');
+const el = (id) => document.getElementById(id);
+const esc = (s) => AL.esc(s == null ? '' : String(s));
+const T = en ? {
+  back: '‹ Contacts', h1: '📢 Broadcast', intro: 'Make groups of your contacts in advance, then send one message to a whole group. Each person gets it in their own 1:1 chat — they can\'t see who else received it.',
+  newG: '＋ New broadcast group', empty: 'No groups yet.<br>Tap <b>＋ New broadcast group</b> to pick people.',
+  ppl: (n) => n + ' people', send: '📢 Send', edit: 'Edit', del: 'Delete', delAsk: (n) => 'Delete the group "' + n + '"? (No messages are deleted.)',
+  eNew: 'New broadcast group', eEdit: 'Edit group', namePh: 'Group name (e.g. Family, Club, Customers)', q: 'Search contacts',
+  all: 'All', none: 'None', picked: (n) => n + ' selected', cancel: 'Cancel', save: 'Save',
+  noName: 'Please enter a group name.', noPpl: 'Pick at least one person.', noContacts: 'No 1:1 contacts yet. Connect with people first.',
+  tooMany: 'You can have up to 30 groups.', locked: '🔒 locked',
+  sH: (n) => '📢 Send to "' + n + '"', sWho: (a, b) => a + ' people will receive it' + (b ? ' · ' + b + ' locked chat(s) skipped' : ''),
+  sPh: 'Message', sNote: 'Locked (end-to-end encrypted) chats can\'t be included — send there directly. Each person sees it as a normal message from you.',
+  sGo: 'Send', noTx: 'Please write a message.', sending: (i, n) => 'Sending… ' + i + ' / ' + n,
+  done: (ok, sk, fl) => '✅ Sent to ' + ok + (sk ? ' · skipped ' + sk + ' locked' : '') + (fl ? ' · ' + fl + ' failed' : ''),
+  close: 'Close', recent: 'Recent broadcasts', nobody: 'Nobody to send to in this group (people may have disconnected).'
+} : {
+  back: '‹ 연락처', h1: '📢 동시통보', intro: '아는 사람들을 미리 그룹으로 묶어 두고, 필요할 때 메시지 한 번으로 그룹 전체에 보냅니다. 받는 사람은 각자 나와의 1:1 대화방에서 받고, 누구누구에게 함께 갔는지는 보이지 않습니다.',
+  newG: '＋ 새 동시통보 그룹', empty: '아직 그룹이 없습니다.<br><b>＋ 새 동시통보 그룹</b>을 눌러 사람을 골라 주세요.',
+  ppl: (n) => n + '명', send: '📢 보내기', edit: '고치기', del: '삭제', delAsk: (n) => '"' + n + '" 그룹을 지울까요? (보낸 메시지는 지워지지 않습니다)',
+  eNew: '새 동시통보 그룹', eEdit: '그룹 고치기', namePh: '그룹 이름 (예: 가족 · 동호회 · 고객)', q: '연락처 찾기',
+  all: '모두', none: '해제', picked: (n) => n + '명 골랐습니다', cancel: '취소', save: '저장',
+  noName: '그룹 이름을 적어 주세요.', noPpl: '한 명 이상 골라 주세요.', noContacts: '아직 1:1로 이어진 연락처가 없습니다. 먼저 사람을 이어 주세요.',
+  tooMany: '그룹은 30개까지 만들 수 있습니다.', locked: '🔒 잠긴 방',
+  sH: (n) => '📢 "' + n + '"에 보내기', sWho: (a, b) => a + '명에게 갑니다' + (b ? ' · 잠긴 방 ' + b + '곳은 빠집니다' : ''),
+  sPh: '보낼 메시지', sNote: '잠긴 방(종단 암호화)은 함께 보낼 수 없어 빠집니다. 그 방에서 직접 보내 주세요. 받는 사람에게는 나에게서 온 보통 메시지로 보입니다.',
+  sGo: '보내기', noTx: '메시지를 적어 주세요.', sending: (i, n) => '보내는 중… ' + i + ' / ' + n,
+  done: (ok, sk, fl) => '✅ ' + ok + '명에게 보냈습니다' + (sk ? ' · 잠긴 방 ' + sk + '곳 빠짐' : '') + (fl ? ' · ' + fl + '명 실패' : ''),
+  close: '닫기', recent: '최근 보낸 동시통보', nobody: '이 그룹에 보낼 사람이 없습니다(연결이 끊겼을 수 있습니다).'
+};
+
+el('back').textContent = T.back; el('h1').textContent = T.h1; el('intro').textContent = T.intro; el('newBtn').textContent = T.newG;
+el('eName').placeholder = T.namePh; el('eQ').placeholder = T.q; el('eAll').textContent = T.all; el('eNone').textContent = T.none;
+el('eNo').textContent = T.cancel; el('eGo').textContent = T.save; el('sTx').placeholder = T.sPh; el('sNote').textContent = T.sNote;
+el('sNo').textContent = T.close; el('sGo').textContent = T.sGo;
+
+let groups = [], people = [], editing = null, picked = new Set(), sendingNow = false;
+
+function show(id, on){ el('bg').style.display = on ? 'block' : 'none'; el(id).style.display = on ? 'block' : 'none'; }
+el('bg').onclick = () => { if (sendingNow) return; show('eDlg', false); show('sDlg', false); };
+
+async function loadPeople(){
+  try {
+    const r = await AL.sb.rpc('my_contacts');
+    people = (r.data || []).filter(c => c.kind !== 'group' && c.link_id)
+      .map(c => ({ id: c.link_id, name: c.peer_label || c.peer_display || '?' }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+  } catch (e) { people = []; }
+}
+function nameOf(id){ const p = people.find(x => x.id === id); return p ? p.name : null; }
+
+async function load(){
+  const r = await AL.sb.rpc('bc_groups');
+  groups = (r && r.data) || [];
+  const box = el('list');
+  if (!groups.length) { box.innerHTML = '<div class="bc-empty">' + T.empty + '</div>'; }
+  else box.innerHTML = groups.map((g, i) => {
+    const names = (g.members || []).map(nameOf).filter(Boolean);
+    const shown = names.slice(0, 5).join(', ') + (names.length > 5 ? ' …' : '');
+    return '<div class="bc-card"><div class="nm">' + esc(g.name) + '</div>' +
+      '<div class="ct">' + T.ppl(g.n) + (shown ? ' · ' + esc(shown) : '') + '</div>' +
+      '<div class="bc-row"><button class="go" data-s="' + i + '">' + T.send + '</button>' +
+      '<button data-e="' + i + '">' + T.edit + '</button><button class="bad" data-d="' + i + '">' + T.del + '</button></div></div>';
+  }).join('');
+  try {
+    const lg = await AL.sb.rpc('bc_log_mine');
+    const L = (lg && lg.data) || [];
+    el('log').innerHTML = L.length ? '<b>' + T.recent + '</b><br>' + L.slice(0, 8).map(x =>
+      new Date(x.at).toLocaleString(en ? 'en-US' : 'ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) +
+      ' · ' + esc(x.group || '') + ' · ' + T.done(x.sent, x.skipped, x.failed).replace('✅ ', '')).join('<br>') : '';
+  } catch (e) {}
+}
+
+el('list').onclick = async (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.e !== undefined) openEdit(groups[+b.dataset.e]);
+  if (b.dataset.s !== undefined) openSend(groups[+b.dataset.s]);
+  if (b.dataset.d !== undefined) {
+    const g = groups[+b.dataset.d];
+    if (!confirm(T.delAsk(g.name))) return;
+    await AL.sb.rpc('bc_group_delete', { p_id: g.id }); load();
+  }
+};
+
+/* ── 그룹 만들기 · 고치기 ── */
+function paintPeople(){
+  const q = el('eQ').value.trim().toLowerCase();
+  const list = people.filter(p => !q || p.name.toLowerCase().includes(q));
+  el('ePpl').innerHTML = people.length ? list.map(p =>
+    '<label><input type="checkbox" data-id="' + p.id + '"' + (picked.has(p.id) ? ' checked' : '') + '><span>' + esc(p.name) + '</span></label>').join('')
+    : '<div class="bc-empty">' + T.noContacts + '</div>';
+  el('eCnt').textContent = T.picked(picked.size);
+}
+el('ePpl').onchange = (e) => { const c = e.target; if (!c.dataset.id) return; if (c.checked) picked.add(c.dataset.id); else picked.delete(c.dataset.id); el('eCnt').textContent = T.picked(picked.size); };
+el('eQ').oninput = paintPeople;
+el('eAll').onclick = () => { const q = el('eQ').value.trim().toLowerCase(); people.filter(p => !q || p.name.toLowerCase().includes(q)).forEach(p => picked.add(p.id)); paintPeople(); };
+el('eNone').onclick = () => { picked.clear(); paintPeople(); };
+function openEdit(g){
+  editing = g || null;
+  el('eH').textContent = g ? T.eEdit : T.eNew;
+  el('eName').value = g ? g.name : '';
+  picked = new Set(g ? (g.members || []) : []);
+  el('eQ').value = ''; el('eMsg').textContent = '';
+  paintPeople(); show('eDlg', true);
+}
+el('newBtn').onclick = () => openEdit(null);
+el('eNo').onclick = () => show('eDlg', false);
+el('eGo').onclick = async () => {
+  const name = el('eName').value.trim();
+  if (!name) { el('eMsg').textContent = T.noName; return; }
+  if (!picked.size) { el('eMsg').textContent = T.noPpl; return; }
+  el('eGo').disabled = true;
+  try {
+    const r = await AL.sb.rpc('bc_group_save', { p_id: editing ? editing.id : null, p_name: name, p_links: Array.from(picked) });
+    const d = r && r.data;
+    if (!d || !d.ok) { el('eMsg').textContent = (d && d.error === 'too_many_groups') ? T.tooMany : ((r && r.error && r.error.message) || (d && d.error) || 'error'); return; }
+    show('eDlg', false); load();
+  } finally { el('eGo').disabled = false; }
+};
+
+/* ── 보내기 ── */
+let sendGroup = null, targets = [];
+async function openSend(g){
+  sendGroup = g; el('sH').textContent = T.sH(g.name); el('sMsg').textContent = ''; el('sTx').value = '';
+  el('sBarW').style.display = 'none'; el('sGo').style.display = ''; el('sGo').disabled = false; el('sTx').disabled = false;
+  const r = await AL.sb.rpc('bc_targets', { p_id: g.id });
+  targets = (r && r.data) || [];
+  const open = targets.filter(t => !t.locked).length;
+  el('sWho').textContent = open ? T.sWho(open, targets.length - open) : T.nobody;
+  el('sGo').disabled = !open;
+  show('sDlg', true); el('sTx').focus();
+}
+el('sNo').onclick = () => { if (!sendingNow) show('sDlg', false); };
+el('sGo').onclick = async () => {
+  const text = el('sTx').value.trim();
+  if (!text) { el('sMsg').textContent = T.noTx; return; }
+  if (!await AL.requirePlan()) return;
+  const list = targets.filter(t => !t.locked);
+  const skipped = targets.length - list.length;
+  sendingNow = true; el('sGo').disabled = true; el('sTx').disabled = true; el('sNo').disabled = true;
+  el('sBarW').style.display = 'block';
+  let ok = 0, fail = 0;
+  for (let i = 0; i < list.length; i++) {
+    el('sMsg').textContent = T.sending(i + 1, list.length);
+    try { await AL.callFn('alias-message-send', { linkId: list[i].link_id, text: text, enc: null, replyTo: null, expiresInHours: null }); ok++; }
+    catch (e) { console.warn('[bcast] 실패', list[i].link_id, e); fail++; }
+    el('sBar').style.width = Math.round((i + 1) * 100 / list.length) + '%';
+    await new Promise(r => setTimeout(r, 120));   // 서버를 한꺼번에 두드리지 않게
+  }
+  try { await AL.sb.rpc('bc_log_add', { p_id: sendGroup.id, p_sent: ok, p_skipped: skipped, p_failed: fail }); } catch (e) {}
+  sendingNow = false; el('sNo').disabled = false; el('sGo').style.display = 'none';
+  el('sMsg').textContent = T.done(ok, skipped, fail);
+  load();
+};
+
+const me = await AL.requireLogin();
+if (!me) return;
+await loadPeople();
+await load();
+if (AL.startAlerts) AL.startAlerts();
+})();
+</script>
+</body>
+</html>

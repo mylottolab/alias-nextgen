@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="alias_theme.css?v=20260927a">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20260927a"></script>
+<script src="alias_common.js?v=20261019d"></script>
 <script src="alias_call.js?v=20261019c"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
@@ -155,19 +155,26 @@ document.addEventListener("DOMContentLoaded", function(){
 
   <div id="twin" class="ok" data-t="cntSamePeer"></div>
 
-  <!-- 🔴 2026-10-01 — 1회용 임시연락처 입구와 [임시] 묶음
+  <!-- 🔴 2026-10-19 순서: 전화번호부 → 동시통보 → 임시연락처 (손님 요청)
+       🔴 2026-10-01 — 1회용 임시연락처 입구와 [임시] 묶음
        잠깐 쓸 연락처(중고거래 · 소개팅 · 매물)는 정식 연락처와 섞지 않고 따로 보입니다. -->
-  <a class="tmp-entry" id="tmpEntry" href="burum_temp.html">
-    <span class="tmp-ic">🎫</span>
-    <span class="tmp-tx"><b id="tmpEntryT"></b><small id="tmpEntryS"></small></span>
-    <span class="tmp-new" id="tmpNew"></span>
-  </a>
   <!-- 🔴 2026-10-18 — 부름번호 입구: 번호로 걸기 · 내 번호 · 좋은 번호 -->
   <a class="tmp-entry" id="bnEntry" href="alias_phone.html">
     <span class="tmp-ic">☎️</span>
     <span class="tmp-tx"><b id="bnEntryT">전화번호부 · 단축번호 · 부름번호</b><small id="bnEntryS">부름 연락처와 부름번호를 한곳에 · 번호로 걸기 · 내 번호 만들기</small></span>
   </a>
   <script>try{ if (window.AL && AL.lang === 'en') { document.getElementById('bnEntryT').textContent = 'Phone book · speed dial · Burum number'; document.getElementById('bnEntryS').textContent = 'Contacts and Burum numbers in one place · dial by number · get your number'; } }catch(e){}</script>
+  <!-- 🔴 2026-10-19 — 동시통보: 그룹을 미리 만들어 두고 한 번에 보내기 -->
+  <a class="tmp-entry" id="bcEntry" href="burum_bcast.html">
+    <span class="tmp-ic">📢</span>
+    <span class="tmp-tx"><b id="bcEntryT">동시통보</b><small id="bcEntryS">여러 사람에게 메시지 한 번에 · 그룹을 미리 만들어 두기</small></span>
+  </a>
+  <script>try{ if (window.AL && AL.lang === 'en') { document.getElementById('bcEntryT').textContent = 'Broadcast'; document.getElementById('bcEntryS').textContent = 'One message to many people · keep ready-made groups'; } }catch(e){}</script>
+  <a class="tmp-entry" id="tmpEntry" href="burum_temp.html">
+    <span class="tmp-ic">🎫</span>
+    <span class="tmp-tx"><b id="tmpEntryT"></b><small id="tmpEntryS"></small></span>
+    <span class="tmp-new" id="tmpNew"></span>
+  </a>
   <div class="tmp-group" id="tmpGroup" style="display:none;">
     <div class="tmp-gh" id="tmpGroupH"></div>
     <div id="tmpList"></div>
