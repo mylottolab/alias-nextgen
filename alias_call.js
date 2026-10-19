@@ -1564,7 +1564,7 @@ AL.recordUrl = async function(path){
    ⚠ 안전장치 — 소리 상자가 안 돌거나(아이폰이 멈춤), 키운 소리가 4초 동안
      완전히 0 이면 **원래 마이크로 바로 되돌립니다.** 통화가 무음이 되는 일은 없습니다.
    ⚠ 음소거는 그대로 됩니다(원래 마이크를 끄면 키운 소리도 0).
-   ⚠ 끄기 / 세기: localStorage 'burum_boost' = '0'(끔) · '1.5' · '2.5' · '3' · '4'(기본·최대)
+   ⚠ 끄기 / 세기: localStorage 'burum_boost' = '0'(끔) · '1.5' · '2.5' · '3' · '3.5'(기본) · '4'(최대)
    ===================================================================== */
 AL.boost = null;
 
@@ -1579,7 +1579,7 @@ AL.boostStop = function(){
 AL.boostSend = async function(){
   var b = null;
   try {
-    var lv = 4;
+    var lv = 3.5;
     try { var v = localStorage.getItem('burum_boost'); if (v !== null && v !== '') lv = parseFloat(v); } catch (e) {}
     if (!(lv > 1)) return;
     if (lv > 4) lv = 4;
