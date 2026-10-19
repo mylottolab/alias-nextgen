@@ -68,7 +68,7 @@ AL.STR = {
 
   /* 어디서나 돌아가는 길 */
   goHome:     { kr:'연락처', en:'Contacts' },
-  goMe:       { kr:'나', en:'You' },
+  goMe:       { kr:'나 ⚙️', en:'You ⚙️' },   // 🔴 2026-10-19 설정이 여기 있다는 표시
   /* 🔴 2026-09-16 — 로그아웃하면 이 폰으로 전화를 못 받습니다.
 
      기기 번호는 계정이 아니라 **폰에 붙습니다**(함정 96). 폰 하나는
@@ -84,7 +84,7 @@ AL.STR = {
   /* 하단 탭 */
   navContacts: { kr:'연락처', en:'Contacts' },
   navCalls:    { kr:'통화기록', en:'Calls' },
-  navMe:       { kr:'나', en:'You' },
+  navMe:       { kr:'나 ⚙️', en:'You ⚙️' },   // 🔴 2026-10-19 아래 탭 — 설정이 여기 있다는 표시
 
   /* 더하기 시트 */
   addInvite:   { kr:'초대 보내기', en:'Send an invite' },
@@ -97,7 +97,7 @@ AL.STR = {
   callsEmpty:  { kr:'아직 통화가 없습니다.\n통화 기능은 다음 단계에서 붙습니다.',
                  en:'No calls yet.\nCalling arrives in the next step.' },
   /* 나 */
-  meTitle:     { kr:'나', en:'You' },
+  meTitle:     { kr:'나 ⚙️ 설정', en:'You ⚙️ Settings' },
   meAliases:   { kr:'내 별칭', en:'Your aliases' },
   meAccount:   { kr:'계정', en:'Account' },
   meAccountId: { kr:'계정 번호', en:'Account ID' },
