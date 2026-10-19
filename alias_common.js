@@ -2302,6 +2302,81 @@ AL.showPlanBar = async function(where){
   bar.innerHTML = '<span>' + AL.esc(msg) + '</span>' +
     '<a href="alias_buy.html">' + AL.esc(btn) + '</a>';
   host.insertBefore(bar, host.firstChild);
+  /* 🔴 2026-10-20 — 끝났으면 [⏳ 하루 연장] (내일까지 연장하겠다고 약속하면 하루 더) */
+  if (cls === 'over' && p.state !== 'paid' && p.state !== 'trial') AL.graceButton(bar);
+};
+
+/* =====================================================================
+   🔴🔴 2026-10-20 — "하루 연장" (통신사의 납부 약속 · 정지 유예와 같은 제도)
+   이용권이 끝났을 때 "내일까지 연장(결제)하겠습니다" 에 동의하면 내일 밤 11:59 까지 그대로 씁니다.
+   30일에 한 번. 서버(plan_grace_take)가 다시 확인합니다.
+   ===================================================================== */
+AL.graceInfo = async function(){
+  try { var r = await AL.sb.rpc('plan_grace_info'); return (r && !r.error && r.data) || null; } catch (e) { return null; }
+};
+AL.graceButton = async function(host){
+  var g = await AL.graceInfo();
+  if (!g || !g.available || !host || host.querySelector('.graceBtn')) return;
+  var en = AL.lang === 'en';
+  var b = document.createElement('a');
+  b.href = '#'; b.className = 'graceBtn';
+  b.style.marginLeft = '6px';
+  b.textContent = en ? '⏳ 1 more day' : '⏳ 하루 연장';
+  b.addEventListener('click', function(e){ e.preventDefault(); AL.graceAsk(g); });
+  host.appendChild(b);
+};
+AL.graceAsk = function(g){
+  var en = AL.lang === 'en';
+  var until = g && g.until_if_taken ? new Date(g.until_if_taken) : null;
+  var day = until ? until.toLocaleDateString(en ? 'en-US' : 'ko-KR', { month: 'long', day: 'numeric', weekday: 'short' }) : (en ? 'tomorrow' : '내일');
+  var old = document.getElementById('graceBg'); if (old) old.remove();
+  var old2 = document.getElementById('graceBox'); if (old2) old2.remove();
+  var bg = document.createElement('div'); bg.id = 'graceBg';
+  bg.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9998';
+  var box = document.createElement('div'); box.id = 'graceBox';
+  box.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(400px,calc(100vw - 28px));z-index:9999;' +
+    'border-radius:18px;padding:18px 16px;background:var(--raise,#182231);color:var(--text,#DDE5F0);border:1px solid rgba(128,128,128,.4);box-sizing:border-box;word-break:keep-all;line-height:1.6';
+  box.innerHTML =
+    '<div style="font-size:18px;font-weight:900;margin:0 0 8px">⏳ ' + (en ? 'One more day' : '하루 연장') + '</div>' +
+    '<div style="font-size:14.5px;margin:0 0 12px">' + (en
+      ? 'Your plan has ended. If you promise to renew by <b>' + AL.esc(day) + '</b>, you can keep using everything until <b>11:59 pm that day</b>.'
+      : '이용권이 끝났습니다. <b>' + AL.esc(day) + '</b>까지 연장(결제)하겠다고 약속하시면, <b>그날 밤 11시 59분까지</b> 모든 기능을 그대로 쓰실 수 있습니다.') + '</div>' +
+    '<label style="display:flex;gap:10px;align-items:flex-start;padding:11px 12px;border-radius:12px;background:rgba(242,201,76,.12);border:1px solid rgba(242,201,76,.5);font-size:14.5px;font-weight:700;cursor:pointer">' +
+      '<input type="checkbox" id="graceAgree" style="width:20px;height:20px;margin:2px 0 0;flex:0 0 auto">' +
+      '<span>' + (en ? 'I will renew my plan by ' + AL.esc(day) + '.' : AL.esc(day) + '까지 이용권을 연장(결제)하겠습니다.') + '</span></label>' +
+    '<div style="font-size:12.5px;opacity:.75;margin:9px 2px 12px">' + (en
+      ? 'Available once every 30 days. If you don\'t renew, it simply ends after that day — no charge.'
+      : '30일에 한 번 쓸 수 있습니다. 연장하지 않으시면 그날이 지나 그대로 끝나며, 따로 돈이 나가지 않습니다.') + '</div>' +
+    '<div id="graceMsg" style="font-size:13.5px;min-height:18px;margin:0 0 8px"></div>' +
+    '<div style="display:flex;gap:8px">' +
+      '<button type="button" id="graceNo" style="flex:1;margin:0;padding:13px;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer;background:rgba(255,255,255,.07);color:inherit;border:1px solid rgba(128,128,128,.4)">' + (en ? 'Cancel' : '취소') + '</button>' +
+      '<button type="button" id="graceGo" style="flex:1.4;margin:0;padding:13px;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer;background:#F2C94C;color:#1b1b1b;border:none">' + (en ? 'Get 1 more day' : '하루 연장 받기') + '</button>' +
+    '</div>';
+  document.body.appendChild(bg); document.body.appendChild(box);
+  function close(){ bg.remove(); box.remove(); }
+  bg.addEventListener('click', close);
+  document.getElementById('graceNo').addEventListener('click', close);
+  document.getElementById('graceGo').addEventListener('click', async function(){
+    var msg = document.getElementById('graceMsg');
+    if (!document.getElementById('graceAgree').checked) { msg.textContent = en ? 'Please tick the box first.' : '먼저 위 칸에 체크해 주세요.'; return; }
+    this.disabled = true;
+    var r = null;
+    try { r = await AL.sb.rpc('plan_grace_take', { p_agree: true }); } catch (e) {}
+    var d = (r && r.data) || {};
+    if (!d.ok) {
+      this.disabled = false;
+      msg.textContent = d.error === 'used'
+        ? (en ? 'Already used in the last 30 days.' : '최근 30일 안에 이미 쓰셨습니다.') + (d.next_at ? (en ? ' Next: ' : ' 다음 가능: ') + new Date(d.next_at).toLocaleDateString(en ? 'en-US' : 'ko-KR') : '')
+        : d.error === 'not_expired' ? (en ? 'Your plan is still active.' : '이용권이 아직 살아 있습니다.')
+        : (en ? 'Could not do it. Please try again.' : '처리하지 못했습니다. 잠시 뒤 다시 해 주세요.');
+      return;
+    }
+    close();
+    try { AL._plan = null; await AL.myPlan(true); } catch (e) {}
+    alert(en ? '✅ You can use everything until ' + new Date(d.until).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + '. Please renew before then.'
+             : '✅ ' + new Date(d.until).toLocaleString('ko-KR', { month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + '까지 그대로 쓰실 수 있습니다. 그 전에 연장해 주세요.');
+    location.reload();
+  });
 };
 
 AL.needPlan = function(){
@@ -2326,6 +2401,16 @@ AL.needPlan = function(){
     '</div>';
   bg2.style.display = 'block';
   box2.style.display = 'block';
+  /* 🔴 2026-10-20 — 쓸 수 있으면 [⏳ 하루 연장] 도 */
+  (async function(){
+    var g = await AL.graceInfo();
+    if (!g || !g.available) return;
+    var fb = box2.querySelector('.fb'); if (!fb) return;
+    var a = document.createElement('a'); a.href = '#';
+    a.textContent = AL.lang === 'en' ? '⏳ 1 more day' : '⏳ 하루 연장';
+    a.addEventListener('click', function(e){ e.preventDefault(); bg2.style.display = 'none'; box2.style.display = 'none'; AL.graceAsk(g); });
+    fb.insertBefore(a, fb.lastChild);
+  })();
   document.getElementById('planNo').addEventListener('click', function(){
     bg2.style.display = 'none'; box2.style.display = 'none';
   });
