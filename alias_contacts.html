@@ -984,7 +984,7 @@ document.getElementById('addBg').addEventListener('click', function(){ showAdd(f
       '<a href="alias_requests.html" style="' + big + '"><span style="font-size:26px">📨</span><span><b style="font-size:15.5px">' + L('닉네임으로 연결 요청', 'Request by nickname') + '</b><br><small style="opacity:.75">' +
         L('상대 닉네임을 알면 바로 요청 · 상대가 수락하면 이어집니다', 'Know their nickname? Send a request — connected when they accept') + '</small></span></a>' +
       '<a href="alias_join.html" style="' + big + '"><span style="font-size:26px">📥</span><span><b style="font-size:15.5px">' + L('받은 초대 코드 넣기 · QR 찍기', 'Enter an invite code · scan QR') + '</b><br><small style="opacity:.75">' +
-        L('누군가에게 코드나 QR 을 받았다면 여기서', 'Got a code or QR from someone? Use it here') + '</small></span></a>' +
+        L('코드를 받았거나, QR 을 직접 찍거나, 사진 · 캡처로 받은 QR 도 여기서', 'A code, a QR to scan, or a QR photo / screenshot you received') + '</small></span></a>' +
       (nick ? '<div style="margin-top:10px;font-size:13.5px;line-height:1.6;opacity:.9">' + L('내 닉네임', 'My nickname') + ': <b id="wNick">' + AL.esc(nick) + '</b> ' +
         '<button type="button" id="wCopy" style="margin:0 0 0 4px;padding:4px 10px;border-radius:8px;font-size:12.5px;cursor:pointer;background:transparent;color:inherit;border:1px solid rgba(128,128,128,.45)">' + L('복사', 'Copy') + '</button>' +
         '<br><small style="opacity:.75">' + L('이 닉네임을 알려 주면, 상대가 나에게 연결 요청을 보낼 수 있어요. 요청이 오면 이 화면 맨 위에 바로 뜹니다.', 'Share it so people can send you a request — it shows up right here at the top.') + '</small></div>' : '') +

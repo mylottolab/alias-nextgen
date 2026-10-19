@@ -9,7 +9,7 @@
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="alias_common.js?v=20261019d"></script>
-<script src="alias_qr.js?v=20260927a"></script>
+<script src="alias_qr.js?v=20261019a"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -42,6 +42,8 @@ document.addEventListener("DOMContentLoaded", function(){
   <div id="formPart">
     <!-- 마주 보고 있으면 찍는 것이 가장 쉽고 안전합니다 -->
     <button class="btn" id="scanBtn" data-t="qrScan"></button>
+    <!-- 🔴 2026-10-19 — QR 을 사진 · 캡처로 받았을 때(내 폰 화면은 내 카메라로 못 찍으니까) -->
+    <button class="btn" id="photoBtn" type="button" style="margin-top:8px;background:transparent;border:1px solid rgba(128,128,128,.45);color:inherit">🖼️ 받은 QR 사진에서 읽기</button>
     <p class="qr-note" data-t="qrNote"></p>
 
     <div class="field">
@@ -208,6 +210,18 @@ document.getElementById('scanBtn').addEventListener('click', async function(){
   if (!code) { showErr(AL.t('errNotFound')); return; }
   document.getElementById('code').value = code;
   clearErr();
+  paintForRoom(await peekInvite(code));
+  join();
+});
+
+if (AL.lang === 'en') document.getElementById('photoBtn').textContent = '🖼️ Read a QR from a photo / screenshot';
+document.getElementById('photoBtn').addEventListener('click', async function(){
+  clearErr();
+  const raw = await AL.pickQrImage();
+  if (!raw) { showErr(AL.lang === 'en' ? 'Could not find a QR code in that picture. Try one where the QR is large and clear, or type the invite code below.' : '그 사진에서 QR 을 찾지 못했습니다. QR 이 크고 선명한 사진으로 다시 고르시거나, 아래에 초대 코드를 적어 주세요.'); return; }
+  const code = AL.codeFromScan(raw);
+  if (!code) { showErr(AL.t('errNotFound')); return; }
+  document.getElementById('code').value = code;
   paintForRoom(await peekInvite(code));
   join();
 });

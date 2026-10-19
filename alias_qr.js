@@ -143,6 +143,19 @@ AL.openScanner = function(){
     sheet.appendChild(wrap);
 
     // 닫기 단추 (아이폰은 바깥을 눌러 닫는 걸 잘 모릅니다)
+    /* 🔴 2026-10-19 — 받은 QR 사진으로 읽기 */
+    var ph = document.createElement('button'); ph.type = 'button'; ph.className = 'pk-go';
+    ph.style.cssText = 'width:100%;margin-top:10px';
+    ph.textContent = AL.lang === 'en' ? '🖼️ Read from a photo / screenshot' : '🖼️ 받은 QR 사진에서 읽기';
+    ph.addEventListener('click', async function(){
+      var got = await AL.pickQrImage();
+      if (got) { close(got); return; }
+      var n2 = document.createElement('p'); n2.className = 'pk-err';
+      n2.textContent = AL.lang === 'en' ? 'Could not find a QR code in that picture.' : '그 사진에서 QR 을 찾지 못했습니다. QR 이 크게 보이는 사진으로 다시 골라 주세요.';
+      sheet.insertBefore(n2, ph);
+    });
+    sheet.appendChild(ph);
+
     var cx = document.createElement('button'); cx.type = 'button'; cx.className = 'pk-go';
     cx.style.cssText = 'width:100%;margin-top:10px;background:transparent;border:1px solid var(--line,rgba(128,128,128,.4));color:inherit';
     cx.textContent = AL.lang === 'en' ? 'Close' : '닫기';
@@ -195,6 +208,66 @@ AL.openScanner = function(){
         }, 250);
       })
       .catch(fail);
+  });
+};
+
+/* ── 🔴 2026-10-19 사진(파일)에서 QR 읽기 ─────────────────────────────
+   왜  QR 을 카톡 · 문자 · 사진으로 받으면, 내 폰 화면을 내 폰 카메라로 찍을 수가 없습니다.
+   어떻게  사진첩에서 그 그림을 고르면 폰 안에서 바로 읽습니다(밖으로 아무것도 안 나감).
+       크기를 몇 가지로 바꿔 가며, 흑백이 뒤집힌 것까지 읽어 봅니다(캡처 · 축소된 그림 대비).
+   돌려주는 값: 읽은 글자(주소 또는 코드) · 못 읽으면 null */
+AL.pickQrImage = function(){
+  return new Promise(function(resolve){
+    var inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = 'image/*';
+    inp.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0';
+    document.body.appendChild(inp);
+    var settled = false;
+    function done(v){ if (settled) return; settled = true; try { inp.remove(); } catch (e) {} resolve(v); }
+    inp.addEventListener('change', async function(){
+      var f = inp.files && inp.files[0];
+      if (!f) { done(null); return; }
+      try { done(await AL.readQrFromFile(f)); } catch (e) { console.warn('[qr] 사진 읽기 실패', e); done(null); }
+    });
+    inp.click();
+  });
+};
+
+AL.readQrFromFile = function(file){
+  return new Promise(function(resolve){
+    var url = URL.createObjectURL(file);
+    var im = new Image();
+    im.onload = async function(){
+      try {
+        // ① 내장 해독기
+        if (typeof window.BarcodeDetector !== 'undefined') {
+          try {
+            var det = new BarcodeDetector({ formats: ['qr_code'] });
+            var f = await det.detect(im);
+            if (f && f.length) { URL.revokeObjectURL(url); resolve(f[0].rawValue); return; }
+          } catch (e) { /* 아래 jsQR 로 */ }
+        }
+        // ② jsQR — 크기를 바꿔 가며
+        var jsQR = await AL.loadJsQr();
+        var cv = document.createElement('canvas');
+        var ctx = cv.getContext('2d', { willReadFrequently: true });
+        var W = im.naturalWidth || im.width, H = im.naturalHeight || im.height;
+        var sizes = [1600, 1000, 700, 2400, 450];
+        for (var i = 0; i < sizes.length; i++) {
+          var sc = Math.min(1, sizes[i] / Math.max(W, H));
+          if (sizes[i] > Math.max(W, H) && i > 0) continue;
+          cv.width = Math.max(1, Math.round(W * sc)); cv.height = Math.max(1, Math.round(H * sc));
+          ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height);   // 투명 PNG 대비
+          ctx.drawImage(im, 0, 0, cv.width, cv.height);
+          var d = ctx.getImageData(0, 0, cv.width, cv.height);
+          var r = jsQR(d.data, d.width, d.height, { inversionAttempts: 'attemptBoth' });
+          if (r && r.data) { URL.revokeObjectURL(url); resolve(r.data); return; }
+        }
+      } catch (e) { console.warn('[qr]', e); }
+      URL.revokeObjectURL(url); resolve(null);
+    };
+    im.onerror = function(){ URL.revokeObjectURL(url); resolve(null); };
+    im.src = url;
   });
 };
 
