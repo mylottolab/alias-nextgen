@@ -104,8 +104,10 @@ window.AL = window.AL || {};
 
     if (S.showing !== vid) {
       S.showing = vid; S.paused = false; S.cur = 0;
-      var src = AL.ytEmbed(vid) + (S.autoplay ? '&autoplay=1' : '');
-      S.autoplay = false;
+      /* 아이폰 1.4: 소리 있는 자동 재생이 막혀 있어 → 소리 끈 채 자동 재생 + [🔊 소리 켜기] 한 번 (1.5 는 그냥 재생) */
+      var iosMute = S.autoplay && /iPhone|iPad|iPod/.test(navigator.userAgent || '') && !(window.AliasNative && window.AliasNative.audioV2);
+      var src = AL.ytEmbed(vid) + (S.autoplay ? '&autoplay=1' : '') + (iosMute ? '&mute=1' : '');
+      S.autoplay = false; S.muted = iosMute;
       h.box.innerHTML = '<div class="yf"><iframe src="' + src + '" title="YouTube" ' +
         'allow="accelerometer; autoplay; encrypted-media; picture-in-picture; web-share" allowfullscreen></iframe></div><div class="yc"></div>';
       /* 재생 위치를 받아 두려고 유튜브 창에 "알려 달라" 고 말해 둡니다 */
@@ -124,6 +126,7 @@ window.AL = window.AL || {};
     ctl.innerHTML =
       '<span class="yl">' + (isLocal ? L('📺 나만 보기', '📺 Only me') : L('👥 같이 보기', '👥 Shared')) +
         (TITLES[vid] ? ' · ' + AL.esc(TITLES[vid].title).slice(0, 40) : '') + '</span>' +
+      (S.muted ? '<button data-y="unmute" style="background:#FF4D4D;border-color:#FF4D4D;color:#fff">🔊 ' + L('소리 켜기', 'Sound on') + '</button>' : '') +
       '<button data-y="pp">' + (S.paused ? L('▶ 재생', '▶ Play') : L('Ⅱ 멈춤', 'Ⅱ Pause')) + '</button>' +
       (!isLocal ? '<button data-y="sync">🔄 ' + L('같이 맞추기', 'Sync all') + '</button>' : '') +
       '<button data-y="size">' + (S.big ? L('작게', 'Smaller') : L('크게', 'Bigger')) + '</button>' +
@@ -135,6 +138,7 @@ window.AL = window.AL || {};
       var a = b.dataset.y;
       if (a === 'pp') { S.paused = !S.paused; cmd(S.paused ? 'pauseVideo' : 'playVideo'); paint(); }
       if (a === 'size') { S.big = !S.big; paint(); }
+      if (a === 'unmute') { cmd('unMute'); cmd('playVideo'); S.muted = false; S.paused = false; paint(); }
       if (a === 'sync') {
         bc({ action: 'sync', video: vid, time: S.cur || 0, at: Date.now(), by: S.sideId, name: S.name });
         if (S.paused) { S.paused = false; cmd('playVideo'); paint(); }
