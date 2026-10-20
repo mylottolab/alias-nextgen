@@ -1583,6 +1583,14 @@ AL.boostSend = async function(){
     try { var v = localStorage.getItem('burum_boost'); if (v !== null && v !== '') lv = parseFloat(v); } catch (e) {}
     if (!(lv > 1)) return;
     if (lv > 4) lv = 4;
+    /* 🔴🔴 2026-10-20 — 아이폰에서는 끕니다. 아이폰(WebKit)에서 키운 소리가 상대(안드로이드)에게 **무음**으로 가는
+       경우가 생겼습니다(벨 · 화면은 정상, 아이폰 목소리만 안 들림). 아이폰은 원래 마이크 그대로 보냅니다.
+       안드로이드에서 보내는 목소리는 계속 키웁니다. 'burum_boost_ios'='1' 이면 시험용으로 켭니다. */
+    var isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) ||
+                !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.aliasIOS);
+    var iosOn = false; try { iosOn = localStorage.getItem('burum_boost_ios') === '1'; } catch (e) {}
+    if (isIOS && !iosOn) return;
     var Ctx = window.AudioContext || window.webkitAudioContext;
     if (!Ctx || !window.MediaStream || !AL.call.pc || !AL.call.local) return;
     var raw = AL.call.local.getAudioTracks()[0];
