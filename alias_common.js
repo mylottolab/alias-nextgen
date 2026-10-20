@@ -1140,6 +1140,7 @@ AL.STR = {
 
   /* 🔴 2026-09-19 — 또렷하게 읽히는 색 셋 */
   thWhite:   { kr:'흰색', en:'White' },
+  thSky:     { kr:'흰색 · 하늘 대화창', en:'White · sky chat' },
   thCrisp:   { kr:'또렷', en:'Crisp' },
   thCream:   { kr:'크림', en:'Cream' },
   thSlate:   { kr:'진회', en:'Slate' },
@@ -3648,7 +3649,7 @@ AL.applyTheme = function(t){
       ? 'light' : 'dark';
   }
   /* 🔴 2026-10-21 흰색은 늘 흰 바탕(주간)으로 */
-  if (t.color === 'white') mode = 'light';
+  if (t.color === 'white' || t.color === 'sky') mode = 'light';
   var el = document.documentElement;
   el.setAttribute('data-mode', mode);
   el.setAttribute('data-color', t.color);
@@ -3888,7 +3889,7 @@ AL.THEME_OPTS = {
   /* 🔴 2026-09-19 — 또렷하게 읽히는 셋을 **맨 앞**에 둡니다.
      "고를 만한 색이 없다" 는 말씀은 대개 뒤쪽까지 안 보셔서 나옵니다.
      잘 읽히는 것이 먼저 보여야 합니다. */
-  color:  [['white','thWhite'], ['crisp','thCrisp'], ['cream','thCream'], ['slate','thSlate'],
+  color:  [['sky','thSky'], ['white','thWhite'], ['crisp','thCrisp'], ['cream','thCream'], ['slate','thSlate'],
            ['midnight','thMidnight'], ['paper','thPaper'], ['forest','thForest'],
            ['dusk','thDusk'], ['ink','thInk'],
            ['pitch','thPitch'], ['abyss','thAbyss'],
@@ -4495,7 +4496,9 @@ AL.topBar = async function(){
     if (!acctOnly) {
     /* ☀️ / 🌙 — 지금 화면의 반대로 바꿉니다(설정의 "모드" 와 같은 곳에 저장) */
     var dark = document.documentElement.getAttribute('data-mode') !== 'light';
-    bar.appendChild(mk(dark ? (en ? '☀️ Day' : '☀️ 주간') : (en ? '🌙 Night' : '🌙 야간'), async function(){
+    /* 🔴 2026-10-21 흰색 · 하늘 대화창은 늘 흰 바탕이라 주간/야간 단추를 숨깁니다 */
+    var fixedLight = ['white', 'sky'].indexOf(document.documentElement.getAttribute('data-color')) >= 0;
+    if (!fixedLight) bar.appendChild(mk(dark ? (en ? '☀️ Day' : '☀️ 주간') : (en ? '🌙 Night' : '🌙 야간'), async function(){
       try {
         var t = AL.readThemeCache();
         t.mode = (document.documentElement.getAttribute('data-mode') === 'light') ? 'dark' : 'light';

@@ -658,3 +658,30 @@ html[data-mode="light"] [style*="--fh"]{
   background-color:hsla(var(--fh),60%,50%,.16) !important;
   border-color:hsla(var(--fh),55%,40%,.45) !important;
 }
+
+/* =====================================================================
+   🔴 2026-10-21 흰색 · 하늘 대화창 (손님 요청 — 널리 익숙한 메신저 배색)
+   목록 화면(연락처 · 전화번호부 · 나 …)  흰 바탕 #FFFFFF · 검정 글씨
+   대화창                                  회색빛 하늘색 #B2C7D9
+     받은 말풍선  흰색 #FFFFFF            보낸 말풍선  노랑 #FFE45C (글씨 #191919)
+     위 · 아래 줄  같은 하늘색 / 입력칸 흰색    시각 · 날짜 글씨 #4A5866
+   ===================================================================== */
+html[data-color="sky"][data-mode="light"], html[data-color="sky"][data-mode="dark"]{
+  --ink:#FFFFFF; --raise:#FFFFFF; --raise2:#F2F3F5; --line:#D5D9DE;
+  --text:#191919; --dim:#3C4650; --faint:#5A6470;
+  --steel:#2F6FB0; --paper:#191919; --paper-ink:#FFFFFF; --bad:#C0392B;
+}
+html[data-color="sky"] body.chat{
+  --ink:#B2C7D9; --raise:#B2C7D9; --raise2:#A3B9CD; --line:#9CB1C5;
+  --dim:#2E3A46; --faint:#4A5866;
+  background:#B2C7D9;
+}
+html[data-color="sky"] body.chat .chat-top{ background:#B2C7D9; border-bottom-color:transparent; }
+html[data-color="sky"] body.chat .chat-body{ background:#B2C7D9; }
+html[data-color="sky"] body.chat .chat-foot{ background:#FFFFFF; border-top:1px solid #D5D9DE; }
+html[data-color="sky"] body.chat .chat-foot textarea{ background:#F2F3F5; color:#191919; border-color:#E1E4E8; }
+html[data-color="sky"] body.chat .chat-foot textarea::placeholder{ color:#8A939C; }
+html[data-color="sky"] body.chat .msg.in .bub{ background:#FFFFFF; color:#191919; border-color:transparent; }
+html[data-color="sky"] body.chat .msg.out .bub{ background:#FFE45C; color:#191919; border-color:transparent; }
+html[data-color="sky"] body.chat .daysep{ color:#3C4A58; }
+.sw-sky .dot{ background:linear-gradient(90deg,#FFFFFF 50%,#B2C7D9 50%); box-shadow:inset 0 0 0 1px #9AA3AE; }
