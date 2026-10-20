@@ -96,8 +96,10 @@ details summary{ cursor:pointer; font-weight:800; font-size:15px; }
 <script>
 const el = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
-const ytId = (t) => { const m = String(t || '').match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:[^ ]*&)?v=|embed\/|shorts\/|live\/))([A-Za-z0-9_-]{11})/); return m ? m[1] : null; };
-const thumb = (v) => 'https://i.ytimg.com/vi/' + v + '/mqdefault.jpg';
+const ytId = (t) => { const m = String(t || '').match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:[^ ]*&)?v=|embed\/|shorts\/|live\/))([A-Za-z0-9_-]{11})/); if (m) return m[1];
+  const l = String(t || '').match(/youtube\.com\/(?:playlist|watch)\?(?:[^ ]*&)?list=([A-Za-z0-9_-]{10,64})/); return l ? 'L:' + l[1] : null; };
+const thumb = (v) => v.indexOf('L:') === 0 ? 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 54"><rect width="96" height="54" fill="#300"/><text x="48" y="34" font-size="18" text-anchor="middle" fill="#fff">▶☰</text></svg>') : 'https://i.ytimg.com/vi/' + v + '/mqdefault.jpg';
+const watch = (v) => v.indexOf('L:') === 0 ? 'https://www.youtube.com/playlist?list=' + v.slice(2) : 'https://youtu.be/' + v;
 function showErr(t){ el('err').textContent = t; el('err').style.display = t ? 'block' : 'none'; }
 let cats = [], items = [], prev = [], filter = '';
 const catOpts = (sel) => cats.map((c) => '<option value="' + esc(c.key) + '"' + (c.key === sel ? ' selected' : '') + '>' + esc(c.name) + (c.active ? '' : ' (꺼짐)') + '</option>').join('');
@@ -105,7 +107,7 @@ const catName = (k) => (cats.find((c) => c.key === k) || {}).name || k || '-';
 
 /* ── 유튜브 공개 정보(oEmbed): 제목 · 채널 이름 ── */
 async function meta(v){
-  const u = encodeURIComponent('https://www.youtube.com/watch?v=' + v);
+  const u = encodeURIComponent(watch(v));
   for (const src of ['https://www.youtube.com/oembed?format=json&url=' + u, 'https://noembed.com/embed?url=' + u]) {
     try {
       const r = await fetch(src); if (!r.ok) continue;
@@ -183,7 +185,7 @@ function download(name, rows){
 el('sample').onclick = () => download('추천영상_견본.csv', [['주소', '제목', '가수', '갈래'],
   ['https://youtu.be/xxxxxxxxxxx', '', '', '발라드'], ['https://www.youtube.com/watch?v=yyyyyyyyyyy', '노래 제목', '가수 이름', '트로트']]);
 el('dl').onclick = () => download('추천영상_' + new Date().toISOString().slice(0, 10) + '.csv',
-  [['주소', '제목', '가수', '갈래', '켜짐']].concat(items.map((x) => ['https://youtu.be/' + x.video_id, x.title, x.artist || '', catName(x.cat), x.active ? 'Y' : 'N'])));
+  [['주소', '제목', '가수', '갈래', '켜짐']].concat(items.map((x) => [watch(x.video_id), x.title, x.artist || '', catName(x.cat), x.active ? 'Y' : 'N'])));
 
 /* ── 목록 ── */
 function paintFilter(){
@@ -199,7 +201,7 @@ function paintList(){
   el('cnt').textContent = '(켜진 영상 ' + items.filter((x) => x.active).length + ' / 전체 ' + items.length + ')';
   el('list').innerHTML = list.length ? list.map((x) =>
     '<tr class="' + (x.active ? '' : 'off') + '" data-id="' + x.id + '">' +
-    '<td><a href="https://youtu.be/' + x.video_id + '" target="_blank" rel="noopener"><img src="' + thumb(x.video_id) + '" alt=""></a></td>' +
+    '<td><a href="' + watch(x.video_id) + '" target="_blank" rel="noopener"><img src="' + thumb(x.video_id) + '" alt=""></a></td>' +
     '<td><input type="text" data-k="title" value="' + esc(x.title) + '"></td>' +
     '<td><input type="text" data-k="artist" value="' + esc(x.artist || '') + '"></td>' +
     '<td><select data-k="cat">' + catOpts(x.cat) + '</select></td>' +

@@ -26,11 +26,20 @@ window.AL = window.AL || {};
   var en = function(){ return AL.lang === 'en'; };
   var L = function(k, e){ return en() ? e : k; };
 
+  /* 영상이면 11자리 번호, 재생목록(앨범)이면 'L:목록번호' — 🔴 2026-10-20 재생목록도 됩니다 */
   AL.ytId = function(text){
     if (!text) return null;
     var m = String(text).match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:[^ ]*&)?v=|embed\/|shorts\/|live\/))([A-Za-z0-9_-]{11})/);
-    return m ? m[1] : null;
+    if (m) return m[1];
+    var l = String(text).match(/youtube\.com\/(?:playlist|watch)\?(?:[^ ]*&)?list=([A-Za-z0-9_-]{10,64})/);
+    return l ? 'L:' + l[1] : null;
   };
+  AL.ytEmbed = function(v){
+    return v.indexOf('L:') === 0
+      ? 'https://www.youtube.com/embed/videoseries?list=' + v.slice(2) + '&enablejsapi=1&playsinline=1&rel=0'
+      : 'https://www.youtube.com/embed/' + v + '?enablejsapi=1&playsinline=1&rel=0&modestbranding=1';
+  };
+  AL.ytWatch = function(v){ return v.indexOf('L:') === 0 ? 'https://www.youtube.com/playlist?list=' + v.slice(2) : 'https://www.youtube.com/watch?v=' + v; };
 
   function css(){
     if (document.getElementById('ytCss')) return;
@@ -95,7 +104,7 @@ window.AL = window.AL || {};
 
     if (S.showing !== vid) {
       S.showing = vid; S.paused = false;
-      var src = 'https://www.youtube.com/embed/' + vid + '?enablejsapi=1&playsinline=1&rel=0&modestbranding=1';
+      var src = AL.ytEmbed(vid);
       h.box.innerHTML = '<div class="yf"><iframe src="' + src + '" title="YouTube" ' +
         'allow="accelerometer; autoplay; encrypted-media; picture-in-picture; web-share" allowfullscreen></iframe></div><div class="yc"></div>';
     }
@@ -118,7 +127,7 @@ window.AL = window.AL || {};
       var a = b.dataset.y;
       if (a === 'pp') { S.paused = !S.paused; cmd(S.paused ? 'pauseVideo' : 'playVideo'); paint(); }
       if (a === 'size') { S.big = !S.big; paint(); }
-      if (a === 'app') { cmd('pauseVideo'); S.paused = true; paint(); window.open('https://www.youtube.com/watch?v=' + vid, '_blank'); }
+      if (a === 'app') { cmd('pauseVideo'); S.paused = true; paint(); window.open(AL.ytWatch(vid), '_blank'); }
       if (a === 'hide') {
         if (isLocal) { S.local = null; }
         else setHidden(vid);
@@ -182,7 +191,7 @@ window.AL = window.AL || {};
     LIST.forEach(function(x){ TITLES[x.video_id] = { title: x.title, artist: x.artist }; });
     return LIST;
   }
-  function thumb(v){ return 'https://i.ytimg.com/vi/' + v + '/mqdefault.jpg'; }
+  function thumb(v){ return v.indexOf('L:') === 0 ? 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 54"><rect width="96" height="54" fill="#300"/><text x="48" y="34" font-size="18" text-anchor="middle" fill="#fff">▶☰</text></svg>') : 'https://i.ytimg.com/vi/' + v + '/mqdefault.jpg'; }
 
   /* [📺 영상] — 링크 붙여넣기 · 최근 · 추천 */
   AL.ytPicker = async function(){
@@ -278,7 +287,7 @@ window.AL = window.AL || {};
   AL.yt = {
     btn: function(text){
       var v = AL.ytId(text);
-      return v ? '<br><button type="button" class="ytpin" data-ytv="' + v + '">📺 ' + L('위에 띄우기', 'Pin above chat') + '</button>' : '';
+      return v ? '<br><button type="button" class="ytpin" data-ytv="' + v + '">📺 ' + (v.indexOf('L:') === 0 ? L('재생목록 위에 띄우기', 'Pin playlist') : L('위에 띄우기', 'Pin above chat')) + '</button>' : '';
     },
     init: function(o){
       S.linkId = o.linkId; S.sideId = o.sideId; S.name = o.name || ''; S.locked = !!o.locked;
