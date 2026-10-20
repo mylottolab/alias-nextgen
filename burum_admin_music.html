@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>부름 관리자 — 배경음</title>
+<script src="alias_config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="alias_common.js?v=20261020a"></script>
+<style>
+/* 🔴 2026-10-20 — 회사가 고른 배경음(gallery_music) 관리. 부름 · 에일리어스콜이 같은 목록을 씁니다. */
+:root{ --bg:#F4F6F8; --card:#FFFFFF; --ink:#16212E; --soft:#5A6878; --line:#DDE3EA; --acc:#2F5E92; --tint:#EEF3FA; --bad:#B4412F; --ok:#2E7D4F; }
+*{ box-sizing:border-box; }
+body{ margin:0; background:var(--bg); color:var(--ink); font-family:system-ui,-apple-system,'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif; }
+header{ background:var(--acc); color:#fff; padding:16px 20px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+header h1{ margin:0; font-size:19px; }
+header a{ color:#fff; font-size:13px; font-weight:700; background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.35); border-radius:8px; padding:7px 12px; text-decoration:none; }
+header a:first-of-type{ margin-left:auto; }
+main{ max-width:1000px; margin:0 auto; padding:18px 16px 60px; }
+.card{ background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:16px; }
+.card h2{ margin:0 0 8px; font-size:16px; }
+.note{ font-size:13px; color:var(--soft); line-height:1.65; margin:0 0 10px; word-break:keep-all; }
+#drop{ border:2px dashed #9DB3CC; border-radius:14px; padding:26px 14px; text-align:center; color:var(--soft); font-size:14.5px; cursor:pointer; background:var(--tint); }
+#drop.on{ border-color:var(--acc); background:#E2ECF8; }
+.up{ display:grid; grid-template-columns:1.6fr 1fr 1.1fr auto; gap:8px; align-items:center; padding:9px 0; border-bottom:1px solid var(--line); font-size:13.5px; }
+.up input, .up select, td input, td select{ width:100%; border:1px solid var(--line); border-radius:8px; padding:7px 8px; font:inherit; font-size:13.5px; background:#fff; }
+.up .st{ font-size:12.5px; white-space:nowrap; }
+.btn{ border:none; border-radius:10px; padding:10px 16px; font-size:14px; font-weight:800; cursor:pointer; background:var(--acc); color:#fff; }
+.btn.ghost{ background:#EEF1F4; color:var(--ink); }
+.bar{ display:flex; flex-wrap:wrap; gap:6px; margin:0 0 10px; }
+.bar button{ border:1px solid var(--line); background:var(--card); border-radius:999px; padding:7px 12px; font-size:13px; font-weight:600; cursor:pointer; }
+.bar button.on{ background:var(--acc); color:#fff; border-color:var(--acc); }
+table{ width:100%; border-collapse:collapse; font-size:13.5px; }
+th, td{ padding:8px 6px; border-bottom:1px solid var(--line); text-align:left; vertical-align:middle; }
+th{ font-size:12px; color:var(--soft); white-space:nowrap; }
+tr.off td{ opacity:.5; }
+td button{ border:none; border-radius:8px; padding:6px 10px; font-size:12.5px; font-weight:700; cursor:pointer; background:#EEF1F4; }
+td button.bad{ background:#FBE9E6; color:var(--bad); }
+.err{ background:#FDECEA; color:var(--bad); border-radius:10px; padding:12px 14px; margin-bottom:14px; display:none; font-size:13.5px; }
+.cnt{ font-size:12.5px; color:var(--soft); }
+@media (max-width:640px){ .up{ grid-template-columns:1fr 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎵 배경음 관리</h1>
+  <a href="burum_admin_stats.html">📊 통계</a>
+  <a href="burum_admin_numbers.html">🔢 번호 · 🎁 선물</a>
+</header>
+<main>
+  <div class="err" id="err"></div>
+
+  <div class="card">
+    <h2>곡 올리기</h2>
+    <p class="note">
+      저작권 걱정 없는 곡(예: <b>Pixabay Music</b>)만 올려 주세요. 올린 곡은 <b>부름</b>(갤러리 배경음 · 같이 듣기)과 <b>에일리어스콜</b>에서 함께 고를 수 있습니다.<br>
+      파일 이름 앞에 갈래를 붙이면 자동으로 골라집니다 — 예: <b>축하_happy-day.mp3</b>, <b>응원_rise-up.mp3</b>, <b>반려_soft-piano.mp3</b><br>
+      ⚠ 갈래마다 5~10곡, 모두 50~80곡 정도가 알맞습니다(픽사베이는 대량 수집을 금지합니다). 한 곡 15MB 까지.
+    </p>
+    <div id="drop">여기에 mp3 파일을 끌어다 놓거나 <b>눌러서 고르세요</b> (여러 개 가능)</div>
+    <input type="file" id="pick" accept="audio/mpeg,audio/mp3,audio/mp4,audio/aac,audio/x-m4a,.mp3,.m4a" multiple style="display:none">
+    <div id="queue"></div>
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+      <button class="btn" id="go" style="display:none">모두 올리기</button>
+      <button class="btn ghost" id="clear" style="display:none">비우기</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>올라간 곡 <span class="cnt" id="cnt"></span></h2>
+    <div class="bar" id="moods"></div>
+    <div style="overflow-x:auto"><table>
+      <thead><tr><th>듣기</th><th>제목</th><th>만든이</th><th>갈래</th><th>길이</th><th>순서</th><th>켜짐</th><th></th></tr></thead>
+      <tbody id="list"><tr><td colspan="8">불러오는 중…</td></tr></tbody>
+    </table></div>
+  </div>
+</main>
+
+<script>
+const el = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+const MOODS = [['celebration','축하 · 기쁨'],['mourning','애도 · 추모'],['breakup','이별 · 슬픔'],['encouragement','건승 · 응원'],
+               ['pets','반려동물 휴식'],['bright','상쾌 · 밝음'],['dark','어두움 · 고독'],['moving','이사 · 새 출발'],['unknown','테마불명']];
+const PREFIX = { '축하':'celebration','기쁨':'celebration','추모':'mourning','애도':'mourning','이별':'breakup','슬픔':'breakup',
+                 '응원':'encouragement','건승':'encouragement','반려':'pets','반려동물':'pets','밝음':'bright','상쾌':'bright','밝은':'bright',
+                 '어두움':'dark','고독':'dark','어두운':'dark','이사':'moving','새출발':'moving','출발':'moving','기타':'unknown' };
+const moodName = (k) => (MOODS.find((m) => m[0] === k) || [k, k || '-'])[1];
+const moodOpts = (sel) => MOODS.map((m) => '<option value="' + m[0] + '"' + (m[0] === sel ? ' selected' : '') + '>' + m[1] + '</option>').join('');
+function showErr(t){ el('err').textContent = t; el('err').style.display = t ? 'block' : 'none'; }
+const mmss = (s) => s ? Math.floor(s / 60) + ':' + String(Math.round(s % 60)).padStart(2, '0') : '-';
+
+/* ── 올리기 ── */
+let queue = [];
+function guess(name){
+  let base = name.replace(/\.[^.]+$/, '');
+  let mood = 'unknown';
+  const m = base.match(/^([^_\-\s]+)[_\-\s]+(.*)$/);
+  if (m && PREFIX[m[1]]) { mood = PREFIX[m[1]]; base = m[2]; }
+  else if (m && MOODS.some((x) => x[0] === m[1])) { mood = m[1]; base = m[2]; }
+  base = base.replace(/[_\-]+/g, ' ').replace(/\s+\d{4,}$/, '').trim();
+  const title = base.replace(/\b\w/g, (c) => c.toUpperCase()) || name;
+  return { title, mood };
+}
+function duration(file){
+  return new Promise((res) => {
+    const a = new Audio(); const u = URL.createObjectURL(file);
+    a.preload = 'metadata'; a.src = u;
+    a.onloadedmetadata = () => { URL.revokeObjectURL(u); res(isFinite(a.duration) ? Math.round(a.duration) : null); };
+    a.onerror = () => { URL.revokeObjectURL(u); res(null); };
+    setTimeout(() => res(null), 5000);
+  });
+}
+async function addFiles(files){
+  for (const f of files) {
+    if (!/audio|mpeg|mp3|m4a|aac/i.test(f.type + f.name)) continue;
+    if (f.size > 15 * 1024 * 1024) { alert(f.name + ' — 15MB 가 넘어 뺐습니다.'); continue; }
+    const g = guess(f.name);
+    queue.push({ file: f, title: g.title, mood: g.mood, artist: 'Pixabay', secs: await duration(f), st: '대기' });
+  }
+  paintQueue();
+}
+function paintQueue(){
+  el('queue').innerHTML = queue.map((q, i) =>
+    '<div class="up"><input data-i="' + i + '" data-k="title" value="' + esc(q.title) + '">' +
+    '<input data-i="' + i + '" data-k="artist" value="' + esc(q.artist) + '" placeholder="만든이">' +
+    '<select data-i="' + i + '" data-k="mood">' + moodOpts(q.mood) + '</select>' +
+    '<span class="st">' + mmss(q.secs) + ' · ' + esc(q.st) + '</span></div>').join('');
+  const has = queue.some((q) => q.st === '대기' || q.st === '실패');
+  el('go').style.display = has ? '' : 'none'; el('clear').style.display = queue.length ? '' : 'none';
+}
+el('queue').addEventListener('input', (e) => { const t = e.target; if (t.dataset.i == null) return; queue[+t.dataset.i][t.dataset.k] = t.value; });
+el('drop').onclick = () => el('pick').click();
+el('pick').onchange = () => { addFiles(Array.from(el('pick').files)); el('pick').value = ''; };
+['dragenter','dragover'].forEach((ev) => el('drop').addEventListener(ev, (e) => { e.preventDefault(); el('drop').classList.add('on'); }));
+['dragleave','drop'].forEach((ev) => el('drop').addEventListener(ev, (e) => { e.preventDefault(); el('drop').classList.remove('on'); }));
+el('drop').addEventListener('drop', (e) => addFiles(Array.from(e.dataTransfer.files || [])));
+el('clear').onclick = () => { queue = []; paintQueue(); };
+el('go').onclick = async () => {
+  el('go').disabled = true;
+  for (const q of queue) {
+    if (q.st !== '대기' && q.st !== '실패') continue;
+    q.st = '올리는 중…'; paintQueue();
+    const ext = (q.file.name.match(/\.[a-z0-9]+$/i) || ['.mp3'])[0].toLowerCase();
+    const safe = (q.title || 'song').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'song';
+    const path = 'pixabay/' + q.mood + '/' + Date.now().toString(36) + '-' + safe + ext;
+    const up = await AL.sb.storage.from('alias-music').upload(path, q.file, { contentType: q.file.type || 'audio/mpeg', upsert: false });
+    if (up.error) { q.st = '실패: ' + (up.error.message || ''); paintQueue(); continue; }
+    const r = await AL.sb.rpc('admin_music_add', { p_title: q.title, p_artist: q.artist, p_path: path, p_mood: q.mood,
+                                                   p_license: 'Pixabay Content License', p_seconds: q.secs, p_source: null });
+    if (r.error || !(r.data && r.data.ok)) {
+      q.st = '실패: ' + ((r.error && r.error.message) || 'DB');
+      try { await AL.sb.storage.from('alias-music').remove([path]); } catch (e) {}
+    } else q.st = '완료 ✓';
+    paintQueue();
+  }
+  el('go').disabled = false;
+  load();
+};
+
+/* ── 목록 ── */
+let rows = [], filter = '';
+function paintMoods(){
+  const n = (k) => rows.filter((r) => !k || r.mood === k).length;
+  el('moods').innerHTML = '<button data-m="" class="' + (filter === '' ? 'on' : '') + '">전체 ' + n('') + '</button>' +
+    MOODS.map((m) => '<button data-m="' + m[0] + '" class="' + (filter === m[0] ? 'on' : '') + '">' + m[1] + ' ' + n(m[0]) + '</button>').join('');
+}
+el('moods').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; filter = b.dataset.m; paintMoods(); paintList(); };
+function paintList(){
+  const list = rows.filter((r) => !filter || r.mood === filter);
+  el('cnt').textContent = '(켜진 곡 ' + rows.filter((r) => r.is_active).length + ' / 전체 ' + rows.length + ')';
+  el('list').innerHTML = list.length ? list.map((r) =>
+    '<tr class="' + (r.is_active ? '' : 'off') + '" data-id="' + r.id + '">' +
+    '<td><button data-play="' + esc(r.path) + '">▶</button></td>' +
+    '<td><input data-k="title" value="' + esc(r.title) + '"></td>' +
+    '<td><input data-k="artist" value="' + esc(r.artist || '') + '" style="width:110px"></td>' +
+    '<td><select data-k="mood">' + moodOpts(r.mood) + '</select></td>' +
+    '<td>' + mmss(r.seconds) + '</td>' +
+    '<td><input data-k="sort" type="number" value="' + (r.sort == null ? 100 : r.sort) + '" style="width:62px"></td>' +
+    '<td><input data-k="active" type="checkbox"' + (r.is_active ? ' checked' : '') + ' style="width:auto"></td>' +
+    '<td><button class="bad" data-del="1">빼기</button></td></tr>').join('')
+    : '<tr><td colspan="8" class="cnt">아직 곡이 없습니다. 위에서 올려 주세요.</td></tr>';
+}
+let player = null;
+el('list').addEventListener('click', async (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  const tr = b.closest('tr');
+  if (b.dataset.play) {
+    if (player && !player.paused && player.dataset.p === b.dataset.play) { player.pause(); b.textContent = '▶'; return; }
+    if (player) player.pause();
+    document.querySelectorAll('[data-play]').forEach((x) => x.textContent = '▶');
+    player = new Audio(AL.musicUrl(b.dataset.play)); player.dataset.p = b.dataset.play; player.play(); b.textContent = '⏸';
+    player.onended = () => { b.textContent = '▶'; };
+  }
+  if (b.dataset.del) {
+    const r = rows.find((x) => x.id === tr.dataset.id);
+    if (!confirm('"' + r.title + '" 을(를) 뺄까요?\n이미 어느 방에서 틀고 있으면 지우지 않고 "끄기" 만 합니다.')) return;
+    const res = await AL.sb.rpc('admin_music_delete', { p_id: r.id });
+    const d = res.data || {};
+    if (d.deleted && d.path) { try { await AL.sb.storage.from('alias-music').remove([d.path]); } catch (e2) {} }
+    if (d.hidden) alert('쓰고 있는 방이 있어 끄기만 했습니다.');
+    load();
+  }
+});
+el('list').addEventListener('change', async (e) => {
+  const t = e.target, tr = t.closest('tr'); if (!tr) return;
+  const g = (k) => tr.querySelector('[data-k="' + k + '"]');
+  const res = await AL.sb.rpc('admin_music_update', { p_id: tr.dataset.id, p_title: g('title').value, p_artist: g('artist').value,
+    p_mood: g('mood').value, p_active: g('active').checked, p_sort: parseInt(g('sort').value, 10) || 100 });
+  if (res.error) { showErr('저장하지 못했습니다: ' + res.error.message); return; }
+  tr.classList.toggle('off', !g('active').checked);
+  const r = rows.find((x) => x.id === tr.dataset.id);
+  if (r) { r.title = g('title').value; r.artist = g('artist').value; r.mood = g('mood').value; r.is_active = g('active').checked; r.sort = parseInt(g('sort').value, 10) || 100; }
+  paintMoods(); el('cnt').textContent = '(켜진 곡 ' + rows.filter((x) => x.is_active).length + ' / 전체 ' + rows.length + ')';
+});
+
+async function load(){
+  const { data, error } = await AL.sb.rpc('admin_music_list');
+  if (error) { showErr(/not_admin/.test(error.message || '') ? '관리자 권한이 없는 계정입니다.' : '불러오지 못했습니다(11_music_admin.sql 을 넣었는지 확인): ' + (error.message || error)); el('list').innerHTML = ''; return; }
+  showErr(''); rows = data || []; paintMoods(); paintList();
+}
+
+(async function(){
+  const { data: { session } } = await AL.sb.auth.getSession();
+  if (!session) { location.href = 'alias_auth.html?next=' + encodeURIComponent('burum_admin_music.html'); return; }
+  load();
+})();
+</script>
+</body>
+</html>
