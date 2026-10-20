@@ -1601,7 +1601,7 @@ AL.boostSend = async function(){
                 (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) ||
                 !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.aliasIOS);
     if (!isIOS) return;
-    var lv = 3.5;
+    var lv = 4;   // 🔴 2026-10-20 손님 요청: 아이폰 4배(최대)
     try { var v = localStorage.getItem('burum_boost'); if (v !== null && v !== '') lv = parseFloat(v); } catch (e) {}
     if (!(lv > 1)) return;
     if (lv > 4) lv = 4;
