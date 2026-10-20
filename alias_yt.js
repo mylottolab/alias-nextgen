@@ -103,10 +103,17 @@ window.AL = window.AL || {};
     if (!vid) { h.box.style.display = 'none'; h.box.innerHTML = ''; S.showing = null; return; }
 
     if (S.showing !== vid) {
-      S.showing = vid; S.paused = false;
-      var src = AL.ytEmbed(vid);
+      S.showing = vid; S.paused = false; S.cur = 0;
+      var src = AL.ytEmbed(vid) + (S.autoplay ? '&autoplay=1' : '');
+      S.autoplay = false;
       h.box.innerHTML = '<div class="yf"><iframe src="' + src + '" title="YouTube" ' +
         'allow="accelerometer; autoplay; encrypted-media; picture-in-picture; web-share" allowfullscreen></iframe></div><div class="yc"></div>';
+      /* 재생 위치를 받아 두려고 유튜브 창에 "알려 달라" 고 말해 둡니다 */
+      var fr = h.box.querySelector('iframe');
+      fr.addEventListener('load', function(){
+        try { fr.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 'ytpin' }), '*'); } catch (e) {}
+        if (S.seekTo != null) { var t = S.seekTo; S.seekTo = null; setTimeout(function(){ seek(t); }, 900); }
+      });
     }
     h.box.classList.toggle('big', S.big);
     h.box.style.display = 'block';
@@ -118,6 +125,7 @@ window.AL = window.AL || {};
       '<span class="yl">' + (isLocal ? L('📺 나만 보기', '📺 Only me') : L('👥 같이 보기', '👥 Shared')) +
         (TITLES[vid] ? ' · ' + AL.esc(TITLES[vid].title).slice(0, 40) : '') + '</span>' +
       '<button data-y="pp">' + (S.paused ? L('▶ 재생', '▶ Play') : L('Ⅱ 멈춤', 'Ⅱ Pause')) + '</button>' +
+      (!isLocal ? '<button data-y="sync">🔄 ' + L('같이 맞추기', 'Sync all') + '</button>' : '') +
       '<button data-y="size">' + (S.big ? L('작게', 'Smaller') : L('크게', 'Bigger')) + '</button>' +
       '<button data-y="app">↗ ' + L('유튜브', 'YouTube') + '</button>' +
       '<button data-y="hide">✕ ' + (isLocal ? L('닫기', 'Close') : L('내 화면에서 치우기', 'Hide for me')) + '</button>' +
@@ -127,6 +135,11 @@ window.AL = window.AL || {};
       var a = b.dataset.y;
       if (a === 'pp') { S.paused = !S.paused; cmd(S.paused ? 'pauseVideo' : 'playVideo'); paint(); }
       if (a === 'size') { S.big = !S.big; paint(); }
+      if (a === 'sync') {
+        bc({ action: 'sync', video: vid, time: S.cur || 0, at: Date.now(), by: S.sideId, name: S.name });
+        if (S.paused) { S.paused = false; cmd('playVideo'); paint(); }
+        note(L('🔄 모두의 화면을 지금 위치로 맞췄습니다', '🔄 Synced everyone to this point'));
+      }
       if (a === 'app') { cmd('pauseVideo'); S.paused = true; paint(); window.open(AL.ytWatch(vid), '_blank'); }
       if (a === 'hide') {
         if (isLocal) { S.local = null; }
@@ -136,6 +149,22 @@ window.AL = window.AL || {};
       if (a === 'clear') clearAll();
     };
   }
+
+  function seek(t){
+    var f = document.querySelector('#ytBox iframe');
+    try {
+      f.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'seekTo', args: [Math.max(0, t), true] }), '*');
+      f.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*');
+    } catch (e) {}
+    S.paused = false;
+  }
+  window.addEventListener('message', function(e){
+    try { if (!/(^|\.)youtube\.com$/.test(new URL(e.origin).hostname)) return; } catch (x) { return; }
+    try {
+      var d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+      if (d && d.event === 'infoDelivery' && d.info && typeof d.info.currentTime === 'number') S.cur = d.info.currentTime;
+    } catch (x) {}
+  });
 
   async function fetchShared(){
     if (!S.linkId) return;
@@ -158,6 +187,7 @@ window.AL = window.AL || {};
     var d = (r && r.data) || {};
     if (r.error || !d.ok) { note(L('같이 띄우지 못했습니다. 잠시 뒤 다시 해 주세요.', 'Could not share. Please try again.')); return; }
     S.local = null; setHidden(null); addRecent(vid);
+    S.autoplay = true; S.showing = null;
     await fetchShared();
     bc({ action: 'set', video: vid, by: S.sideId, name: S.name });
     note(L('👥 같이 보기로 띄웠습니다', '👥 Shared with everyone'));
@@ -300,6 +330,14 @@ window.AL = window.AL || {};
       ch.on('broadcast', { event: 'yt' }, function(e){
         var p = e.payload || {};
         if (p.by === S.sideId) return;
+        if (p.action === 'set') { setHidden(null); S.local = null; S.autoplay = true; S.showing = null; }   // 같이 보기 → 모두 바로 열고 재생
+        if (p.action === 'sync') {
+          var lag = Math.max(0, (Date.now() - (p.at || Date.now())) / 1000);
+          if (S.showing === p.video) { seek((p.time || 0) + lag); paint(); }
+          else { setHidden(null); S.local = null; S.autoplay = true; S.seekTo = (p.time || 0) + lag + 1.5; S.showing = null; paint(); }
+          note((p.name ? p.name + L('님이', '') : L('상대가', 'Someone')) + L(' 재생 위치를 맞췄습니다', ' synced the video'));
+          return;
+        }
         fetchShared();
         if (p.action === 'set') note((p.name ? p.name + L('님이', '') : L('상대가', 'Someone')) + L(' 영상을 같이 보기로 띄웠습니다', ' pinned a video'));
         if (p.action === 'clear') note((p.name ? p.name + L('님이', '') : L('상대가', 'Someone')) + L(' 영상을 내렸습니다', ' removed the video'));
