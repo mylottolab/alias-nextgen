@@ -35,6 +35,7 @@
      ⚠ 반드시 alias_room.js **다음**이어야 합니다. 순서가 뒤바뀌면
        옛 것(음원 올리기)이 이깁니다. -->
 <script src="alias_music.js?v=20260928b"></script>
+<script src="alias_yt.js?v=20261020a"></script>
 <script src="alias_call.js?v=20261020g"></script>
 <script src="alias_e2ee.js?v=20260928b"></script>
 <script src="alias_gcall.js?v=20260928b"></script>
@@ -382,7 +383,7 @@ function bubbleHtml(m, gone, temp){
              AL.esc(AL.t('ecCantRead')) + '</div>';
     }
     return '<div class="bub" data-id="' + AL.esc(m.id) + '">' + q +
-           hilite(m._plain) + '</div>';
+           hilite(m._plain) + (AL.yt ? AL.yt.btn(m._plain) : '') + '</div>';
   }
 
   // 주소가 들어 있으면 미리보기를 붙입니다.
@@ -399,7 +400,7 @@ function bubbleHtml(m, gone, temp){
   }
 
   return '<div class="bub" data-id="' + AL.esc(m.id) + '">' + q +
-         hilite(m.content || '') + lp + '</div>';
+         hilite(m.content || '') + lp + (AL.yt ? AL.yt.btn(m.content) : '') + '</div>';
 }
 
 /* 주소가 든 메시지의 미리보기를 가져옵니다. 한 번 가져온 것은 다시 안 갑니다. */
@@ -870,6 +871,8 @@ async function listen(){
     clearTimeout(typingTimer);
     typingTimer = setTimeout(function(){ t.textContent = ''; }, 2500);
   });
+
+  if (AL.yt) AL.yt.listen(channel);   // 🔴 2026-10-20 대화창 위 유튜브
 
   channel.subscribe(function(status){
     if (status === 'SUBSCRIBED') {
@@ -1774,6 +1777,7 @@ document.getElementById('call').addEventListener('click', async function(){
     await AL.loadDataPrefs();
     await open_();
     await loadStars();
+    try { if (AL.yt && me) AL.yt.init({ linkId: linkId, sideId: me.sideId, name: me.myFace || '', locked: !!e2ee }); } catch (e) {}   // 🔴 2026-10-20
     listen();
     watchOthers();
     watchCalls();
