@@ -99,8 +99,8 @@ document.addEventListener("DOMContentLoaded", function(){
 .crow .cmine{font-size:12px;line-height:1.4;color:var(--dim);margin-top:3px;word-break:keep-all;overflow-wrap:anywhere}
 .crow .ctime{align-self:center;padding-top:0}
 .crow > .mymark{display:inline-flex;align-items:center;justify-content:center;
-  width:34px;height:34px;flex:0 0 34px;margin:0 -4px 0 0;border-radius:50% !important;
-  font-size:13px;font-weight:800;line-height:1;
+  width:44px;height:44px;flex:0 0 44px;margin:0 -4px 0 0;border-radius:50% !important;
+  font-size:16px;font-weight:800;line-height:1;
   background-repeat:no-repeat;background-size:cover;background-position:center}
 .tmp-av{width:40px;height:40px;flex:0 0 40px;display:flex;align-items:center;justify-content:center;font-size:18px;
   border-radius:50% 14% 50% 14%;background:rgba(242,201,76,.16);border:1px solid rgba(242,201,76,.45)}
@@ -401,7 +401,7 @@ function rowHtml(r){
           })()
         : '') +
       /* 🔴 2026-10-21 — 상대 이름 아래에 "나: 내 별칭" (전부 · 작게) */
-      (r.my_face ? '<div class="cmine">' + AL.esc((AL.lang !== 'en' ? '나: ' : 'Me: ') + r.my_face) + '</div>' : '') +
+      (r.my_face ? '<div class="cmine">' + AL.esc(r.my_face) + '</div>' : '') +
       (sub ? '<div class="csub">' + AL.esc(r.my_face ? (AL.lang !== 'en' ? '상대 이름: ' : 'Their name: ') + sub : sub) + '</div>' : '') +
     '</div>' +
     /* 🔴 2026-10-21 — 내 별칭 그림은 시간 바로 앞, 늘 같은 자리 */
