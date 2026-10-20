@@ -106,7 +106,8 @@ window.AL = window.AL || {};
     var canClear = !isLocal && S.shared && S.shared.can_clear;
     var ctl = h.box.querySelector('.yc');
     ctl.innerHTML =
-      '<span class="yl">' + (isLocal ? L('📺 나만 보기', '📺 Only me') : L('👥 같이 보기', '👥 Shared')) + '</span>' +
+      '<span class="yl">' + (isLocal ? L('📺 나만 보기', '📺 Only me') : L('👥 같이 보기', '👥 Shared')) +
+        (TITLES[vid] ? ' · ' + AL.esc(TITLES[vid].title).slice(0, 40) : '') + '</span>' +
       '<button data-y="pp">' + (S.paused ? L('▶ 재생', '▶ Play') : L('Ⅱ 멈춤', 'Ⅱ Pause')) + '</button>' +
       '<button data-y="size">' + (S.big ? L('작게', 'Smaller') : L('크게', 'Bigger')) + '</button>' +
       '<button data-y="app">↗ ' + L('유튜브', 'YouTube') + '</button>' +
@@ -147,7 +148,7 @@ window.AL = window.AL || {};
     var r = await AL.sb.rpc('yt_pin_set', { p_link: S.linkId, p_video: vid });
     var d = (r && r.data) || {};
     if (r.error || !d.ok) { note(L('같이 띄우지 못했습니다. 잠시 뒤 다시 해 주세요.', 'Could not share. Please try again.')); return; }
-    S.local = null; setHidden(null);
+    S.local = null; setHidden(null); addRecent(vid);
     await fetchShared();
     bc({ action: 'set', video: vid, by: S.sideId, name: S.name });
     note(L('👥 같이 보기로 띄웠습니다', '👥 Shared with everyone'));
@@ -161,6 +162,86 @@ window.AL = window.AL || {};
     S.shared = null; setHidden(null); paint();
     bc({ action: 'clear', by: S.sideId, name: S.name });
   }
+
+  /* ── 🔴 2026-10-20 최근 띄운 영상 · 추천 영상 · 제목 ── */
+  var TITLES = {};   // video_id → {title, artist}
+  function recentKey(){ return 'yt_recent_v1'; }
+  function recent(){ try { return JSON.parse(localStorage.getItem(recentKey()) || '[]'); } catch (e) { return []; } }
+  function addRecent(vid){
+    try {
+      var r = recent().filter(function(x){ return x.v !== vid; });
+      var t = TITLES[vid] || {};
+      r.unshift({ v: vid, t: t.title || '', a: t.artist || '', at: Date.now() });
+      localStorage.setItem(recentKey(), JSON.stringify(r.slice(0, 15)));
+    } catch (e) {}
+  }
+  var LIST = null;
+  async function loadList(){
+    if (LIST) return LIST;
+    try { var r = await AL.sb.rpc('yt_list_public'); LIST = (r && r.data) || []; } catch (e) { LIST = []; }
+    LIST.forEach(function(x){ TITLES[x.video_id] = { title: x.title, artist: x.artist }; });
+    return LIST;
+  }
+  function thumb(v){ return 'https://i.ytimg.com/vi/' + v + '/mqdefault.jpg'; }
+
+  /* [📺 영상] — 링크 붙여넣기 · 최근 · 추천 */
+  AL.ytPicker = async function(){
+    var old = document.getElementById('ytPick'); if (old) old.remove();
+    var bg = document.createElement('div'); bg.className = 'pk-bg';
+    var sh = document.createElement('div'); sh.className = 'pk'; sh.id = 'ytPick';
+    sh.style.maxHeight = '86vh'; sh.style.overflow = 'auto';
+    function close(){ bg.remove(); sh.remove(); }
+    bg.onclick = close;
+    var row = function(v, t, a){
+      return '<button type="button" class="ytrow" data-v="' + v + '" style="display:flex;gap:10px;align-items:center;width:100%;text-align:left;margin:6px 0 0;padding:7px;border-radius:12px;' +
+        'background:rgba(255,255,255,.05);color:inherit;border:1px solid rgba(128,128,128,.3);cursor:pointer">' +
+        '<img src="' + thumb(v) + '" alt="" loading="lazy" style="width:96px;height:54px;object-fit:cover;border-radius:8px;flex:0 0 auto;background:#111">' +
+        '<span style="min-width:0;flex:1"><b style="display:block;font-size:14px;line-height:1.35;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">' +
+        AL.esc(t || L('(제목 없음)', '(no title)')) + '</b><small style="opacity:.7">' + AL.esc(a || '') + '</small></span></button>';
+    };
+    sh.innerHTML = '<div class="grip"></div><p class="pk-title">📺 ' + L('영상 띄우기', 'Pin a video') + '</p>' +
+      '<div style="display:flex;gap:6px;margin:4px 0 4px"><input id="ytUrl" type="url" placeholder="' + L('유튜브 링크를 붙여 넣으세요', 'Paste a YouTube link') + '" ' +
+        'style="flex:1;min-width:0;padding:11px 12px;border-radius:11px;font-size:14.5px;background:rgba(255,255,255,.06);color:inherit;border:1px solid rgba(128,128,128,.4)">' +
+        '<button type="button" id="ytPaste" style="margin:0;padding:0 12px;border-radius:11px;font-weight:800;cursor:pointer;background:rgba(255,255,255,.08);color:inherit;border:1px solid rgba(128,128,128,.4)">📋</button>' +
+        '<button type="button" id="ytGo" style="margin:0;padding:0 14px;border-radius:11px;font-weight:800;cursor:pointer;background:#FF4D4D;color:#fff;border:none">' + L('띄우기', 'Pin') + '</button></div>' +
+      '<div id="ytErr" style="font-size:12.5px;color:#FFB4B4;min-height:16px"></div>' +
+      '<div id="ytRecent"></div><div id="ytCats" style="display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 2px"></div><div id="ytItems"></div>';
+    document.body.appendChild(bg); document.body.appendChild(sh);
+
+    var go = function(){
+      var v = AL.ytId(sh.querySelector('#ytUrl').value);
+      if (!v) { sh.querySelector('#ytErr').textContent = L('영상 주소가 아닙니다. 유튜브 앱 [공유] → [링크 복사] 로 복사해 주세요.', 'Not a video link.'); return; }
+      close(); AL.ytChoose(v);
+    };
+    sh.querySelector('#ytGo').onclick = go;
+    sh.querySelector('#ytUrl').addEventListener('keydown', function(e){ if (e.key === 'Enter') go(); });
+    sh.querySelector('#ytPaste').onclick = async function(){
+      try { var t = await navigator.clipboard.readText(); if (t) { sh.querySelector('#ytUrl').value = t.trim(); if (AL.ytId(t)) go(); } }
+      catch (e) { sh.querySelector('#ytErr').textContent = L('입력칸을 꾹 눌러 [붙여넣기] 해 주세요.', 'Long-press the box and paste.'); sh.querySelector('#ytUrl').focus(); }
+    };
+    sh.addEventListener('click', function(e){
+      var b = e.target.closest('.ytrow'); if (!b) return;
+      close(); AL.ytChoose(b.dataset.v);
+    });
+
+    var rc = recent();
+    if (rc.length) sh.querySelector('#ytRecent').innerHTML = '<div style="font-size:13px;font-weight:800;opacity:.8;margin:8px 0 0">🕘 ' + L('최근 띄운 영상', 'Recent') + '</div>' +
+      rc.slice(0, 5).map(function(x){ var t = TITLES[x.v] || {}; return row(x.v, x.t || t.title, x.a || t.artist); }).join('');
+
+    var list = await loadList();
+    if (!list.length) return;
+    var cats = [], seen = {};
+    list.forEach(function(x){ if (!seen[x.cat]) { seen[x.cat] = 1; cats.push({ k: x.cat, n: x.cat_name }); } });
+    var cur = cats[0].k;
+    var paintCat = function(){
+      sh.querySelector('#ytCats').innerHTML = '<div style="width:100%;font-size:13px;font-weight:800;opacity:.8">⭐ ' + L('추천 영상', 'Picks') + '</div>' +
+        cats.map(function(c){ return '<button type="button" data-c="' + c.k + '" style="margin:0;padding:7px 11px;border-radius:999px;font-size:12.5px;font-weight:700;cursor:pointer;' +
+          (c.k === cur ? 'background:#FF4D4D;color:#fff;border:1px solid #FF4D4D' : 'background:rgba(255,255,255,.06);color:inherit;border:1px solid rgba(128,128,128,.35)') + '">' + AL.esc(c.n) + '</button>'; }).join('');
+      sh.querySelector('#ytItems').innerHTML = list.filter(function(x){ return x.cat === cur; }).map(function(x){ return row(x.video_id, x.title, x.artist); }).join('');
+    };
+    sh.querySelector('#ytCats').onclick = function(e){ var b = e.target.closest('[data-c]'); if (!b) return; cur = b.dataset.c; paintCat(); };
+    paintCat();
+  };
 
   /* 말풍선 [📺 위에 띄우기] → 나만 / 같이 */
   AL.ytChoose = function(vid){
@@ -178,7 +259,7 @@ window.AL = window.AL || {};
     };
     sh.innerHTML = '<div class="grip"></div><p class="pk-title">' + L('대화창 위에 영상 띄우기', 'Pin video above the chat') + '</p>';
     opt('📺 ' + L('나만 보기', 'Only me'), L('내 대화창 위에만 띄웁니다. 상대는 모릅니다.', 'Only on my screen.'), function(){
-      S.local = vid; paint(); note(L('📺 나만 보기로 띄웠습니다', '📺 Showing only to you'));
+      S.local = vid; addRecent(vid); paint(); note(L('📺 나만 보기로 띄웠습니다', '📺 Showing only to you'));
     });
     if (!S.locked) {
       opt('👥 ' + L('같이 보기', 'Share with everyone'), L('방에 있는 모두의 대화창 위에 띄웁니다. 각자 멈추거나 치울 수 있어요.', 'Pinned for everyone in this chat. Each person can pause or hide it.'), function(){ shareIt(vid); });
@@ -201,7 +282,7 @@ window.AL = window.AL || {};
     },
     init: function(o){
       S.linkId = o.linkId; S.sideId = o.sideId; S.name = o.name || ''; S.locked = !!o.locked;
-      css(); fetchShared();
+      css(); fetchShared(); loadList().then(function(){ if (S.showing) paint(); });
       if (!AL.yt._timer) AL.yt._timer = setInterval(fetchShared, 30000);
     },
     setLocked: function(v){ S.locked = !!v; },
@@ -215,7 +296,8 @@ window.AL = window.AL || {};
         if (p.action === 'clear') note((p.name ? p.name + L('님이', '') : L('상대가', 'Someone')) + L(' 영상을 내렸습니다', ' removed the video'));
       });
     },
-    sync: fetchShared
+    sync: fetchShared,
+    openPicker: function(){ AL.ytPicker(); }
   };
 
   /* 말풍선 안 단추 — 말풍선 메뉴가 뜨지 않게 먼저 잡습니다 */

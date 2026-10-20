@@ -35,7 +35,7 @@
      ⚠ 반드시 alias_room.js **다음**이어야 합니다. 순서가 뒤바뀌면
        옛 것(음원 올리기)이 이깁니다. -->
 <script src="alias_music.js?v=20260928b"></script>
-<script src="alias_yt.js?v=20261020a"></script>
+<script src="alias_yt.js?v=20261020b"></script>
 <script src="alias_call.js?v=20261020g"></script>
 <script src="alias_e2ee.js?v=20260928b"></script>
 <script src="alias_gcall.js?v=20260928b"></script>
@@ -1380,6 +1380,9 @@ function paintStrip(){
   if (on('question'))
     box.appendChild(chip('💬', AL.t('qTitle'),
       function(){ AL.openQuestion(linkId, me.sideId); }));
+
+  /* 🔴 2026-10-20 — 📺 영상: 링크 붙여넣기 · 최근 · 추천 영상 → 대화창 위에 띄우기 */
+  if (AL.ytPicker) box.appendChild(chip('📺', AL.lang === 'en' ? 'Video' : '영상', function(){ AL.ytPicker(); }));
 
   if (on('music'))
     box.appendChild(chip('♫', music ? AL.t('muStop') : AL.t('muTitle'),
