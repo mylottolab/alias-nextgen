@@ -59,7 +59,13 @@ window.AL = window.AL || {};
       '.ytpin{display:inline-block;margin:8px 0 0;padding:7px 12px;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;' +
         'background:rgba(255,60,60,.14);color:inherit;border:1px solid rgba(255,80,80,.45)}' +
       '#ytNote{position:fixed;left:50%;top:84px;transform:translateX(-50%);z-index:9000;padding:9px 14px;border-radius:12px;' +
-        'background:rgba(20,26,36,.95);color:#fff;font-size:13.5px;max-width:86vw;text-align:center;display:none}';
+        'background:rgba(20,26,36,.95);color:#fff;font-size:13.5px;max-width:86vw;text-align:center;display:none}' +
+      '#ytBox .yhold{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;' +
+        'background:#000 center/cover no-repeat;color:#fff;text-align:center;padding:10px}' +
+      '#ytBox .yhold b{background:#FF4D4D;padding:9px 16px;border-radius:999px;font-size:14px}' +
+      '#ytBox .yhold small{background:rgba(0,0,0,.65);padding:4px 9px;border-radius:8px;font-size:12px}' +
+      '#ytBox .ydata{display:flex;gap:8px;align-items:center;padding:7px 10px;background:#2A2410;color:#FFE7A3;font-size:12px;line-height:1.45}' +
+      '#ytBox .ydata button{margin:0 0 0 auto;flex:0 0 auto;padding:5px 9px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;background:rgba(255,255,255,.1);color:#FFE7A3;border:1px solid rgba(255,231,163,.4)}';
     document.head.appendChild(st);
   }
   function note(t){
@@ -71,6 +77,20 @@ window.AL = window.AL || {};
   function hideKey(){ return 'yt_hide_' + S.linkId; }
   function hiddenVid(){ try { return localStorage.getItem(hideKey()); } catch (e) { return null; } }
   function setHidden(v){ try { if (v) localStorage.setItem(hideKey(), v); else localStorage.removeItem(hideKey()); } catch (e) {} }
+
+  /* 🔴 2026-10-20 데이터 아끼기
+     · 남이 띄운 영상을 모바일 데이터에서 저절로 틀지 않습니다(눌러야 재생 · 누르기 전엔 데이터 0).
+       - 휴대폰이 모바일 데이터라고 알려 줄 때(안드로이드 등), 또는
+       - "나" → 데이터 아끼기 → "사진·파일은 와이파이에서만" 을 켠 분이 와이파이인지 모를 때(아이폰 등)
+     · 영상 칸을 처음 볼 때 "영상은 휴대폰 데이터를 씁니다" 를 [알겠어요] 누를 때까지 알려 줍니다. */
+  function dataHold(){
+    var w = AL.onWifi ? AL.onWifi() : null;
+    if (w === false) return true;
+    return !!(AL.dataPrefs && AL.dataPrefs.media_wifi_only && w !== true);
+  }
+  function dataSeen(){ try { return localStorage.getItem('yt_data_ok_v1') === '1'; } catch (e) { return true; } }
+  var DATA_LINE = function(){ return L('📶 영상은 휴대폰 데이터를 씁니다 — 노래 한 곡(4분)에 약 20~30MB, [크게]는 더 씁니다. 와이파이에서 보시길 권해요. 부름 저장 공간은 쓰지 않습니다.',
+    '📶 Videos use mobile data — about 20–30MB per 4-minute song, more when enlarged. Wi-Fi is recommended. Burum storage is not used.'); };
 
   function host(){
     var top = document.querySelector('.chat-top');
@@ -102,8 +122,16 @@ window.AL = window.AL || {};
     h.strip.textContent = L('📺 같이 보기 영상이 걸려 있어요 · 눌러서 다시 보기', '📺 A shared video is pinned · tap to show');
     if (!vid) { h.box.style.display = 'none'; h.box.innerHTML = ''; S.showing = null; return; }
 
+    /* 내가 고른 영상이 아니고 데이터를 아껴야 하면 → 영상 창을 열지 않고(데이터 0) 그림 + [▶ 눌러서 재생] */
+    if (S.showing !== vid && S.okVid !== vid && dataHold()) {
+      S.showing = vid; S.held = true; S.autoplay = false;
+      var th = vid.indexOf('L:') === 0 ? '' : "background-image:url('https://i.ytimg.com/vi/" + vid + "/mqdefault.jpg')";
+      h.box.innerHTML = '<div class="yf"><div class="yhold" style="' + th + '"><b>▶ ' + L('눌러서 재생', 'Tap to play') + '</b>' +
+        '<small>📶 ' + L('모바일 데이터일 수 있어 저절로 틀지 않았어요', 'Not auto-played to save mobile data') + '</small></div></div><div class="yc"></div>';
+      h.box.querySelector('.yhold').onclick = function(){ S.okVid = vid; S.held = false; S.autoplay = true; S.showing = null; paint(); };
+    }
     if (S.showing !== vid) {
-      S.showing = vid; S.paused = false; S.cur = 0;
+      S.showing = vid; S.held = false; S.paused = false; S.cur = 0;
       /* 아이폰 1.4: 소리 있는 자동 재생이 막혀 있어 → 소리 끈 채 자동 재생 + [🔊 소리 켜기] 한 번 (1.5 는 그냥 재생) */
       var iosMute = S.autoplay && /iPhone|iPad|iPod/.test(navigator.userAgent || '') && !(window.AliasNative && window.AliasNative.audioV2);
       var src = AL.ytEmbed(vid) + (S.autoplay ? '&autoplay=1' : '') + (iosMute ? '&mute=1' : '');
@@ -123,12 +151,19 @@ window.AL = window.AL || {};
     var isLocal = !!S.local;
     var canClear = !isLocal && S.shared && S.shared.can_clear;
     var ctl = h.box.querySelector('.yc');
+    var od = h.box.querySelector('.ydata'); if (od) od.remove();
+    if (!dataSeen()) {
+      var dn = document.createElement('div'); dn.className = 'ydata';
+      dn.innerHTML = '<span>' + AL.esc(DATA_LINE()) + '</span><button type="button">' + L('알겠어요', 'Got it') + '</button>';
+      dn.querySelector('button').onclick = function(){ try { localStorage.setItem('yt_data_ok_v1', '1'); } catch (e) {} dn.remove(); };
+      h.box.appendChild(dn);
+    }
     ctl.innerHTML =
       '<span class="yl">' + (isLocal ? L('📺 나만 보기', '📺 Only me') : L('👥 같이 보기', '👥 Shared')) +
         (TITLES[vid] ? ' · ' + AL.esc(TITLES[vid].title).slice(0, 40) : '') + '</span>' +
       (S.muted ? '<button data-y="unmute" style="background:#FF4D4D;border-color:#FF4D4D;color:#fff">🔊 ' + L('소리 켜기', 'Sound on') + '</button>' : '') +
-      '<button data-y="pp">' + (S.paused ? L('▶ 재생', '▶ Play') : L('Ⅱ 멈춤', 'Ⅱ Pause')) + '</button>' +
-      (!isLocal ? '<button data-y="sync">🔄 ' + L('같이 맞추기', 'Sync all') + '</button>' : '') +
+      (S.held ? '' : '<button data-y="pp">' + (S.paused ? L('▶ 재생', '▶ Play') : L('Ⅱ 멈춤', 'Ⅱ Pause')) + '</button>') +
+      (!isLocal && !S.held ? '<button data-y="sync">🔄 ' + L('같이 맞추기', 'Sync all') + '</button>' : '') +
       '<button data-y="size">' + (S.big ? L('작게', 'Smaller') : L('크게', 'Bigger')) + '</button>' +
       '<button data-y="app">↗ ' + L('유튜브', 'YouTube') + '</button>' +
       '<button data-y="hide">✕ ' + (isLocal ? L('닫기', 'Close') : L('내 화면에서 치우기', 'Hide for me')) + '</button>' +
@@ -191,7 +226,7 @@ window.AL = window.AL || {};
     var d = (r && r.data) || {};
     if (r.error || !d.ok) { note(L('같이 띄우지 못했습니다. 잠시 뒤 다시 해 주세요.', 'Could not share. Please try again.')); return; }
     S.local = null; setHidden(null); addRecent(vid);
-    S.autoplay = true; S.showing = null;
+    S.autoplay = true; S.showing = null; S.okVid = vid;
     await fetchShared();
     bc({ action: 'set', video: vid, by: S.sideId, name: S.name });
     note(L('👥 같이 보기로 띄웠습니다', '👥 Shared with everyone'));
@@ -248,6 +283,7 @@ window.AL = window.AL || {};
         '<button type="button" id="ytPaste" style="margin:0;padding:0 12px;border-radius:11px;font-weight:800;cursor:pointer;background:rgba(255,255,255,.08);color:inherit;border:1px solid rgba(128,128,128,.4)">📋</button>' +
         '<button type="button" id="ytGo" style="margin:0;padding:0 14px;border-radius:11px;font-weight:800;cursor:pointer;background:#FF4D4D;color:#fff;border:none">' + L('띄우기', 'Pin') + '</button></div>' +
       '<div id="ytErr" style="font-size:12.5px;color:#FFB4B4;min-height:16px"></div>' +
+      '<div style="font-size:12px;opacity:.72;line-height:1.45;margin:0 0 4px">' + AL.esc(DATA_LINE()) + '</div>' +
       '<div id="ytRecent"></div><div id="ytCats" style="display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 2px"></div><div id="ytItems"></div>';
     document.body.appendChild(bg); document.body.appendChild(sh);
 
@@ -302,7 +338,7 @@ window.AL = window.AL || {};
     };
     sh.innerHTML = '<div class="grip"></div><p class="pk-title">' + L('대화창 위에 영상 띄우기', 'Pin video above the chat') + '</p>';
     opt('📺 ' + L('나만 보기', 'Only me'), L('내 대화창 위에만 띄웁니다. 상대는 모릅니다.', 'Only on my screen.'), function(){
-      S.local = vid; addRecent(vid); paint(); note(L('📺 나만 보기로 띄웠습니다', '📺 Showing only to you'));
+      S.local = vid; S.okVid = vid; addRecent(vid); paint(); note(L('📺 나만 보기로 띄웠습니다', '📺 Showing only to you'));
     });
     if (!S.locked) {
       opt('👥 ' + L('같이 보기', 'Share with everyone'), L('방에 있는 모두의 대화창 위에 띄웁니다. 각자 멈추거나 치울 수 있어요.', 'Pinned for everyone in this chat. Each person can pause or hide it.'), function(){ shareIt(vid); });
@@ -337,6 +373,7 @@ window.AL = window.AL || {};
         if (p.action === 'set') { setHidden(null); S.local = null; S.autoplay = true; S.showing = null; }   // 같이 보기 → 모두 바로 열고 재생
         if (p.action === 'sync') {
           var lag = Math.max(0, (Date.now() - (p.at || Date.now())) / 1000);
+          if (S.showing === p.video && S.held) { S.seekTo = (p.time || 0) + lag + 1.5; return; }
           if (S.showing === p.video) { seek((p.time || 0) + lag); paint(); }
           else { setHidden(null); S.local = null; S.autoplay = true; S.seekTo = (p.time || 0) + lag + 1.5; S.showing = null; paint(); }
           note((p.name ? p.name + L('님이', '') : L('상대가', 'Someone')) + L(' 재생 위치를 맞췄습니다', ' synced the video'));
