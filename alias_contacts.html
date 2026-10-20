@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="alias_theme.css?v=20260927a">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20261020a"></script>
+<script src="alias_common.js?v=20261021a"></script>
 <script src="alias_call.js?v=20261020g"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
@@ -93,10 +93,17 @@ document.addEventListener("DOMContentLoaded", function(){
 .crow .cav{width:56px !important;height:56px !important;flex:0 0 56px !important;
   font-size:21px !important;
   background-repeat:no-repeat;background-size:cover;background-position:center}
-.cname .mymark{display:inline-flex;align-items:center;justify-content:center;
-  width:30px;height:30px;flex:0 0 30px;margin-left:9px;vertical-align:middle;
+.crow .cname{display:flex;align-items:center;min-width:0}
+.crow .cname .nmx{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.crow .cname .unread{flex:0 0 auto;margin-left:6px}
+.crow .cmine{font-size:12px;line-height:1.4;color:var(--dim);margin-top:3px;word-break:keep-all;overflow-wrap:anywhere}
+.crow .ctime{align-self:center;padding-top:0}
+.crow > .mymark{display:inline-flex;align-items:center;justify-content:center;
+  width:34px;height:34px;flex:0 0 34px;margin:0 -4px 0 0;border-radius:50% !important;
   font-size:13px;font-weight:800;line-height:1;
   background-repeat:no-repeat;background-size:cover;background-position:center}
+.tmp-av{width:40px;height:40px;flex:0 0 40px;display:flex;align-items:center;justify-content:center;font-size:18px;
+  border-radius:50% 14% 50% 14%;background:rgba(242,201,76,.16);border:1px solid rgba(242,201,76,.45)}
 /* 🔴 2026-10-01 임시연락처 입구 · [임시] 묶음
    ⚠ 부름 테마의 색 이름(--raise · --text · --line · --dim)을 씁니다.
      처음엔 --card(없는 이름)에 흰색을 대신 넣어, 야간 모드에서 흰 바탕에 밝은 글씨가 되어
@@ -374,7 +381,7 @@ function rowHtml(r){
 
        ⚠ 방은 상대가 여럿이라 상대 사진이 없습니다. 방 이름으로 칠합니다. */
     '<div class="cav" data-go="' + AL.esc(r.link_id) + '"' +
-      AL.faceAttr(isRoom ? (r.room_name || '') : (shown || '')) +
+      AL.faceAttr(isRoom ? (r.room_name || '') : (shown || ''), isRoom ? '30%' : '50%') +
       (!isRoom && r.peer_avatar
         ? ' data-face="' + AL.esc(r.peer_avatar) + '"' : '') + '>' +
       AL.esc(isRoom ? '👥' : AL.initial(shown)) + '</div>' +
@@ -382,16 +389,7 @@ function rowHtml(r){
       '<div class="cname">' +
         (e.speed_dial ? '<span class="spd">' + AL.esc(e.speed_dial) + '</span>' : '') +
         (e.starred ? '<span class="star">★</span>' : '') +
-        (r.pinned ? '▲ ' : '') + AL.esc(shown) +
-        /* 🔴 2026-09-16 — 이 관계에서 **내가 쓰는 얼굴**.
-           작지만 색과 모양이 달라 한눈에 갈립니다.
-           ⚠ 방은 내 얼굴이 하나라 굳이 안 보여줍니다. */
-        (!isRoom
-          ? '<span class="mymark"' + AL.faceAttr(r.my_face || '') +
-            (myFaces[r.my_face] ? ' data-face="' + AL.esc(myFaces[r.my_face]) + '"' : '') +
-            ' title="' + AL.esc(r.my_face || '') + '">' +
-            AL.esc(AL.initial(r.my_face)) + '</span>'
-          : '') +
+        '<span class="nmx">' + (r.pinned ? '▲ ' : '') + AL.esc(shown) + '</span>' +
         (n ? '<span class="unread">' + AL.esc(n > 99 ? '99+' : n) + '</span>' : '') +
       '</div>' +
       /* 🔴 2026-09-17 — 최근 대화 한 줄. **켜뒀을 때만** 나옵니다.
@@ -402,8 +400,16 @@ function rowHtml(r){
             return t ? '<div class="cprev">' + AL.esc(t) + '</div>' : '';
           })()
         : '') +
-      (sub ? '<div class="csub">' + AL.esc(sub) + '</div>' : '') +
+      /* 🔴 2026-10-21 — 상대 이름 아래에 "나: 내 별칭" (전부 · 작게) */
+      (r.my_face ? '<div class="cmine">' + AL.esc((AL.lang !== 'en' ? '나: ' : 'Me: ') + r.my_face) + '</div>' : '') +
+      (sub ? '<div class="csub">' + AL.esc(r.my_face ? (AL.lang !== 'en' ? '상대 이름: ' : 'Their name: ') + sub : sub) + '</div>' : '') +
     '</div>' +
+    /* 🔴 2026-10-21 — 내 별칭 그림은 시간 바로 앞, 늘 같은 자리 */
+    (r.my_face
+      ? '<span class="mymark" data-go="' + AL.esc(r.link_id) + '"' + AL.faceAttr(r.my_face || '', '50%') +
+        (myFaces[r.my_face] ? ' data-face="' + AL.esc(myFaces[r.my_face]) + '"' : '') +
+        ' title="' + AL.esc(r.my_face || '') + '">' + AL.esc(AL.initial(r.my_face)) + '</span>'
+      : '') +
     /* 🔴 2026-09-12 — "어제" 가 아니라 월일 시분까지 보여줍니다.
        같은 상대가 여러 줄일 때 시각으로 구별하라고 안내하면서
        정작 시각을 안 보여주고 있었습니다. */
@@ -849,7 +855,7 @@ async function loadTemp(){
     document.getElementById('tmpList').innerHTML = live.slice(0, 20).map(function(c){
       const until = new Date(c.expires_at).toLocaleDateString(ko ? 'ko-KR' : 'en-US', { month: 'short', day: 'numeric' });
       const sub = (ko ? (c.people || 0) + '명 연락 · ' + until + '까지' : (c.people || 0) + ' contacted · until ' + until);
-      return '<a class="tmp-row" href="burum_temp.html"><span class="nm">🎫 ' + AL.esc(c.label || c.code || '') +
+      return '<a class="tmp-row" href="burum_temp.html"><span class="tmp-av">🎫</span><span class="nm">' + AL.esc(c.label || c.code || '') +
              '<span class="sub">' + AL.esc(sub) + '</span></span>' +
              (c.unread ? '<span class="dot">' + AL.esc(c.unread > 99 ? '99+' : c.unread) + '</span>' : '') + '</a>';
     }).join('');

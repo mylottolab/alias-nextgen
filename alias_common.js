@@ -1773,10 +1773,11 @@ AL.faceStyle = function(name){
 };
 
 /* HTML 문자열을 만들 때 쓰는 style="..." 조각입니다. */
-AL.faceAttr = function(name){
+/* radius 를 주면 그 형태로(🔴 2026-10-21 연락처: 1:1 '50%' · 단체방 '30%') */
+AL.faceAttr = function(name, radius){
   var f = AL.faceStyle(name);
   return ' style="background:' + f.bg + ';color:' + f.fg +
-         ';border:1px solid ' + f.line + ';border-radius:' + f.radius + '"';
+         ';border:1px solid ' + f.line + ';border-radius:' + (radius || f.radius) + '"';
 };
 
 /* =====================================================================
