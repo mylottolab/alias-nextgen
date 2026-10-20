@@ -34,7 +34,7 @@ document.addEventListener("DOMContentLoaded", function(){
 .bc-card button.go{background:#8FE3B0;color:#0E1621;border-color:#8FE3B0;font-weight:800}
 .bc-card button.bad{background:rgba(255,120,120,.1);color:#FFB4B4;border-color:rgba(255,120,120,.4)}
 .bc-empty{text-align:center;opacity:.7;font-size:14px;padding:24px 8px;line-height:1.7;word-break:keep-all}
-.bc-log{margin-top:22px;font-size:12.5px;opacity:.75;line-height:1.7}
+.bc-log{margin-top:10px}
 .bc-log b{font-size:13px}
 /* 대화 상자 */
 .bc-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;display:none}
@@ -58,6 +58,20 @@ document.addEventListener("DOMContentLoaded", function(){
 .bc-msg{font-size:13.5px;line-height:1.6;min-height:20px;margin:0 0 10px;word-break:keep-all}
 .bc-note{font-size:12.5px;opacity:.7;line-height:1.6;margin:0 0 10px;word-break:keep-all}
 .bc-bar{height:8px;border-radius:99px;background:rgba(128,128,128,.25);overflow:hidden;margin:4px 0 10px}
+.bc-h{margin:24px 0 8px;font-size:15px;font-weight:800}
+.bc-hcard{border:1px solid rgba(128,128,128,.25);border-radius:13px;padding:11px 13px;margin:0 0 9px;background:rgba(255,255,255,.03)}
+.bc-hcard .t{font-size:15px;font-weight:800;word-break:keep-all}
+.bc-hcard .m{font-size:12px;opacity:.7;margin-top:2px}
+.bc-hcard .b{font-size:13.5px;line-height:1.55;margin-top:7px;white-space:pre-wrap;word-break:break-word;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;opacity:.92}
+.bc-hcard .w{font-size:12.5px;line-height:1.6;margin-top:7px;opacity:.8;display:none}
+.bc-hcard .bc-row{display:flex;gap:7px;margin-top:9px;flex-wrap:wrap}
+.bc-hcard button{margin:0;padding:8px 11px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;background:rgba(255,255,255,.07);color:inherit;border:1px solid rgba(128,128,128,.35)}
+.bc-hcard button.go{background:rgba(143,227,176,.18);color:#8FE3B0;border-color:rgba(143,227,176,.55)}
+.bc-hcard button.bad{background:transparent;color:#FFB4B4;border-color:rgba(255,120,120,.35)}
+.bc-to{display:flex;flex-direction:column;gap:6px;margin:0 0 10px;font-size:14px}
+.bc-to label{display:flex;gap:8px;align-items:center;cursor:pointer}
+.bc-to input{width:18px;height:18px;margin:0}
+.bc-lbl{font-size:12.5px;font-weight:700;opacity:.8;margin:0 0 4px}
 .bc-bar i{display:block;height:100%;width:0;background:#8FE3B0;transition:width .2s}
 </style>
 </head>
@@ -88,7 +102,11 @@ document.addEventListener("DOMContentLoaded", function(){
 <!-- 보내기 -->
 <div class="bc-dlg" id="sDlg">
   <h3 id="sH"></h3>
+  <div class="bc-to" id="sTo" style="display:none"></div>
   <div class="bc-note" id="sWho"></div>
+  <div class="bc-lbl" id="sTitleL"></div>
+  <input type="text" id="sTitle" maxlength="60">
+  <div class="bc-lbl" id="sTxL"></div>
   <textarea id="sTx" maxlength="2000"></textarea>
   <div class="bc-note" id="sNote"></div>
   <div class="bc-bar" id="sBarW" style="display:none"><i id="sBar"></i></div>
@@ -104,7 +122,7 @@ const esc = (s) => AL.esc(s == null ? '' : String(s));
 const T = en ? {
   back: '‹ Contacts', h1: '📢 Broadcast', intro: 'Make groups of your contacts in advance, then send one message to a whole group. Each person gets it in their own 1:1 chat — they can\'t see who else received it.',
   newG: '＋ New broadcast group', empty: 'No groups yet.<br>Tap <b>＋ New broadcast group</b> to pick people.',
-  ppl: (n) => n + ' people', send: '📢 Send', edit: 'Edit', del: 'Delete', delAsk: (n) => 'Delete the group "' + n + '"? (No messages are deleted.)',
+  ppl: (n) => n + ' people', send: '📝 Write & send', edit: 'Edit', del: 'Delete', delAsk: (n) => 'Delete the group "' + n + '"? (No messages are deleted.)',
   eNew: 'New broadcast group', eEdit: 'Edit group', namePh: 'Group name (e.g. Family, Club, Customers)', q: 'Search contacts',
   all: 'All', none: 'None', picked: (n) => n + ' selected', cancel: 'Cancel', save: 'Save',
   noName: 'Please enter a group name.', noPpl: 'Pick at least one person.', noContacts: 'No 1:1 contacts yet. Connect with people first.',
@@ -115,11 +133,15 @@ const T = en ? {
   done: (ok, sk, fl) => '✅ Sent to ' + ok + (sk ? ' · skipped ' + sk + ' locked' : '') + (fl ? ' · ' + fl + ' failed' : ''),
   keepOpen: 'Sending… keep Burum open. If the screen turns off or you leave, it pauses and continues from where it stopped when you come back.',
   resumeTx: (g, a, b) => '⏸ Broadcast to <b>' + esc(g) + '</b> paused at ' + a + ' / ' + b + '.', resumeGo: (n) => '▶ Continue (' + n + ' left)', resumeNo: 'Stop', resumeAsk: 'Stop this broadcast? People not yet reached won\'t get it.',
-  close: 'Close', recent: 'Recent broadcasts', nobody: 'Nobody to send to in this group (people may have disconnected).'
+  close: 'Close', recent: 'Recent broadcasts', nobody: 'Nobody to send to in this group (people may have disconnected).',
+  titleL: 'Title (for your records)', titlePh: 'e.g. October meeting notice — blank uses the first line', txL: 'Message', txPh: 'Write the message to send here',
+  hist: '🗂 Sent broadcasts (kept 1 year)', again: '🔁 Send again · edit', who: (n) => '👥 Recipients (' + n + ')', hdel: 'Delete', hdelAsk: 'Delete this record? (Messages already sent stay.)',
+  toPrev: (n) => 'Same people as last time (' + n + ')', toGroup: (g, n) => 'Group "' + g + '" as it is now (' + n + ')', againH: (t) => '🔁 Send again: ' + t,
+  gone: '(no longer connected)', oldRec: 'Older record — the message wasn\'t kept.', ppl2: (n) => n + ' people'
 } : {
   back: '‹ 연락처', h1: '📢 동시통보', intro: '아는 사람들을 미리 그룹으로 묶어 두고, 필요할 때 메시지 한 번으로 그룹 전체에 보냅니다. 받는 사람은 각자 나와의 1:1 대화방에서 받고, 누구누구에게 함께 갔는지는 보이지 않습니다.',
   newG: '＋ 새 동시통보 그룹', empty: '아직 그룹이 없습니다.<br><b>＋ 새 동시통보 그룹</b>을 눌러 사람을 골라 주세요.',
-  ppl: (n) => n + '명', send: '📢 보내기', edit: '고치기', del: '삭제', delAsk: (n) => '"' + n + '" 그룹을 지울까요? (보낸 메시지는 지워지지 않습니다)',
+  ppl: (n) => n + '명', send: '📝 문안작성 & 보내기', edit: '고치기', del: '삭제', delAsk: (n) => '"' + n + '" 그룹을 지울까요? (보낸 메시지는 지워지지 않습니다)',
   eNew: '새 동시통보 그룹', eEdit: '그룹 고치기', namePh: '그룹 이름 (예: 가족 · 동호회 · 고객)', q: '연락처 찾기',
   all: '모두', none: '해제', picked: (n) => n + '명 골랐습니다', cancel: '취소', save: '저장',
   noName: '그룹 이름을 적어 주세요.', noPpl: '한 명 이상 골라 주세요.', noContacts: '아직 1:1로 이어진 연락처가 없습니다. 먼저 사람을 이어 주세요.',
@@ -130,14 +152,20 @@ const T = en ? {
   done: (ok, sk, fl) => '✅ ' + ok + '명에게 보냈습니다' + (sk ? ' · 잠긴 방 ' + sk + '곳 빠짐' : '') + (fl ? ' · ' + fl + '명 실패' : ''),
   keepOpen: '보내는 중에는 부름을 켜 두세요. 화면이 꺼지거나 다른 곳으로 나가면 잠시 멈췄다가, 다시 열면 멈춘 곳부터 이어서 보냅니다(같은 사람에게 두 번 가지 않습니다).',
   resumeTx: (g, a, b) => '⏸ <b>' + esc(g) + '</b> 동시통보가 ' + a + ' / ' + b + '명에서 멈춰 있습니다.', resumeGo: (n) => '▶ 이어 보내기 (남은 ' + n + '명)', resumeNo: '그만두기', resumeAsk: '이 동시통보를 그만둘까요? 아직 못 받은 사람에게는 가지 않습니다.',
-  close: '닫기', recent: '최근 보낸 동시통보', nobody: '이 그룹에 보낼 사람이 없습니다(연결이 끊겼을 수 있습니다).'
+  close: '닫기', recent: '최근 보낸 동시통보', nobody: '이 그룹에 보낼 사람이 없습니다(연결이 끊겼을 수 있습니다).',
+  titleL: '명칭 (보관함에 남는 이름)', titlePh: '예: 10월 정기모임 안내 — 비우면 문안 첫 줄', txL: '문안', txPh: '여기에 보낼 문안을 적으세요',
+  hist: '🗂 보낸 동시통보 보관함 (1년 보관)', again: '🔁 다시 보내기 · 고치기', who: (n) => '👥 받은 사람 (' + n + '명)', hdel: '삭제', hdelAsk: '이 기록을 지울까요? (이미 보낸 메시지는 그대로입니다)',
+  toPrev: (n) => '지난번 받은 사람 그대로 (' + n + '명)', toGroup: (g, n) => '"' + g + '" 그룹 지금 사람들 (' + n + '명)', againH: (t) => '🔁 다시 보내기: ' + t,
+  gone: '(지금은 연결 끊김)', oldRec: '예전 기록이라 문안이 보관되지 않았습니다.', ppl2: (n) => n + '명'
 };
 
 el('back').textContent = T.back; el('h1').textContent = T.h1; el('intro').textContent = T.intro; el('newBtn').textContent = T.newG;
 el('eName').placeholder = T.namePh; el('eQ').placeholder = T.q; el('eAll').textContent = T.all; el('eNone').textContent = T.none;
-el('eNo').textContent = T.cancel; el('eGo').textContent = T.save; el('sTx').placeholder = T.sPh; el('sNote').textContent = T.sNote;
+el('eNo').textContent = T.cancel; el('eGo').textContent = T.save; el('sTx').placeholder = T.txPh;
+el('sTitleL').textContent = T.titleL; el('sTitle').placeholder = T.titlePh; el('sTxL').textContent = T.txL; el('sNote').textContent = T.sNote;
 el('sNo').textContent = T.close; el('sGo').textContent = T.sGo;
 
+let hist = [];
 let groups = [], people = [], editing = null, picked = new Set(), sendingNow = false;
 
 function show(id, on){ el('bg').style.display = on ? 'block' : 'none'; el(id).style.display = on ? 'block' : 'none'; }
@@ -168,12 +196,40 @@ async function load(){
   }).join('');
   try {
     const lg = await AL.sb.rpc('bc_log_mine');
-    const L = (lg && lg.data) || [];
-    el('log').innerHTML = L.length ? '<b>' + T.recent + '</b><br>' + L.slice(0, 8).map(x =>
-      new Date(x.at).toLocaleString(en ? 'en-US' : 'ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) +
-      ' · ' + esc(x.group || '') + ' · ' + T.done(x.sent, x.skipped, x.failed).replace('✅ ', '')).join('<br>') : '';
+    hist = (lg && lg.data) || [];
+    el('log').innerHTML = hist.length ? '<div class="bc-h">' + T.hist + '</div>' + hist.map((x, i) => {
+      const when = new Date(x.at).toLocaleString(en ? 'en-US' : 'ko-KR', { year: '2-digit', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const has = x.body != null && x.body !== '';
+      return '<div class="bc-hcard"><div class="t">' + esc(x.title || (has ? x.body.split('\n')[0].slice(0, 40) : (x.group || ''))) + '</div>' +
+        '<div class="m">' + when + (x.group ? ' · ' + esc(x.group) : '') + ' · ' + T.done(x.sent, x.skipped, x.failed).replace('✅ ', '') + '</div>' +
+        (has ? '<div class="b">' + esc(x.body) + '</div>' : '<div class="m">' + T.oldRec + '</div>') +
+        '<div class="w" id="hw' + i + '"></div>' +
+        '<div class="bc-row">' + (has ? '<button class="go" data-ha="' + i + '">' + T.again + '</button>' : '') +
+        (x.n ? '<button data-hw="' + i + '">' + T.who(x.n) + '</button>' : '') +
+        '<button class="bad" data-hd="' + i + '">' + T.hdel + '</button></div></div>';
+    }).join('') : '';
   } catch (e) {}
 }
+
+/* 🔴 2026-10-21 — 보관함: 다시 보내기 · 받은 사람 보기 · 삭제 */
+el('log').onclick = async (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.ha !== undefined) openSend(null, hist[+b.dataset.ha]);
+  if (b.dataset.hw !== undefined) {
+    const i = +b.dataset.hw, w = el('hw' + i);
+    if (w.style.display === 'block') { w.style.display = 'none'; return; }
+    const r = await AL.sb.rpc('bc_log_targets', { p_log: hist[i].id });
+    const live = (r && r.data) || [];
+    const names = live.map(t => (nameOf(t.link_id) || '?') + (t.locked ? ' 🔒' : ''));
+    const goneN = hist[i].n - live.length;
+    w.textContent = names.join(', ') + (goneN > 0 ? (names.length ? ' · ' : '') + goneN + (en ? ' ' : '명 ') + T.gone : '');
+    w.style.display = 'block';
+  }
+  if (b.dataset.hd !== undefined) {
+    if (!confirm(T.hdelAsk)) return;
+    await AL.sb.rpc('bc_log_delete', { p_log: hist[+b.dataset.hd].id }); load();
+  }
+};
 
 el('list').onclick = async (e) => {
   const b = e.target.closest('button'); if (!b) return;
@@ -225,14 +281,39 @@ el('eGo').onclick = async () => {
 
 /* ── 보내기 ── */
 let sendGroup = null, targets = [];
-async function openSend(g){
-  sendGroup = g; el('sH').textContent = T.sH(g.name); el('sMsg').textContent = ''; el('sNote').textContent = T.sNote; el('sTx').value = '';
-  el('sBarW').style.display = 'none'; el('sGo').style.display = ''; el('sGo').disabled = false; el('sTx').disabled = false;
-  const r = await AL.sb.rpc('bc_targets', { p_id: g.id });
-  targets = (r && r.data) || [];
+function setTargets(list){
+  targets = list || [];
   const open = targets.filter(t => !t.locked).length;
   el('sWho').textContent = open ? T.sWho(open, targets.length - open) : T.nobody;
   el('sGo').disabled = !open;
+}
+/* g: 그룹에서 새로 보내기 · h: 보관함에서 다시 보내기(문안 · 명칭 · 받은 사람을 채워 둡니다) */
+async function openSend(g, h){
+  el('sMsg').textContent = ''; el('sNote').textContent = T.sNote;
+  el('sBarW').style.display = 'none'; el('sGo').style.display = ''; el('sGo').disabled = false; el('sTx').disabled = false; el('sTitle').disabled = false;
+  el('sTo').style.display = 'none'; el('sTo').innerHTML = '';
+  if (!h) {
+    sendGroup = g; el('sH').textContent = T.sH(g.name); el('sTx').value = ''; el('sTitle').value = '';
+    const r = await AL.sb.rpc('bc_targets', { p_id: g.id });
+    setTargets(r && r.data);
+    show('sDlg', true); el('sTx').focus();
+    return;
+  }
+  const grp = h.group_id ? groups.find(x => x.id === h.group_id) : null;
+  sendGroup = { id: grp ? grp.id : null, name: h.group || '' };
+  el('sH').textContent = T.againH(h.title || h.group || '');
+  el('sTitle').value = h.title || ''; el('sTx').value = h.body || '';
+  const r = await AL.sb.rpc('bc_log_targets', { p_log: h.id });
+  const prev = (r && r.data) || [];
+  setTargets(prev);
+  if (grp) {
+    const r2 = await AL.sb.rpc('bc_targets', { p_id: grp.id });
+    const now = (r2 && r2.data) || [];
+    el('sTo').innerHTML = '<label><input type="radio" name="sTo" value="p" checked>' + esc(T.toPrev(prev.length)) + '</label>' +
+      '<label><input type="radio" name="sTo" value="g">' + esc(T.toGroup(grp.name, now.length)) + '</label>';
+    el('sTo').style.display = 'flex';
+    el('sTo').onchange = (e) => setTargets(e.target.value === 'g' ? now : prev);
+  }
   show('sDlg', true); el('sTx').focus();
 }
 el('sNo').onclick = () => { if (!sendingNow) show('sDlg', false); };
@@ -271,12 +352,17 @@ async function runJob(job){
     const id = job.left[0];
     el('sMsg').textContent = T.sending(total - job.left.length + 1, total);
     const ok = await sendOne(id, job.text);
-    if (ok) job.ok++; else job.fail++;
+    if (ok) { job.ok++; (job.okIds = job.okIds || []).push(id); } else job.fail++;
     job.left.shift(); job.at = Date.now(); jobPut(job);
     el('sBar').style.width = Math.round((total - job.left.length) * 100 / total) + '%';
     await new Promise(r => setTimeout(r, 120));   // 서버를 한꺼번에 두드리지 않게
   }
-  try { await AL.sb.rpc('bc_log_add', { p_id: job.gid, p_sent: job.ok, p_skipped: job.skipped, p_failed: job.fail }); } catch (e) {}
+  /* 🔴 2026-10-21 — 명칭 · 문안 · 받은 사람까지 보관(15_bcast_history.sql). 그 SQL 전이면 예전 방식으로 */
+  try {
+    const r = await AL.sb.rpc('bc_log_save', { p_group: job.gid || null, p_group_name: job.gname || '', p_title: job.title || '', p_body: job.text,
+      p_links: job.okIds || [], p_sent: job.ok, p_skipped: job.skipped, p_failed: job.fail });
+    if (r && r.error && job.gid) await AL.sb.rpc('bc_log_add', { p_id: job.gid, p_sent: job.ok, p_skipped: job.skipped, p_failed: job.fail });
+  } catch (e) {}
   jobPut(null); wakeOff();
   sendingNow = false; el('sNo').disabled = false;
   el('sMsg').textContent = T.done(job.ok, job.skipped, job.fail);
@@ -289,7 +375,9 @@ el('sGo').onclick = async () => {
   if (!text) { el('sMsg').textContent = T.noTx; return; }
   if (!await AL.requirePlan()) return;
   const list = targets.filter(t => !t.locked).map(t => t.link_id);
-  const job = { gid: sendGroup.id, gname: sendGroup.name, text: text, left: list, total: list.length,
+  const title = el('sTitle').value.trim() || text.split('\n')[0].slice(0, 40);
+  el('sTitle').disabled = true; el('sTo').style.display = 'none';
+  const job = { gid: sendGroup.id, gname: sendGroup.name, title: title, okIds: [], text: text, left: list, total: list.length,
                 ok: 0, fail: 0, skipped: targets.length - list.length, at: Date.now() };
   jobPut(job);
   el('sNote').textContent = T.keepOpen;
@@ -306,7 +394,7 @@ function paintResume(){
   el('rGo').onclick = async () => {
     if (!await AL.requirePlan()) return;
     sendGroup = { id: j.gid, name: j.gname };
-    el('sH').textContent = T.sH(j.gname); el('sWho').textContent = ''; el('sTx').value = j.text; el('sNote').textContent = T.keepOpen;
+    el('sH').textContent = T.sH(j.gname); el('sWho').textContent = ''; el('sTx').value = j.text; el('sTitle').value = j.title || ''; el('sTo').style.display = 'none'; el('sNote').textContent = T.keepOpen;
     el('sBar').style.width = Math.round((j.total - j.left.length) * 100 / j.total) + '%';
     show('sDlg', true); box.style.display = 'none';
     await runJob(j);
