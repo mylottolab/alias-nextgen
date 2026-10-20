@@ -392,6 +392,8 @@ function rowHtml(r){
         '<span class="nmx">' + (r.pinned ? '▲ ' : '') + AL.esc(shown) + '</span>' +
         (n ? '<span class="unread">' + AL.esc(n > 99 ? '99+' : n) + '</span>' : '') +
       '</div>' +
+      /* 🔴 2026-10-21 — 상대 이름 아래에 "나: 내 별칭" (전부 · 작게) */
+      (r.my_face ? '<div class="cmine">' + AL.esc(r.my_face) + '</div>' : '') +
       /* 🔴 2026-09-17 — 최근 대화 한 줄. **켜뒀을 때만** 나옵니다.
          ⚠ 기본은 꺼져 있습니다. 옆 사람이 읽으면 안 되니까요. */
       (previewOn
@@ -400,8 +402,6 @@ function rowHtml(r){
             return t ? '<div class="cprev">' + AL.esc(t) + '</div>' : '';
           })()
         : '') +
-      /* 🔴 2026-10-21 — 상대 이름 아래에 "나: 내 별칭" (전부 · 작게) */
-      (r.my_face ? '<div class="cmine">' + AL.esc(r.my_face) + '</div>' : '') +
       (sub ? '<div class="csub">' + AL.esc(r.my_face ? (AL.lang !== 'en' ? '상대 이름: ' : 'Their name: ') + sub : sub) + '</div>' : '') +
     '</div>' +
     /* 🔴 2026-10-21 — 내 별칭 그림은 시간 바로 앞, 늘 같은 자리 */
