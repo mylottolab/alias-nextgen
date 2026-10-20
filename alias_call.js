@@ -1594,18 +1594,17 @@ AL.boostStop = function(){
 AL.boostSend = async function(){
   var b = null;
   try {
-    var lv = 1;   // 🔴 2026-10-20 — 안드로이드 소리 멈춤 원인 확인을 위해 잠시 끕니다(되돌리려면 3.5)
-    try { var v = localStorage.getItem('burum_boost'); if (v !== null && v !== '') lv = parseFloat(v); } catch (e) {}
-    if (!(lv > 1)) return;
-    if (lv > 4) lv = 4;
-    /* 🔴🔴 2026-10-20 — 아이폰에서는 끕니다. 아이폰(WebKit)에서 키운 소리가 상대(안드로이드)에게 **무음**으로 가는
-       경우가 생겼습니다(벨 · 화면은 정상, 아이폰 목소리만 안 들림). 아이폰은 원래 마이크 그대로 보냅니다.
-       안드로이드에서 보내는 목소리는 계속 키웁니다. 'burum_boost_ios'='1' 이면 시험용으로 켭니다. */
+    /* 🔴🔴 2026-10-20 — 아이폰에서만 키웁니다(아이폰 마이크가 작게 잡힘 · 기본 3.5배).
+       안드로이드에서 키우면(소리 상자 사용) 안드로이드가 받은 소리를 틀다가 멈췄습니다 → 안드로이드는 키우지 않습니다.
+       세기 바꾸기(시험용): localStorage 'burum_boost' = '0'(끔) · '2' · '3.5' · '4' */
     var isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
                 (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) ||
                 !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.aliasIOS);
-    var iosOn = false; try { iosOn = localStorage.getItem('burum_boost_ios') === '1'; } catch (e) {}
-    if (isIOS && !iosOn) return;
+    if (!isIOS) return;
+    var lv = 3.5;
+    try { var v = localStorage.getItem('burum_boost'); if (v !== null && v !== '') lv = parseFloat(v); } catch (e) {}
+    if (!(lv > 1)) return;
+    if (lv > 4) lv = 4;
     var Ctx = window.AudioContext || window.webkitAudioContext;
     if (!Ctx || !window.MediaStream || !AL.call.pc || !AL.call.local) return;
     var raw = AL.call.local.getAudioTracks()[0];
