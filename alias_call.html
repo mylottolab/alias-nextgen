@@ -10,7 +10,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="alias_common.js?v=20261020a"></script>
 <script src="alias_media.js?v=20260927a"></script>
-<script src="alias_call.js?v=20261020a"></script>
+<script src="alias_call.js?v=20261020b"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -422,6 +422,7 @@ function paintActs(){
       (speakerOn ? (en ? 'Speaker on' : '스피커 켜짐') : (en ? 'Speaker' : '스피커')) + routeNote(en), function(){
         speakerOn = !speakerOn;
         try { AliasNative.setSpeaker(speakerOn); } catch (e) { console.warn('[call] 스피커 바꾸기 실패', e); }
+        if (AL.isIOSApp && AL.isIOSApp()) setTimeout(function(){ AL.reviveMic(true); }, 1000);   // 🔴 2026-10-20
         paintActs();
       }));
   }
@@ -833,6 +834,8 @@ function ongoingStart(){
     if (window.AliasNative && typeof AliasNative.callOngoing === 'function') {
       AliasNative.callOngoing(peerName(), callType === 'video');
       ongoingOn = true;
+      /* 🔴 2026-10-20 — 아이폰: 앱이 소리 설정을 바꾼 뒤 마이크를 새로 잡습니다(내 목소리가 안 가는 일 방지) */
+      if (AL.isIOSApp && AL.isIOSApp()) { setTimeout(function(){ AL.reviveMic(true); }, 1200); setTimeout(function(){ AL.reviveMic(true); }, 4000); }
     }
   } catch (e) { console.warn('[call] 통화 중 알림 켜기 실패', e); }
 }

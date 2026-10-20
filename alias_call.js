@@ -526,13 +526,24 @@ function remoteUfrag(){
    일반 전화를 받으면 폰이 마이크를 그쪽으로 가져갑니다. 돌아와도 부름의
    마이크가 끊긴 채면 상대는 계속 내 목소리를 못 듣습니다.
    ⚠ 음소거 상태는 그대로 이어갑니다. */
-AL.reviveMic = async function(){
+/* 🔴🔴 2026-10-20 — force=true 면 멀쩡해 보여도 다시 잡습니다(아이폰).
+   아이폰 앱이 스피커 · 소리 설정을 바꾸면, 마이크가 "살아 있다" 고 하면서 실제로는 **아무 소리도
+   안 보내는** 일이 생겼습니다(상대 안드로이드에 "눌러서 소리 켜기" 가 뜨고 내 목소리가 안 감).
+   그래서 아이폰에서는 소리 설정을 바꾼 직후 마이크를 한 번 새로 잡습니다. */
+AL.isIOSApp = function(){
+  return !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.aliasIOS) ||
+         /iPhone|iPad|iPod/.test(navigator.userAgent);
+};
+AL.reviveMic = async function(force){
   try {
     if (!AL.call.pc || !AL.call.local) return;
     var t = AL.call.local.getAudioTracks()[0];
-    if (t && t.readyState === 'live' && !t.muted) return;   // 멀쩡하면 그대로
+    if (!force && t && t.readyState === 'live' && !t.muted) return;   // 멀쩡하면 그대로
+    if (AL._reviving) return;
+    AL._reviving = true;
+    setTimeout(function(){ AL._reviving = false; }, 1500);
 
-    var ns = await navigator.mediaDevices.getUserMedia({ audio: true });
+    var ns = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
     var nt = ns.getAudioTracks()[0];
     if (!nt) return;
     nt.enabled = t ? t.enabled : true;
