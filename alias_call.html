@@ -832,7 +832,10 @@ function ongoingStart(){
   if (ongoingOn) return;
   try {
     if (window.AliasNative && typeof AliasNative.callOngoing === 'function') {
-      AliasNative.callOngoing(peerName(), callType === 'video');
+      /* 🔴🔴 2026-10-20 — 아이폰 1.4 이하: 음성 통화 시작 때 앱이 소리 설정을 바꾸면 아이폰 마이크가 무음이 됩니다.
+         아이폰 앱의 callOngoing 은 스피커 설정만 하므로, 음성 통화면 부르지 않습니다(1.5 는 앱이 알아서 안 건드림). */
+      const iosOld = AL.isIOSApp && AL.isIOSApp() && !AliasNative.audioV2;
+      if (!(iosOld && callType !== 'video')) AliasNative.callOngoing(peerName(), callType === 'video');
       ongoingOn = true;
       /* 🔴 2026-10-20 — 아이폰: 앱이 소리 설정을 바꾼 뒤 마이크를 새로 잡습니다(내 목소리가 안 가는 일 방지) */
       if (AL.isIOSApp && AL.isIOSApp()) { setTimeout(function(){ AL.reviveMic(true); }, 1200); setTimeout(function(){ AL.reviveMic(true); }, 4000); }
