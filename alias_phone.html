@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>부름</title>
 <link rel="stylesheet" href="alias_common.css?v=20260927a">
-<link rel="stylesheet" href="alias_theme.css?v=20260927a">
+<link rel="stylesheet" href="alias_theme.css?v=20261021b">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20261021a"></script>
+<script src="alias_common.js?v=20261021d"></script>
 <script src="alias_call.js?v=20261020g"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
@@ -164,6 +164,18 @@ document.addEventListener("DOMContentLoaded", function(){
 .phinfo{display:none;margin:0 2px 12px;padding:11px 13px;border-radius:10px;background:rgba(143,227,176,.12);
   color:#BFF0D2;font-size:13.5px;line-height:1.6}
 .phinfo.show{display:block}
+/* 🔴 2026-10-21 — 주간(밝은 바탕 · 흰색 포함)에서도 칸과 단추가 보이게 */
+.phtop{flex-wrap:wrap;gap:8px}
+html[data-mode="light"] .phfind,html[data-mode="light"] .editbtn,html[data-mode="light"] .slot,html[data-mode="light"] .act,
+html[data-mode="light"] .phfoot a{background:rgba(0,0,0,.04);border-color:rgba(0,0,0,.2)}
+html[data-mode="light"] .slot.set{background:rgba(40,150,90,.10);border-color:rgba(40,150,90,.45)}
+html[data-mode="light"] .slot.set .num,html[data-mode="light"] .psub .bnno{color:#1E7A4C}
+html[data-mode="light"] .act.call{background:rgba(40,150,90,.12);border-color:rgba(40,150,90,.45)}
+html[data-mode="light"] .prow{border-bottom-color:rgba(0,0,0,.1)}
+html[data-mode="light"] .phfoot{background:var(--raise,#fff);border-top-color:rgba(0,0,0,.12)}
+html[data-mode="light"] .phfoot a.quiet{color:#3B4652;background:transparent;border-color:transparent}
+html[data-mode="light"] .phbtns a,html[data-mode="light"] .phbtns button{background:rgba(40,150,90,.12);color:#1E7A4C;border-color:rgba(40,150,90,.45)}
+html[data-mode="light"] .phinfo{color:#1E5E3C}
 </style>
 </head>
 

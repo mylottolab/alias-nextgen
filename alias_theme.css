@@ -430,7 +430,15 @@ html[data-color="slate"][data-mode="dark"]{
   --steel:#6FB0EC; --paper:#FFFFFF; --paper-ink:#0D1218; --bad:#EE8080;
 }
 
+/* ── 흰색 — 바탕 전체를 흰색으로 (🔴 2026-10-21 손님 요청) · 늘 주간으로 보입니다 ── */
+html[data-color="white"][data-mode="light"], html[data-color="white"][data-mode="dark"]{
+  --ink:#FFFFFF; --raise:#FFFFFF; --raise2:#F3F4F6; --line:#C9CED6;
+  --text:#000000; --dim:#2B3440; --faint:#4A5663;
+  --steel:#144E86; --paper:#000000; --paper-ink:#FFFFFF; --bad:#9E2A22;
+}
+
 /* 고르는 화면의 미리보기 점 */
+.sw-white .dot{ background:#FFFFFF; box-shadow:inset 0 0 0 1px #9AA3AE; }
 .sw-crisp .dot{ background:#E8ECF1; }
 .sw-cream .dot{ background:#E8DFC9; }
 .sw-slate .dot{ background:#9AA6B4; }
@@ -642,4 +650,11 @@ html[data-mode="light"] #popmenu button,
 html[data-mode="light"] #rcBox,
 html[data-mode="light"] #rpBox{
   color:#DDE5F0;
+}
+
+/* 🔴 2026-10-21 — 얼굴표(이름 첫 글자 그림)를 밝은 바탕에서 진하게 */
+html[data-mode="light"] [style*="--fh"]{
+  color:hsl(var(--fh),65%,32%) !important;
+  background-color:hsla(var(--fh),60%,50%,.16) !important;
+  border-color:hsla(var(--fh),55%,40%,.45) !important;
 }

@@ -1139,6 +1139,7 @@ AL.STR = {
   adMenu:    { kr:'이용권 주기 (관리자)', en:'Grant a plan (admin)' },
 
   /* 🔴 2026-09-19 — 또렷하게 읽히는 색 셋 */
+  thWhite:   { kr:'흰색', en:'White' },
   thCrisp:   { kr:'또렷', en:'Crisp' },
   thCream:   { kr:'크림', en:'Cream' },
   thSlate:   { kr:'진회', en:'Slate' },
@@ -1776,7 +1777,8 @@ AL.faceStyle = function(name){
 /* radius 를 주면 그 형태로(🔴 2026-10-21 연락처: 1:1 '50%' · 단체방 '30%') */
 AL.faceAttr = function(name, radius){
   var f = AL.faceStyle(name);
-  return ' style="background:' + f.bg + ';color:' + f.fg +
+  /* 🔴 2026-10-21 --fh: 밝은 바탕(주간 · 흰색)에서 글씨를 진하게 칠하려고 색조를 넘깁니다(alias_theme.css) */
+  return ' style="--fh:' + f.hue + ';background:' + f.bg + ';color:' + f.fg +
          ';border:1px solid ' + f.line + ';border-radius:' + (radius || f.radius) + '"';
 };
 
@@ -3645,6 +3647,8 @@ AL.applyTheme = function(t){
     mode = (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches)
       ? 'light' : 'dark';
   }
+  /* 🔴 2026-10-21 흰색은 늘 흰 바탕(주간)으로 */
+  if (t.color === 'white') mode = 'light';
   var el = document.documentElement;
   el.setAttribute('data-mode', mode);
   el.setAttribute('data-color', t.color);
@@ -3884,7 +3888,7 @@ AL.THEME_OPTS = {
   /* 🔴 2026-09-19 — 또렷하게 읽히는 셋을 **맨 앞**에 둡니다.
      "고를 만한 색이 없다" 는 말씀은 대개 뒤쪽까지 안 보셔서 나옵니다.
      잘 읽히는 것이 먼저 보여야 합니다. */
-  color:  [['crisp','thCrisp'], ['cream','thCream'], ['slate','thSlate'],
+  color:  [['white','thWhite'], ['crisp','thCrisp'], ['cream','thCream'], ['slate','thSlate'],
            ['midnight','thMidnight'], ['paper','thPaper'], ['forest','thForest'],
            ['dusk','thDusk'], ['ink','thInk'],
            ['pitch','thPitch'], ['abyss','thAbyss'],
@@ -4545,6 +4549,20 @@ AL.topBar = async function(){
         if (sess) { if (confirm(AL.t('outAsk'))) AL.signOut(); }
         else location.href = 'alias_auth.html?next=' + encodeURIComponent(page + location.search);
       }));
+    }
+    /* 🔴 2026-10-21 전화번호부: 계정 줄 위에 [‹ 연락처] (처음 화면으로) */
+    if (page === 'alias_phone.html') {
+      var back = document.createElement('div');
+      back.style.cssText = 'display:flex;gap:8px;padding:6px 10px 0';
+      var bk = mk(en ? '‹ Contacts' : '‹ 연락처', function(){ location.href = 'alias_contacts.html'; });
+      bk.style.padding = '7px 16px'; bk.style.fontSize = '13.5px'; bk.style.fontWeight = '800';
+      back.appendChild(bk);
+      wrap.insertBefore(back, wrap.firstChild);
+      wrap.insertBefore(bar, back.nextSibling);
+      bar.style.margin = '0 0 4px'; bar.style.padding = '4px 10px 0'; bar.style.flexWrap = 'nowrap'; bar.style.gap = '6px';
+      Array.prototype.forEach.call(bar.querySelectorAll('button'), function(b){ b.style.padding = '5px 10px'; b.style.fontSize = '12px'; });
+      var tg0 = bar.querySelector('span'); if (tg0) tg0.style.maxWidth = '34vw';
+      return;
     }
     if (acctOnly) {
       bar.style.margin = '0 0 4px'; bar.style.padding = '4px 10px 0'; bar.style.flexWrap = 'nowrap'; bar.style.gap = '6px';
