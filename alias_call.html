@@ -10,7 +10,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="alias_common.js?v=20261020a"></script>
 <script src="alias_media.js?v=20260927a"></script>
-<script src="alias_call.js?v=20261020b"></script>
+<script src="alias_call.js?v=20261020c"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -522,6 +522,15 @@ function onState(state, extra){
                   '(' + a0.currentTime.toFixed(1) + ')');
     }
     el('bytes').style.whiteSpace = 'pre-line';
+
+    /* 🔴 2026-10-20 — 소리가 한쪽만 안 들릴 때 원인을 바로 보이게: 보낸 소리 · 받은 소리 · 내 마이크 크기
+       ↑ 가 안 늘면 내 쪽이 안 보내는 것, ↓ 가 안 늘면 상대가 안 보내는 것, 마이크가 계속 0 이면 내 마이크가 막힌 것 */
+    if (callType !== 'video') {
+      const bar = (v) => v == null ? '–' : ('▁▂▃▄▅▆▇█'.charAt(Math.min(7, Math.floor(Math.sqrt(v) * 8))));
+      line += '\n' + (AL.lang === 'en' ? 'sent ' : '보냄 ') + AL.fmtBytes(extra.aOut || 0) + ' · ' +
+              (AL.lang === 'en' ? 'got ' : '받음 ') + AL.fmtBytes(extra.aIn || 0) +
+              (extra.micLv != null ? ' · ' + (AL.lang === 'en' ? 'mic ' : '내 마이크 ') + bar(extra.micLv) : '');
+    }
 
     /* 영상통화는 여기에 더 자세히 붙입니다. */
     if (callType === 'video') {

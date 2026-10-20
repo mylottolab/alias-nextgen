@@ -1206,7 +1206,7 @@ function startStats(){
          이제 이렇게 보입니다.
            ↑12MB ↓0.2MB · 화면 0장/초      ← 받는 쪽이 안 오고 있습니다
            ↑12MB ↓11MB · 화면 24장/초      ← 잘 오고 있는데 안 그려지는 것 */
-      var vIn = 0, vOut = 0, aIn = 0, aOut = 0, fps = null, frames = null;
+      var vIn = 0, vOut = 0, aIn = 0, aOut = 0, fps = null, frames = null, micLv = null, inLv = null;
 
       stats.forEach(function(r){
         if (r.type === 'inbound-rtp') {
@@ -1221,6 +1221,9 @@ function startStats(){
           else aOut += (r.bytesSent || 0);
         }
         if (r.type === 'candidate-pair' && r.state === 'succeeded' && r.nominated) pair = r;
+        /* 🔴 2026-10-20 — 내 마이크 소리 크기 · 상대 소리 크기(0~1). "한쪽만 안 들림" 을 가리려고 */
+        if (r.type === 'media-source' && r.kind === 'audio' && typeof r.audioLevel === 'number') micLv = r.audioLevel;
+        if (r.type === 'inbound-rtp' && r.kind === 'audio' && typeof r.audioLevel === 'number') inLv = r.audioLevel;
       });
 
       total = vIn + vOut + aIn + aOut;
@@ -1229,6 +1232,7 @@ function startStats(){
         bytes: total,
         up: vOut + aOut, down: vIn + aIn,
         vIn: vIn, vOut: vOut, fps: fps, frames: frames,
+        aIn: aIn, aOut: aOut, micLv: micLv, inLv: inLv,
       });
 
       /* 어떤 길로 붙었는지 한 번만 남깁니다. 나중에 원인을 찾을 때 씁니다. */
