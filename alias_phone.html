@@ -95,10 +95,11 @@ document.addEventListener("DOMContentLoaded", function(){
   border-radius:.5em;text-align:center;font-weight:700;font-size:12.5px;
   background:rgba(120,200,150,.18);color:#8FE3B0}
 .prow .star{margin-right:.3em;color:#F2C94C}
-/* 🔴 2026-09-16 — 이름 옆 작은 내 얼굴표 */
-.pname .mymark{display:inline-flex;align-items:center;justify-content:center;
-  width:28px;height:28px;flex:0 0 28px;margin-left:8px;vertical-align:middle;
-  font-size:12px;font-weight:800;line-height:1;
+/* 🔴 2026-10-21 — 연락처와 같은 기준: 1:1 동그라미 · 단체방 둥근 네모 · 내 별칭 그림은 단추 앞 고정 · 이름 아래 내 별칭 */
+.prow .pmine{font-size:12px;opacity:.75;margin-top:2px;line-height:1.4;word-break:keep-all;overflow-wrap:anywhere}
+.prow > .mymark{display:inline-flex;align-items:center;justify-content:center;
+  width:38px;height:38px;flex:0 0 38px;border-radius:50% !important;
+  font-size:14px;font-weight:800;line-height:1;cursor:pointer;
   background-repeat:no-repeat;background-size:cover;background-position:center}
 
 /* 🔴 2026-09-12 — 단추가 셋(☏ 📹 💬)이 되어 조금 줄였습니다.
@@ -384,7 +385,7 @@ function paintList(){
       /* 🔴🔴 2026-09-16 — 큰 것은 **상대**, 작은 것은 **나**.
          여기도 상대를 고르는 자리입니다. 상대 얼굴이 보여야 고릅니다.
          (연락처와 같은 이유 — 그쪽 주석을 읽어주세요) */
-      '<div class="pav"' + AL.faceAttr(room ? (r.room_name || '') : (nameOf(r) || '')) +
+      '<div class="pav"' + AL.faceAttr(room ? (r.room_name || '') : (nameOf(r) || ''), room ? '30%' : '50%') +
         (!room && r.peer_avatar
           ? ' data-face="' + AL.esc(r.peer_avatar) + '"' : '') + '>' +
         AL.esc(room ? '👥' : AL.initial(nameOf(r))) + '</div>' +
@@ -393,18 +394,19 @@ function paintList(){
           (e.speed_dial ? '<span class="spd">' + AL.esc(e.speed_dial) + '</span>' : '') +
           (e.starred ? '<span class="star">★</span>' : '') +
           AL.esc(nameOf(r)) +
-          /* 🔴 2026-09-16 — 이 관계에서 내가 쓰는 얼굴 */
-          (!room
-            ? '<span class="mymark"' + AL.faceAttr(r.my_face || '') +
-              (myFaces[r.my_face] ? ' data-face="' + AL.esc(myFaces[r.my_face]) + '"' : '') +
-              ' title="' + AL.esc(r.my_face || '') + '">' +
-              AL.esc(AL.initial(r.my_face)) + '</span>'
-            : '') +
         '</div>' +
+        /* 🔴 2026-10-21 — 연락처와 같게: 이름 아래 내 별칭(작게) */
+        (r.my_face ? '<div class="pmine">' + AL.esc(r.my_face) + '</div>' : '') +
         '<div class="psub">' + AL.esc(AL.fmtWhen(r.last_activity_at)) +
           (room ? ' · ' + AL.esc(AL.t('phRoomOnly')) : '') +
           (bookFor(r.link_id) ? ' · <span class="bnno">🔢 ' + AL.esc(fmtNo(bookFor(r.link_id).number)) + '</span>' : '') + '</div>' +
       '</div>' +
+      /* 🔴 2026-10-21 — 내 별칭 그림은 단추 바로 앞, 늘 같은 자리 */
+      (r.my_face
+        ? '<span class="mymark" data-go="' + AL.esc(r.link_id) + '"' + AL.faceAttr(r.my_face || '', '50%') +
+          (myFaces[r.my_face] ? ' data-face="' + AL.esc(myFaces[r.my_face]) + '"' : '') +
+          ' title="' + AL.esc(r.my_face || '') + '">' + AL.esc(AL.initial(r.my_face)) + '</span>'
+        : '') +
       '<button class="act call' + (room ? ' off' : '') + '" data-call="' + AL.esc(r.link_id) +
         '" aria-label="' + AL.esc(AL.t('ariaCall')) + '">☏</button>' +
       /* 🔴 2026-09-12 — 영상. 방은 1:1 영상이 안 되므로 흐리게 꺼둡니다. */
