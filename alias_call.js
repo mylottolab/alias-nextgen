@@ -1594,7 +1594,7 @@ AL.boostStop = function(){
 AL.boostSend = async function(){
   var b = null;
   try {
-    var lv = 3.5;
+    var lv = 1;   // 🔴 2026-10-20 — 안드로이드 소리 멈춤 원인 확인을 위해 잠시 끕니다(되돌리려면 3.5)
     try { var v = localStorage.getItem('burum_boost'); if (v !== null && v !== '') lv = parseFloat(v); } catch (e) {}
     if (!(lv > 1)) return;
     if (lv > 4) lv = 4;

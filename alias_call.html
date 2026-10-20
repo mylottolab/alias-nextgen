@@ -10,7 +10,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="alias_common.js?v=20261020a"></script>
 <script src="alias_media.js?v=20260927a"></script>
-<script src="alias_call.js?v=20261020c"></script>
+<script src="alias_call.js?v=20261020d"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -314,12 +314,23 @@ function setStatus(text){ el('st').textContent = text || ''; }
 
 /* 🔴 2026-09-12 — "눌러서 소리 켜기" 를 누르면 둘 다 다시 틉니다.
    이 한 번의 손가락 터치가 브라우저에게 주는 허락입니다. */
+/* 🔴 2026-10-20 — 안드로이드에서 소리가 "재생 중" 인데 시계가 멈추는 일: 소리 줄을 새로 끼워 다시 틉니다 */
+function reattach(m){
+  try {
+    const st = m.srcObject; if (!st) return;
+    const tracks = (m.id === 'remoteA') ? st.getAudioTracks() : st.getTracks();
+    m.srcObject = null;
+    m.srcObject = new MediaStream(tracks);
+    m.volume = 1.0; m.muted = false;
+    m.play().catch(function(){});
+    console.warn('[call] ' + m.id + ' 다시 붙였습니다');
+  } catch (e) { console.warn('[call] 다시 붙이기 실패', e); }
+}
 document.getElementById('tapSound').addEventListener('click', function(){
   ['remoteA', 'remoteV'].forEach(function(id){
     const m = el(id);
     if (!m || !m.srcObject) return;
-    try { m.volume = 1.0; m.muted = false; } catch (e) {}
-    m.play().catch(function(e){ console.warn('[call] 다시 틀기 실패 ' + id, e); });
+    reattach(m);   // 🔴 2026-10-20 — 누르면 줄을 새로 끼워 틉니다
   });
   window.__stuck = {};
   this.style.display = 'none';
@@ -610,7 +621,9 @@ function onState(state, extra){
           const t = m.currentTime;
           if (window.__lastT[id] === t) {
             window.__stuck[id] = (window.__stuck[id] || 0) + 1;
-            if (window.__stuck[id] >= 2) {
+            /* 🔴 2026-10-20 — 멈추면 먼저 스스로 다시 붙여 봅니다(소리 줄을 떼었다 다시 꽂기) */
+            if (window.__stuck[id] === 2 || window.__stuck[id] === 5) reattach(m);
+            if (window.__stuck[id] >= 3) {
               const b = el('tapSound');
               if (b.style.display === 'none') {
                 console.warn('[call] ' + id + ' 이 재생 중이라는데 시계가 안 갑니다');
