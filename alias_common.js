@@ -2517,6 +2517,11 @@ AL.loadGallery = async function(personaId){
       .eq('persona_id', personaId)
       .order('sort').order('created_at');
     out.items = it.data || [];
+    /* 🔴 2026-10-21 배열(열 · 크기 · 모양) — 16_gallery_layout.sql 전이면 조용히 기본값 */
+    try {
+      var ly = await AL.sb.from('galleries').select('layout').eq('persona_id', personaId).maybeSingle();
+      if (ly && !ly.error && ly.data) out.layout = ly.data.layout || null;
+    } catch (e2) {}
   } catch (e) {
     console.warn('[gallery] 못 읽었습니다', e);
   }

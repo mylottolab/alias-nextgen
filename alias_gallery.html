@@ -8,8 +8,9 @@
 <link rel="stylesheet" href="alias_theme.css?v=20261021d">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20261021f"></script>
+<script src="alias_common.js?v=20261021g"></script>
 <script src="alias_media.js?v=20260927a"></script>
+<script src="alias_deco.js?v=20261021a"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function(){
   if (typeof AL === "undefined" || typeof AL.t !== "function") {
@@ -86,6 +87,19 @@ body > .gwrap, body > nav.tabbar{position:relative;z-index:1}
 .gcell{position:relative;aspect-ratio:1/1;border-radius:14px;overflow:hidden;
   background:rgba(255,255,255,.06);cursor:pointer}
 .gcell img, .gcell video{width:100%;height:100%;object-fit:cover;display:block}
+/* 🔴 2026-10-21 배열 고르기 — 열(2·3·4) · 크기(소형~특대) · 모양(반듯하게 · 들쭉날쭉 · 원래 비율) */
+.ggrid.fix .gcell{aspect-ratio:auto;height:100%}
+.ggrid.natural{display:block;column-gap:8px}
+.ggrid.natural .gcell{aspect-ratio:auto;height:auto;break-inside:avoid;margin:0 0 8px;display:block}
+.ggrid.natural .gcell img,.ggrid.natural .gcell video{height:auto}
+.ggrid.c3 .gcell,.ggrid.c4 .gcell{border-radius:10px}
+.ggrid.c4 .gcell .gmove button{width:26px;height:26px;font-size:11px}
+.ggrid.c4 .gcell .gdel{width:24px;height:24px;font-size:12px}
+.glay{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 10px}
+.glay .gl{font-size:12.5px;font-weight:700;opacity:.7;width:100%;margin:2px 2px 0}
+.glay button{margin:0;padding:8px 13px;border-radius:999px;cursor:pointer;font-size:13.5px;font-weight:700;
+  background:rgba(255,255,255,.08);color:inherit;border:1px solid rgba(255,255,255,.2)}
+.glay button.on{background:#8FE3B0;color:#0E1621;border-color:#8FE3B0}
 .gcell .vmark{position:absolute;left:8px;bottom:8px;padding:3px 8px;
   border-radius:999px;font-size:11px;font-weight:700;
   background:rgba(0,0,0,.6);color:#fff}
@@ -205,6 +219,8 @@ body > .gwrap, body > nav.tabbar{position:relative;z-index:1}
     </div>
 
     <div class="gsect" data-t="glTitle"></div>
+    <!-- 🔴 2026-10-21 배열 -->
+    <div id="elay"></div>
     <div class="ggrid" id="egrid"></div>
     <button class="gbig" id="eadd" data-t="glAdd"></button>
     <p class="gnote" data-t="glOrder"></p>
@@ -216,6 +232,7 @@ body > .gwrap, body > nav.tabbar{position:relative;z-index:1}
     <div id="cvPreview" class="cvprev" style="display:none"></div>
     <button class="gbig" id="cvPick"></button>
     <input type="file" id="cvFile" accept="image/*" style="display:none">
+    <button class="gbig" id="cvDeco" style="display:none"></button>
     <button class="gbig" id="cvDel" style="display:none"></button>
     <p class="gnote" data-t="cvNote"></p>
 
@@ -312,6 +329,80 @@ function closeViewer(){
 el('gvBg').addEventListener('click', closeViewer);
 el('gvClose').addEventListener('click', closeViewer);
 
+/* =====================================================================
+   🔴🔴 2026-10-21 배열 — 열 2 · 3 · 4 / 크기 소형 · 표준 · 대형 · 특대 / 모양 반듯하게 · 들쭉날쭉 · 원래 비율
+   galleries.layout = {cols, size, mode}  (16_gallery_layout.sql)
+   ===================================================================== */
+const LAY_DEF = { cols: 2, size: 'md', mode: 'grid' };
+const SIZES = { sm: 0.75, md: 1, lg: 1.33, xl: 1.75 };   // 칸 높이 = 칸 너비 × 이 값
+function lay(){ return Object.assign({}, LAY_DEF, data.layout || {}); }
+/* 들쭉날쭉: 6장마다 한 장은 2×2 크게, 한 장은 세로로 길게 */
+function spanOf(i, L){
+  if (L.mode !== 'mix') return [1, 1];
+  const k = i % 6;
+  if (k === 0) return [2, 2];
+  if (k === 3) return [1, 2];
+  if (k === 5 && L.cols >= 3) return [2, 1];
+  return [1, 1];
+}
+function applyLayout(grid, forEdit){
+  const L = lay();
+  const mode = forEdit ? 'grid' : L.mode;
+  grid.className = 'ggrid c' + L.cols + (mode === 'natural' ? ' natural' : ' fix');
+  if (mode === 'natural') {
+    grid.style.gridTemplateColumns = ''; grid.style.gridAutoRows = ''; grid.style.gridAutoFlow = '';
+    grid.style.columnCount = L.cols;
+    return;
+  }
+  grid.style.columnCount = '';
+  grid.style.gridTemplateColumns = 'repeat(' + L.cols + ',1fr)';
+  grid.style.gridAutoFlow = 'dense';
+  const fit = function(){
+    const w = grid.clientWidth || (document.querySelector('.gwrap').clientWidth - 32);
+    const cw = (w - 8 * (L.cols - 1)) / L.cols;
+    grid.style.gridAutoRows = Math.round(cw * (SIZES[L.size] || 1)) + 'px';
+  };
+  fit();
+  requestAnimationFrame(fit);
+  Array.prototype.forEach.call(grid.children, function(c, i){
+    const sp = forEdit ? [1, 1] : spanOf(i, L);
+    c.style.gridColumn = sp[0] > 1 && L.cols >= 2 ? 'span ' + Math.min(sp[0], L.cols) : '';
+    c.style.gridRow = sp[1] > 1 ? 'span ' + sp[1] : '';
+  });
+}
+window.addEventListener('resize', function(){
+  if (!data) return;
+  if (editing) applyLayout(el('egrid'), true); else applyLayout(el('vgrid'), false);
+});
+
+function paintLayoutPicker(){
+  const L = lay(), en = AL.lang === 'en';
+  const row = function(title, key, opts){
+    return '<div class="gl">' + title + '</div>' + opts.map(function(o){
+      return '<button type="button" data-k="' + key + '" data-v="' + o[0] + '"' + (String(L[key]) === String(o[0]) ? ' class="on"' : '') + '>' + o[1] + '</button>';
+    }).join('');
+  };
+  el('elay').className = 'glay';
+  el('elay').innerHTML =
+    row(en ? 'Columns' : '열 (한 줄에 몇 장)', 'cols', [[2, en ? '2' : '2열'], [3, en ? '3' : '3열'], [4, en ? '4' : '4열']]) +
+    row(en ? 'Size' : '한 칸 크기', 'size', [['sm', en ? 'Small' : '소형'], ['md', en ? 'Standard' : '표준'], ['lg', en ? 'Large' : '대형'], ['xl', en ? 'Extra large' : '특대']]) +
+    row(en ? 'Style' : '모양', 'mode', [['grid', en ? '▦ Even' : '▦ 반듯하게'], ['mix', en ? '▞ Mixed' : '▞ 들쭉날쭉'], ['natural', en ? '▤ Original shape' : '▤ 사진 원래 비율']]) +
+    '<div class="gl" style="font-weight:500;opacity:.6">' + (en
+      ? 'Mixed makes some photos big or tall. Original shape keeps each photo\'s own proportions. Both show in the viewing screen.'
+      : '들쭉날쭉은 몇 장을 크게 · 길게 섞고, 원래 비율은 사진마다 제 모양대로 보여 줍니다. 둘 다 [보기] 화면에서 보입니다.') + '</div>';
+  el('elay').onclick = async function(e){
+    const b = e.target.closest('[data-k]'); if (!b) return;
+    const nl = lay(); const k = b.dataset.k;
+    nl[k] = (k === 'cols') ? Number(b.dataset.v) : b.dataset.v;
+    data.layout = nl;
+    paintLayoutPicker();
+    applyLayout(el('egrid'), true);
+    const ok = await AL.saveGallery(personaId, { layout: nl });
+    if (ok !== true) showErr(String(ok).indexOf('layout') >= 0
+      ? (en ? 'Run 16_gallery_layout.sql first.' : '배열 저장 칸이 아직 없습니다(16_gallery_layout.sql 을 먼저 돌려 주세요).') : String(ok));
+  };
+}
+
 /* ── 보는 화면 그리기 ────────────────────────────────────────── */
 async function paintView(){
   el('vline').textContent = data.headline || AL.t('glEmpty');
@@ -350,6 +441,7 @@ async function paintView(){
       grid.appendChild(c);
     }
   }
+  applyLayout(grid, false);
 
   /* 🔴 유튜브는 맨 아래.
      ⚠ 작게 숨기지 않습니다. 유튜브 약관이 금지합니다. */
@@ -406,10 +498,13 @@ async function paintCoverEdit(){
     el('cvPick').textContent = AL.t('cvChange');
     el('cvDel').style.display = '';
     el('cvDel').textContent = AL.t('cvRemove');
+    el('cvDeco').style.display = '';
+    el('cvDeco').textContent = AL.lang === 'en' ? '🎨 Decorate background (emoji · text · patterns)' : '🎨 배경 사진 꾸미기 (이모티콘 · 글씨 · 무늬)';
   } else {
     pv.style.display = 'none';
     el('cvPick').textContent = AL.t('cvAdd');
     el('cvDel').style.display = 'none';
+    el('cvDeco').style.display = 'none';
   }
 
   const now = (data.cover_dim == null ? 55 : data.cover_dim);
@@ -430,6 +525,24 @@ async function paintCoverEdit(){
 }
 
 el('cvPick').addEventListener('click', function(){ el('cvFile').click(); });
+
+/* 🔴 2026-10-21 배경 사진 꾸미기 → 꾸민 그림을 새 배경 사진으로 */
+el('cvDeco').addEventListener('click', async function(){
+  if (!data.cover_path || !AL.decoEditor) return;
+  clearMsg();
+  const url = await AL.galleryUrl(data.cover_path);
+  if (!url) { showErr(AL.t('glFail') || 'error'); return; }
+  const file = await AL.decoEditor(url);
+  if (!file) return;
+  const btn = el('cvDeco'); btn.disabled = true; btn.textContent = AL.t('glUploading');
+  try {
+    await AL.uploadCover(personaId, file, data.cover_path);
+    data = await AL.loadGallery(personaId);
+    await paintCoverEdit(); await paintCover(); await paintUsed();
+    showOk(AL.t('glSaved'));
+  } catch (e) { showErr(e.message || String(e)); }
+  finally { btn.disabled = false; await paintCoverEdit(); }
+});
 
 el('cvFile').addEventListener('change', async function(){
   const f = (this.files || [])[0];
@@ -502,6 +615,8 @@ async function paintEdit(){
       '</div>';
     grid.appendChild(c);
   }
+  paintLayoutPicker();
+  applyLayout(grid, true);
 
   /* 순서 바꾸기 */
   grid.querySelectorAll('[data-mv]').forEach(function(b){
