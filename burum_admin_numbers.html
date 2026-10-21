@@ -51,6 +51,7 @@ label.gl{ display:block; font-size:12.5px; color:var(--soft); } label.gl input, 
   <a href="burum_admin_stats.html">← 일일 통계</a>
   <a href="burum_admin_music.html" style="margin-left:8px">🎵 배경음</a>
   <a href="burum_admin_videos.html" style="margin-left:8px">📺 추천 영상</a>
+  <a href="#" onclick="(async function(){ try { await AL.sb.auth.signOut(); } catch (e) {} location.href = 'alias_auth.html?next=' + encodeURIComponent(location.pathname.split('/').pop()); })(); return false;" style="margin-left:auto">🚪 로그아웃 · 다시 로그인</a>
 </header>
 <main>
   <!-- 🔴 2026-10-19 — 탭: 회사 보유 번호 · 이용권 선물 · (에일리어스콜은 그쪽 관리자 화면) -->

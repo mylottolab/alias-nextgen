@@ -48,6 +48,7 @@ td button.bad{ background:#FBE9E6; color:var(--bad); }
   <a href="burum_admin_stats.html">📊 통계</a>
   <a href="burum_admin_numbers.html">🔢 번호 · 🎁 선물</a>
   <a href="burum_admin_videos.html">📺 추천 영상</a>
+  <a href="#" onclick="(async function(){ try { await AL.sb.auth.signOut(); } catch (e) {} location.href = 'alias_auth.html?next=' + encodeURIComponent(location.pathname.split('/').pop()); })(); return false;" style="margin-left:auto">🚪 로그아웃 · 다시 로그인</a>
 </header>
 <main>
   <div class="err" id="err"></div>
