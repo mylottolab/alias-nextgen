@@ -39,14 +39,14 @@ input{width:100%;padding:13px 14px;border-radius:12px;font-size:16px;background:
   <input id="d" type="tel" inputmode="numeric" maxlength="6" placeholder="원하는 숫자 6자리까지 (예: 7777, 생일 0827)">
   <div id="list"></div>
   <a class="cta" id="cta" href="alias_number.html#shop">부름 앱에서 이 번호 사기</a>
-  <p class="note" id="note">실버 5,500원 · 골드 33,000원 · 플래티넘 99,000원. 구매는 부름 앱(App Store · Google Play)에서 합니다. 부름번호는 부름 사용자끼리만 연결되며 일반 전화 · 긴급전화(112 · 119)는 걸리지 않습니다. 목록은 볼 때마다 바뀌고, 이미 팔린 번호는 나오지 않습니다.</p>
+  <p class="note" id="note">실버 11,000원 · 골드 55,000원 · 프리미엄 110,000원. 구매는 부름 앱(App Store · Google Play)에서 합니다. 부름번호는 부름 사용자끼리만 연결되며 일반 전화 · 긴급전화(112 · 119)는 걸리지 않습니다. 목록은 볼 때마다 바뀌고, 이미 팔린 번호는 나오지 않습니다.</p>
 </div>
 <script>
 (function(){
-  var G = { silver: '실버', gold: '골드', platinum: '플래티넘', normal: '일반' }, grade = '';
+  var G = { silver: '실버', gold: '골드', platinum: '프리미엄', normal: '일반' }, grade = '';
   function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]; }); }
   function chips(){
-    document.getElementById('chips').innerHTML = [['', '전체'], ['silver', '실버 5,500원'], ['gold', '골드 33,000원'], ['platinum', '플래티넘 99,000원']]
+    document.getElementById('chips').innerHTML = [['', '전체'], ['silver', '실버 11,000원'], ['gold', '골드 55,000원'], ['platinum', '프리미엄 110,000원']]
       .map(function(c){ return '<button type="button" data-g="' + c[0] + '"' + (c[0] === grade ? ' class="on"' : '') + '>' + c[1] + '</button>'; }).join('');
   }
   async function load(){

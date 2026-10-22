@@ -9,7 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="alias_common.js"></script>
 <style>
-/* 🔴 2026-10-19 — 회사 보유 좋은 번호(플래티넘 · 골드 · 실버 각 1,002개)를 가입자에게 부여 · 회수하는 관리자 화면 */
+/* 🔴 2026-10-19 — 회사 보유 좋은 번호(프리미엄(platinum) · 골드 · 실버 각 1,002개)를 가입자에게 부여 · 회수하는 관리자 화면 */
 :root{ --bg:#F4F6F8; --card:#FFFFFF; --ink:#16212E; --soft:#5A6878; --line:#DDE3EA; --acc:#2F5E92; --tint:#EEF3FA; --bad:#B4412F; --ok:#2E7D4F; }
 *{ box-sizing:border-box; }
 body{ margin:0; background:var(--bg); color:var(--ink); font-family:system-ui,-apple-system,'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif; }
@@ -72,7 +72,7 @@ label.gl{ display:block; font-size:12.5px; color:var(--soft); } label.gl input, 
           <select id="gKind">
             <option value="plan">부름 이용권</option>
             <option value="storage">추가 용량</option>
-            <option value="platinum">부름번호 · 좋은 번호 플래티넘</option>
+            <option value="platinum">부름번호 · 좋은 번호 프리미엄</option>
             <option value="gold">부름번호 · 좋은 번호 골드</option>
             <option value="silver">부름번호 · 좋은 번호 실버</option>
             <option value="extra">부름번호 · 번호 하나 더</option>
@@ -95,7 +95,7 @@ label.gl{ display:block; font-size:12.5px; color:var(--soft); } label.gl input, 
   <div id="paneNum">
   <div class="bar" id="grades">
     <button type="button" data-g="" class="on">전체</button>
-    <button type="button" data-g="platinum">플래티넘</button>
+    <button type="button" data-g="platinum">프리미엄</button>
     <button type="button" data-g="gold">골드</button>
     <button type="button" data-g="silver">실버</button>
   </div>
@@ -134,7 +134,7 @@ label.gl{ display:block; font-size:12.5px; color:var(--soft); } label.gl input, 
 <script>
 const el = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
-const GN = { platinum: '플래티넘', gold: '골드', silver: '실버' };
+const GN = { platinum: '프리미엄', gold: '골드', silver: '실버' };
 const ERR = { not_reserved: '보유분 번호가 아닙니다.', already_given: '이미 다른 분께 부여된 번호입니다.', no_user: '그 닉네임으로 가입한 분이 없습니다. 닉네임을 다시 확인해 주세요.' };
 let grade = '', state = '', offset = 0, cur = null;
 function showErr(t){ el('err').textContent = t; el('err').style.display = t ? 'block' : 'none'; }

@@ -198,9 +198,9 @@ el('go').addEventListener('click', () => { document.querySelectorAll('.bar .r').
 
 // ⚠ 부름은 앱과 같은 로그인을 씁니다. 관리자 여부는 서버(admin_daily_stats)가 admins 표로 확인합니다.
 const SB = () => AL.sb;
-const PNAME = { burum_number_silver: '부름 좋은 번호 · 실버', burum_number_gold: '부름 좋은 번호 · 골드', burum_number_platinum: '부름 좋은 번호 · 플래티넘',
+const PNAME = { burum_number_silver: '부름 좋은 번호 · 실버', burum_number_gold: '부름 좋은 번호 · 골드', burum_number_platinum: '부름 좋은 번호 · 프리미엄',
   burum_number_extra: '부름번호 하나 더', burum_number_change: '부름번호 바꾸기', burum_number_keep: '부름번호 1년 더 잡아 두기', burum_number_transfer: '부름번호 명의 이전 수수료' };
-const KNAME = { silver: '좋은 번호 · 실버', gold: '좋은 번호 · 골드', platinum: '좋은 번호 · 플래티넘', extra: '번호 하나 더', change: '번호 바꾸기', keep: '1년 더 잡아 두기', transfer: '명의 이전 수수료', normal: '일반' };
+const KNAME = { silver: '좋은 번호 · 실버', gold: '좋은 번호 · 골드', platinum: '좋은 번호 · 프리미엄', extra: '번호 하나 더', change: '번호 바꾸기', keep: '1년 더 잡아 두기', transfer: '명의 이전 수수료', normal: '일반' };
 const NAME = (p) => PNAME[p] || p;
 /* 🔴 2026-10-18 — 부름번호 통계. 서버에 함수가 아직 없으면 이 칸만 조용히 안내합니다 */
 async function loadNumbers(){
@@ -212,7 +212,7 @@ async function loadNumbers(){
   const unN = Object.values(un).reduce((a, b) => a + Number(b), 0);
   const soldN = (d.sold || []).reduce((a, x) => a + x.n, 0), soldK = (d.sold || []).reduce((a, x) => a + Number(x.krw), 0);
   el('bnCards').innerHTML = [
-    ['쓰는 번호', actN.toLocaleString() + '개', '일반 ' + (act.normal || 0) + ' · 실버 ' + (act.silver || 0) + ' · 골드 ' + (act.gold || 0) + ' · 플래티넘 ' + (act.platinum || 0)],
+    ['쓰는 번호', actN.toLocaleString() + '개', '일반 ' + (act.normal || 0) + ' · 실버 ' + (act.silver || 0) + ' · 골드 ' + (act.gold || 0) + ' · 프리미엄 ' + (act.platinum || 0)],
     ['번호 가진 회원', (d.holders || 0).toLocaleString() + '명', '쉬는 번호 ' + (d.resting || 0) + '개'],
     ['기간 판매', soldN + '건', fmtAmt(soldK, 'KRW')],
     ['기간 무료 번호', (d.free_period || 0) + '개', '지금까지 ' + (d.free_total || 0) + '개'],
