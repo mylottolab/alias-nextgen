@@ -5034,6 +5034,9 @@ AL.EN_PATCH = {
   '경기도 수원시 권선구 수성로47 10동 501호': '501, Bldg. 10, 47 Suseong-ro, Gwonseon-gu, Suwon-si, Gyeonggi-do, Korea',
   '이용약관': 'Terms of Service', '개인정보처리방침': 'Privacy Policy', '취소·환불 규정': 'Cancellation & Refund Policy',
   '사용설명서': 'User guide',
+  '⚠ 부름은 보이스피싱을 배척합니다.': '⚠ Burum rejects voice phishing.',
+  '부름을 이용하는 국가기관 · 금융기관은 없습니다.': 'No government agency or financial institution uses Burum.',
+  '⚠ 부름은 상대방 동의 없는 일방적인 녹음 · 녹화가 불가능합니다.': '⚠ Burum cannot record audio or video without the other person\'s consent.',
   '‹ 연락처': '‹ Contacts', '닫기': 'Close', '뒤로': 'Back', '보내기': 'Send', '메시지': 'Message', '상대': 'Other person',
   /* 통화 중 상태 */
   '길 찾는 중': 'Finding a route', '길 맞춰보는 중': 'Connecting…', '연결됨': 'Connected',
