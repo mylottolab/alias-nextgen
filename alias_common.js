@@ -1191,7 +1191,7 @@ AL.STR = {
   mdBright:       { kr:'상쾌 · 밝음', en:'Bright' },
   mdDark:         { kr:'어두움 · 고독', en:'Dark' },
   mdMoving:       { kr:'이사 · 새 출발', en:'New beginnings' },
-  mdUnknown:      { kr:'테마불명', en:'Uncategorised' },
+  mdUnknown:      { kr:'기타 · 자유 곡', en:'Other · free picks' },
   mdEtc:          { kr:'그 밖', en:'Other' },
   mdAll:          { kr:'갈래 전체', en:'All moods' },
   glYoutube:  { kr:'유튜브 영상', en:'YouTube video' },
