@@ -34,7 +34,7 @@
 <!-- 🔴 2026-09-20 — 같이 듣기를 회사 곡으로 제한합니다.
      ⚠ 반드시 alias_room.js **다음**이어야 합니다. 순서가 뒤바뀌면
        옛 것(음원 올리기)이 이깁니다. -->
-<script src="alias_music.js?v=20260928b"></script>
+<script src="alias_music.js?v=20261022a"></script>
 <script src="alias_yt.js?v=20261020f"></script>
 <script src="alias_call.js?v=20261020g"></script>
 <script src="alias_e2ee.js?v=20260928b"></script>
@@ -873,6 +873,7 @@ async function listen(){
   });
 
   if (AL.yt) AL.yt.listen(channel);   // 🔴 2026-10-20 대화창 위 유튜브
+  if (AL.muBar) AL.muBar.listen(channel);   // 🔴 2026-10-22 같이 듣기 줄
 
   channel.subscribe(function(status){
     if (status === 'SUBSCRIBED') {
@@ -1470,8 +1471,8 @@ async function loadRoom(){
       .select('away_on, away_message').eq('id', me.sideId).maybeSingle();
     away = r.data ? { on: r.data.away_on, message: r.data.away_message } : null;
     const m = await AL.sb.from('links')
-      .select('music_youtube_id, track_id').eq('id', linkId).maybeSingle();
-    music = m.data ? (m.data.music_youtube_id || m.data.track_id) : null;
+      .select('music_youtube_id, track_id, shared_music_id').eq('id', linkId).maybeSingle();
+    music = m.data ? (m.data.music_youtube_id || m.data.track_id || m.data.shared_music_id) : null;
   } catch (e) { /* 없어도 대화는 됩니다 */ }
   paintStrip();
 }
@@ -1781,6 +1782,7 @@ document.getElementById('call').addEventListener('click', async function(){
     await open_();
     await loadStars();
     try { if (AL.yt && me) AL.yt.init({ linkId: linkId, sideId: me.sideId, name: me.myFace || '', locked: !!e2ee }); } catch (e) {}   // 🔴 2026-10-20
+    try { if (AL.muBar && me) AL.muBar.init({ linkId: linkId, sideId: me.sideId }); } catch (e) {}   // 🔴 2026-10-22
     listen();
     watchOthers();
     watchCalls();

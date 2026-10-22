@@ -107,6 +107,8 @@ AL.openMusic = function(linkId, sideId){
         music_updated_at: new Date().toISOString(),
       };
       await AL.sb.from('links').update(Object.assign(base, patch)).eq('id', linkId);
+      /* 🔴 2026-10-22 — 고르면 창을 닫고, 대화창 위 작은 줄(같이 듣기 줄)에서 들으며 대화합니다 */
+      if (AL.muBar) { AL.muBar.changed('set'); close(); return; }
       draw();
     }
 
@@ -115,6 +117,7 @@ AL.openMusic = function(linkId, sideId){
         shared_music_id: null, track_id: null, music_youtube_id: null,
         music_playing: false, music_updated_at: new Date().toISOString(),
       }).eq('id', linkId);
+      if (AL.muBar) AL.muBar.changed('stop');
       draw();
     }
 
@@ -160,7 +163,23 @@ AL.openMusic = function(linkId, sideId){
         ? songs.filter(function(x){ return x.id === sharedId; })[0] : null;
       var now = tracks.filter(function(t){ return t.id === nowId; })[0];
 
-      if (sg) {
+      if (sg && AL.muBar) {
+        /* 🔴 2026-10-22 — 소리는 대화창 위 같이 듣기 줄에서 납니다(창을 닫아도 계속) */
+        note(AL.t('muPlaying') + ' · ' + sg.title + (sg.artist ? ' · ' + sg.artist : ''));
+        if (who) note(who);
+        note(AL.lang === 'en' ? 'It keeps playing above the chat when you close this.' : '이 창을 닫아도 대화창 위 ♫ 줄에서 계속 나옵니다. 들으면서 대화하세요.');
+        var stB = document.createElement('button');
+        stB.className = 'pk-opt'; stB.style.marginTop = '12px';
+        stB.textContent = AL.t('muStop');
+        stB.addEventListener('click', stopAll);
+        sheet.appendChild(stB);
+        var cl = document.createElement('button');
+        cl.className = 'pk-opt'; cl.style.marginTop = '8px';
+        cl.textContent = AL.lang === 'en' ? 'Close and chat' : '닫고 대화하기';
+        cl.addEventListener('click', close);
+        sheet.appendChild(cl);
+
+      } else if (sg) {
         note(AL.t('muPlaying') + ' · ' + sg.title + (sg.artist ? ' · ' + sg.artist : ''));
         if (who) note(who);
         var au0 = document.createElement('audio');
@@ -344,3 +363,127 @@ AL.openMusic = function(linkId, sideId){
     draw();
   });
 };
+
+
+/* =====================================================================
+   🔴🔴 2026-10-22 — 같이 듣기 줄 (대화창 위 · 들으면서 대화)
+   · 곡 창을 닫아도 소리가 계속 납니다. 대화창 위에 작은 줄 하나만 남습니다.
+     ♫ 곡 이름 · 누가 틀었는지 · [Ⅱ 잠깐 멈춤] (내 폰만) · [바꾸기] · [끄기] (둘 다)
+   · 한쪽이 틀면 상대 대화창에도 바로 나옵니다(실시간 알림 'mu' + 30초마다 확인).
+   · 같은 자리: 튼 시각(music_updated_at)부터 흐른 시간만큼 넘겨서 시작합니다.
+   · 회사 곡(shared_music_id)만 이 줄에서 틉니다. 예전에 올린 곡 · 유튜브는 곡 창에서.
+   ===================================================================== */
+(function(){
+  var S = { linkId: null, sideId: null, chan: null, cur: null, at: null, by: null, paused: false, songs: null, au: null };
+  var en = function(){ return AL.lang === 'en'; };
+  function css(){
+    if (document.getElementById('muBarCss')) return;
+    var st = document.createElement('style'); st.id = 'muBarCss';
+    st.textContent =
+      '#muBar{flex:0 0 auto;display:none;align-items:center;gap:8px;margin:6px 10px 2px;padding:8px 10px;border-radius:12px;' +
+        'background:rgba(143,227,176,.13);border:1px solid rgba(143,227,176,.45)}' +
+      '#muBar .mt{flex:1;min-width:0;font-size:13px;line-height:1.35}' +
+      '#muBar .mt b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+      '#muBar .mt small{display:block;font-size:11.5px;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+      '#muBar button{margin:0;flex:0 0 auto;padding:7px 10px;border-radius:9px;font-size:12.5px;font-weight:700;cursor:pointer;' +
+        'background:rgba(255,255,255,.08);color:inherit;border:1px solid rgba(128,128,128,.35)}' +
+      'html[data-mode="light"] #muBar button{background:rgba(0,0,0,.04)}';
+    document.head.appendChild(st);
+  }
+  function bar(){
+    var b = document.getElementById('muBar');
+    if (b) return b;
+    b = document.createElement('div'); b.id = 'muBar';
+    var top = document.querySelector('.chat-top');
+    var after = document.getElementById('ytBox') || document.getElementById('ytStrip') || top;
+    if (after && after.parentNode) after.parentNode.insertBefore(b, after.nextSibling); else document.body.prepend(b);
+    b.addEventListener('click', function(e){
+      var t = e.target.closest('button'); if (!t) return;
+      var a = t.dataset.a;
+      if (a === 'pp') { S.paused = !S.paused; if (S.au) { if (S.paused) S.au.pause(); else { seekNow(); S.au.play().catch(function(){}); } } paint(); }
+      if (a === 'change') AL.openMusic(S.linkId, S.sideId).then(refresh);
+      if (a === 'off') stopBoth();
+    });
+    return b;
+  }
+  function audio(){
+    if (S.au) return S.au;
+    S.au = document.createElement('audio'); S.au.loop = true; S.au.preload = 'auto';
+    S.au.addEventListener('loadedmetadata', seekNow);
+    document.body.appendChild(S.au);
+    return S.au;
+  }
+  /* 튼 시각부터 흐른 만큼 — 두 사람이 같은 자리를 듣습니다 */
+  function seekNow(){
+    var au = S.au; if (!au || !S.at || !isFinite(au.duration) || !au.duration) return;
+    var el = Math.max(0, (Date.now() - Date.parse(S.at)) / 1000);
+    var want = el % au.duration;
+    if (Math.abs(au.currentTime - want) > 2) { try { au.currentTime = want; } catch (e) {} }
+  }
+  async function songsList(){
+    if (S.songs) return S.songs;
+    try { S.songs = await AL.loadMusicList(); } catch (e) { S.songs = []; }
+    return S.songs;
+  }
+  async function stopBoth(){
+    try {
+      await AL.sb.from('links').update({ shared_music_id: null, track_id: null, music_youtube_id: null,
+        music_playing: false, music_updated_at: new Date().toISOString() }).eq('id', S.linkId);
+    } catch (e) {}
+    changed('stop');
+  }
+  function bc(action){ try { if (S.chan) S.chan.send({ type: 'broadcast', event: 'mu', payload: { action: action, by: S.sideId } }); } catch (e) {} }
+  async function refresh(){
+    if (!S.linkId) return;
+    var r = null;
+    try { r = await AL.sb.from('links').select('shared_music_id, music_updated_at, music_set_by').eq('id', S.linkId).maybeSingle(); } catch (e) {}
+    var d = (r && r.data) || {};
+    var changedSong = d.shared_music_id !== S.cur || d.music_updated_at !== S.at;
+    S.by = d.music_set_by || null;
+    if (!d.shared_music_id) {
+      S.cur = null; S.at = null;
+      if (S.au) { S.au.pause(); S.au.removeAttribute('src'); S.au.load(); }
+      paint(); return;
+    }
+    if (changedSong) {
+      S.cur = d.shared_music_id; S.at = d.music_updated_at; S.paused = false;
+      var list = await songsList();
+      var sg = list.filter(function(x){ return x.id === S.cur; })[0];
+      S.song = sg || null;
+      if (sg) {
+        var au = audio();
+        au.src = AL.musicUrl(sg.path) || '';
+        au.play().catch(function(){ S.paused = true; paint(); });   /* 폰이 막으면 [▶ 듣기] 를 누르게 */
+      }
+    }
+    paint();
+  }
+  async function paint(){
+    css();
+    var b = bar();
+    if (!S.cur || !S.song) { b.style.display = 'none'; return; }
+    var who = '';
+    if (S.by === S.sideId) who = en() ? 'You started it' : '내가 틀었어요';
+    else if (S.by) who = en() ? 'Your contact started it' : '상대가 틀었어요';
+    b.innerHTML = '<span style="font-size:18px">♫</span><span class="mt"><b>' + AL.esc(S.song.title) + '</b><small>' +
+      AL.esc((S.song.artist ? S.song.artist + ' · ' : '') + who) + '</small></span>' +
+      '<button type="button" data-a="pp">' + (S.paused ? (en() ? '▶ Play' : '▶ 듣기') : (en() ? 'Ⅱ Pause' : 'Ⅱ 멈춤')) + '</button>' +
+      '<button type="button" data-a="change">' + (en() ? 'Change' : '바꾸기') + '</button>' +
+      '<button type="button" data-a="off">' + (en() ? 'Off' : '끄기') + '</button>';
+    b.style.display = 'flex';
+  }
+  function changed(action){ bc(action); refresh(); }
+  AL.muBar = {
+    init: function(o){
+      S.linkId = o.linkId; S.sideId = o.sideId; refresh();
+      if (!AL.muBar._t) AL.muBar._t = setInterval(refresh, 30000);
+    },
+    listen: function(ch){
+      S.chan = ch;
+      ch.on('broadcast', { event: 'mu' }, function(e){ var p = e.payload || {}; if (p.by === S.sideId) return; refresh(); });
+    },
+    changed: changed,
+    refresh: refresh,
+  };
+  document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'visible') { refresh(); if (S.au && !S.paused) seekNow(); } });
+})();
