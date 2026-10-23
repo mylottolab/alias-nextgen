@@ -205,6 +205,7 @@ document.addEventListener("DOMContentLoaded", function(){
       <span class="pl" id="fsLbl"></span>
       <button id="pFirst"></button>
     </div>
+    <p class="hint" id="fsNote" style="margin:8px 2px 0"></p>
   </div>
 
   <!-- 🔴 2026-09-20 신설 — 이용권
@@ -829,6 +830,8 @@ async function paintPrevBtn(){
   const lbl = document.getElementById('fsLbl'), b = document.getElementById('pFirst');
   if (!lbl || !b) return;
   lbl.textContent = KRm ? '로그인하면 첫 화면' : 'First screen after login';
+  const nt = document.getElementById('fsNote');
+  if (nt) nt.textContent = KRm ? '이 휴대폰에 저장됩니다. 앱 업데이트 · 로그아웃 뒤에도 그대로이고, 앱을 다시 설치하거나 앱 데이터를 지우거나 휴대폰을 바꾸면 다시 정해 주세요.' : 'Saved on this phone. Kept after app updates and logouts; choose again after reinstalling, clearing app data or changing phones.';
   const cur = function(){ try { return localStorage.getItem('burum_first_screen') === 'dial'; } catch (e) { return false; } };
   const paintFs = function(){ const d = cur(); b.textContent = d ? (KRm ? '📞 부름 번호판' : '📞 Dial pad') : (KRm ? '📇 연락처' : '📇 Contacts'); b.classList.toggle('on', d); };
   b.addEventListener('click', function(){ try { localStorage.setItem('burum_first_screen', cur() ? 'contacts' : 'dial'); } catch (e) {} paintFs(); showOk(AL.t('thSaved')); });

@@ -663,7 +663,7 @@ function initDial(){
     const pin = document.createElement('button');
     pin.type = 'button';
     pin.textContent = KR ? '📌 이 화면을 첫 화면으로' : '📌 Make this my first screen';
-    pin.onclick = function(){ try { localStorage.setItem(FIRST_KEY, 'dial'); } catch (e) {} pin.remove(); info(KR ? '다음부터 로그인하면 이 번호판이 먼저 나옵니다. (MyPage 에서 바꿀 수 있어요)' : 'This dial pad will now open first after login. (Change it in MyPage)'); };
+    pin.onclick = function(){ try { localStorage.setItem(FIRST_KEY, 'dial'); } catch (e) {} pin.remove(); info(KR ? '다음부터 로그인하면 이 번호판이 먼저 나옵니다. MyPage 에서 바꿀 수 있어요. (이 휴대폰에 저장 — 앱을 다시 설치하거나 휴대폰을 바꾸면 한 번 다시 정해 주세요)' : 'This dial pad will now open first after login. Change it in MyPage. (Saved on this phone — choose again after reinstalling or changing phones)'); };
     document.querySelector('.dl-row').appendChild(pin);
   }
 }

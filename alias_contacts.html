@@ -891,12 +891,13 @@ async function askFirstScreen(){
   try { al = await AL.loadAliases(); } catch (e) { return; }
   if (!al || !al.length) return;
   const KRc = AL.lang !== 'en';
-  const A = KRc ? { t: '📞 첫 화면을 부름 번호판으로 할까요?', p: '로그인하면 번호판(부름번호 · 단축다이얼 · 음성 · 영상 · 문자)이 먼저 나오고, 연락처는 그 아래에 그대로 있습니다. MyPage 에서 언제든 바꿀 수 있어요.', y: '번호판으로 할게요', s: '먼저 구경하기', n: '지금처럼 연락처로' }
-                : { t: '📞 Start with the Burum dial pad?', p: 'After you log in, the dial pad (Burum number · speed dial · voice · video · text) comes first, with your contacts below. Change it any time in MyPage.', y: 'Yes, dial pad', s: 'Take a look', n: 'Keep contacts first' };
+  const A = KRc ? { t: '📞 첫 화면을 부름 번호판으로 할까요?', p: '로그인하면 번호판(부름번호 · 단축다이얼 · 음성 · 영상 · 문자)이 먼저 나오고, 연락처는 그 아래에 그대로 있습니다. MyPage 에서 언제든 바꿀 수 있어요.', k: '※ 이 선택은 이 휴대폰에 저장됩니다. 앱을 업데이트하거나 로그아웃해도 그대로이고, 앱을 지웠다 다시 설치하거나 · 앱 데이터를 삭제하거나 · 휴대폰을 바꾸면 한 번 다시 고르시면 됩니다.', y: '번호판으로 할게요', s: '먼저 구경하기', n: '지금처럼 연락처로' }
+                : { t: '📞 Start with the Burum dial pad?', p: 'After you log in, the dial pad (Burum number · speed dial · voice · video · text) comes first, with your contacts below. Change it any time in MyPage.', k: '※ Saved on this phone. It stays after app updates and logouts; after reinstalling, clearing app data or changing phones, just choose again once.', y: 'Yes, dial pad', s: 'Take a look', n: 'Keep contacts first' };
   const host = document.createElement('div');
   host.style.cssText = 'margin:0 0 12px;padding:14px 15px;border-radius:16px;background:rgba(143,227,176,.12);border:1.5px solid rgba(143,227,176,.5);word-break:keep-all';
   const bs = 'margin:0;padding:10px 14px;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;border:1px solid rgba(128,128,128,.35);background:rgba(255,255,255,.07);color:inherit';
-  host.innerHTML = '<div style="font-size:15.5px;font-weight:800">' + AL.esc(A.t) + '</div><div style="margin:6px 0 10px;font-size:13px;opacity:.85;line-height:1.6">' + AL.esc(A.p) + '</div>' +
+  host.innerHTML = '<div style="font-size:15.5px;font-weight:800">' + AL.esc(A.t) + '</div><div style="margin:6px 0 6px;font-size:13px;opacity:.85;line-height:1.6">' + AL.esc(A.p) + '</div>' +
+    '<div style="margin:0 0 10px;font-size:11.5px;opacity:.7;line-height:1.55">' + AL.esc(A.k) + '</div>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" id="fsY" style="' + bs + ';background:#8FE3B0;color:#0E1621;border:none">' + AL.esc(A.y) + '</button>' +
     '<button type="button" id="fsS" style="' + bs + '">' + AL.esc(A.s) + '</button><button type="button" id="fsN" style="' + bs + '">' + AL.esc(A.n) + '</button></div>';
   const anchor = document.getElementById('rqTop') || document.body.firstElementChild;
