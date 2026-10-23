@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="alias_theme.css?v=20261021d">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20261022a"></script>
+<script src="alias_common.js?v=20261023a"></script>
 <script src="alias_call.js?v=20261020g"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
@@ -50,6 +50,7 @@ document.addEventListener("DOMContentLoaded", function(){
   background:rgba(255,255,255,.06);color:inherit;
   border:1px solid rgba(255,255,255,.14)}
 
+.padhead .padlbl{margin-left:6px;font-weight:800;color:var(--text)}
 .padhead{display:flex;align-items:center;justify-content:space-between;
   margin:0 2px 8px;font-size:12.5px;opacity:.7}
 .editbtn{appearance:none;-webkit-appearance:none;cursor:pointer;margin:0;
@@ -195,7 +196,7 @@ html[data-mode="light"] .phinfo{color:#1E5E3C}
   <input class="phfind" id="q" type="search" autocomplete="off" data-t-ph="phSearch">
 
   <div class="padhead">
-    <span>1 – 9</span>
+    <span>1 – 9 <b class="padlbl" data-t="phPadHead"></b></span>
     <button class="editbtn" id="editBtn"></button>
   </div>
   <div class="pad" id="pad"></div>

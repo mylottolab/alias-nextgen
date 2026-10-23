@@ -1403,7 +1403,8 @@ AL.STR = {
   phSearch:   { kr:'이름으로 찾기', en:'Search by name' },
   phEmptySlot:{ kr:'비어 있음', en:'empty' },
   phPickWho:  { kr:'{n}번으로 누구를 넣을까요?', en:'Who goes in {n}?' },
-  phEditOn:   { kr:'번호 바꾸기', en:'Edit numbers' },
+  phEditOn:   { kr:'단축번호 바꾸기', en:'Edit speed dial' },
+  phPadHead:  { kr:'단축다이얼', en:'Speed dial' },   // 🔴 2026-10-23 1 – 9 옆
   phEditOff:  { kr:'다 됐습니다', en:'Done' },
   phEditHint: { kr:'칸을 눌러 사람을 넣거나 비웁니다. 지금은 전화가 걸리지 않습니다.',
                 en:'Tap a slot to set or clear it. Calls are paused while editing.' },
