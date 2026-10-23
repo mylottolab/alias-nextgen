@@ -185,6 +185,11 @@ html[data-mode="light"] .phinfo{color:#1E5E3C}
    · body.dialmode 일 때만 보입니다(아니면 예전 단축번호 판 그대로)
    ===================================================================== */
 #dialBox{display:none}
+/* 🔴 2026-10-23 — 번호판에서는 맨 밑 고정 띠를 떼어 페이지 맨 끝에 둡니다(아이폰에서 안내 글을 가렸음).
+   [연락처로] 는 위의 금색 [앱 메인으로 ➜] 가 대신하므로 숨깁니다. */
+body.dialmode .phfoot{position:static;background:transparent;border-top:none;padding:6px 14px 28px}
+body.dialmode .phfoot a:not(.quiet){display:none}
+body.dialmode .phwrap{padding-bottom:10px}
 body.dialmode #dialBox{display:block}
 body.dialmode .padhead, body.dialmode #pad{display:none}
 .dl-disp{text-align:center;font-size:30px;font-weight:800;letter-spacing:2px;min-height:44px;line-height:44px;
