@@ -200,6 +200,11 @@ document.addEventListener("DOMContentLoaded", function(){
       <button id="pPrev"></button>
     </div>
     <p class="hint" data-t="pvNote" style="margin:8px 2px 0"></p>
+    <!-- 🔴 2026-10-23 첫 화면: 연락처 / 부름 번호판 (이 폰에만) -->
+    <div class="prefrow">
+      <span class="pl" id="fsLbl"></span>
+      <button id="pFirst"></button>
+    </div>
   </div>
 
   <!-- 🔴 2026-09-20 신설 — 이용권
@@ -817,6 +822,18 @@ async function paintPrevBtn(){
   b.textContent = AL.t(on ? 'pvOn' : 'pvOff');
   b.classList.toggle('on', on);
 }
+
+/* 🔴 2026-10-23 첫 화면 고르기 */
+(function(){
+  const KRm = AL.lang !== 'en';
+  const lbl = document.getElementById('fsLbl'), b = document.getElementById('pFirst');
+  if (!lbl || !b) return;
+  lbl.textContent = KRm ? '로그인하면 첫 화면' : 'First screen after login';
+  const cur = function(){ try { return localStorage.getItem('burum_first_screen') === 'dial'; } catch (e) { return false; } };
+  const paintFs = function(){ const d = cur(); b.textContent = d ? (KRm ? '📞 부름 번호판' : '📞 Dial pad') : (KRm ? '📇 연락처' : '📇 Contacts'); b.classList.toggle('on', d); };
+  b.addEventListener('click', function(){ try { localStorage.setItem('burum_first_screen', cur() ? 'contacts' : 'dial'); } catch (e) {} paintFs(); showOk(AL.t('thSaved')); });
+  paintFs();
+})();
 
 document.getElementById('pPrev').addEventListener('click', async function(){
   const now = await AL.previewOn();

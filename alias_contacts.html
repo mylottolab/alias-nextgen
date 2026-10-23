@@ -883,6 +883,29 @@ if (AL.lang === 'en') {   // 🔴 2026-10-07
 }
 document.getElementById('addBg').addEventListener('click', function(){ showAdd(false); });
 
+/* 🔴 2026-10-23 — 첫 화면을 부름 번호판으로 할지 한 번만 묻습니다(별칭을 만든 분께만).
+   [예] 다음부터 로그인하면 alias_phone.html?mode=dial · [아니요] 지금처럼. MyPage 에서 언제든 바꿈. 이 폰에만 저장 */
+async function askFirstScreen(){
+  try { if (localStorage.getItem('burum_first_screen')) return; } catch (e) { return; }
+  let al = [];
+  try { al = await AL.loadAliases(); } catch (e) { return; }
+  if (!al || !al.length) return;
+  const KRc = AL.lang !== 'en';
+  const A = KRc ? { t: '📞 첫 화면을 부름 번호판으로 할까요?', p: '로그인하면 번호판(부름번호 · 단축다이얼 · 음성 · 영상 · 문자)이 먼저 나오고, 연락처는 그 아래에 그대로 있습니다. MyPage 에서 언제든 바꿀 수 있어요.', y: '번호판으로 할게요', s: '먼저 구경하기', n: '지금처럼 연락처로' }
+                : { t: '📞 Start with the Burum dial pad?', p: 'After you log in, the dial pad (Burum number · speed dial · voice · video · text) comes first, with your contacts below. Change it any time in MyPage.', y: 'Yes, dial pad', s: 'Take a look', n: 'Keep contacts first' };
+  const host = document.createElement('div');
+  host.style.cssText = 'margin:0 0 12px;padding:14px 15px;border-radius:16px;background:rgba(143,227,176,.12);border:1.5px solid rgba(143,227,176,.5);word-break:keep-all';
+  const bs = 'margin:0;padding:10px 14px;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;border:1px solid rgba(128,128,128,.35);background:rgba(255,255,255,.07);color:inherit';
+  host.innerHTML = '<div style="font-size:15.5px;font-weight:800">' + AL.esc(A.t) + '</div><div style="margin:6px 0 10px;font-size:13px;opacity:.85;line-height:1.6">' + AL.esc(A.p) + '</div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" id="fsY" style="' + bs + ';background:#8FE3B0;color:#0E1621;border:none">' + AL.esc(A.y) + '</button>' +
+    '<button type="button" id="fsS" style="' + bs + '">' + AL.esc(A.s) + '</button><button type="button" id="fsN" style="' + bs + '">' + AL.esc(A.n) + '</button></div>';
+  const anchor = document.getElementById('rqTop') || document.body.firstElementChild;
+  anchor.parentNode.insertBefore(host, anchor);
+  document.getElementById('fsY').onclick = function(){ try { localStorage.setItem('burum_first_screen', 'dial'); } catch (e) {} location.href = 'alias_phone.html?mode=dial'; };
+  document.getElementById('fsS').onclick = function(){ location.href = 'alias_phone.html?mode=dial'; };
+  document.getElementById('fsN').onclick = function(){ try { localStorage.setItem('burum_first_screen', 'contacts'); } catch (e) {} host.remove(); };
+}
+
 /* 알림은 공용(AL.startAlerts)이 냅니다. 여기서는 목록만 다시 그립니다. */
 
 (async function(){
@@ -892,6 +915,7 @@ document.getElementById('addBg').addEventListener('click', function(){ showAdd(f
   await reload();
 
   AL.showPlanBar();   // 🔴 2026-09-14 — 체험·만료 띠
+  try { askFirstScreen(); } catch (e) {}   // 🔴 2026-10-23 첫 화면 고르기(한 번만)
   AL.showDeletionBar();   // 🔴 2026-09-22 — 삭제 예약이면 알림
   AL.showPushBar();   // 🔴 2026-09-15 — 전화를 못 받는 상태면 알립니다
   AL.showExpiringBar();   // 🔴 2026-09-19 — 곧 지워질 녹음

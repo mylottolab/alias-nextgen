@@ -177,6 +177,52 @@ html[data-mode="light"] .phfoot{background:var(--raise,#fff);border-top-color:rg
 html[data-mode="light"] .phfoot a.quiet{color:#3B4652;background:transparent;border-color:transparent}
 html[data-mode="light"] .phbtns a,html[data-mode="light"] .phbtns button{background:rgba(40,150,90,.12);color:#1E7A4C;border-color:rgba(40,150,90,.45)}
 html[data-mode="light"] .phinfo{color:#1E5E3C}
+/* =====================================================================
+   🔴 2026-10-23 부름 번호판 (첫 화면으로 고를 수 있음)
+   · 위: 부름번호 키패드 + [음성 · 영상 · 문자] + 작은 안내
+   · 1~9 를 꾸욱(0.6초) 누르면 단축다이얼로 바로 걸기 — 숫자 밑에 넣어 둔 사람 이름
+   · 아래: 지금 전화번호부 목록 그대로
+   · body.dialmode 일 때만 보입니다(아니면 예전 단축번호 판 그대로)
+   ===================================================================== */
+#dialBox{display:none}
+body.dialmode #dialBox{display:block}
+body.dialmode .padhead, body.dialmode #pad{display:none}
+.dl-disp{text-align:center;font-size:30px;font-weight:800;letter-spacing:2px;min-height:44px;line-height:44px;
+  font-variant-numeric:tabular-nums;margin:2px 0 0}
+.dl-disp small{display:block;font-size:12px;font-weight:600;letter-spacing:0;opacity:.6;line-height:1.4}
+.dl-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px 18px;max-width:330px;margin:12px auto 0}
+.dl-k{appearance:none;-webkit-appearance:none;cursor:pointer;margin:0 auto;width:82px;height:72px;border-radius:999px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+  background:rgba(255,255,255,.07);color:inherit;border:1px solid rgba(255,255,255,.13);
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation}
+.dl-k:active,.dl-k.press{background:rgba(255,255,255,.18)}
+.dl-k .d{font-size:27px;font-weight:700;line-height:1}
+.dl-k .w{font-size:10.5px;font-weight:700;color:#8FE3B0;max-width:74px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2}
+.dl-k.blank{visibility:hidden}
+.dl-k.edit{border-style:dashed;border-color:rgba(255,215,120,.6)}
+.dl-acts{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;max-width:360px;margin:16px auto 0}
+.dl-acts button{appearance:none;-webkit-appearance:none;cursor:pointer;margin:0;padding:14px 4px;border-radius:16px;border:none;
+  font-size:16px;font-weight:800;color:#fff}
+.dl-acts .v{background:#2FA36B}.dl-acts .vv{background:#2E6FB8}.dl-acts .m{background:#8FE3B0;color:#0E1621}
+.dl-msg{min-height:1.3em;margin:10px 4px 0;text-align:center;font-size:13.5px;font-weight:700;color:#F2C94C;line-height:1.5}
+.dl-hint{margin:6px 6px 0;text-align:center;font-size:11.5px;opacity:.6;line-height:1.6;word-break:keep-all}
+.dl-row{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:10px 2px 0;font-size:12.5px}
+.dl-row a,.dl-row button{appearance:none;-webkit-appearance:none;background:none;border:none;color:#8FE3B0;font-weight:700;
+  font-size:12.5px;cursor:pointer;padding:4px 0;text-decoration:underline;text-underline-offset:3px}
+.dl-row .ed{color:inherit;opacity:.75}
+.dl-row .ed.on{color:#F2C94C;opacity:1}
+html[data-mode="light"] .dl-k{background:rgba(0,0,0,.04);border-color:rgba(0,0,0,.18)}
+html[data-mode="light"] .dl-k .w,html[data-mode="light"] .dl-row a,html[data-mode="light"] .dl-row button{color:#1E7A4C}
+html[data-mode="light"] .dl-row .ed{color:inherit}
+html[data-mode="light"] .dl-msg{color:#9A6B00}
+/* 첫 화면 고르기 안내 */
+#firstAsk{display:none;margin:0 0 14px;padding:14px 15px;border-radius:16px;background:rgba(143,227,176,.12);border:1.5px solid rgba(143,227,176,.5);word-break:keep-all}
+#firstAsk b{font-size:15.5px}
+#firstAsk p{margin:6px 0 10px;font-size:13px;opacity:.85;line-height:1.6}
+#firstAsk .bt{display:flex;gap:8px;flex-wrap:wrap}
+#firstAsk button{appearance:none;-webkit-appearance:none;cursor:pointer;margin:0;padding:10px 14px;border-radius:12px;font-size:14px;font-weight:800;
+  border:1px solid rgba(128,128,128,.35);background:rgba(255,255,255,.07);color:inherit}
+#firstAsk button.go{background:#8FE3B0;color:#0E1621;border:none}
 </style>
 </head>
 
@@ -191,7 +237,27 @@ html[data-mode="light"] .phinfo{color:#1E5E3C}
       <a href="alias_number.html" id="bnLink">🔢 부름번호</a>
     </div>
   </div>
+  <div id="firstAsk"></div>
   <div class="phinfo" id="info"></div>
+
+  <!-- 🔴 2026-10-23 부름 번호판 (dialmode 일 때만) -->
+  <div id="dialBox">
+    <div class="dl-disp" id="dlDisp"></div>
+    <div class="dl-pad" id="dlPad"></div>
+    <div class="dl-acts">
+      <button type="button" class="v" id="dlV"></button>
+      <button type="button" class="vv" id="dlVV"></button>
+      <button type="button" class="m" id="dlM"></button>
+    </div>
+    <div class="dl-msg" id="dlMsg"></div>
+    <p class="dl-hint" id="dlHint"></p>
+    <div class="dl-row">
+      <button type="button" class="ed" id="dlEdit"></button>
+      <button type="button" id="dlSave" style="display:none"></button>
+      <a href="alias_number.html#mine" id="dlMine"></a>
+    </div>
+    <div class="phsep"></div>
+  </div>
 
   <input class="phfind" id="q" type="search" autocomplete="off" data-t-ph="phSearch">
 
@@ -339,6 +405,7 @@ function paintPad(){
   const pad = document.getElementById('pad');
   pad.innerHTML = html;
   pad.classList.toggle('editing', editing);
+  paintDial();   // 🔴 2026-10-23 번호판의 숫자 밑 이름도 같이
 
   pad.querySelectorAll('[data-slot]').forEach(function(el){
     el.addEventListener('click', function(){
@@ -463,6 +530,157 @@ function paintList(){
   box.querySelectorAll('[data-msg]').forEach(function(el){
     el.addEventListener('click', function(){ chatTo(el.getAttribute('data-msg')); });
   });
+}
+
+
+/* =====================================================================
+   🔴 2026-10-23 부름 번호판
+   ===================================================================== */
+const FIRST_KEY = 'burum_first_screen';          // 'dial' | 'contacts' (이 폰에만)
+function firstPref(){ try { return localStorage.getItem(FIRST_KEY) || ''; } catch (e) { return ''; } }
+const DIALMODE = (function(){
+  const m = new URLSearchParams(location.search).get('mode');
+  if (m === 'book') return false;
+  return m === 'dial' || firstPref() === 'dial';
+})();
+const DT = KR ? {
+  title: '부름 전화', disp: '부름번호 10자리 · 1~9 꾸욱 누르면 단축다이얼', v: '📞 음성', vv: '🎥 영상', m: '💬 문자',
+  hint: '처음 거는 번호면 연결 요청이 먼저 가고, 상대가 수락하면 바로 연결됩니다. 긴급전화(112 · 119)는 폰의 전화 앱으로 거세요.',
+  need: '부름번호 10자리를 눌러 주세요. (단축다이얼은 1~9를 꾸욱)', edit: '단축번호 바꾸기', editOn: '다 됐습니다 — 숫자를 눌러 사람을 넣으세요',
+  save: '💾 이 번호 저장', mine: '🔢 내 부름번호', linking: '연결하는 중…', emptySlot: '번은 비어 있습니다. 누구를 넣을까요?'
+} : {
+  title: 'Burum phone', disp: '10-digit Burum number · hold 1–9 for speed dial', v: '📞 Voice', vv: '🎥 Video', m: '💬 Text',
+  hint: 'A first call to a number sends a connection request; once accepted you are connected right away. For emergencies (112 · 119) use your phone app.',
+  need: 'Enter all 10 digits. (Hold 1–9 for speed dial)', edit: 'Edit speed dial', editOn: 'Done — tap a digit to set it',
+  save: '💾 Save this number', mine: '🔢 My Burum numbers', linking: 'Connecting…', emptySlot: ' is empty. Who goes there?'
+};
+let typed = '';
+function dlSay(t){ document.getElementById('dlMsg').textContent = t || ''; }
+function paintDisp(){
+  const d = document.getElementById('dlDisp');
+  d.innerHTML = (typed ? AL.esc(fmtNo(typed.length === 10 ? typed : typed.replace(/^(\d{4})(\d{0,3})(\d{0,3}).*$/, function(_, a, b, c){ return [a, b, c].filter(Boolean).join('-'); }))) : '&nbsp;') +
+    '<small>' + AL.esc(DT.disp) + '</small>';
+  document.getElementById('dlSave').style.display = typed.length === 10 ? '' : 'none';
+}
+function paintDial(){
+  if (!DIALMODE) return;
+  const map = bySpeed();
+  const keys = ['1','2','3','4','5','6','7','8','9','','0','⌫'];
+  const pad = document.getElementById('dlPad');
+  pad.innerHTML = keys.map(function(k){
+    if (!k) return '<span class="dl-k blank"></span>';
+    const r = /[1-9]/.test(k) ? map[+k] : null;
+    const who = r ? (r._book ? r._book.label : nameOf(r)) : '';
+    return '<button type="button" class="dl-k' + (editing && /[1-9]/.test(k) ? ' edit' : '') + '" data-k="' + k + '">' +
+      '<span class="d">' + k + '</span>' + (who ? '<span class="w">' + AL.esc(who) + '</span>' : '') + '</button>';
+  }).join('');
+  const ed = document.getElementById('dlEdit');
+  ed.textContent = editing ? DT.editOn : DT.edit; ed.classList.toggle('on', editing);
+  pad.querySelectorAll('[data-k]').forEach(bindKey);
+}
+/* 짧게 = 숫자 넣기 · 꾸욱(0.6초, 번호 칸이 비어 있을 때 1~9) = 단축다이얼 */
+function bindKey(el){
+  const k = el.getAttribute('data-k');
+  let timer = null, long = false;
+  const start = function(){
+    long = false; el.classList.add('press');
+    if (!/[1-9]/.test(k) || typed || editing) return;
+    timer = setTimeout(function(){
+      long = true; el.classList.remove('press');
+      try { navigator.vibrate && navigator.vibrate(35); } catch (e) {}
+      speedGo(+k);
+    }, 600);
+  };
+  const stop = function(){ clearTimeout(timer); el.classList.remove('press'); };
+  el.addEventListener('pointerdown', start);
+  el.addEventListener('pointerup', stop); el.addEventListener('pointerleave', stop); el.addEventListener('pointercancel', stop);
+  el.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  el.addEventListener('click', function(){
+    if (long) { long = false; return; }
+    if (editing && /[1-9]/.test(k)) { openPicker(+k, bySpeed()[+k]); return; }
+    dlSay('');
+    if (k === '⌫') typed = typed.slice(0, -1);
+    else if (typed.length < 10 && !(typed === '' && k === '0')) typed += k;
+    paintDisp();
+  });
+}
+function speedGo(n){
+  const r = bySpeed()[n];
+  if (!r) { dlSay(n + (KR ? DT.emptySlot : DT.emptySlot)); openPicker(n, null); return; }
+  dlSay(DT.linking);
+  if (r._book) { dialNo(r._book, 'voice'); return; }
+  callTo(r.link_id, 'voice');
+}
+async function dialTyped(kind){
+  dlSay('');
+  if (typed.length !== 10) { dlSay(DT.need); return; }
+  /* 저장해 둔 번호이고 이미 이어진 사이면 바로 */
+  const b = book.filter(function(x){ return x.number === typed; })[0];
+  if (b && b.link_id) { if (kind === 'chat') return chatTo(b.link_id); return callTo(b.link_id, kind); }
+  /* 문자는 부름번호 화면의 "메시지와 함께 연결 요청" 으로 (모르는 사이일 때 첫 인사를 함께 보냄) */
+  if (kind === 'chat') {
+    if (!await AL.requirePlan()) return;
+    const r = await AL.sb.rpc('bn_dial', { p_number: typed, p_persona: null, p_note: null });
+    const d = r.data || {};
+    if (!r.error && d.ok && d.state === 'linked' && d.link_id) return chatTo(d.link_id);
+    if (r.error || !d.ok) {
+      if (d.error === 'need_plan') { AL.needPlan(); return; }
+      dlSay(d.error === 'slow_down' ? BT.slow : d.error === 'own' ? BT.own : BT.notFound); return;
+    }
+    dlSay(d.again ? BT.again : BT.requested); return;
+  }
+  if (!await AL.requirePlan()) return;
+  dlSay(DT.linking);
+  const r = await AL.sb.rpc('bn_dial', { p_number: typed, p_persona: null, p_note: null });
+  const d = r.data || {};
+  if (r.error || !d.ok) {
+    if (d.error === 'need_plan') { dlSay(''); AL.needPlan(); return; }
+    dlSay(d.error === 'slow_down' ? BT.slow : d.error === 'own' ? BT.own : BT.notFound); return;
+  }
+  if (d.state === 'linked' && d.link_id) return callTo(d.link_id, kind);
+  dlSay(d.again ? BT.again : BT.requested);
+}
+function initDial(){
+  if (!DIALMODE) return;
+  document.body.classList.add('dialmode');
+  document.getElementById('phH').textContent = DT.title;
+  document.getElementById('dlV').textContent = DT.v;
+  document.getElementById('dlVV').textContent = DT.vv;
+  document.getElementById('dlM').textContent = DT.m;
+  document.getElementById('dlHint').textContent = DT.hint;
+  document.getElementById('dlSave').textContent = DT.save;
+  document.getElementById('dlMine').textContent = DT.mine;
+  document.getElementById('dlV').onclick = function(){ dialTyped('voice'); };
+  document.getElementById('dlVV').onclick = function(){ dialTyped('video'); };
+  document.getElementById('dlM').onclick = function(){ dialTyped('chat'); };
+  document.getElementById('dlSave').onclick = function(){ openSave(null, typed); };
+  document.getElementById('dlEdit').onclick = function(){ editing = !editing; paintPad(); };
+  const q = new URLSearchParams(location.search).get('dial');
+  if (q) typed = q.replace(/\D/g, '').slice(0, 10);
+  paintDisp(); paintDial();
+  /* 첫 화면으로 아직 안 정했으면 작은 단추 하나 */
+  if (firstPref() !== 'dial') {
+    const pin = document.createElement('button');
+    pin.type = 'button';
+    pin.textContent = KR ? '📌 이 화면을 첫 화면으로' : '📌 Make this my first screen';
+    pin.onclick = function(){ try { localStorage.setItem(FIRST_KEY, 'dial'); } catch (e) {} pin.remove(); info(KR ? '다음부터 로그인하면 이 번호판이 먼저 나옵니다. (MyPage 에서 바꿀 수 있어요)' : 'This dial pad will now open first after login. (Change it in MyPage)'); };
+    document.querySelector('.dl-row').appendChild(pin);
+  }
+}
+
+/* ── 첫 화면 고르기 — 별칭을 만든 분께 한 번만 묻습니다. MyPage 에서 언제든 바꿀 수 있습니다 ── */
+async function askFirst(){
+  try { if (localStorage.getItem(FIRST_KEY)) return; } catch (e) { return; }
+  let al = [];
+  try { al = await AL.loadAliases(); } catch (e) { return; }
+  if (!al || !al.length) return;           // 기초 설정(별칭)부터
+  const box = document.getElementById('firstAsk');
+  const A = KR ? { t: '📞 첫 화면을 부름 번호판으로 할까요?', p: '로그인하면 이 번호판(부름번호 · 단축다이얼 · 음성 · 영상 · 문자)이 먼저 나옵니다. 연락처는 아래에 그대로 있습니다. MyPage 에서 언제든 바꿀 수 있어요.', y: '번호판으로 할게요', n: '지금처럼 연락처로' }
+                 : { t: '📞 Start with the Burum dial pad?', p: 'After you log in, this dial pad (Burum number · speed dial · voice · video · text) comes first, with your contacts below. You can change this any time in MyPage.', y: 'Yes, dial pad', n: 'Keep contacts first' };
+  box.innerHTML = '<b>' + AL.esc(A.t) + '</b><p>' + AL.esc(A.p) + '</p><div class="bt"><button type="button" class="go" id="faY">' + AL.esc(A.y) + '</button><button type="button" id="faN">' + AL.esc(A.n) + '</button></div>';
+  box.style.display = 'block';
+  document.getElementById('faY').onclick = function(){ try { localStorage.setItem(FIRST_KEY, 'dial'); } catch (e) {} location.href = 'alias_phone.html?mode=dial'; };
+  document.getElementById('faN').onclick = function(){ try { localStorage.setItem(FIRST_KEY, 'contacts'); } catch (e) {} box.style.display = 'none'; };
 }
 
 function paint(){ paintPad(); paintList(); }
@@ -646,6 +864,7 @@ document.getElementById('setupLink').textContent =
   document.getElementById('bnSave').textContent = BT.save;
   document.getElementById('bnLink').textContent = BT.num;
   document.getElementById('bnSave').addEventListener('click', function(){ openSave(null); });
+  initDial();   // 🔴 2026-10-23
   /* 🔴 2026-09-18 — 폰의 ◁ 를 누르면 앱이 나가지 않고 돌아갑니다. */
   AL.setBack('alias_contacts.html');
   if (!await AL.requireLogin()) return;
