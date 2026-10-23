@@ -2,6 +2,22 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
+<script>
+/* 🔴 2026-10-23 — 번호판을 첫 화면으로 고른 분: 안드로이드 앱이 켜지며 스스로 연락처로 옮긴 경우 번호판으로 되돌립니다.
+   (번호판이 막 보였고(8초 안) 손님이 아무것도 누르지 않았을 때만 — 손님이 직접 [연락처로] 온 것은 그대로) */
+(function(){
+  try {
+    if (localStorage.getItem('burum_first_screen') !== 'dial') return;
+    const now = Date.now();
+    const shown = +(sessionStorage.getItem('burum_dial_shown_at') || 0);
+    const tap = +(sessionStorage.getItem('burum_user_tap') || 0);
+    if (shown && now - shown < 8000 && now - tap > 3000) {
+      sessionStorage.removeItem('burum_dial_shown_at');
+      location.replace('alias_phone.html?mode=dial');
+    }
+  } catch (e) {}
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>부름</title>
 <link rel="stylesheet" href="alias_common.css?v=20260927a">

@@ -640,8 +640,17 @@ async function dialTyped(kind){
   if (d.state === 'linked' && d.link_id) return callTo(d.link_id, kind);
   dlSay(d.again ? BT.again : BT.requested);
 }
+/* 🔴 2026-10-23 — 안드로이드 앱은 아이콘으로 켤 때 스스로 연락처 화면으로 옮깁니다(MainActivity 의 "아이콘마다 제 집으로").
+   번호판을 첫 화면으로 고른 분은 그때 연락처가 번호판으로 다시 돌려보냅니다. 그 판단에 쓰는 표:
+   · burum_dial_shown_at — 번호판이 화면에 보인 때
+   · burum_user_tap      — 손님이 이 화면에서 무엇이든 누른 때(직접 [연락처로] 간 것은 돌려보내지 않게) */
+function markDialShown(){ try { sessionStorage.setItem('burum_dial_shown_at', String(Date.now())); } catch (e) {} }
+document.addEventListener('click', function(){ try { sessionStorage.setItem('burum_user_tap', String(Date.now())); } catch (e) {} }, true);
+window.addEventListener('popstate', function(){ try { sessionStorage.setItem('burum_user_tap', String(Date.now())); } catch (e) {} });
 function initDial(){
   if (!DIALMODE) return;
+  markDialShown();
+  document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'visible') markDialShown(); });
   document.body.classList.add('dialmode');
   document.getElementById('phH').textContent = DT.title;
   document.getElementById('dlV').textContent = DT.v;
