@@ -4565,6 +4565,18 @@ AL.topBar = async function(){
       back.style.cssText = 'display:flex;gap:8px;padding:6px 10px 0';
       var bk = mk(en ? '‹ Contacts' : '‹ 연락처', function(){ location.href = 'alias_contacts.html'; });
       bk.style.padding = '7px 16px'; bk.style.fontSize = '13.5px'; bk.style.fontWeight = '800';
+      /* 🔴 2026-10-23 — 번호판(첫 화면)일 때는 오른쪽 위에 눈에 띄는 [앱 메인으로 ➜] (금색) */
+      var dialMode = false;
+      try {
+        var md = new URLSearchParams(location.search).get('mode');
+        dialMode = md === 'dial' || (md !== 'book' && localStorage.getItem('burum_first_screen') === 'dial');
+      } catch (e) {}
+      if (dialMode) {
+        bk.textContent = en ? 'Go to app main ➜' : '앱 메인으로 ➜';
+        bk.style.cssText += ';padding:10px 18px;font-size:15px;font-weight:900;border-radius:999px;' +
+          'background:linear-gradient(180deg,#F0D27A,#C9A23F);color:#2A1F05;border:1px solid #F5DE95;box-shadow:0 4px 12px rgba(201,162,63,.35)';
+        back.style.justifyContent = 'flex-end';
+      }
       back.appendChild(bk);
       wrap.insertBefore(back, wrap.firstChild);
       wrap.insertBefore(bar, back.nextSibling);
