@@ -258,7 +258,54 @@ function burnTicket(t){
 /* 통화 화면을 떠날 때는 뒤로 가기 기록에 안 남깁니다.
    그래야 뒤로 눌렀을 때 통화 화면이 아니라 그 앞 화면이 나옵니다. */
 function leaveTo(url){
+  /* 🔴 2026-10-27 — 통화 중 [뒤로] 막이로 넣어 둔 기록 한 칸을 먼저 걷어낸 뒤 옮깁니다.
+     안 걷으면 나중에 [뒤로] 를 눌렀을 때 끝난 통화 화면이 다시 열립니다. */
+  if (backGuardOn) {
+    backGuard(false);
+    var gone = false, go = function(){ if (gone) return; gone = true; location.replace(url); };
+    window.addEventListener('popstate', go, { once: true });
+    try { history.back(); } catch (e) { go(); }
+    setTimeout(go, 400);
+    return;
+  }
   location.replace(url);
+}
+
+/* =====================================================================
+   🔴🔴 2026-10-27 — 통화 중 [뒤로] 를 누르면 통화가 끊기던 문제 (손님 제보)
+   뒤로 가면 통화 화면이 닫히며 통화가 끝났습니다(화면을 떠나면 끊는 규칙).
+   이제 통화가 붙으면 [뒤로] 를 이 화면이 받습니다.
+     · 새 안드로이드 앱(버전 24~): 앱이 알아서 앱만 뒤로 숨깁니다(통화 유지)
+     · 옛 앱 · 아이폰 · 브라우저: 화면에 남고 "홈으로 나가도 통화는 이어진다" 고 알려 줍니다
+   ===================================================================== */
+var backGuardOn = false;
+function backGuard(on){
+  if (on && !backGuardOn) {
+    backGuardOn = true;
+    try { history.pushState({ alCallGuard: 1 }, '', location.href); } catch (e) {}
+    window.addEventListener('popstate', onCallBack);
+  } else if (!on && backGuardOn) {
+    backGuardOn = false;
+    window.removeEventListener('popstate', onCallBack);
+  }
+}
+function onCallBack(){
+  if (!backGuardOn || leaving) return;
+  try { history.pushState({ alCallGuard: 1 }, '', location.href); } catch (e) {}
+  if (window.AliasNative && typeof AliasNative.moveToBack === 'function') { AliasNative.moveToBack(); return; }
+  callTip(AL.lang === 'en'
+    ? 'You are on a call. To use another app, go to your home screen — the call keeps going. To hang up, tap End.'
+    : '통화 중입니다. 다른 앱을 보려면 홈 화면으로 나가세요(통화는 계속됩니다). 통화를 끝내려면 [끊기]를 누르세요.');
+}
+function callTip(msg){
+  var d = document.getElementById('callTip');
+  if (!d) {
+    d = document.createElement('div'); d.id = 'callTip';
+    d.style.cssText = 'position:fixed;left:16px;right:16px;bottom:calc(110px + env(safe-area-inset-bottom,0px));z-index:9999;background:rgba(20,24,36,.94);color:#fff;font-size:14px;line-height:1.55;padding:12px 14px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.4);text-align:center';
+    document.body.appendChild(d);
+  }
+  d.textContent = msg; d.style.display = '';
+  clearTimeout(callTip._t); callTip._t = setTimeout(function(){ d.style.display = 'none'; }, 5000);
 }
 /* 🔴🔴 2026-09-19 — 녹음·녹화가 있었으면 **통화기록으로** 갑니다.
 
@@ -503,7 +550,7 @@ function onState(state, extra){
   if (state === 'preparing')      setStatus(AL.t('clCalling'));
   else if (state === 'ringing')   { setStatus(AL.t('clCalling')); AL.startDialTone(); }
   else if (state === 'answering') { AL.stopDialTone(); setStatus(AL.t('clConnected')); }
-  else if (state === 'connected') { AL.stopDialTone(); setStatus(AL.t('clConnected')); startTimer(); paintActs(); paintVidNote(); ongoingStart(); }
+  else if (state === 'connected') { AL.stopDialTone(); setStatus(AL.t('clConnected')); startTimer(); paintActs(); paintVidNote(); ongoingStart(); backGuard(true); }
   /* 🔴 2026-09-22 — 통화 중 흔들렸을 때.
      ⚠ 말없이 조용하면 손님이 끊긴 줄 알고 먼저 끊어버립니다.
        "다시 잇는 중" 을 보여줘야 기다려 줍니다.
