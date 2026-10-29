@@ -9,6 +9,7 @@
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="alias_common.js?v=20261022b"></script>
+<script src="burum_partner_ref.js?v=20261029"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -349,9 +350,14 @@ if (AL.keyProblem) {
     <a href="burum_terms.html" style="color:inherit">이용약관</a> ·
     <a href="burum_privacy.html" style="color:inherit;font-weight:800">개인정보처리방침</a> ·
     <a href="burum_refund.html" style="color:inherit">취소·환불 규정</a> ·
-    <a href="burum_guide.html" style="color:inherit">사용설명서</a>
+    <a href="burum_guide.html" style="color:inherit">사용설명서</a><span class="pr-promo"> ·
+    <a href="https://aliascall.com/aliascall_partner.html" target="_blank" rel="noopener" style="color:inherit;font-weight:700">유치대리점 모집</a></span>
   </div>
   </div>
 </footer>
+<script>
+(function(){ try { if ((window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform()) || window.AliasNative)
+  document.querySelectorAll('.pr-promo').forEach(function(x){ x.style.display = 'none'; }); } catch (e) {} })();
+</script>
 </body>
 </html>

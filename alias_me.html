@@ -9,6 +9,7 @@
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="alias_common.js?v=20261022a"></script>
+<script src="burum_partner_ref.js?v=20261029"></script>
 <!-- 🔴 2026-09-13 — 사진 압축(AL.compressImage)이 여기 있습니다 -->
 <script src="alias_media.js?v=20260928b"></script>
 <script>
@@ -244,6 +245,10 @@ document.addEventListener("DOMContentLoaded", function(){
        차 · 물건 · 아이 · 반려동물에 붙이는 QR 긴급연락은 에일리어스콜의 일입니다.
        부름 손님이 그것이 필요할 때 찾아갈 수 있게 늘 같은 자리에 둡니다.
        ⚠ 글은 아래 스크립트가 언어에 맞춰 채웁니다(공용 사전을 건드리지 않으려고). -->
+  <!-- 🔴 2026-10-29 신설 — 유치대리점: 추천 코드 넣기 · 모집 안내 (burum_partner_ref.js 가 채움) -->
+  <div class="sect" id="prSect" style="display:none">추천 대리점</div>
+  <div class="dblock" id="prBox" style="display:none"></div>
+
   <div class="sect" id="acSect">함께 쓰면 좋은 앱</div>
   <div class="dblock">
     <a class="prefrow" id="acPromo" href="https://play.google.com/store/apps/details?id=com.weaveapp.aliascall"
@@ -307,7 +312,8 @@ document.addEventListener("DOMContentLoaded", function(){
     <a href="burum_terms.html" style="color:inherit">이용약관</a> ·
     <a href="burum_privacy.html" style="color:inherit;font-weight:800">개인정보처리방침</a> ·
     <a href="burum_refund.html" style="color:inherit">취소·환불 규정</a> ·
-    <a href="burum_guide.html" style="color:inherit">사용설명서</a>
+    <a href="burum_guide.html" style="color:inherit">사용설명서</a><span class="pr-promo"> ·
+    <a href="https://aliascall.com/aliascall_partner.html" target="_blank" rel="noopener" style="color:inherit;font-weight:700">유치대리점 모집</a></span>
   </div>
 </footer>
 
@@ -979,6 +985,23 @@ async function paintStorageRow(){
   /* 별칭을 만들면 1번을 ✓ 로 바꿉니다 */
   const mk = document.getElementById('make');
   if (mk) mk.addEventListener('click', () => setTimeout(paint, 1500));
+})();
+</script>
+<script>
+/* 🔴 2026-10-29 유치대리점 칸 · 앱 안에서는 "대리점 모집" 바닥글도 숨김(애플 승인 뒤 다시) */
+(function(){
+  function inApp(){ try { if (window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform()) return true; } catch (e) {} return !!window.AliasNative; }
+  if (inApp()) document.querySelectorAll('.pr-promo').forEach(function(x){ x.style.display = 'none'; });
+  var box = document.getElementById('prBox');
+  if (!box || !window.PartnerRef) return;
+  setTimeout(function(){
+    PartnerRef.mount(box).then(function(){
+      var on = !!box.innerHTML.trim();
+      box.style.display = on ? '' : 'none';
+      document.getElementById('prSect').style.display = on ? '' : 'none';
+      try { var ko = !(localStorage.getItem('alias_lang_v1') || 'ko').startsWith('en'); document.getElementById('prSect').textContent = ko ? '추천 대리점' : 'Referral'; } catch (e) {}
+    });
+  }, 800);
 })();
 </script>
 </body>
