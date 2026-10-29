@@ -180,6 +180,13 @@ document.addEventListener("DOMContentLoaded", function(){
   </div>
   <p class="lede" data-t="invIntro"></p>
 
+  <!-- 🔴 2026-10-29 친구 초대 보상: 새로 가입한 친구가 첫 결제하면 둘 다 +1개월 (1_burum_invite_reward.sql) -->
+  <div id="rewardBox" style="display:none;margin:4px 0 16px;padding:14px 16px;border-radius:16px;background:rgba(232,180,74,.12);border:1px solid rgba(232,180,74,.4);line-height:1.6">
+    <b id="rwT" style="display:block;font-size:15px;color:#F2C36B"></b>
+    <span id="rwD" style="font-size:13px;opacity:.85"></span>
+    <div id="rwS" style="font-size:12.5px;margin-top:6px;opacity:.85"></div>
+  </div>
+
   <!-- 만들기 -->
   <div id="formPart">
     <div class="field">
@@ -904,6 +911,25 @@ document.getElementById('prPvGo').textContent = AL.t('prDoIt');
   }
   AL.showPlanBar();   // 🔴 2026-09-14
   AL.startAlerts();      // 어느 화면에 있든 새 메시지를 알려줍니다
+})();
+</script>
+<script>
+/* 🔴 2026-10-29 친구 초대 보상 안내 · 내 현황 */
+(async function(){
+  try {
+    var box = document.getElementById('rewardBox'); if (!box || !window.AL || !AL.sb) return;
+    var r = await AL.sb.rpc('my_invite_rewards'); var d = r && r.data;
+    if (!d || !d.ok) return;
+    var en = AL.lang === 'en', m = d.months || 1;
+    document.getElementById('rwT').textContent = en ? '🎁 Invite a friend — you both get ' + m + ' month' + (m > 1 ? 's' : '') + ' free'
+                                                  : '🎁 친구 초대하면 둘 다 이용권 ' + m + '개월';
+    document.getElementById('rwD').textContent = en ? 'When a friend who signs up through your invite makes their first purchase, you each get ' + m + ' more month. (New sign-ups only · 1:1 invites)'
+                                                  : '내 초대장으로 새로 가입한 친구가 처음 결제하면, 친구와 나 모두 ' + m + '개월이 더해집니다. (새로 가입한 분 · 1:1 초대만)';
+    var st = en ? 'Waiting for first purchase: ' + d.waiting + ' · Rewarded: ' + d.granted + ' (+' + d.earned_months + ' months)'
+                : '첫 결제 기다리는 친구 ' + d.waiting + '명 · 보상 받음 ' + d.granted + '명 (+' + d.earned_months + '개월)';
+    document.getElementById('rwS').textContent = (d.waiting || d.granted) ? st : '';
+    box.style.display = 'block';
+  } catch (e) {}
 })();
 </script>
 </body>
