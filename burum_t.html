@@ -35,6 +35,7 @@ html, body{ height:100%; }
 .ttl{ font-size:26px; font-weight:800; line-height:1.35; margin:0; white-space:pre-line; }
 .dsc{ font-size:14.5px; line-height:1.7; color:var(--dim); margin:0; }
 .safe{ display:flex; gap:10px; font-size:12.5px; line-height:1.65; color:var(--dim); }
+.mine{ display:block; margin:6px 22px 0; padding:13px 14px; border-radius:14px; text-align:center; text-decoration:none; font-size:14px; font-weight:700; color:#8FE3B0; background:rgba(143,227,176,.12); border:1px solid rgba(143,227,176,.35); line-height:1.45; white-space:pre-line; }
 .foot{ padding:14px 20px calc(24px + env(safe-area-inset-bottom,0px)); text-align:center; }
 .foot a{ font-size:13px; color:var(--bad); }
 .center{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:0 30px; text-align:center; }
@@ -82,6 +83,8 @@ html, body{ height:100%; }
     <div class="err" id="startErr"></div>
     <div class="safe"><span>🛡️</span><span data-x="safe"></span></div>
   </div>
+  <!-- 🔴 2026-10-29 "나도 만들기" — 앱 없이 연락하는 분에게 부름을 알립니다 -->
+  <a class="mine" href="index.html?from=temp" data-x="mine"></a>
   <div class="foot"><a href="#" id="report" data-x="report"></a></div>
 </div>
 
@@ -111,7 +114,7 @@ const X = {
         endT:'이 연락처는 끝났습니다', endD:'기한이 지났거나 상대가 연락을 마쳤습니다. 더는 문자를 보낼 수 없습니다.',
         takeT:'이미 다른 분과 연결된 연락처입니다', takeD:'이 임시연락처는 처음 연락한 한 분만 쓸 수 있습니다.',
         noneT:'연락처를 찾지 못했습니다', noneD:'주소가 잘못되었거나 지워진 연락처입니다.',
-        learn:'부름 알아보기', fail:'보내지 못했습니다. 잠시 뒤 다시 해주세요.', fast:'너무 빨리 보내고 있습니다. 잠시 뒤 다시 보내주세요.' },
+        learn:'나도 무료로 만들기 ›', mine:'🔒 이 연락은 번호 없이 보호되고 있어요\n나도 무료로 만들기 ›', fail:'보내지 못했습니다. 잠시 뒤 다시 해주세요.', fast:'너무 빨리 보내고 있습니다. 잠시 뒤 다시 보내주세요.' },
   en: { noApp:'No app needed', head:'Reach them\nwithout a number', chip:'One-time card · {t}', days:'{n} days left', hours:'{n} hours left',
         dsc:'Neither phone number is shown. This contact works until {d}.', nameL:'Your name for them (optional)', namePh:'e.g. About the bike',
         start:'Send a message', safe:'It ends when they cut it off or it expires. If they wish, you can link up on Burum.',
@@ -119,7 +122,7 @@ const X = {
         pk:'An invitation', ph1:'They would like to keep in touch on Burum', pd:'On Burum you can keep talking with no numbers and no expiry.',
         pGo:'Join Burum and link up', pNo:'No thanks',
         endT:'This contact has ended', endD:'It expired or the owner cut it off.', takeT:'Already connected with someone else', takeD:'This card only works for the first person.',
-        noneT:'Contact not found', noneD:'The link is wrong or the card was removed.', learn:'About Burum', fail:'Could not send.', fast:'Sending too fast. Please wait.' },
+        noneT:'Contact not found', noneD:'The link is wrong or the card was removed.', learn:'Make your own — free ›', mine:'🔒 This chat keeps both numbers hidden\nMake your own — free ›', fail:'Could not send.', fast:'Sending too fast. Please wait.' },
 };
 const LG = (window.AL && AL.lang === 'en') ? 'en' : 'kr';
 const T = (k, v) => { let s = (X[LG][k] ?? X.kr[k] ?? k); if (v) Object.keys(v).forEach((z) => { s = s.split('{' + z + '}').join(v[z]); }); return s; };
