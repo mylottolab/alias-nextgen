@@ -125,7 +125,12 @@ NU.pin = function(line){
   } else if (p === 'ios') {
     how = '사파리 아래 <b>공유</b> 단추(□↑) → <b>홈 화면에 추가</b> → [추가].<br>이름이 "' + NU.esc(line.name) + '" 으로 들어갑니다.';
   } else if (p === 'android') {
-    how = '크롬 오른쪽 위 <b>⋮</b> → <b>홈 화면에 추가</b> → [추가].<br>이름이 "' + NU.esc(line.name) + '" 으로 들어갑니다.';
+    var sam = /SamsungBrowser/i.test(navigator.userAgent);
+    how = sam
+      ? '<b>삼성 인터넷</b>: 아래쪽 메뉴(≡) → <b>현재 페이지 추가</b> → <b>홈 화면</b> → [추가].'
+      : '<b>크롬</b>: 메뉴 <b>⋮</b>(위쪽 또는 아래쪽) → <b>홈 화면에 추가</b> → [추가].<br>' +
+        '메뉴에 안 보이면 <b>전송, 저장 및 공유</b>(또는 <b>공유</b>)를 눌러 그 안에서 <b>홈 화면에 추가</b>를 찾으세요.';
+    how += '<br>이름이 "' + NU.esc(line.name) + '" 으로 들어갑니다.';
   } else {
     how = '휴대폰에서 이 라인 화면을 열고 브라우저 메뉴의 <b>홈 화면에 추가</b>를 누르세요.';
   }
