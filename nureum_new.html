@@ -11,7 +11,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="alias_common.js?v=20261030p"></script>
 <script src="alias_qr.js?v=20261019a"></script>
-<script src="nureum.js?v=20261030b"></script>
+<script src="nureum.js?v=20261030c"></script>
 </head>
 <body>
 <!-- 새 라인 만들기 → 짝 맺기 코드(QR) → 상대가 넣으면 연결 → 이용권 · 바탕화면 아이콘
@@ -103,6 +103,7 @@ async function makeLine(){
   if (!name) { NU.showErr('err', '누구와 쓰실지 이름을 적어 주세요.'); return; }
   var btn = document.getElementById('make'); btn.disabled = true;
   try {
+    if (!aliases.length) { try { aliases = await AL.loadAliases(); } catch (e) {} }   // 앞에서 만들어졌을 수 있음
     var persona = aliases[0];
     if (!persona) {
       var me = document.getElementById('meName').value.trim();
@@ -118,7 +119,7 @@ async function makeLine(){
     history.replaceState(null, '', 'nureum_new.html?line=' + lineId);
     await loadLine();
   } catch (e) {
-    console.error(e); NU.showErr('err', e.message || String(e)); btn.disabled = false;
+    console.error(e); NU.showErr('err', NU.netErr(e) ? '인터넷 연결이 잠깐 끊겼어요. 다시 눌러 주세요.' : (e.message || String(e))); btn.disabled = false;
   }
 }
 

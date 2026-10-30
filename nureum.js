@@ -44,10 +44,23 @@ NU.fmtDate = function(iso){
 };
 NU.q = function(k){ return new URLSearchParams(location.search).get(k); };
 
+/* 🔴 2026-10-30 — 휴대폰 망이 잠깐 끊겨 "Failed to fetch" 가 나면 두 번 더 해 봅니다(손님 제보) */
+NU.netErr = function(e){ var m = String((e && (e.message || e.details)) || e || ''); return /Failed to fetch|NetworkError|Load failed|network/i.test(m); };
 NU.rpc = async function(fn, args){
-  var r = await AL.sb.rpc(fn, args || {});
-  if (r.error) throw r.error;
-  return r.data;
+  var last;
+  for (var i = 0; i < 3; i++) {
+    try {
+      var r = await AL.sb.rpc(fn, args || {});
+      if (r.error) { if (NU.netErr(r.error) && i < 2) { last = r.error; await new Promise(function(res){ setTimeout(res, 800 * (i + 1)); }); continue; } throw r.error; }
+      return r.data;
+    } catch (e) {
+      last = e;
+      if (!NU.netErr(e) || i === 2) break;
+      await new Promise(function(res){ setTimeout(res, 800 * (i + 1)); });
+    }
+  }
+  if (NU.netErr(last)) throw new Error('인터넷 연결이 잠깐 끊겼어요. 와이파이나 데이터를 확인하고 다시 눌러 주세요.');
+  throw last;
 };
 
 /* 아이콘 그림 (바탕화면 바로가기 · 탭 아이콘에 씁니다) */
