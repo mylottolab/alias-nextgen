@@ -18,7 +18,8 @@
 .x3 b{font-size:14px}.x3 span{font-size:13px;color:var(--nu-main);font-weight:700}
 .x3 button[aria-pressed="true"]{border-color:var(--nu-main);background:rgba(228,87,46,.08)}
 .pass{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.pass>div{border:2px solid var(--nu-line);border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:8px;position:relative}
+.pass>div.on{border-color:var(--nu-main);background:rgba(228,87,46,.06)}
+.pass>div{cursor:pointer;border:2px solid var(--nu-line);border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:8px;position:relative}
 .pass .p{font-size:19px;font-weight:900;color:var(--nu-main)}
 .step{display:flex;align-items:center;justify-content:space-between;background:var(--nu-soft);border-radius:12px;padding:4px}
 .step button{width:36px;height:36px;border:none;border-radius:10px;background:var(--nu-bg);color:var(--nu-ink);font-size:20px;font-weight:900;cursor:pointer}
@@ -55,15 +56,15 @@ h3{margin:4px 0 0;font-size:15px;font-weight:900}
 
     <h3>기간 늘리기 · 라인 1개 기준</h3>
     <div class="pass">
-      <div><b>1개월권</b><span class="p" id="p1"></span><div class="step"><button type="button" data-k="m1" data-d="-1" aria-label="1개월권 빼기">−</button><b id="q1">0장</b><button type="button" data-k="m1" data-d="1" aria-label="1개월권 더하기">+</button></div></div>
-      <div style="border-color:var(--nu-ink)"><span class="badge">2달 덤</span><b>12개월권</b><span class="p" id="p12"></span><div class="step"><button type="button" data-k="m12" data-d="-1" aria-label="12개월권 빼기">−</button><b id="q12">1장</b><button type="button" data-k="m12" data-d="1" aria-label="12개월권 더하기">+</button></div></div>
+      <div id="c1"><b>1개월권</b><span class="p" id="p1"></span><div class="step"><button type="button" data-k="m1" data-d="-1" aria-label="1개월권 빼기">−</button><b id="q1">0장</b><button type="button" data-k="m1" data-d="1" aria-label="1개월권 더하기">+</button></div></div>
+      <div id="c12"><span class="badge">2달 덤</span><b>12개월권</b><span class="p" id="p12"></span><div class="step"><button type="button" data-k="m12" data-d="-1" aria-label="12개월권 빼기">−</button><b id="q12">1장</b><button type="button" data-k="m12" data-d="1" aria-label="12개월권 더하기">+</button></div></div>
     </div>
     <span class="nu-sub" style="margin:0" id="sum"></span>
+    <button class="nu-btn ghost nu-hidden" id="adminGrant" type="button" style="border:2px dashed var(--nu-sub)">관리자 시험: 고른 개월만큼 넣기 (결제 없이)</button>
     <button class="nu-btn" id="pay" type="button">결제하기</button>
-    <button class="nu-btn ghost nu-hidden" id="adminGrant" type="button">관리자 시험: 고른 개월만큼 넣기</button>
   </div>
 
-  <div class="nu-note" id="note" style="margin-top:auto">요금은 <b>라인을 만든 사람</b>이 냅니다(부가세 포함). 라인마다 따로 계산하고, 짝 맺은 상대는 내지 않아요.</div>
+  <div class="nu-note" id="note" style="margin-top:auto;margin-bottom:40px">요금은 <b>라인을 만든 사람</b>이 냅니다(부가세 포함). 라인마다 따로 계산하고, 짝 맺은 상대는 내지 않아요.</div>
 </div>
 
 <script>
@@ -74,6 +75,9 @@ function paintSum(){
   var P = L.prices, months = q.m1 + q.m12 * 12, total = q.m1 * P.m1 + q.m12 * P.m12;
   document.getElementById('q1').textContent = q.m1 + '장';
   document.getElementById('q12').textContent = q.m12 + '장';
+  /* 🔴 고른 이용권만 테두리를 칠합니다(전에는 12개월권이 늘 골라진 것처럼 보였음) */
+  document.getElementById('c1').classList.toggle('on', q.m1 > 0);
+  document.getElementById('c12').classList.toggle('on', q.m12 > 0);
   var base = L.active ? new Date(L.plan_until) : new Date();
   var to = new Date(base); to.setMonth(to.getMonth() + months);
   document.getElementById('sum').textContent = months
@@ -125,6 +129,14 @@ async function load(){
   paintSum();
 }
 
+[['c1', 'm1'], ['c12', 'm12']].forEach(function(x){
+  document.getElementById(x[0]).addEventListener('click', function(e){
+    if (e.target.closest('.step')) return;
+    q = { m1: 0, m12: 0 }; q[x[1]] = 1;
+    pick = null; document.querySelectorAll('#extras button').forEach(function(b){ b.setAttribute('aria-pressed', 'false'); });
+    paintSum();
+  });
+});
 document.querySelectorAll('.step button').forEach(function(b){
   b.onclick = function(){
     var k = b.dataset.k; q[k] = Math.max(0, Math.min(99, q[k] + Number(b.dataset.d)));
