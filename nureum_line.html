@@ -11,7 +11,7 @@
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="alias_common.js?v=20261030p"></script>
-<script src="nureum.js?v=20261030g"></script>
+<script src="nureum.js?v=20261031a"></script>
 <style>
 .big{flex:1;min-height:250px;border:none;border-radius:36px;background:#1F8A5B;color:#fff;font:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;cursor:pointer}
 .big span{font-size:40px;font-weight:900}
@@ -89,10 +89,10 @@ function menu(){
     ['🎵', '음악 같이 듣기', function(){ chat('music'); }],
     ['🎤', '음성 메시지', function(){ chat('attach'); }],
     ['📊', L.is_owner ? '이용 현황 · 연장' : '이용 현황', function(){ location.href = 'nureum_plan.html?line=' + L.id; }],
-    ['📌', '바탕화면에 놓기', function(){ NU.pin(L); }],
+    NU.canPin() ? ['📌', '바탕화면에 놓기', function(){ NU.pin(L); }] : null,
     ['⚙️', '이 라인 설정', settings],
     ['🏠', '누름 처음 화면', function(){ location.href = 'nureum.html'; }],
-  ];
+  ].filter(Boolean);
   var sh = NU.sheet('<h2>전체 메뉴</h2><div class="nu-menu">' + items.map(function(it, i){
     return '<button type="button" data-i="' + i + '"><span class="em" aria-hidden="true">' + it[0] + '</span>' + it[1] + '</button>';
   }).join('') + '</div><p class="nu-sub" style="margin-top:12px">녹음 · 녹화는 통화 화면에서 상대가 허락할 때만 됩니다.</p>' +

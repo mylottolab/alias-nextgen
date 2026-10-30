@@ -95,6 +95,9 @@ NU.setPageIcon = function(line){
   m.content = line.name;
 };
 
+/* 🔴 2026-10-31 — 아이폰 앱에는 아직 바탕화면 위젯이 없습니다(다음 판). 그동안 [바탕화면에 놓기]를 숨깁니다
+   (애플 심사: 안 되는 단추를 두지 않기) */
+NU.canPin = function(){ return !(NU.isApp() && NU.platform() === 'ios'); };
 NU.isApp = function(){ try { return !!(AL.isNativeApp && AL.isNativeApp()); } catch (e) { return false; } };
 NU.platform = function(){
   var ua = navigator.userAgent || '';
