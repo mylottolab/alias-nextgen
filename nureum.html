@@ -9,7 +9,7 @@
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="alias_common.js?v=20261030p"></script>
-<script src="nureum.js?v=20261030a"></script>
+<script src="nureum.js?v=20261030b"></script>
 </head>
 <body>
 <!-- 누름 첫 화면: 내 라인들. 라인 아이콘을 누르면 그 라인 화면, + 를 누르면 새 라인 -->
@@ -33,7 +33,12 @@
 
 <script>
 (async function(){
-  if (!await NU.boot()) return;
+  if (!await NU.session()) {
+    document.querySelectorAll('.nu > *:not(.nu-top)').forEach(function(e){ e.classList.add('nu-hidden'); });
+    var w = document.createElement('div'); w.style.cssText = 'display:flex;flex-direction:column;gap:12px';
+    document.querySelector('.nu').appendChild(w); NU.welcome(w);
+    return;
+  }
   var grid = document.getElementById('grid');
   try {
     var lines = await NU.rpc('nureum_my_lines');

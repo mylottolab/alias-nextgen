@@ -10,7 +10,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="alias_common.js?v=20261030p"></script>
 <script src="alias_qr.js?v=20261019a"></script>
-<script src="nureum.js?v=20261030a"></script>
+<script src="nureum.js?v=20261030b"></script>
 </head>
 <body>
 <!-- 받는 쪽: 코드(또는 QR 주소 ?c=)로 짝 맺기.
@@ -136,7 +136,13 @@ document.getElementById('go').onclick = join;
 document.getElementById('name').addEventListener('input', paintPreview);
 
 (async function(){
-  if (!await NU.boot()) return;
+  if (!await NU.session()) {
+    ['stepCode', 'stepForm', 'stepDone'].forEach(function(id){ document.getElementById(id).classList.add('nu-hidden'); });
+    var w = document.createElement('div'); w.style.cssText = 'display:flex;flex-direction:column;gap:12px';
+    document.querySelector('.nu').appendChild(w);
+    NU.welcome(w, NU.q('c') ? '누름으로 연결하자는 초대를 받으셨어요' : null);
+    return;
+  }
   NU.colorPicker(document.getElementById('colors'), color, function(c){ color = c; paintPreview(); });
   try {
     aliases = await AL.loadAliases();

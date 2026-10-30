@@ -156,6 +156,33 @@ NU.colorPicker = function(box, value, onChange){
   });
 };
 
+/* 🔴 2026-10-30 — 로그인 안 된 분(부름 가입 전)도 누름 화면이 그대로 남아 있게.
+   첫 화면 · 짝 맺기 화면은 튕기지 않고 "시작하기" 안내를 보여 줍니다.
+   ⚠ 앱이 막 깨어날 때는 로그인 정보가 늦게 나오므로 2초 동안 몇 번 더 물어봅니다. */
+NU.session = async function(){
+  if (typeof AL === 'undefined' || !AL.sb) return null;
+  for (var i = 0; i < 9; i++) {
+    try { var r = await AL.sb.auth.getSession(); if (r.data && r.data.session) return r.data.session.user; } catch (e) {}
+    await new Promise(function(res){ setTimeout(res, 250); });
+  }
+  return null;
+};
+NU.loginUrl = function(signup){
+  var here = location.pathname.split('/').pop() + location.search;
+  return 'alias_auth.html?next=' + encodeURIComponent(here);
+};
+/* 로그인 전 안내 판 — box 안을 채웁니다 */
+NU.welcome = function(box, lead){
+  box.innerHTML =
+    '<div class="nu-card" style="border-color:#E4572E;gap:12px">' +
+      '<b style="font-size:19px">' + (lead || '한 사람과만, 누르면 바로') + '</b>' +
+      '<span class="nu-sub" style="margin:0;color:var(--nu-ink)">누름은 정해진 한 사람과만 쓰는 직통 연결입니다. 라인마다 바탕화면 아이콘이 생기고, 누르면 그 사람에게 바로 전화 · 영상 · 사진 · 문자를 보낼 수 있어요. 서로 전화번호는 보이지 않습니다.</span>' +
+      '<span class="nu-sub" style="margin:0">누름은 <b>부름</b> 계정으로 씁니다. 처음이시면 1분이면 가입돼요(전화번호 없이 아이디만).</span>' +
+    '</div>' +
+    '<a class="nu-btn" href="' + NU.loginUrl(true) + '">처음이에요 · 가입하고 시작</a>' +
+    '<a class="nu-btn ghost" href="' + NU.loginUrl(false) + '">부름 계정이 있어요 · 로그인</a>';
+};
+
 /* 누름 화면 공통 시작: 로그인 확인 */
 NU.boot = async function(){
   if (typeof AL === 'undefined' || !AL.sb) {
