@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#E4572E">
 <title>새 라인 · 누름</title>
-<link rel="stylesheet" href="nureum.css?v=20261030a">
+<link rel="stylesheet" href="nureum.css?v=20261030c">
 <script src="alias_qrlib.js"></script>
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -81,7 +81,7 @@
 </div>
 
 <script>
-var color = NU.COLORS[0], lineId = NU.q('line'), line = null, pollT = null, tickT = null, codeUrl = '';
+var rawCode = '', color = NU.COLORS[0], lineId = NU.q('line'), line = null, pollT = null, tickT = null, codeUrl = '';
 var aliases = [];
 
 function show(id){
@@ -139,7 +139,9 @@ async function loadLine(){
 function paintCode(code, exp){
   var exp_ = exp ? new Date(exp).getTime() : 0;
   codeUrl = location.href.replace(/[^/]*$/, '') + 'nureum_join.html?c=' + encodeURIComponent(code || '');
-  document.getElementById('code').textContent = code || '······';
+  rawCode = code || '';
+  /* 코드가 길어 넷씩 띄워 보여 줍니다(넣을 때 띄어 써도 됩니다) */
+  document.getElementById('code').textContent = code ? code.match(/.{1,4}/g).join(' ') : '······';
   var qr = document.getElementById('qr');
   AL.drawQr(qr, codeUrl, 208).catch(function(){ qr.textContent = ''; });
   clearInterval(tickT);
@@ -189,7 +191,7 @@ document.getElementById('renew').onclick = async function(){
     paintCode(r.code, r.expires_at);
   } catch (e) { NU.showErr('err', e.message || String(e)); }
 };
-document.getElementById('copy').onclick = function(){ AL.copyText(document.getElementById('code').textContent, this); };
+document.getElementById('copy').onclick = function(){ AL.copyText(rawCode, this); };
 document.getElementById('share').onclick = function(){
   var code = document.getElementById('code').textContent;
   AL.shareText('누름으로 연결해요. 아래 주소를 눌러 주세요 (코드 ' + code + ', 10분 안에)\n' + codeUrl);

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#E4572E">
 <title>짝 맺기 · 누름</title>
-<link rel="stylesheet" href="nureum.css?v=20261030a">
+<link rel="stylesheet" href="nureum.css?v=20261030c">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="alias_common.js?v=20261030p"></script>
@@ -26,7 +26,7 @@
     <p class="nu-sub">상대 휴대폰에 나온 QR을 찍거나, 받은 코드를 넣어 주세요.</p>
     <button class="nu-btn" id="scan" type="button">QR 찍기</button>
     <label class="nu-lbl" for="code">받은 코드</label>
-    <input class="nu-in" id="code" autocomplete="off" autocapitalize="characters" placeholder="예: 482913" style="letter-spacing:3px;font-weight:900">
+    <input class="nu-in" id="code" autocomplete="off" autocapitalize="off" placeholder="예: e9d4 3094 d4d1 4c0d" style="letter-spacing:3px;font-weight:900">
     <button class="nu-btn ghost" id="check" type="button">확인</button>
   </div>
 
@@ -85,6 +85,7 @@ async function check(raw){
   try {
     var info = await NU.rpc('nureum_code_info', { p_code: code });
     if (!info.ok) { NU.showErr('err', NU.errText(info.error)); show('stepCode'); return; }
+    if (info.code) code = info.code;   // 띄어 쓰거나 대 · 소문자가 달라도 서버가 찾은 진짜 코드로
     document.getElementById('fromTxt').textContent = (info.from || '상대') + '님이 누름으로 연결하자고 해요';
     show('stepForm');
     document.getElementById('name').focus();
