@@ -68,7 +68,7 @@ NU.iconDataUrl = function(glyph, color, size){
   size = size || 192;
   var c = document.createElement('canvas'); c.width = c.height = size;
   var x = c.getContext('2d');
-  var r = size * 0.22;
+  var r = size * 0.32;   // 🔴 v28 — 삼성 아이콘처럼 더 둥글게
   x.fillStyle = color || '#E4572E';
   x.beginPath();
   x.moveTo(r, 0); x.arcTo(size, 0, size, size, r); x.arcTo(size, size, 0, size, r);
