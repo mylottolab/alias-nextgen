@@ -1554,7 +1554,7 @@ AL.requireLogin = async function(){
          여기서도 걸러야 합니다. 아무 주소나 실리면 남의 사이트로
          보내는 길이 열립니다. */
     var here = location.pathname.split('/').pop() + location.search;
-    if (/^(alias|nureum)_[a-z_]+\.html(\?|$)/.test(here) &&
+    if (/^(alias_[a-z_]+|nureum(_[a-z_]+)?)\.html(\?|$)/.test(here) &&
         here.indexOf('alias_auth') !== 0) {
       location.href = 'alias_auth.html?next=' + encodeURIComponent(here);
     } else {
