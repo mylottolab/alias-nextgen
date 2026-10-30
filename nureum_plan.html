@@ -153,11 +153,57 @@ document.getElementById('borrow').onclick = async function(){
     await load();
   } catch (e) { NU.showErr('err', e.message || String(e)); }
 };
-document.getElementById('pay').onclick = function(){
-  /* ⚠ 결제는 다음 단계에서 붙입니다(웹: 이니시스 · 앱: 구글 · 애플 앱 결제).
-     지금은 눌러도 돈이 나가지 않습니다. */
-  NU.sheet('<h2>결제 준비 중</h2><p class="nu-sub" style="color:var(--nu-ink)">누름 결제는 곧 열립니다. 조금만 기다려 주세요.</p><button class="nu-btn ghost" data-close>닫기</button>');
+/* 🔴 2026-10-30 — 앱 결제(구글 · 애플). 상품 번호는 서버(alias-plan-google-verify) · 스토어와 같아야 합니다.
+   ⚠ 한 번에 한 종류만 삽니다. 여러 장은 구글 결제창에서 수량으로 고릅니다(아이폰은 한 번에 1장).
+   ⚠ 결제 직전에 "어느 라인인지" 서버에 적어 둡니다(nureum_buy_intent) — 영수증이 늦게 와도 그 라인에 들어가게. */
+var SKU = { m1: 'nureum_line_1m', m12: 'nureum_line_12m', voice: 'nureum_voice_300', video: 'nureum_video_100', storage: 'nureum_storage_1gb' };
+var STORE = !!(window.AliasNative && typeof AliasNative.storeBuy === 'function');
+var buying = false;
+function payDone(r){
+  buying = false; document.getElementById('pay').disabled = false;
+  NU.closeSheet();
+  if (r && r.ok) {
+    var ok = document.getElementById('ok');
+    ok.textContent = r.already ? '이미 넣어 드린 결제입니다.' : '결제가 끝났어요. 이용권을 넣어 드렸습니다.'; ok.classList.add('on');
+    load().catch(function(){});
+    return;
+  }
+  if (r && (r.canceled || r.cleared)) { NU.showErr('err', r.cleared ? '취소 · 환불된 결제를 정리했습니다.' : ''); return; }
+  if (r && r.pending) { NU.showErr('err', '결제가 아직 확정되지 않았습니다. 확정되면 저절로 들어갑니다.'); return; }
+  if (r && r.owned) { NU.showErr('err', '전에 산 것을 정리하는 중입니다. 잠시 뒤 다시 눌러 주세요.'); return; }
+  NU.showErr('err', '결제를 마치지 못했습니다.' + (r && r.error ? '\n(' + r.error + ')' : ''));
+}
+document.getElementById('pay').onclick = async function(){
+  NU.showErr('err', '');
+  var which = pick || (q.m12 > 0 ? 'm12' : (q.m1 > 0 ? 'm1' : null));
+  if (!which) { NU.showErr('err', '1개월권이나 12개월권을 골라 주세요.'); return; }
+  if (!pick && q.m1 > 0 && q.m12 > 0) { NU.showErr('err', '한 번에 한 종류만 살 수 있어요. 1개월권이나 12개월권 중 하나만 골라 주세요.'); return; }
+  if (!STORE) {
+    NU.sheet('<h2>결제는 부름 앱에서</h2><p class="nu-sub" style="color:var(--nu-ink)">누름 이용권은 휴대폰의 <b>부름 앱</b>에서 살 수 있어요(구글 · 애플 결제). 웹 결제는 곧 열립니다.</p><button class="nu-btn ghost" data-close>닫기</button>');
+    return;
+  }
+  if (buying) return;
+  buying = true; this.disabled = true;
+  try {
+    var r = await NU.rpc('nureum_buy_intent', { p_line: L.id, p_sku: SKU[which] });
+    if (!r.ok) throw new Error(NU.errText(r.error));
+    AL.onStoreDone = payDone;
+    AliasNative.storeBuy(SKU[which]);    // 결과는 AL.onStoreEvent → AL.onStoreDone 으로 옵니다
+    NU.sheet('<h2>결제창을 여는 중…</h2><p class="nu-sub">결제를 마치면 이 화면이 저절로 바뀝니다.</p>');
+    setTimeout(function(){ if (buying) { NU.closeSheet(); buying = false; document.getElementById('pay').disabled = false; } }, 90000);
+  } catch (e) {
+    buying = false; this.disabled = false;
+    NU.showErr('err', e.message || String(e));
+  }
 };
+/* 앱에서는 장수 고르기를 숨깁니다(수량은 결제창에서). 한 번에 한 종류만. */
+if (STORE) {
+  document.querySelectorAll('.step').forEach(function(x){ x.style.display = 'none'; });
+  q = { m1: 0, m12: 1 };
+  var hint = document.createElement('span'); hint.className = 'nu-sub'; hint.style.margin = '0';
+  hint.textContent = /iPhone|iPad/.test(navigator.userAgent) ? '한 번에 1장씩 살 수 있어요. 더 사면 기간이 이어 붙어요.' : '여러 장은 결제창에서 수량을 고르세요. 산 만큼 기간이 이어 붙어요.';
+  document.querySelector('.pass').after(hint);
+}
 document.getElementById('adminGrant').onclick = async function(){
   var months = q.m1 + q.m12 * 12;
   if (!months) { NU.showErr('err', '개월을 골라 주세요.'); return; }
