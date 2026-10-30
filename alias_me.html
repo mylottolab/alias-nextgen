@@ -80,17 +80,6 @@ document.addEventListener("DOMContentLoaded", function(){
     <h1 class="h2" data-t="meTitle"></h1>
   </div>
 
-  <!-- 🔴 2026-10-30 — 누름 입구(모두에게). 한 사람과만, 바탕화면 아이콘을 누르면 바로 -->
-  <a href="nureum.html" id="nureumEntry"
-     style="display:flex;align-items:center;gap:12px;margin:4px 0 14px;padding:12px 14px;border-radius:16px;text-decoration:none;color:inherit;border:1px solid rgba(228,87,46,.55);background:rgba(228,87,46,.08)">
-    <svg width="36" height="36" viewBox="0 0 34 34" aria-hidden="true" style="flex:none"><circle cx="17" cy="17" r="14" fill="none" stroke="#E4572E" stroke-width="3"></circle><circle cx="17" cy="17" r="6.5" fill="#E4572E"></circle></svg>
-    <span style="display:flex;flex-direction:column;gap:2px;min-width:0">
-      <b style="font-size:15px">누름 · 한 사람과 바로</b>
-      <span style="font-size:12.5px;opacity:.8">엄마 · 아들 · 우리 자기 — 바탕화면 아이콘을 누르면 바로 전화</span>
-    </span>
-    <span style="margin-left:auto;font-size:20px;opacity:.6">›</span>
-  </a>
-
   <!-- 🔴 2026-10-19 — 처음 가입한 분 길잡이(1:1 연락처가 하나도 없을 때만) -->
   <div id="firstGuide" style="display:none"></div>
 
@@ -280,6 +269,9 @@ document.addEventListener("DOMContentLoaded", function(){
     <div class="dblock">
       <a href="alias_admin.html" class="btn ghost" data-t="adMenu"
          style="display:block;text-align:center;text-decoration:none"></a>
+      <!-- 🔴 2026-10-30 — 누름 시험용 입구(관리자에게만 보임). 정식 출시 때 모두에게 엽니다. -->
+      <a href="nureum.html" class="btn ghost"
+         style="display:block;text-align:center;text-decoration:none;margin-top:8px">누름 (1:1 직통) · 시험 중</a>
     </div>
   </div>
 
