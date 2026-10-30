@@ -93,7 +93,7 @@ document.addEventListener("DOMContentLoaded", function(){
   </a>
   <script>
   (function(){
-    var NUREUM_IOS_OPEN = false;   // 🔴 애플 심사 통과 뒤 true 로
+    var NUREUM_IOS_OPEN = true;    // 🔴 2026-10-31 애플 심사(데모 계정)에서도 보여야 하므로 함께 엽니다
     var ios = /iPhone|iPad|iPod/.test(navigator.userAgent) && window.AL && AL.isNativeApp && AL.isNativeApp();
     var el = document.getElementById('nureumEntry');
     if (!ios || NUREUM_IOS_OPEN) { el.style.display = 'flex'; return; }
