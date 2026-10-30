@@ -110,18 +110,24 @@ NU.pin = function(line){
   var url = location.origin + location.pathname.replace(/[^/]*$/, '') + 'nureum_line.html?line=' + line.id;
   if (window.AliasNative && typeof AliasNative.pinShortcut === 'function') {
     try {
-      AliasNative.pinShortcut(JSON.stringify({
-        id: 'nureum_' + line.id, name: line.name, url: url,
+      var ok = AliasNative.pinShortcut(JSON.stringify({
+        id: 'nureum_' + line.id, name: line.name, url: 'https://burum.kr/nureum_line.html?line=' + line.id,
         icon: NU.iconDataUrl(NU.glyph(line), line.color, 192).split(',')[1],
       }));
-      return;
+      if (ok !== false) {
+        NU.sheet('<h2>휴대폰이 묻는 창에서 [추가]를 눌러 주세요</h2>' +
+          '<p class="nu-sub" style="color:var(--nu-ink)">바탕화면에 <b>' + NU.esc(line.name) + '</b> 아이콘이 생깁니다. 다음부터는 그 아이콘만 누르시면 이 화면이 바로 열려요.</p>' +
+          '<p class="nu-sub">창이 안 뜨면 바탕화면 빈 곳을 꾹 → 설정 → "홈 화면 레이아웃 잠금" 이 꺼져 있는지 봐 주세요.</p>' +
+          '<button class="nu-btn ghost" data-close>알겠어요</button>');
+        return;
+      }
     } catch (e) { console.warn('[nureum] pinShortcut', e); }
   }
   var p = NU.platform(), how;
   if (NU.isApp() && p === 'ios') {
     how = '<b>아이폰</b>은 앱이 아이콘을 따로 만들 수 없어 <b>위젯</b>으로 놓습니다.<br>바탕화면 빈 곳을 꾹 → 왼쪽 위 [편집] → [위젯 추가] → 부름 → 누름 위젯.<br><span style="color:var(--nu-sub)">(누름 위젯은 아이폰 앱 다음 판에 들어갑니다)</span>';
   } else if (NU.isApp()) {
-    how = '이 앱 판에는 아직 아이콘 만들기가 없습니다. 다음 판에서 [추가] 한 번으로 됩니다.<br>지금은 휴대폰 <b>크롬</b>에서 이 화면을 열어 메뉴(⋮) → <b>홈 화면에 추가</b>를 누르시면 됩니다.';
+    how = '부름 앱을 <b>최신 판으로 업데이트</b>하시면 [추가] 한 번으로 아이콘이 생깁니다.<br>(플레이스토어 → 부름 → 업데이트)';
   } else if (p === 'ios') {
     how = '사파리 아래 <b>공유</b> 단추(□↑) → <b>홈 화면에 추가</b> → [추가].<br>이름이 "' + NU.esc(line.name) + '" 으로 들어갑니다.';
   } else if (p === 'android') {
