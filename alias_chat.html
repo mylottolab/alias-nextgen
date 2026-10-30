@@ -27,7 +27,7 @@
 </style>
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20261022a"></script>
+<script src="alias_common.js?v=20261030n"></script>
 <script src="alias_media.js?v=20260928b"></script>
 <script src="alias_extras.js?v=20260928b"></script>
 <script src="alias_room.js?v=20260928b"></script>
@@ -1003,7 +1003,7 @@ async function send(){
   if (!text || closed) return;
   /* 🔴 2026-09-14 — 보내기는 이용권이 필요합니다.
      읽기는 그대로 됩니다. 글을 지우지 않으니 나중에 그대로 보낼 수 있습니다. */
-  if (!await AL.requirePlan()) return;
+  if (!await AL.requirePlan(linkId)) return;
 
   const btn = document.getElementById('send');
   btn.disabled = true;
@@ -1754,7 +1754,7 @@ document.getElementById('who').addEventListener('click', function(){
   location.href = 'alias_link.html?link=' + encodeURIComponent(linkId);
 });
 document.getElementById('call').addEventListener('click', async function(){
-  if (!await AL.requirePlan()) return;   // 🔴 2026-09-14 이용권
+  if (!await AL.requirePlan(linkId)) return;   // 🔴 2026-09-14 이용권
   /* 🔴 2026-09-10 — 위 통화기록과 같은 이유로 막 열린 직후는 무시합니다. */
   if (Date.now() - PAGE_OPENED_AT < 2500) {
     console.log('[call] 화면이 막 열렸습니다. 누름을 무시합니다.');
@@ -1786,11 +1786,27 @@ document.getElementById('call').addEventListener('click', async function(){
     listen();
     watchOthers();
     watchCalls();
+    nureumDo();
   } catch (e) {
     console.error(e);
     showErr(AL.t('errGeneric', { msg: e.message || String(e) }));
   }
 })();
+
+/* 🔴 2026-10-30 — 누름 라인 화면에서 [사진 보내기] [전체 메뉴] 로 오면 그 일을 바로 엽니다.
+   ⚠ 파일 고르기 창은 손가락으로 눌러야만 열리므로, 고르는 시트까지만 엽니다. */
+function nureumDo(){
+  var d = new URLSearchParams(location.search).get('do');
+  if (!d || !me) return;
+  setTimeout(function(){
+    try {
+      if (d === 'attach') showAttach(true);
+      else if (d === 'yt' && AL.ytPicker) AL.ytPicker();
+      else if (d === 'music' && AL.openMusic) AL.openMusic(linkId, me.sideId);
+      else if (d === 'text') { var b = document.getElementById('input'); if (b) b.focus(); }
+    } catch (e) { console.warn('[nureum] do', d, e); }
+  }, 400);
+}
 
 // 다른 탭에 갔다가 돌아오면 그때 읽음 처리합니다.
 document.addEventListener('visibilitychange', function(){

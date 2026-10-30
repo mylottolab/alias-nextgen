@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="alias_theme.css?v=20261021d">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20261022a"></script>
+<script src="alias_common.js?v=20261030n"></script>
 <script src="alias_media.js?v=20260927a"></script>
 <script src="alias_call.js?v=20261020g"></script>
 <script>
@@ -325,6 +325,9 @@ let recDone = false;        // 이번 통화에서 녹음·녹화를 했는가
 function goChat(delayMs){
   var wait = delayMs || 0;
   var where = 'alias_chat.html?link=' + encodeURIComponent(linkId);
+  /* 🔴 2026-10-30 — 누름 라인 화면에서 건 전화는 끝나면 그 라인 화면으로 돌아갑니다 */
+  var ret = P.get('ret') || '';
+  if (/^nureum_line\.html\?line=[0-9a-f-]{36}$/.test(ret)) where = ret;
 
   if (recDone) {
     where = 'alias_calls.html';

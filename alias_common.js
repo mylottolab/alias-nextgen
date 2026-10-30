@@ -1554,7 +1554,7 @@ AL.requireLogin = async function(){
          여기서도 걸러야 합니다. 아무 주소나 실리면 남의 사이트로
          보내는 길이 열립니다. */
     var here = location.pathname.split('/').pop() + location.search;
-    if (/^alias_[a-z_]+\.html(\?|$)/.test(here) &&
+    if (/^(alias|nureum)_[a-z_]+\.html(\?|$)/.test(here) &&
         here.indexOf('alias_auth') !== 0) {
       location.href = 'alias_auth.html?next=' + encodeURIComponent(here);
     } else {
@@ -1972,9 +1972,13 @@ AL.planDaysLeft = function(p){
 };
 
 /* 쓸 수 있으면 true. 아니면 안내를 띄우고 false. */
-AL.requirePlan = async function(){
+AL.requirePlan = async function(linkId){
   var p = await AL.myPlan();
   if (p.active !== false) return true;
+  /* 🔴 2026-10-30 — 누름 라인은 라인 이용권으로 씁니다(부름 이용권이 없어도 보내기 · 통화 가능) */
+  if (linkId) {
+    try { var nu = await AL.sb.rpc('nureum_link_ok', { p_link: linkId }); if (nu && nu.data === true) return true; } catch (e) {}
+  }
   AL.needPlan();
   return false;
 };
@@ -4487,6 +4491,7 @@ AL.topBar = async function(){
     var ACCT_ONLY = ['alias_chat.html', 'alias_phone.html'];
     var acctOnly = ACCT_ONLY.indexOf(page) >= 0;
     if (SKIP.indexOf(page) >= 0 && !acctOnly) return;
+    if (page.indexOf('nureum') === 0) return;   // 🔴 2026-10-30 — 누름 화면은 따로 꾸밉니다
     var wrap = document.querySelector('.wrap') || document.querySelector('.phwrap') || document.body;
     var tabbed = document.body.classList.contains('tabbed');
     /* MyPage · 로그아웃을 붙일 화면: 아래 탭 화면 + 대화 · 전화번호부 · 부름번호 · 동시통보 */

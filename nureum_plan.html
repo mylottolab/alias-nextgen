@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#E4572E">
+<title>이용 현황 · 누름</title>
+<link rel="stylesheet" href="nureum.css?v=20261030a">
+<script src="alias_config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="alias_common.js?v=20261030n"></script>
+<script src="nureum.js?v=20261030a"></script>
+<style>
+.use{border-radius:22px;background:#1B1B1F;color:#fff;padding:18px;display:flex;flex-direction:column;gap:12px}
+.use .r{display:flex;justify-content:space-between;font-size:14px}
+.x3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.x3 button{border:2px solid var(--nu-line);border-radius:16px;background:var(--nu-bg);color:var(--nu-ink);padding:10px 4px;font:inherit;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+.x3 b{font-size:14px}.x3 span{font-size:13px;color:var(--nu-main);font-weight:700}
+.x3 button[aria-pressed="true"]{border-color:var(--nu-main);background:rgba(228,87,46,.08)}
+.pass{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pass>div{border:2px solid var(--nu-line);border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:8px;position:relative}
+.pass .p{font-size:19px;font-weight:900;color:var(--nu-main)}
+.step{display:flex;align-items:center;justify-content:space-between;background:var(--nu-soft);border-radius:12px;padding:4px}
+.step button{width:36px;height:36px;border:none;border-radius:10px;background:var(--nu-bg);color:var(--nu-ink);font-size:20px;font-weight:900;cursor:pointer}
+.badge{position:absolute;top:-11px;right:10px;background:var(--nu-main);color:#fff;font-size:11.5px;font-weight:700;border-radius:999px;padding:2px 8px}
+h3{margin:4px 0 0;font-size:15px;font-weight:900}
+</style>
+</head>
+<body>
+<!-- 라인 이용 현황 · 연장 · 용량 추가 · 당겨 쓰기
+     요금: 라인 1개 · 1개월권 1,650원 · 12개월권 16,500원(부가세 포함), 여러 장 구입 가능.
+     ⚠ 결제(이니시스 · 구글 · 애플)는 다음 단계에서 붙입니다. 그 전에는 관리자만 기간을 넣어 시험합니다. -->
+<div class="nu">
+  <div class="nu-top">
+    <a class="nu-back" id="back" href="nureum.html" aria-label="뒤로">‹</a>
+    <h1 id="ttl">이용 현황</h1>
+  </div>
+  <div id="err" class="nu-err" role="alert"></div>
+  <div id="ok" class="nu-ok" role="status"></div>
+
+  <div class="use">
+    <div class="r" style="align-items:baseline"><b style="font-size:18px">이번 달 기본 용량</b><span id="until" style="font-size:13px;opacity:.85"></span></div>
+    <div><div class="r"><span>음성통화</span><b id="vTxt"></b></div><div class="nu-bar" style="margin-top:6px"><i id="vBar" style="background:#6FD39B"></i></div></div>
+    <div><div class="r"><span>영상통화</span><b id="dTxt"></b></div><div class="nu-bar" style="margin-top:6px"><i id="dBar" style="background:#FFB84D"></i></div><span id="dWarn" style="font-size:12px;color:#FFD39A"></span></div>
+    <div class="r"><span>사진 · 동영상 · 파일 보관</span><b id="sTxt"></b></div>
+  </div>
+
+  <div id="ownerPart" class="nu-hidden" style="display:flex;flex-direction:column;gap:12px">
+    <h3>모자라면 ① 추가 구입 (이번 달만)</h3>
+    <div class="x3" id="extras"></div>
+    <button class="nu-card" id="borrow" type="button" style="text-align:left;background:var(--nu-bg);color:var(--nu-ink);font:inherit;cursor:pointer">
+      <b style="font-size:15px">모자라면 ② 다음 달 것 당겨 쓰기</b>
+      <span class="nu-sub" style="margin:0" id="borrowSub">남은 기간이 한 달 줄어들고, 이번 달 용량이 한 달치 늘어요</span>
+    </button>
+
+    <h3>기간 늘리기 · 라인 1개 기준</h3>
+    <div class="pass">
+      <div><b>1개월권</b><span class="p" id="p1"></span><div class="step"><button type="button" data-k="m1" data-d="-1" aria-label="1개월권 빼기">−</button><b id="q1">0장</b><button type="button" data-k="m1" data-d="1" aria-label="1개월권 더하기">+</button></div></div>
+      <div style="border-color:var(--nu-ink)"><span class="badge">2달 덤</span><b>12개월권</b><span class="p" id="p12"></span><div class="step"><button type="button" data-k="m12" data-d="-1" aria-label="12개월권 빼기">−</button><b id="q12">1장</b><button type="button" data-k="m12" data-d="1" aria-label="12개월권 더하기">+</button></div></div>
+    </div>
+    <span class="nu-sub" style="margin:0" id="sum"></span>
+    <button class="nu-btn" id="pay" type="button">결제하기</button>
+    <button class="nu-btn ghost nu-hidden" id="adminGrant" type="button">관리자 시험: 고른 개월만큼 넣기</button>
+  </div>
+
+  <div class="nu-note" id="note" style="margin-top:auto">요금은 <b>라인을 만든 사람</b>이 냅니다(부가세 포함). 라인마다 따로 계산하고, 짝 맺은 상대는 내지 않아요.</div>
+</div>
+
+<script>
+var lineId = NU.q('line'), L = null, q = { m1: 0, m12: 1 }, pick = null, admin = false;
+
+function pct(a, b){ return Math.max(0, Math.min(100, b ? Math.round(a * 100 / b) : 0)) + '%'; }
+function paintSum(){
+  var P = L.prices, months = q.m1 + q.m12 * 12, total = q.m1 * P.m1 + q.m12 * P.m12;
+  document.getElementById('q1').textContent = q.m1 + '장';
+  document.getElementById('q12').textContent = q.m12 + '장';
+  var base = L.active ? new Date(L.plan_until) : new Date();
+  var to = new Date(base); to.setMonth(to.getMonth() + months);
+  document.getElementById('sum').textContent = months
+    ? '합계 ' + NU.won(total) + ' · ' + months + '개월 → ' + NU.fmtDate(to.toISOString()) + '까지'
+    : '1개월권 · 12개월권을 골라 주세요';
+  document.getElementById('pay').disabled = !months && !pick;
+  document.getElementById('pay').textContent = pick ? NU.won(P.extra) + ' 결제하기' : (months ? NU.won(total) + ' 결제하기' : '결제하기');
+}
+
+async function load(){
+  var d = await NU.rpc('nureum_line', { p_line: lineId });
+  if (!d.ok) { NU.showErr('err', NU.errText(d.error)); return; }
+  L = d;
+  document.getElementById('ttl').textContent = L.name + ' 라인 · 이용 현황';
+  document.getElementById('back').href = 'nureum_line.html?line=' + L.id;
+  var u = L.usage;
+  document.getElementById('until').textContent = L.active ? NU.fmtDate(L.plan_until) + '까지' : '이용권 없음';
+  document.getElementById('vTxt').textContent = u.voice_used_min + ' / ' + u.voice_max_min + '분';
+  document.getElementById('dTxt').textContent = u.video_used_min + ' / ' + u.video_max_min + '분';
+  document.getElementById('vBar').style.width = pct(u.voice_used_min, u.voice_max_min);
+  document.getElementById('dBar').style.width = pct(u.video_used_min, u.video_max_min);
+  var left = u.video_max_min - u.video_used_min;
+  document.getElementById('dWarn').textContent = left <= u.video_max_min * 0.2 ? (left > 0 ? '거의 다 썼어요 · 남은 ' + left + '분' : '다 썼어요') : '';
+  document.getElementById('sTxt').textContent = (u.storage_max_mb >= 1024 ? (u.storage_max_mb / 1024).toFixed(u.storage_max_mb % 1024 ? 1 : 0) + 'GB' : u.storage_max_mb + 'MB') + '까지';
+  if (!L.is_owner) {
+    document.getElementById('note').innerHTML = '이 라인은 <b>만든 분</b>이 이용권을 냅니다. 기간 연장 · 용량 추가는 만든 분이 할 수 있어요.';
+    return;
+  }
+  var P = L.prices;
+  document.getElementById('ownerPart').classList.remove('nu-hidden');
+  document.getElementById('p1').textContent = NU.won(P.m1);
+  document.getElementById('p12').textContent = NU.won(P.m12);
+  var ex = [['voice', '음성 +' + P.extra_voice_min + '분'], ['video', '영상 +' + P.extra_video_min + '분'], ['storage', '저장 +' + Math.round(P.extra_storage_mb / 1024) + 'GB']];
+  var box = document.getElementById('extras');
+  box.innerHTML = ex.map(function(e){ return '<button type="button" data-x="' + e[0] + '" aria-pressed="false"><b>' + e[1] + '</b><span>' + NU.won(P.extra) + '</span></button>'; }).join('');
+  box.querySelectorAll('button').forEach(function(b){
+    b.onclick = function(){
+      var on = b.getAttribute('aria-pressed') !== 'true';
+      box.querySelectorAll('button').forEach(function(x){ x.setAttribute('aria-pressed', 'false'); });
+      b.setAttribute('aria-pressed', String(on)); pick = on ? b.dataset.x : null;
+      if (pick) { q.m1 = 0; q.m12 = 0; }
+      paintSum();
+    };
+  });
+  var canBorrow = L.active && (new Date(L.plan_until).getTime() - Date.now() > 31 * 86400000);
+  var bb = document.getElementById('borrow'); bb.disabled = !canBorrow; bb.style.opacity = canBorrow ? '' : '.5';
+  if (!canBorrow) document.getElementById('borrowSub').textContent = '남은 기간이 한 달보다 길 때 쓸 수 있어요';
+  if (!L.active) { q.m12 = 0; q.m1 = 1; }
+  paintSum();
+}
+
+document.querySelectorAll('.step button').forEach(function(b){
+  b.onclick = function(){
+    var k = b.dataset.k; q[k] = Math.max(0, Math.min(99, q[k] + Number(b.dataset.d)));
+    if (q.m1 + q.m12 > 0 && pick) { pick = null; document.querySelectorAll('#extras button').forEach(function(x){ x.setAttribute('aria-pressed', 'false'); }); }
+    paintSum();
+  };
+});
+document.getElementById('borrow').onclick = async function(){
+  if (!confirm('다음 달 것을 당겨 쓸까요?\n이번 달 용량이 한 달치 늘고, 남은 기간이 한 달 줄어듭니다.')) return;
+  try {
+    var r = await NU.rpc('nureum_borrow', { p_line: L.id });
+    if (!r.ok) { NU.showErr('err', NU.errText(r.error)); return; }
+    document.getElementById('ok').textContent = '당겨 썼어요. 이번 달 용량이 늘었습니다.'; document.getElementById('ok').classList.add('on');
+    await load();
+  } catch (e) { NU.showErr('err', e.message || String(e)); }
+};
+document.getElementById('pay').onclick = function(){
+  /* ⚠ 결제는 다음 단계에서 붙입니다(웹: 이니시스 · 앱: 구글 · 애플 앱 결제).
+     지금은 눌러도 돈이 나가지 않습니다. */
+  NU.sheet('<h2>결제 준비 중</h2><p class="nu-sub" style="color:var(--nu-ink)">누름 결제는 곧 열립니다. 조금만 기다려 주세요.</p><button class="nu-btn ghost" data-close>닫기</button>');
+};
+document.getElementById('adminGrant').onclick = async function(){
+  var months = q.m1 + q.m12 * 12;
+  if (!months) { NU.showErr('err', '개월을 골라 주세요.'); return; }
+  try {
+    var r = await NU.rpc('nureum_admin_grant', { p_line: L.id, p_months: Math.min(months, 24) });
+    if (!r.ok) { NU.showErr('err', NU.errText(r.error)); return; }
+    document.getElementById('ok').textContent = '관리자 시험으로 ' + Math.min(months, 24) + '개월을 넣었어요.'; document.getElementById('ok').classList.add('on');
+    await load();
+  } catch (e) { NU.showErr('err', e.message || String(e)); }
+};
+
+(async function(){
+  if (!lineId) { location.replace('nureum.html'); return; }
+  if (!await NU.boot()) return;
+  try {
+    await load();
+    try { var a = await AL.sb.rpc('is_admin'); admin = a && a.data === true; } catch (e) {}
+    if (admin && L && L.is_owner) document.getElementById('adminGrant').classList.remove('nu-hidden');
+  } catch (e) { console.error(e); NU.showErr('err', e.message || String(e)); }
+})();
+</script>
+</body>
+</html>
