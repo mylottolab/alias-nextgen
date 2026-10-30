@@ -1,0 +1,55 @@
+/* 누름 (Nureum) — 2026-10-30. 부름 안에서 따로 쓰는 화면들의 모양입니다.
+   부름 화면(alias_*)의 어두운 테마와 섞이지 않게 이 파일만 씁니다. */
+:root{
+  --nu-bg:#FFFFFF; --nu-ink:#1B1B1F; --nu-sub:#55575F; --nu-line:#ECECEF; --nu-soft:#F2F2F5; --nu-note:#F4F6FB;
+  --nu-main:#E4572E; --nu-main-ink:#FFFFFF; --nu-ok:#1F8A5B; --nu-warn:#B8401D;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --nu-bg:#121317; --nu-ink:#F3F3F5; --nu-sub:#A9ABB3; --nu-line:#2A2C33; --nu-soft:#1F2128; --nu-note:#1A1D26; --nu-warn:#FF8A66; }
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--nu-bg);color:var(--nu-ink);
+  font-family:"Noto Sans KR",-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  -webkit-tap-highlight-color:transparent}
+.nu{max-width:480px;margin:0 auto;min-height:100vh;min-height:100dvh;padding:calc(env(safe-area-inset-top) + 18px) 18px calc(env(safe-area-inset-bottom) + 22px);display:flex;flex-direction:column;gap:14px}
+.nu-top{display:flex;align-items:center;gap:10px;min-height:44px}
+.nu-top h1{margin:0;font-size:21px;font-weight:900;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nu-back{width:44px;height:44px;border:none;border-radius:14px;background:var(--nu-soft);color:var(--nu-ink);font-size:22px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;text-decoration:none;flex:none}
+.nu-sub{margin:0;font-size:14px;color:var(--nu-sub);line-height:1.6}
+.nu-btn{height:56px;border:none;border-radius:18px;background:var(--nu-main);color:var(--nu-main-ink);font:inherit;font-size:17px;font-weight:900;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
+.nu-btn.ghost{background:var(--nu-soft);color:var(--nu-ink)}
+.nu-btn.line{background:transparent;color:var(--nu-ink);border:2px solid var(--nu-ink)}
+.nu-btn:disabled{opacity:.5;cursor:default}
+.nu-card{border:2px solid var(--nu-line);border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.nu-note{background:var(--nu-note);border-radius:16px;padding:12px 14px;font-size:13.5px;line-height:1.6}
+.nu-err{display:none;background:#FDECEA;color:#9B2C12;border-radius:14px;padding:11px 14px;font-size:14px;line-height:1.5;white-space:pre-line}
+.nu-err.on{display:block}
+.nu-ok{display:none;background:#E5F4E4;color:#14532D;border-radius:14px;padding:11px 14px;font-size:14px;line-height:1.5}
+.nu-ok.on{display:block}
+label.nu-lbl{font-size:14px;font-weight:700;display:block;margin:4px 0 6px}
+.nu-in{width:100%;height:54px;border:2px solid var(--nu-line);border-radius:16px;padding:0 14px;font:inherit;font-size:18px;background:var(--nu-bg);color:var(--nu-ink)}
+.nu-in:focus{outline:none;border-color:var(--nu-main)}
+.nu-colors{display:flex;flex-wrap:wrap;gap:10px}
+.nu-colors button{width:44px;height:44px;border-radius:14px;border:3px solid transparent;cursor:pointer;padding:0}
+.nu-colors button[aria-pressed="true"]{border-color:var(--nu-ink);box-shadow:0 0 0 2px var(--nu-bg) inset}
+.nu-ico{width:64px;height:64px;border-radius:20px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:28px;font-weight:900;flex:none}
+.nu-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 10px}
+.nu-tile{display:flex;flex-direction:column;align-items:center;gap:7px;text-decoration:none;color:inherit;background:none;border:none;font:inherit;cursor:pointer;padding:0}
+.nu-tile .nu-ico{width:72px;height:72px;border-radius:22px;font-size:30px;position:relative}
+.nu-tile b{font-size:14.5px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nu-tile small{font-size:12px;color:var(--nu-sub)}
+.nu-tile .tag{position:absolute;right:-6px;top:-6px;background:#FFE14D;color:#1B1B1F;font-size:11px;font-weight:900;border-radius:999px;padding:2px 7px}
+.nu-hidden{display:none !important}
+.nu-sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.42);z-index:50}
+.nu-sheet{position:fixed;left:0;right:0;bottom:0;z-index:51;background:var(--nu-bg);border-radius:26px 26px 0 0;padding:12px 18px calc(env(safe-area-inset-bottom) + 20px);max-height:88vh;overflow:auto;max-width:480px;margin:0 auto;box-shadow:0 -8px 24px rgba(0,0,0,.18)}
+.nu-sheet .grip{width:40px;height:4px;border-radius:2px;background:#C9CCD3;margin:0 auto 12px}
+.nu-sheet h2{margin:0 0 12px;font-size:18px;font-weight:900}
+.nu-menu{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.nu-menu button,.nu-menu a{min-height:76px;border:none;border-radius:18px;background:var(--nu-soft);color:var(--nu-ink);font:inherit;font-size:14px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-decoration:none;padding:8px 4px;text-align:center}
+.nu-menu .em{font-size:22px;line-height:1}
+.nu-menu .danger{color:var(--nu-warn)}
+.nu-code{font-size:38px;font-weight:900;letter-spacing:5px;text-align:center}
+.nu-qr{display:flex;justify-content:center}
+.nu-qr svg,.nu-qr img,.nu-qr canvas{width:208px;height:208px;background:#fff;border-radius:12px}
+.nu-bar{height:10px;border-radius:5px;background:rgba(255,255,255,.18);overflow:hidden}
+.nu-bar i{display:block;height:10px;border-radius:5px}

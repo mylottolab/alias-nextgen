@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#FFFFFF">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>누름</title>
+<link rel="stylesheet" href="nureum.css?v=20261030a">
+<script src="alias_config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="alias_common.js?v=20261030n"></script>
+<script src="nureum.js?v=20261030a"></script>
+<style>
+.big{flex:1;min-height:250px;border:none;border-radius:36px;background:#1F8A5B;color:#fff;font:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;cursor:pointer}
+.big span{font-size:40px;font-weight:900}
+.row3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.row3 button{height:112px;border:none;border-radius:26px;color:#fff;font:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer}
+.row3 span{font-size:17px;font-weight:900}
+.all{height:64px;border:none;border-radius:22px;background:var(--nu-soft);color:var(--nu-ink);font:inherit;font-size:19px;font-weight:900;display:flex;align-items:center;justify-content:space-between;padding:0 22px;cursor:pointer;width:100%}
+.off .big,.off .row3 button{filter:grayscale(1);opacity:.45}
+</style>
+</head>
+<body>
+<!-- 누름 라인 화면 — 바탕화면 아이콘을 누르면 여기로 옵니다(…/nureum_line.html?line=…).
+     모든 라인이 같은 모양: 큰 [전화하기] · 한 줄 세 칸 · 긴 [전체 메뉴]. -->
+<div class="nu" id="wrap" style="gap:14px">
+  <div style="display:flex;align-items:center;gap:14px">
+    <a href="nureum.html" class="nu-ico" id="ico" style="width:72px;height:72px;border-radius:24px;font-size:32px;text-decoration:none;background:#999" aria-label="누름 처음 화면">·</a>
+    <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+      <b id="name" style="font-size:30px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">…</b>
+      <span id="state" style="font-size:16px;font-weight:700;color:#1F8A5B"></span>
+    </div>
+  </div>
+  <div id="err" class="nu-err" role="alert"></div>
+  <a id="needPlan" class="nu-btn nu-hidden" href="#">이용권 고르기</a>
+
+  <button class="big" id="bCall" type="button">
+    <svg width="96" height="96" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"></path></svg>
+    <span>전화하기</span>
+  </button>
+  <div class="row3">
+    <button id="bVideo" type="button" style="background:#2B59C3"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="14" height="12" rx="2"></rect><path d="M16 10l6-3v10l-6-3"></path></svg><span>영상통화</span></button>
+    <button id="bPhoto" type="button" style="background:#E4572E"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><circle cx="9" cy="11" r="2"></circle><path d="M21 17l-5-5-8 7"></path></svg><span>사진 보내기</span></button>
+    <button id="bText" type="button" style="background:#7A4DD8"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg><span>문자 보내기</span></button>
+  </div>
+  <button class="all" id="bAll" type="button"><span>전체 메뉴</span><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button>
+</div>
+
+<script>
+var lineId = NU.q('line'), L = null;
+
+function chat(doWhat){ location.href = 'alias_chat.html?link=' + encodeURIComponent(L.link_id) + (doWhat ? '&do=' + doWhat : ''); }
+function once(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+
+function overQuota(kind){
+  var u = L.usage || {};
+  return kind === 'video' ? u.video_used_min >= u.video_max_min : u.voice_used_min >= u.voice_max_min;
+}
+function quotaSheet(kind){
+  var what = kind === 'video' ? '영상통화' : '음성통화';
+  var body = L.is_owner
+    ? '<p class="nu-sub" style="color:var(--nu-ink)">이번 달 ' + what + ' 기본 용량을 다 썼어요. 문자 · 사진은 그대로 됩니다.</p>' +
+      '<a class="nu-btn" href="nureum_plan.html?line=' + L.id + '">용량 추가 · 당겨 쓰기</a>'
+    : '<p class="nu-sub" style="color:var(--nu-ink)">이번 달 ' + what + ' 용량을 다 썼어요. 문자 · 사진은 그대로 됩니다.<br>라인을 만든 분이 용량을 늘릴 수 있어요.</p>' +
+      '<button class="nu-btn" type="button" id="askMore">만든 분께 문자로 부탁하기</button>';
+  var sh = NU.sheet('<h2>' + what + ' 용량을 다 썼어요</h2>' + body + '<button class="nu-btn ghost" data-close style="margin-top:10px">닫기</button>');
+  var a = sh.querySelector('#askMore'); if (a) a.onclick = function(){ chat('text'); };
+}
+function call(type){
+  if (!L.active) return planNeeded();
+  if (overQuota(type)) return quotaSheet(type);
+  var ret = 'nureum_line.html?line=' + L.id;
+  location.href = 'alias_call.html?link=' + encodeURIComponent(L.link_id) + '&type=' + type +
+    '&once=' + once() + '&ret=' + encodeURIComponent(ret);
+}
+function planNeeded(){
+  if (L.is_owner) { location.href = 'nureum_plan.html?line=' + L.id; return; }
+  NU.sheet('<h2>이용 기간이 끝났어요</h2><p class="nu-sub" style="color:var(--nu-ink)">이 라인은 만든 분이 이용권을 냅니다. 만든 분께 연장을 부탁해 주세요.</p>' +
+    '<button class="nu-btn ghost" data-close>닫기</button>');
+}
+
+function menu(){
+  var items = [
+    ['💬', '대화방 열기', function(){ chat(''); }],
+    ['🎞️', '동영상 · 파일', function(){ chat('attach'); }],
+    ['▶️', '유튜브 같이 보기', function(){ chat('yt'); }],
+    ['🎵', '음악 같이 듣기', function(){ chat('music'); }],
+    ['🎤', '음성 메시지', function(){ chat('attach'); }],
+    ['📊', L.is_owner ? '이용 현황 · 연장' : '이용 현황', function(){ location.href = 'nureum_plan.html?line=' + L.id; }],
+    ['📌', '바탕화면에 놓기', function(){ NU.pin(L); }],
+    ['⚙️', '이 라인 설정', settings],
+    ['🏠', '누름 처음 화면', function(){ location.href = 'nureum.html'; }],
+  ];
+  var sh = NU.sheet('<h2>전체 메뉴</h2><div class="nu-menu">' + items.map(function(it, i){
+    return '<button type="button" data-i="' + i + '"><span class="em" aria-hidden="true">' + it[0] + '</span>' + it[1] + '</button>';
+  }).join('') + '</div><p class="nu-sub" style="margin-top:12px">녹음 · 녹화는 통화 화면에서 상대가 허락할 때만 됩니다.</p>' +
+  '<button class="nu-btn ghost" data-close style="margin-top:6px">접기</button>');
+  sh.querySelectorAll('[data-i]').forEach(function(b){ b.onclick = function(){ var f = items[+b.dataset.i][2]; NU.closeSheet(); f(); }; });
+}
+
+function settings(){
+  var c = L.color;
+  var sh = NU.sheet('<h2>이 라인 설정</h2>' +
+    '<label class="nu-lbl" for="sName">내 휴대폰에 보일 이름</label><input class="nu-in" id="sName" maxlength="20">' +
+    '<label class="nu-lbl" for="sGlyph" style="margin-top:12px">아이콘 글자</label><input class="nu-in" id="sGlyph" maxlength="2" style="width:120px;text-align:center">' +
+    '<span class="nu-lbl" style="margin-top:12px">색</span><div class="nu-colors" id="sColors"></div>' +
+    '<label style="display:flex;align-items:center;gap:10px;margin:16px 0 4px;font-size:15px;font-weight:700"><input type="checkbox" id="sAuto" style="width:22px;height:22px"> 이 사람 전화는 자동으로 받기</label>' +
+    '<p class="nu-sub" style="margin:0 0 12px">받는 쪽 휴대폰에서 직접 켜야 합니다. (앱 다음 판부터 작동)</p>' +
+    '<button class="nu-btn" id="sSave" type="button">저장</button>' +
+    '<button class="nu-btn ghost" id="sEnd" type="button" style="margin-top:10px;color:var(--nu-warn)">이 라인 끊기</button>' +
+    '<button class="nu-btn ghost" data-close style="margin-top:10px">닫기</button>');
+  sh.querySelector('#sName').value = L.name;
+  sh.querySelector('#sGlyph').value = L.glyph || '';
+  sh.querySelector('#sAuto').checked = !!L.auto_answer;
+  NU.colorPicker(sh.querySelector('#sColors'), c, function(v){ c = v; });
+  sh.querySelector('#sSave').onclick = async function(){
+    this.disabled = true;
+    try {
+      await NU.rpc('nureum_set_side', { p_line: L.id, p_name: sh.querySelector('#sName').value, p_color: c,
+        p_glyph: sh.querySelector('#sGlyph').value, p_auto: sh.querySelector('#sAuto').checked });
+      NU.closeSheet(); await load();
+    } catch (e) { this.disabled = false; alert(e.message || e); }
+  };
+  sh.querySelector('#sEnd').onclick = async function(){
+    if (!confirm('"' + L.name + '" 라인을 끊을까요?\n두 사람 모두 이 아이콘으로 더는 연결되지 않습니다.' + (L.is_owner ? '\n남은 이용 기간은 돌려받지 못합니다.' : ''))) return;
+    try { await NU.rpc('nureum_end', { p_line: L.id }); location.replace('nureum.html'); }
+    catch (e) { alert(e.message || e); }
+  };
+}
+
+async function load(){
+  var d = await NU.rpc('nureum_line', { p_line: lineId });
+  if (!d.ok || d.ended) {
+    document.getElementById('name').textContent = '끊긴 라인';
+    document.getElementById('state').textContent = '이 라인은 더는 쓸 수 없어요';
+    document.getElementById('wrap').classList.add('off');
+    NU.showErr('err', '이 아이콘은 지워 주세요. 누름 처음 화면에서 새 라인을 만들 수 있어요.');
+    return;
+  }
+  if (!d.paired) { location.replace('nureum_new.html?line=' + d.id); return; }
+  L = d;
+  NU.setPageIcon(L);
+  var ico = document.getElementById('ico');
+  ico.style.background = L.color; ico.textContent = NU.glyph(L);
+  document.getElementById('name').textContent = L.name;
+  var st = document.getElementById('state'), np = document.getElementById('needPlan');
+  document.getElementById('wrap').classList.toggle('off', !L.active);
+  if (L.active) {
+    st.style.color = '#1F8A5B'; st.textContent = '지금 연결할 수 있어요';
+    np.classList.add('nu-hidden');
+  } else {
+    st.style.color = 'var(--nu-warn)';
+    st.textContent = L.is_owner ? '이용권이 필요해요' : '이용 기간이 끝났어요';
+    if (L.is_owner) { np.href = 'nureum_plan.html?line=' + L.id; np.classList.remove('nu-hidden'); }
+  }
+}
+
+document.getElementById('bCall').onclick = function(){ call('voice'); };
+document.getElementById('bVideo').onclick = function(){ call('video'); };
+document.getElementById('bPhoto').onclick = function(){ if (!L.active) return planNeeded(); chat('attach'); };
+document.getElementById('bText').onclick = function(){ if (!L.active) return planNeeded(); chat('text'); };
+document.getElementById('bAll').onclick = function(){ if (L) menu(); };
+
+(async function(){
+  if (!lineId) { location.replace('nureum.html'); return; }
+  if (!await NU.boot()) return;
+  try { await load(); } catch (e) { console.error(e); NU.showErr('err', '불러오지 못했습니다. ' + (e.message || e)); }
+})();
+document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'visible' && L) load().catch(function(){}); });
+</script>
+</body>
+</html>

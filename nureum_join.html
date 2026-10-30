@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#E4572E">
+<title>짝 맺기 · 누름</title>
+<link rel="stylesheet" href="nureum.css?v=20261030a">
+<script src="alias_config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="alias_common.js?v=20261030n"></script>
+<script src="alias_qr.js?v=20261019a"></script>
+<script src="nureum.js?v=20261030a"></script>
+</head>
+<body>
+<!-- 받는 쪽: 코드(또는 QR 주소 ?c=)로 짝 맺기.
+     부름 accept_invite 로 1:1 연결을 만든 뒤, nureum_attach 로 누름 라인에 붙입니다. -->
+<div class="nu">
+  <div class="nu-top">
+    <a class="nu-back" href="nureum.html" aria-label="뒤로">‹</a>
+    <h1>짝 맺기</h1>
+  </div>
+  <div id="err" class="nu-err" role="alert"></div>
+
+  <div id="stepCode" style="display:flex;flex-direction:column;gap:12px">
+    <p class="nu-sub">상대 휴대폰에 나온 QR을 찍거나, 받은 코드를 넣어 주세요.</p>
+    <button class="nu-btn" id="scan" type="button">QR 찍기</button>
+    <label class="nu-lbl" for="code">받은 코드</label>
+    <input class="nu-in" id="code" autocomplete="off" autocapitalize="characters" placeholder="예: 482913" style="letter-spacing:3px;font-weight:900">
+    <button class="nu-btn ghost" id="check" type="button">확인</button>
+  </div>
+
+  <div id="stepForm" class="nu-hidden" style="display:flex;flex-direction:column;gap:14px">
+    <div class="nu-card" style="border-color:#E4572E">
+      <b style="font-size:18px" id="fromTxt">누름으로 연결하자고 해요</b>
+      <span class="nu-sub" style="margin:0">연결해도 서로 전화번호는 보이지 않아요. 요금은 라인을 만든 분이 냅니다.</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px">
+      <span class="nu-ico" id="pv" style="background:#2B59C3">아</span>
+      <p class="nu-sub" style="margin:0">내 바탕화면에 이 모양으로 아이콘이 생겨요.</p>
+    </div>
+    <div>
+      <label class="nu-lbl" for="name">이 분을 뭐라고 부를까요? (내 휴대폰에 보일 이름)</label>
+      <input class="nu-in" id="name" maxlength="20" placeholder="예: 아들, 우리 자기, 사장님" autocomplete="off">
+    </div>
+    <div>
+      <span class="nu-lbl">색</span>
+      <div class="nu-colors" id="colors"></div>
+    </div>
+    <div id="meBox" class="nu-hidden">
+      <label class="nu-lbl" for="meName">상대에게 보일 내 이름</label>
+      <input class="nu-in" id="meName" maxlength="20" placeholder="예: 엄마" autocomplete="off">
+    </div>
+    <p class="nu-sub" id="meNote"></p>
+    <button class="nu-btn" id="go" type="button">연결하기</button>
+  </div>
+
+  <div id="stepDone" class="nu-hidden" style="display:flex;flex-direction:column;gap:14px">
+    <div class="nu-card" style="align-items:center;text-align:center;border-color:#1F8A5B">
+      <span class="nu-ico" id="doneIco">아</span>
+      <b style="font-size:20px" id="doneTitle">연결됐어요!</b>
+      <span class="nu-sub" style="margin:0">바탕화면에 아이콘을 놓으면, 다음부터는 아이콘만 누르시면 됩니다.</span>
+    </div>
+    <button class="nu-btn" id="goPin" type="button">바탕화면에 아이콘 놓기</button>
+    <a class="nu-btn ghost" id="goLine" href="#">라인 화면 열기</a>
+  </div>
+</div>
+
+<script>
+var code = '', color = NU.COLORS[1], aliases = [], busy = false;
+
+function show(id){
+  ['stepCode', 'stepForm', 'stepDone'].forEach(function(s){ document.getElementById(s).classList.toggle('nu-hidden', s !== id); });
+}
+function paintPreview(){
+  var n = document.getElementById('name').value.trim(), pv = document.getElementById('pv');
+  pv.style.background = color; pv.textContent = n ? Array.from(n)[0] : '아';
+}
+
+async function check(raw){
+  NU.showErr('err', '');
+  var c = (AL.codeFromScan ? AL.codeFromScan(raw) : null) || String(raw || '').trim();
+  if (!c) { NU.showErr('err', '코드를 넣어 주세요.'); return; }
+  code = c;
+  try {
+    var info = await NU.rpc('nureum_code_info', { p_code: code });
+    if (!info.ok) { NU.showErr('err', NU.errText(info.error)); show('stepCode'); return; }
+    document.getElementById('fromTxt').textContent = (info.from || '상대') + '님이 누름으로 연결하자고 해요';
+    show('stepForm');
+    document.getElementById('name').focus();
+  } catch (e) { NU.showErr('err', e.message || String(e)); }
+}
+
+async function join(){
+  if (busy) return;
+  NU.showErr('err', '');
+  var name = document.getElementById('name').value.trim();
+  if (!name) { NU.showErr('err', '이 분을 뭐라고 부를지 적어 주세요.'); return; }
+  busy = true; var btn = document.getElementById('go'); btn.disabled = true;
+  try {
+    var persona = aliases[0];
+    if (!persona) {
+      var me = document.getElementById('meName').value.trim();
+      if (!me) throw new Error('상대에게 보일 내 이름을 적어 주세요.');
+      persona = await AL.createAlias(me, aliases); aliases = [persona];
+    }
+    var acc = await AL.sb.rpc('accept_invite', { p_code: code, p_persona_id: persona.id, p_peer_label: name });
+    if (acc.error) throw acc.error;
+    var a = acc.data || {};
+    /* ⚠ 앞에서 연결은 됐는데 붙이기만 실패했다가 다시 누른 경우: 부름은 "이미 씀" 이라 하지만 붙이기는 해야 합니다 */
+    if (!a.ok && ['already_used', 'used_up'].indexOf(a.error) < 0) {
+      var map = { not_found: 'not_found', revoked: 'expired', expired: 'expired', own_invite: 'self' };
+      throw new Error(NU.errText(map[a.error] || a.error));
+    }
+    var out = await NU.rpc('nureum_attach', { p_code: code, p_name: name, p_color: color, p_glyph: null });
+    if (!out.ok) throw new Error(NU.errText(out.error));
+    var l = { id: out.line_id, name: name, color: color };
+    var ico = document.getElementById('doneIco'); ico.style.background = color; ico.textContent = NU.glyph(l);
+    document.getElementById('doneTitle').textContent = name + '와(과) 연결됐어요!';
+    document.getElementById('goLine').href = 'nureum_line.html?line=' + out.line_id;
+    document.getElementById('goPin').onclick = function(){ NU.pin(l); };
+    show('stepDone');
+  } catch (e) {
+    console.error(e); NU.showErr('err', e.message || String(e));
+  }
+  busy = false; btn.disabled = false;
+}
+
+document.getElementById('check').onclick = function(){ check(document.getElementById('code').value); };
+document.getElementById('code').addEventListener('keydown', function(e){ if (e.key === 'Enter') check(this.value); });
+document.getElementById('scan').onclick = async function(){
+  try { var raw = await AL.openScanner(); if (raw) check(raw); }
+  catch (e) { NU.showErr('err', 'QR을 읽지 못했습니다. 코드를 직접 넣어 주세요.'); }
+};
+document.getElementById('go').onclick = join;
+document.getElementById('name').addEventListener('input', paintPreview);
+
+(async function(){
+  if (!await NU.boot()) return;
+  NU.colorPicker(document.getElementById('colors'), color, function(c){ color = c; paintPreview(); });
+  try {
+    aliases = await AL.loadAliases();
+    if (aliases.length) document.getElementById('meNote').innerHTML = '상대에게는 내 부름 별칭 <b>' + NU.esc(aliases[0].display_name) + '</b>(으)로 보여요.';
+    else document.getElementById('meBox').classList.remove('nu-hidden');
+  } catch (e) {}
+  var c = NU.q('c');
+  if (c) { document.getElementById('code').value = c; check(c); }
+})();
+</script>
+</body>
+</html>
