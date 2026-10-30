@@ -115,7 +115,11 @@ NU.pin = function(line){
         icon: NU.iconDataUrl(NU.glyph(line), line.color, 192).split(',')[1],
       }));
       if (ok !== false) {
+        /* 🔴 v27 앱 — 위젯으로 놓았는지, 바로가기로 놓았는지(부름 표시 붙음) 알려 줍니다 */
+        var kind = '';
+        try { if (typeof AliasNative.lastPinKind === 'function') kind = String(AliasNative.lastPinKind() || ''); } catch (e) {}
         NU.sheet('<h2>휴대폰이 묻는 창에서 [추가]를 눌러 주세요</h2>' +
+          (kind ? '<p class="nu-sub" style="margin:0 0 6px">' + (kind.indexOf('widget') === 0 ? '방식: 위젯(부름 표시 없음)' : '방식: 바로가기 · ' + NU.esc(kind)) + '</p>' : '') +
           '<p class="nu-sub" style="color:var(--nu-ink)">바탕화면에 <b>' + NU.esc(line.name) + '</b> 아이콘이 생깁니다. 다음부터는 그 아이콘만 누르시면 이 화면이 바로 열려요.</p>' +
           '<p class="nu-sub">창이 안 뜨면 바탕화면 빈 곳을 꾹 → 설정 → "홈 화면 레이아웃 잠금" 이 꺼져 있는지 봐 주세요.</p>' +
           '<button class="nu-btn ghost" data-close>알겠어요</button>');
