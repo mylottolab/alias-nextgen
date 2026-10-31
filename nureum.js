@@ -65,11 +65,11 @@ NU.rpc = async function(fn, args){
 
 /* 아이콘 그림 (바탕화면 바로가기 · 탭 아이콘에 씁니다) */
 /* 🔴 2026-10-31 — 사진이 있으면 사진으로(img: 미리 읽어 둔 그림). 없으면 색 + 글자 */
-NU.iconDataUrl = function(glyph, color, size, img){
+NU.iconDataUrl = function(glyph, color, size, img, square){
   size = size || 192;
   var c = document.createElement('canvas'); c.width = c.height = size;
   var x = c.getContext('2d');
-  var r = size * 0.32;   // 🔴 v28 — 삼성 아이콘처럼 더 둥글게
+  var r = square ? 0 : size * 0.32;   // 🔴 v28 — 삼성 아이콘처럼 더 둥글게 (아이폰 위젯용은 네모: 위젯이 직접 둥글게 자릅니다)
   x.fillStyle = color || '#E4572E';
   x.beginPath();
   x.moveTo(r, 0); x.arcTo(size, 0, size, size, r); x.arcTo(size, size, 0, size, r);
@@ -99,9 +99,9 @@ NU.loadPhoto = function(line){
     im.src = line.photo;
   });
 };
-NU.icon = async function(line, size){
+NU.icon = async function(line, size, square){
   var im = await NU.loadPhoto(line);
-  return NU.iconDataUrl(NU.glyph(line), line.color, size || 192, im);
+  return NU.iconDataUrl(NU.glyph(line), line.color, size || 192, im, square);
 };
 /* 화면에 그릴 아이콘 칸(사진이면 사진, 아니면 글자) */
 NU.icoHtml = function(line, extraStyle){
@@ -156,6 +156,7 @@ NU.iosWidget = function(){
   try { return NU.isApp() && NU.platform() === 'ios' && !!(window.AliasNative && AliasNative.nureumWidget && typeof AliasNative.nureumSync === 'function'); }
   catch (e) { return false; }
 };
+NU.widgetV = function(){ try { return Number((window.AliasNative && AliasNative.nureumWidgetV) || (NU.iosWidget() ? 1 : 0)); } catch (e) { return 0; } };
 NU.canPin = function(){ return !(NU.isApp() && NU.platform() === 'ios') || NU.iosWidget(); };
 
 /* 🔴 2026-10-31 — 아이폰 위젯에 내 라인 목록(이름 · 그림)을 넣어 둡니다.
@@ -172,8 +173,8 @@ NU.syncWidget = function(lines){
         for (var i = 0; i < lines.length && items.length < 40; i++) {
           var l = lines[i];
           if (!l || !l.id || l.link_id === null || l.ended) continue;   // 짝 맺은 라인만
-          var ic = await NU.icon(l, 256);
-          items.push({ id: l.id, name: l.name, icon: ic.split(',')[1] });
+          var ic = await NU.icon(l, 256, true);
+          items.push({ id: l.id, name: l.name, color: l.color || '', icon: ic.split(',')[1] });
         }
         AliasNative.nureumSync(items);
         res(true);
@@ -228,6 +229,11 @@ NU.pin = async function(line){
       '<li>놓인 위젯을 <b>꾹</b> → <b>[위젯 편집]</b> → 사람에서 <b>' + NU.esc(line.name) + '</b> 고르기.</li>' +
       '</ol>' +
       '<p class="nu-sub" style="margin-top:10px">사람마다 위젯을 하나씩 놓을 수 있어요. 다음부터는 위젯만 누르시면 이 화면이 바로 열립니다.</p>' +
+      (NU.widgetV() >= 2 ? '<p class="nu-sub" style="margin-top:6px;color:var(--nu-ink)"><b>더 있어요</b><br>' +
+        '· [위젯 편집] → <b>모양</b>: 기본 · 액자 · 색 바탕 · 전화 단추<br>' +
+        '· 위젯 고를 때 옆으로 넘기면 <b>여러 사람</b>(한 판에 2~4명)<br>' +
+        '· <b>잠금 화면</b>: 잠금 화면 꾹 → [사용자화] → 잠금 화면 → 시계 아래 칸 → 부름<br>' +
+        '· <b>제어 센터</b>: 오른쪽 위에서 쓸어내리기 → 왼쪽 위 [+] → [제어 항목 추가] → 부름 → 누름 걸기</p>' : '') +
       '<button class="nu-btn ghost" data-close style="margin-top:12px">알겠어요</button>');
     return;
   }
