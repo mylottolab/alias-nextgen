@@ -64,7 +64,8 @@ NU.rpc = async function(fn, args){
 };
 
 /* 아이콘 그림 (바탕화면 바로가기 · 탭 아이콘에 씁니다) */
-NU.iconDataUrl = function(glyph, color, size){
+/* 🔴 2026-10-31 — 사진이 있으면 사진으로(img: 미리 읽어 둔 그림). 없으면 색 + 글자 */
+NU.iconDataUrl = function(glyph, color, size, img){
   size = size || 192;
   var c = document.createElement('canvas'); c.width = c.height = size;
   var x = c.getContext('2d');
@@ -73,6 +74,13 @@ NU.iconDataUrl = function(glyph, color, size){
   x.beginPath();
   x.moveTo(r, 0); x.arcTo(size, 0, size, size, r); x.arcTo(size, size, 0, size, r);
   x.arcTo(0, size, 0, 0, r); x.arcTo(0, 0, size, 0, r); x.closePath(); x.fill();
+  if (img && img.naturalWidth) {
+    x.save(); x.clip();
+    var iw = img.naturalWidth, ih = img.naturalHeight, k = Math.max(size / iw, size / ih);
+    x.drawImage(img, (size - iw * k) / 2, (size - ih * k) / 2, iw * k, ih * k);
+    x.restore();
+    return c.toDataURL('image/png');
+  }
   x.fillStyle = '#FFFFFF';
   x.font = '900 ' + Math.round(size * 0.5) + 'px "Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif';
   x.textAlign = 'center'; x.textBaseline = 'middle';
@@ -80,10 +88,57 @@ NU.iconDataUrl = function(glyph, color, size){
   return c.toDataURL('image/png');
 };
 
+/* 🔴 2026-10-31 — 라인 사진을 미리 읽어 둡니다(아이콘 그리기 전에) */
+NU.loadPhoto = function(line){
+  return new Promise(function(res){
+    if (!line || !line.photo) { res(null); return; }
+    if (line._img) { res(line._img); return; }
+    var im = new Image();
+    im.onload = function(){ line._img = im; res(im); };
+    im.onerror = function(){ res(null); };
+    im.src = line.photo;
+  });
+};
+NU.icon = async function(line, size){
+  var im = await NU.loadPhoto(line);
+  return NU.iconDataUrl(NU.glyph(line), line.color, size || 192, im);
+};
+/* 화면에 그릴 아이콘 칸(사진이면 사진, 아니면 글자) */
+NU.icoHtml = function(line, extraStyle){
+  var st = 'background:' + NU.esc(line.color || '#E4572E') + ';' + (extraStyle || '');
+  if (line.photo) return '<span class="nu-ico" style="' + st + ';background-image:url(' + NU.esc(line.photo) + ');background-size:cover;background-position:center" aria-label="' + NU.esc(line.name) + '"></span>';
+  return '<span class="nu-ico" style="' + st + '">' + NU.esc(NU.glyph(line)) + '</span>';
+};
+/* 휴대폰 사진첩에서 사진 하나 고르기 → 가운데를 네모로 잘라 256 크기 JPEG(약 20~40KB) */
+NU.pickPhoto = function(){
+  return new Promise(function(res){
+    var inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
+    inp.style.display = 'none'; document.body.appendChild(inp);
+    inp.onchange = function(){
+      var f = inp.files && inp.files[0]; inp.remove();
+      if (!f) { res(null); return; }
+      var url = URL.createObjectURL(f), im = new Image();
+      im.onload = function(){
+        var S = 256, c = document.createElement('canvas'); c.width = c.height = S;
+        var x = c.getContext('2d'), iw = im.naturalWidth, ih = im.naturalHeight, k = Math.max(S / iw, S / ih);
+        x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, S, S);
+        x.drawImage(im, (S - iw * k) / 2, (S - ih * k) / 2, iw * k, ih * k);
+        URL.revokeObjectURL(url);
+        var q = 0.85, out = c.toDataURL('image/jpeg', q);
+        while (out.length > 110000 && q > 0.4) { q -= 0.15; out = c.toDataURL('image/jpeg', q); }
+        res(out);
+      };
+      im.onerror = function(){ URL.revokeObjectURL(url); res(null); };
+      im.src = url;
+    };
+    inp.click();
+  });
+};
+
 /* 이 화면의 이름 · 아이콘을 라인에 맞춥니다.
    그러면 휴대폰 브라우저의 "홈 화면에 추가" 가 그 사람 이름 · 그림으로 아이콘을 만듭니다. */
-NU.setPageIcon = function(line){
-  var url = NU.iconDataUrl(NU.glyph(line), line.color, 192);
+NU.setPageIcon = async function(line){
+  var url = await NU.icon(line, 192);
   document.title = line.name;
   ['icon', 'apple-touch-icon'].forEach(function(rel){
     var l = document.querySelector('link[rel="' + rel + '"]');
@@ -109,13 +164,14 @@ NU.platform = function(){
 /* 바탕화면에 이 라인 아이콘 추가
    ① 안드로이드 앱: AliasNative.pinShortcut (앱 3단계에서 붙임) → 휴대폰이 "홈 화면에 추가" 창을 띄움
    ② 그 밖: 브라우저 메뉴로 추가하는 법을 그림 없이 짧게 안내 */
-NU.pin = function(line){
+NU.pin = async function(line){
+  var iconUrl = await NU.icon(line, 192);
   var url = location.origin + location.pathname.replace(/[^/]*$/, '') + 'nureum_line.html?line=' + line.id;
   if (window.AliasNative && typeof AliasNative.pinShortcut === 'function') {
     try {
       var ok = AliasNative.pinShortcut(JSON.stringify({
         id: 'nureum_' + line.id, name: line.name, url: 'https://burum.kr/nureum_line.html?line=' + line.id,
-        icon: NU.iconDataUrl(NU.glyph(line), line.color, 192).split(',')[1],
+        icon: iconUrl.split(',')[1],
       }));
       if (ok !== false) {
         /* 🔴 v27 앱 — 위젯으로 놓았는지, 바로가기로 놓았는지(부름 표시 붙음) 알려 줍니다 */
@@ -148,7 +204,7 @@ NU.pin = function(line){
     how = '휴대폰에서 이 라인 화면을 열고 브라우저 메뉴의 <b>홈 화면에 추가</b>를 누르세요.';
   }
   NU.sheet('<h2>바탕화면에 "' + NU.esc(line.name) + '" 아이콘 놓기</h2>' +
-    '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px"><img alt="" src="' + NU.iconDataUrl(NU.glyph(line), line.color, 128) + '" style="width:56px;height:56px;border-radius:16px">' +
+    '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px"><img alt="" src="' + iconUrl + '" style="width:56px;height:56px;border-radius:16px">' +
     '<b style="font-size:17px">' + NU.esc(line.name) + '</b></div>' +
     '<p class="nu-sub" style="color:var(--nu-ink)">' + how + '</p>' +
     '<button class="nu-btn ghost" data-close style="margin-top:14px">알겠어요</button>');

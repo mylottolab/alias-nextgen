@@ -26,7 +26,7 @@ html,body{margin:0;background:var(--nu-bg);color:var(--nu-ink);
 .nu-err.on{display:block}
 .nu-ok{display:none;background:#E5F4E4;color:#14532D;border-radius:14px;padding:11px 14px;font-size:14px;line-height:1.5}
 .nu-ok.on{display:block}
-label.nu-lbl{font-size:14px;font-weight:700;display:block;margin:4px 0 6px}
+.nu-lbl{font-size:14px;font-weight:700;display:block;margin:4px 0 6px}
 .nu-in{width:100%;height:54px;border:2px solid var(--nu-line);border-radius:16px;padding:0 14px;font:inherit;font-size:18px;background:var(--nu-bg);color:var(--nu-ink)}
 .nu-in:focus{outline:none;border-color:var(--nu-main)}
 .nu-colors{display:flex;flex-wrap:wrap;gap:10px}

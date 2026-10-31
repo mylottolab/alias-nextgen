@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#E4572E">
 <title>누름</title>
-<link rel="stylesheet" href="nureum.css?v=20261030c">
+<link rel="stylesheet" href="nureum.css?v=20261031b">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="alias_common.js?v=20261030p"></script>
-<script src="nureum.js?v=20261031a"></script>
+<script src="nureum.js?v=20261031b"></script>
 </head>
 <body>
 <!-- 누름 첫 화면: 내 라인들. 라인 아이콘을 누르면 그 라인 화면, + 를 누르면 새 라인 -->
@@ -47,8 +47,7 @@
       var state = !l.link_id ? '짝 기다리는 중' : (!l.active ? (l.is_owner ? '이용권 필요' : '연장 필요') : '');
       var href = !l.link_id ? 'nureum_new.html?line=' + l.id : 'nureum_line.html?line=' + l.id;
       return '<a class="nu-tile" href="' + href + '">' +
-        '<span class="nu-ico" style="background:' + NU.esc(l.color) + '">' + NU.esc(NU.glyph(l)) +
-        (state ? '<span class="tag">!</span>' : '') + '</span>' +
+        NU.icoHtml(l).replace('</span>', (state ? '<span class="tag">!</span>' : '') + '</span>') +
         '<b>' + NU.esc(l.name) + '</b>' + (state ? '<small>' + state + '</small>' : '') + '</a>';
     }).join('');
   } catch (e) {

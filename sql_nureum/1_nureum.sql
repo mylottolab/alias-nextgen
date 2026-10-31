@@ -47,6 +47,7 @@ create table if not exists public.nureum_sides (
   name text not null check (char_length(name) between 1 and 20),
   color text not null default '#E4572E',
   glyph text,
+  photo text,
   auto_answer boolean not null default false,
   created_at timestamptz not null default now(),
   primary key (line_id, account_id)
@@ -231,7 +232,7 @@ returns json language sql stable security definer set search_path = public as $$
     select l.id, l.link_id, l.created_at, l.paired_at, l.plan_until,
            (l.owner_id = auth.uid()) as is_owner,
            (l.plan_until is not null and l.plan_until > now()) as active,
-           ms.name, ms.color, ms.glyph, ms.auto_answer,
+           ms.name, ms.color, ms.glyph, ms.auto_answer, ms.photo,
            (select os.name from nureum_sides os where os.line_id = l.id and os.account_id <> auth.uid() limit 1) as peer_name_for_me,
            (select p.display_name from link_sides ls join personas p on p.id = ls.persona_id
              where ls.link_id = l.link_id and ls.account_id <> auth.uid() limit 1) as peer_alias,
@@ -254,7 +255,7 @@ begin
     'id', l.id, 'link_id', l.link_id, 'is_owner', l.owner_id = v_me,
     'ended', l.ended_at is not null, 'paired', l.link_id is not null,
     'plan_until', l.plan_until, 'active', l.plan_until is not null and l.plan_until > now(),
-    'name', ms.name, 'color', ms.color, 'glyph', ms.glyph, 'auto_answer', ms.auto_answer,
+    'name', ms.name, 'color', ms.color, 'glyph', ms.glyph, 'auto_answer', ms.auto_answer, 'photo', ms.photo,
     'code', case when l.owner_id = v_me and l.link_id is null then l.invite_code end,
     'code_expires_at', case when l.owner_id = v_me and l.link_id is null then i.expires_at end,
     'usage', nureum__usage(p_line),
