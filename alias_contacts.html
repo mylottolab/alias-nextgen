@@ -6,6 +6,19 @@
 /* 🔴 2026-10-23 — 번호판을 첫 화면으로 고른 분: 안드로이드 앱이 켜지며 스스로 연락처로 옮긴 경우 번호판으로 되돌립니다.
    (번호판이 막 보였고(8초 안) 손님이 아무것도 누르지 않았을 때만 — 손님이 직접 [연락처로] 온 것은 그대로) */
 (function(){
+  /* 🔴 2026-11-01 — 누름을 첫 화면으로 고른 분: 앱이 스스로 연락처로 옮긴 경우 누름으로 되돌립니다(손님이 직접 온 것은 그대로) */
+  try {
+    if (localStorage.getItem('burum_first_screen') === 'nureum') {
+      const now0 = Date.now();
+      const shown0 = +(sessionStorage.getItem('burum_nureum_shown_at') || 0);
+      const tap0 = +(sessionStorage.getItem('burum_user_tap') || 0);
+      if (shown0 && now0 - shown0 < 8000 && now0 - tap0 > 3000) {
+        sessionStorage.removeItem('burum_nureum_shown_at');
+        location.replace('nureum.html');
+        return;
+      }
+    }
+  } catch (e) {}
   try {
     if (localStorage.getItem('burum_first_screen') !== 'dial') return;
     const now = Date.now();

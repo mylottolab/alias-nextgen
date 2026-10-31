@@ -5,15 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#E4572E">
 <title>짝 맺기 · 누름</title>
-<link rel="stylesheet" href="nureum.css?v=20261031b">
+<link rel="stylesheet" href="nureum.css?v=20261101a">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="alias_common.js?v=20261030p"></script>
 <script src="alias_qr.js?v=20261019a"></script>
-<script src="nureum.js?v=20261101b"></script>
+<script src="nureum.js?v=20261101c"></script>
 </head>
 <body>
 <!-- 받는 쪽: 코드(또는 QR 주소 ?c=)로 짝 맺기.
+     🔴 2026-11-01 — 가입 없이 [연결하기] 한 번. 이름은 보낸 분이 정한 것을 그대로 씁니다(바꿀 수 있음).
      부름 accept_invite 로 1:1 연결을 만든 뒤, nureum_attach 로 누름 라인에 붙입니다. -->
 <div class="nu">
   <div class="nu-top">
@@ -22,39 +23,56 @@
   </div>
   <div id="err" class="nu-err" role="alert"></div>
 
-  <div id="stepCode" style="display:flex;flex-direction:column;gap:12px">
+  <!-- ① 코드 넣기 (링크 없이 온 경우) -->
+  <div id="stepCode" class="nu-hidden" style="display:flex;flex-direction:column;gap:12px">
     <p class="nu-sub">상대 휴대폰에 나온 QR을 찍거나, 받은 코드를 넣어 주세요.</p>
     <button class="nu-btn" id="scan" type="button">QR 찍기</button>
+    <button class="nu-btn line" id="paste" type="button">복사해 둔 코드 붙여넣기</button>
     <label class="nu-lbl" for="code">받은 코드</label>
     <input class="nu-in" id="code" autocomplete="off" autocapitalize="off" placeholder="예: e9d4 3094 d4d1 4c0d" style="letter-spacing:3px;font-weight:900">
     <button class="nu-btn ghost" id="check" type="button">확인</button>
   </div>
 
+  <!-- ② 한 화면 연결 -->
   <div id="stepForm" class="nu-hidden" style="display:flex;flex-direction:column;gap:14px">
-    <div class="nu-card" style="border-color:#E4572E">
-      <b style="font-size:18px" id="fromTxt">누름으로 연결하자고 해요</b>
+    <div class="nu-card" style="border-color:#E4572E;align-items:center;text-align:center;gap:10px">
+      <span class="nu-ico" id="pv" style="background:#2B59C3;width:88px;height:88px;font-size:40px">아</span>
+      <b style="font-size:21px" id="fromTxt">누름으로 연결하자고 해요</b>
       <span class="nu-sub" style="margin:0">연결해도 서로 전화번호는 보이지 않아요. 요금은 라인을 만든 분이 냅니다.</span>
     </div>
-    <div style="display:flex;align-items:center;gap:14px">
-      <span class="nu-ico" id="pv" style="background:#2B59C3">아</span>
-      <p class="nu-sub" style="margin:0">내 바탕화면에 이 모양으로 아이콘이 생겨요.</p>
+
+    <!-- 휴대폰 브라우저로 왔을 때: 앱으로 연결해야 전화를 받을 수 있어요 -->
+    <div id="appBox" class="nu-hidden" style="display:flex;flex-direction:column;gap:10px">
+      <div class="nu-note"><b>전화를 받으려면 부름 앱이 있어야 해요.</b> 아래 단추를 누르면 코드를 복사해 두고 앱 설치 화면으로 갑니다. 설치한 뒤 앱을 열어 <b>[복사해 둔 코드 붙여넣기]</b>만 누르시면 돼요.</div>
+      <a class="nu-btn" id="goApp" href="#">부름 앱 설치하고 연결</a>
+      <button class="nu-btn ghost" id="goHere" type="button">이 화면에서 바로 연결 (컴퓨터 · 시험용)</button>
     </div>
-    <div>
-      <label class="nu-lbl" for="name">이 분을 뭐라고 부를까요? (내 휴대폰에 보일 이름)</label>
-      <input class="nu-in" id="name" maxlength="20" placeholder="예: 아들, 우리 자기, 사장님" autocomplete="off">
+
+    <div id="mainBox" style="display:flex;flex-direction:column;gap:12px">
+      <button class="nu-btn" id="go" type="button" style="min-height:64px;font-size:20px">연결하기</button>
+      <details id="more" style="border:1px solid var(--nu-line);border-radius:14px;padding:10px 14px">
+        <summary style="font-weight:800;cursor:pointer;min-height:32px">이름 · 색 바꾸기</summary>
+        <div style="display:flex;flex-direction:column;gap:12px;margin-top:10px">
+          <div>
+            <label class="nu-lbl" for="name">이 분을 뭐라고 부를까요? (내 휴대폰에 보일 이름)</label>
+            <input class="nu-in" id="name" maxlength="20" placeholder="예: 아들, 우리 자기, 사장님" autocomplete="off">
+          </div>
+          <div>
+            <span class="nu-lbl">색</span>
+            <div class="nu-colors" id="colors"></div>
+          </div>
+          <div id="meBox">
+            <label class="nu-lbl" for="meName">상대에게 보일 내 이름</label>
+            <input class="nu-in" id="meName" maxlength="20" placeholder="예: 엄마" autocomplete="off">
+          </div>
+          <div id="meNote"></div>
+        </div>
+      </details>
+      <p class="nu-sub" id="loginNote" style="text-align:center;margin:0">부름 계정이 있으세요? <a id="loginLink" href="#" style="color:inherit;font-weight:800">로그인하고 연결</a></p>
     </div>
-    <div>
-      <span class="nu-lbl">색</span>
-      <div class="nu-colors" id="colors"></div>
-    </div>
-    <div id="meBox" class="nu-hidden">
-      <label class="nu-lbl" for="meName">상대에게 보일 내 이름</label>
-      <input class="nu-in" id="meName" maxlength="20" placeholder="예: 엄마" autocomplete="off">
-    </div>
-    <div id="meNote"></div>
-    <button class="nu-btn" id="go" type="button">연결하기</button>
   </div>
 
+  <!-- ③ 연결됨 -->
   <div id="stepDone" class="nu-hidden" style="display:flex;flex-direction:column;gap:14px">
     <div class="nu-card" style="align-items:center;text-align:center;border-color:#1F8A5B">
       <span class="nu-ico" id="doneIco">아</span>
@@ -67,7 +85,7 @@
 </div>
 
 <script>
-var code = '', color = NU.COLORS[1], aliases = [], busy = false;
+var code = '', info = null, color = NU.COLORS[1], aliases = [], busy = false, user = null;
 
 function show(id){
   ['stepCode', 'stepForm', 'stepDone'].forEach(function(s){ document.getElementById(s).classList.toggle('nu-hidden', s !== id); });
@@ -76,34 +94,45 @@ function paintPreview(){
   var n = document.getElementById('name').value.trim(), pv = document.getElementById('pv');
   pv.style.background = color; pv.textContent = n ? Array.from(n)[0] : '아';
 }
+function storeUrl(){
+  return 'nureum_get.html?c=' + encodeURIComponent(code);
+}
 
 async function check(raw){
   NU.showErr('err', '');
   var c = (AL.codeFromScan ? AL.codeFromScan(raw) : null) || String(raw || '').trim();
-  if (!c) { NU.showErr('err', '코드를 넣어 주세요.'); return; }
+  if (!c) { NU.showErr('err', '코드를 넣어 주세요.'); show('stepCode'); return; }
   code = c;
   try {
-    var info = await NU.rpc('nureum_code_info', { p_code: code });
+    info = await NU.rpc('nureum_code_info', { p_code: code });
     if (!info.ok) { NU.showErr('err', NU.errText(info.error)); show('stepCode'); return; }
     if (info.code) code = info.code;   // 띄어 쓰거나 대 · 소문자가 달라도 서버가 찾은 진짜 코드로
-    document.getElementById('fromTxt').textContent = (info.from || '상대') + '님이 누름으로 연결하자고 해요';
+    var from = info.from || '상대';
+    document.getElementById('fromTxt').textContent = from + '님이 누름으로 연결하자고 해요';
+    /* 보낸 분 이름 · 보낸 분이 나를 부르는 이름을 그대로 채웁니다(바꿀 수 있음) */
+    if (!document.getElementById('name').value) document.getElementById('name').value = from;
+    if (!document.getElementById('meName').value && info.as) document.getElementById('meName').value = info.as;
+    document.getElementById('go').textContent = from + '님과 연결하기';
+    paintPreview();
+    document.getElementById('loginLink').href = 'alias_auth.html?next=' + encodeURIComponent('nureum_join.html?c=' + code);
+    paintMode();
+    document.getElementById('goApp').href = storeUrl();
     show('stepForm');
-    document.getElementById('name').focus();
-  } catch (e) { NU.showErr('err', e.message || String(e)); }
+  } catch (e) { NU.showErr('err', e.message || String(e)); show('stepCode'); }
 }
 
 async function join(){
   if (busy) return;
   NU.showErr('err', '');
-  var name = document.getElementById('name').value.trim();
-  if (!name) { NU.showErr('err', '이 분을 뭐라고 부를지 적어 주세요.'); return; }
+  var name = document.getElementById('name').value.trim() || (info && info.from) || '';
+  if (!name) { document.getElementById('more').open = true; NU.showErr('err', '이 분을 뭐라고 부를지 적어 주세요.'); return; }
   busy = true; var btn = document.getElementById('go'); btn.disabled = true;
   try {
+    user = await NU.ensureUser();   // 🔴 로그인 안 됐으면 가입 없이(익명) 바로 시작
     if (!aliases.length) { try { aliases = await AL.loadAliases(); } catch (e) {} }
     var persona = NU._alias || aliases[0];
     if (!persona) {
-      var me = document.getElementById('meName').value.trim();
-      if (!me) throw new Error('상대에게 보일 내 이름을 적어 주세요.');
+      var me = document.getElementById('meName').value.trim() || (info && info.as) || '나';
       persona = await AL.createAlias(me, aliases); aliases = [persona];
     }
     var acc = await AL.sb.rpc('accept_invite', { p_code: code, p_persona_id: persona.id, p_peer_label: name });
@@ -121,10 +150,13 @@ async function join(){
     document.getElementById('doneTitle').textContent = name + '와(과) 연결됐어요!';
     document.getElementById('goLine').href = 'nureum_line.html?line=' + out.line_id;
     if (!NU.canPin()) document.getElementById('goPin').classList.add('nu-hidden');
-  document.getElementById('goPin').onclick = function(){ NU.pin(l); };
+    document.getElementById('goPin').onclick = function(){ NU.pin(l); };
     show('stepDone');
+    NU.syncWidget();
+    NU.offerPin(l);   // 🔴 바로 바탕화면 아이콘 권하기
   } catch (e) {
-    console.error(e); NU.showErr('err', e.message || String(e));
+    console.error(e);
+    NU.showErr('err', String(e && e.message || e).indexOf('anonymous') >= 0 ? NU.anonErrText(e) : (e.message || String(e)));
   }
   busy = false; btn.disabled = false;
 }
@@ -135,25 +167,48 @@ document.getElementById('scan').onclick = async function(){
   try { var raw = await AL.openScanner(); if (raw) check(raw); }
   catch (e) { NU.showErr('err', 'QR을 읽지 못했습니다. 코드를 직접 넣어 주세요.'); }
 };
+/* 복사해 둔 코드(앱 설치 전에 복사) 붙여넣기 — 안 되면 칸을 꾹 눌러 붙여넣기 안내 */
+document.getElementById('paste').onclick = async function(){
+  try {
+    var t = await navigator.clipboard.readText();
+    if (t && t.trim()) { document.getElementById('code').value = t.trim(); check(t.trim()); return; }
+  } catch (e) {}
+  var inp = document.getElementById('code'); inp.focus();
+  NU.showErr('err', '아래 "받은 코드" 칸을 꾹 눌러 [붙여넣기]를 누른 뒤 [확인]을 눌러 주세요.');
+};
 document.getElementById('go').onclick = join;
+document.getElementById('goHere').onclick = function(){
+  document.getElementById('appBox').classList.add('nu-hidden');
+  document.getElementById('mainBox').classList.remove('nu-hidden');
+};
+document.getElementById('goApp').addEventListener('click', function(){
+  try { navigator.clipboard.writeText(code); } catch (e) {}
+});
 document.getElementById('name').addEventListener('input', paintPreview);
 
+function paintMode(){
+  /* 휴대폰 브라우저 + 로그인 안 됨 → 앱으로 연결하도록 */
+  var mobileWeb = !NU.isApp() && NU.platform() !== 'pc';
+  document.getElementById('appBox').classList.toggle('nu-hidden', !(mobileWeb && !user));
+  document.getElementById('mainBox').classList.toggle('nu-hidden', mobileWeb && !user);
+}
 (async function(){
-  if (!await NU.session()) {
-    ['stepCode', 'stepForm', 'stepDone'].forEach(function(id){ document.getElementById(id).classList.add('nu-hidden'); });
-    var w = document.createElement('div'); w.style.cssText = 'display:flex;flex-direction:column;gap:12px';
-    document.querySelector('.nu').appendChild(w);
-    NU.welcome(w, NU.q('c') ? '누름으로 연결하자는 초대를 받으셨어요' : null);
-    return;
-  }
   NU.colorPicker(document.getElementById('colors'), color, function(c){ color = c; paintPreview(); });
-  try {
-    aliases = await AL.loadAliases();
-    if (aliases.length) NU.aliasPicker(document.getElementById('meNote'), aliases);
-    else document.getElementById('meBox').classList.remove('nu-hidden');
-  } catch (e) {}
+  user = await NU.quickSession();   // 바로 화면부터(로그인 확인을 기다리지 않음)
   var c = NU.q('c');
   if (c) { document.getElementById('code').value = c; check(c); }
+  else show('stepCode');
+  if (!user) {   // 앱이 막 켜진 경우 로그인 정보가 늦게 올 수 있어 한 번 더
+    user = await NU.session();
+    if (user) paintMode();
+  }
+  if (user) {
+    document.getElementById('loginNote').classList.add('nu-hidden');
+    try {
+      aliases = await AL.loadAliases();
+      if (aliases.length) { NU.aliasPicker(document.getElementById('meNote'), aliases); document.getElementById('meBox').classList.add('nu-hidden'); }
+    } catch (e) {}
+  }
 })();
 </script>
 </body>

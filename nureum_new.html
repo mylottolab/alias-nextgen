@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#E4572E">
 <title>새 라인 · 누름</title>
-<link rel="stylesheet" href="nureum.css?v=20261031b">
+<link rel="stylesheet" href="nureum.css?v=20261101a">
 <script src="alias_qrlib.js"></script>
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="alias_common.js?v=20261030p"></script>
 <script src="alias_qr.js?v=20261019a"></script>
-<script src="nureum.js?v=20261101b"></script>
+<script src="nureum.js?v=20261101c"></script>
 </head>
 <body>
 <!-- 새 라인 만들기 → 짝 맺기 코드(QR) → 상대가 넣으면 연결 → 이용권 · 바탕화면 아이콘
@@ -64,6 +64,8 @@
       <button class="nu-btn" id="share" type="button" style="background:#FEE500;color:#1B1B1F">카톡 · 문자로 보내기</button>
       <button class="nu-btn line" id="copy" type="button">코드 복사</button>
     </div>
+    <!-- 🔴 2026-11-01 — 옆에 계시면 상대 폰을 대신 설정해 드리기 -->
+    <button class="nu-btn line" id="proxy" type="button">옆에 계신가요? 상대 폰 대신 설정해 주기</button>
     <div class="nu-note" id="waitNote">상대가 코드를 넣으면 이 화면이 저절로 바뀝니다. 상대 휴대폰에는 <b>부름</b> 앱(또는 burum.kr)이 있으면 됩니다.</div>
   </div>
 
@@ -77,6 +79,7 @@
     <a class="nu-btn" id="goPlan" href="#">이용권 고르기</a>
     <button class="nu-btn ghost" id="goPin" type="button">바탕화면에 아이콘 놓기</button>
     <a class="nu-btn ghost" id="goLine" href="#">라인 화면 열기</a>
+    <a class="nu-btn ghost" id="goCard" href="#">🖨 냉장고 · 지갑용 QR 카드 만들기</a>
   </div>
 </div>
 
@@ -178,7 +181,10 @@ function done(){
   if (!NU.canPin()) document.getElementById('goPin').classList.add('nu-hidden');
   document.getElementById('goPin').onclick = function(){ NU.pin(line); };
   if (line.active) document.getElementById('goPlan').classList.add('ghost');
+  document.getElementById('goCard').href = 'nureum_card.html?line=' + line.id;
   show('stepDone');
+  NU.syncWidget();
+  NU.offerPin(line);   // 🔴 2026-11-01 — 짝이 맺어지면 바로 바탕화면 아이콘 권하기
 }
 
 document.getElementById('make').onclick = makeLine;
@@ -193,6 +199,21 @@ document.getElementById('renew').onclick = async function(){
   } catch (e) { NU.showErr('err', e.message || String(e)); }
 };
 document.getElementById('copy').onclick = function(){ AL.copyText(rawCode, this); };
+/* 🔴 2026-11-01 — 상대 폰 대신 설정해 주기: ① 설치 QR → ② 앱에서 [누름만 쓸래요] → ③ 이 화면 QR 찍기 → 끝 */
+document.getElementById('proxy').onclick = function(){
+  var who = (line && line.name) || '상대';
+  var getUrl = location.href.replace(/[^/]*$/, '') + 'nureum_get.html?c=' + encodeURIComponent(rawCode);
+  var sh = NU.sheet('<h2>' + NU.esc(who) + ' 폰 대신 설정해 주기</h2>' +
+    '<ol class="nu-sub" style="color:var(--nu-ink);padding-left:20px;margin:0;line-height:1.8">' +
+    '<li><b>' + NU.esc(who) + ' 폰 카메라</b>로 아래 QR을 찍어 <b>부름 앱을 설치</b>하세요. (이미 있으면 건너뛰기)</li>' +
+    '<li>' + NU.esc(who) + ' 폰에서 부름을 열고 <b>[누름만 쓸래요 · 가입 없이 시작]</b> → <b>[받은 코드 · QR로 짝 맺기]</b> → <b>[QR 찍기]</b>.</li>' +
+    '<li>이 판을 닫고 <b>내 화면의 연결 QR</b>을 찍으면 → <b>[연결하기]</b> 한 번. 바탕화면 아이콘 놓기도 바로 이어집니다.</li>' +
+    '</ol>' +
+    '<div style="display:flex;justify-content:center;margin:12px 0"><div class="nu-qr" id="pxQr"></div></div>' +
+    '<p class="nu-sub" style="text-align:center;margin:0">↑ 설치용 QR (연결용은 이 판 뒤 화면에 있어요)</p>' +
+    '<button class="nu-btn ghost" data-close type="button" style="margin-top:12px">알겠어요 · 연결 QR 보기</button>');
+  AL.drawQr(sh.querySelector('#pxQr'), getUrl, 180).catch(function(){});
+};
 document.getElementById('share').onclick = function(){
   var code = document.getElementById('code').textContent;
   AL.shareText('누름으로 연결해요. 아래 주소를 눌러 주세요 (코드 ' + code + ', 10분 안에)\n' + codeUrl);

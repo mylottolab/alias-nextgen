@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#E4572E">
+<title>부름 앱 받기 · 누름</title>
+<link rel="stylesheet" href="nureum.css?v=20261101a">
+</head>
+<body>
+<!-- 🔴 2026-11-01 — 누름 설치 도우미 (로그인 필요 없음)
+     · ?c=코드 가 있으면 코드를 보여 주고 복사해 둡니다 → 앱을 깔고 [복사해 둔 코드 붙여넣기]
+     · 휴대폰 종류를 보고 맞는 스토어로 보냅니다
+     · 아들이 엄마 폰을 대신 설정할 때도 이 화면의 QR을 엄마 폰 카메라로 찍습니다 -->
+<div class="nu">
+  <div class="nu-top">
+    <svg width="40" height="40" viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="14" fill="none" stroke="#E4572E" stroke-width="3"></circle><circle cx="17" cy="17" r="6.5" fill="#E4572E"></circle></svg>
+    <h1>누름 시작하기</h1>
+  </div>
+
+  <div class="nu-card" style="gap:10px">
+    <b style="font-size:18px">① 부름 앱을 설치하세요</b>
+    <span class="nu-sub" style="margin:0">누름은 부름 앱 안에 있어요. 무료로 설치합니다.</span>
+    <a class="nu-btn" id="store" href="#">앱 설치하기</a>
+    <div id="both" class="nu-hidden" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <a class="nu-btn line" href="https://play.google.com/store/apps/details?id=com.weaveapp.alias">안드로이드</a>
+      <a class="nu-btn line" href="https://apps.apple.com/app/id6819847165">아이폰</a>
+    </div>
+  </div>
+
+  <div class="nu-card" id="codeCard" style="gap:10px;display:none">
+    <b style="font-size:18px">② 앱을 열고 이 코드로 연결</b>
+    <span class="nu-sub" style="margin:0">코드는 복사해 두었어요. 앱에서 <b>[가입 없이 바로 시작]</b> → <b>[받은 코드 · QR로 짝 맺기]</b> → <b>[복사해 둔 코드 붙여넣기]</b>를 누르세요.</span>
+    <div class="nu-code" id="code">······</div>
+    <button class="nu-btn ghost" id="copy" type="button">코드 다시 복사</button>
+  </div>
+</div>
+<script>
+(function(){
+  var ua = navigator.userAgent || '';
+  var ios = /iPhone|iPad|iPod/.test(ua), android = /Android/.test(ua);
+  var store = document.getElementById('store');
+  if (ios) store.href = 'https://apps.apple.com/app/id6819847165';
+  else if (android) store.href = 'https://play.google.com/store/apps/details?id=com.weaveapp.alias';
+  else { store.style.display = 'none'; document.getElementById('both').classList.remove('nu-hidden'); }
+
+  var c = (new URLSearchParams(location.search).get('c') || '').replace(/[^0-9A-Za-z]/g, '').slice(0, 64);
+  if (!c) return;
+  document.getElementById('codeCard').style.display = '';
+  document.getElementById('code').textContent = c.match(/.{1,4}/g).join(' ');
+  function copy(btn){
+    try {
+      navigator.clipboard.writeText(c).then(function(){ if (btn) btn.textContent = '복사했어요 ✓'; });
+    } catch (e) {}
+  }
+  copy();
+  document.getElementById('copy').onclick = function(){ copy(this); };
+  store.addEventListener('click', function(){ copy(); });
+})();
+</script>
+</body>
+</html>

@@ -5,11 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#E4572E">
 <title>누름</title>
-<link rel="stylesheet" href="nureum.css?v=20261031b">
+<link rel="stylesheet" href="nureum.css?v=20261101a">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="alias_common.js?v=20261030p"></script>
-<script src="nureum.js?v=20261101b"></script>
+<script src="alias_qr.js?v=20261019a"></script>
+<script src="nureum.js?v=20261101c"></script>
 </head>
 <body>
 <!-- 누름 첫 화면: 내 라인들. 라인 아이콘을 누르면 그 라인 화면, + 를 누르면 새 라인 -->
@@ -17,28 +18,52 @@
   <div class="nu-top">
     <svg width="40" height="40" viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="14" fill="none" stroke="#E4572E" stroke-width="3"></circle><circle cx="17" cy="17" r="6.5" fill="#E4572E"></circle></svg>
     <h1>누름</h1>
-    <a class="nu-back" href="alias_contacts.html" aria-label="부름으로" title="부름으로" style="width:auto;padding:0 12px;font-size:13px">부름</a>
+    <button class="nu-back" id="meBtn" type="button" aria-label="나 (설정)" title="나 (설정)" style="width:auto;padding:0 14px;font-size:15px;font-weight:800;margin-left:auto">⚙ 나</button>
   </div>
   <p class="nu-sub">한 사람과만, 누르면 바로. 라인마다 바탕화면 아이콘이 하나씩 생겨요.</p>
 
   <div id="err" class="nu-err" role="alert"></div>
+  <!-- 🔴 2026-11-01 — 가입 없이 쓰는 분께: 계정 지키기 권유(작게) -->
+  <div id="anonCard" class="nu-note nu-hidden" style="display:flex;align-items:center;gap:10px">
+    <span style="flex:1">이 휴대폰에서만 쓰는 계정이에요. 휴대폰을 바꿔도 남게 하려면 →</span>
+    <button class="nu-btn line" id="anonProtect" type="button" style="height:40px;width:auto;flex:none;padding:0 12px;font-size:14px">계정 지키기</button>
+  </div>
   <div id="grid" class="nu-grid" aria-live="polite"></div>
   <p id="empty" class="nu-sub nu-hidden" style="text-align:center;padding:18px 0">아직 라인이 없습니다.<br>아래 [새 라인 만들기]로 시작하세요.</p>
 
   <div style="margin-top:auto;display:flex;flex-direction:column;gap:10px">
     <a class="nu-btn" href="nureum_new.html">＋ 새 라인 만들기</a>
     <a class="nu-btn ghost" href="nureum_join.html">받은 코드 · QR로 짝 맺기</a>
+    <button class="nu-btn line" id="scanCard" type="button">🖨 QR 카드 찍기</button>
   </div>
 </div>
 
 <script>
+document.getElementById('meBtn').onclick = function(){ NU.meSheet(); };
+/* 🔴 2026-11-01 — 냉장고 · 지갑 QR 카드 찍기 → 그 사람 화면 (짝 맺기 QR이면 짝 맺기로) */
+document.getElementById('scanCard').onclick = async function(){
+  try {
+    var raw = await AL.openScanner(); if (!raw) return;
+    var m = String(raw).match(/[?&]line=([0-9a-fA-F-]{36})/);
+    if (m) { location.href = 'nureum_line.html?line=' + m[1].toLowerCase(); return; }
+    var c = AL.codeFromScan(raw);
+    if (c) { location.href = 'nureum_join.html?c=' + encodeURIComponent(c); return; }
+    NU.showErr('err', '누름 QR이 아니에요.');
+  } catch (e) { NU.showErr('err', 'QR을 읽지 못했어요.'); }
+};
+document.getElementById('anonProtect').onclick = async function(){ if (await NU.protect()) document.getElementById('anonCard').classList.add('nu-hidden'); };
+/* 🔴 2026-11-01 — 누름을 첫 화면으로 고른 분: 앱이 켜지며 스스로 연락처로 옮겨도 되돌아오게(alias_contacts 맨 위) */
+try { sessionStorage.setItem('burum_nureum_shown_at', String(Date.now())); } catch (e) {}
+document.addEventListener('click', function(){ try { sessionStorage.setItem('burum_user_tap', String(Date.now())); } catch (e) {} }, true);
+
 (async function(){
-  if (!await NU.session()) {
-    document.querySelectorAll('.nu > *:not(.nu-top)').forEach(function(e){ e.classList.add('nu-hidden'); });
-    var w = document.createElement('div'); w.style.cssText = 'display:flex;flex-direction:column;gap:12px';
-    document.querySelector('.nu').appendChild(w); NU.welcome(w);
+  var me = await NU.session();
+  if (!me) {
+    document.getElementById('meBtn').classList.add('nu-hidden');
+    NU.showWelcome();
     return;
   }
+  if (NU.isAnon(me)) document.getElementById('anonCard').classList.remove('nu-hidden');
   var grid = document.getElementById('grid');
   try {
     var lines = await NU.rpc('nureum_my_lines');

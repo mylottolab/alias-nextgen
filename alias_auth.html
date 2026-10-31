@@ -96,6 +96,9 @@ html[data-mode="light"] .safe-note p{color:#B4410C;background:rgba(234,88,12,.07
     <p class="hl-p" data-t="hlPrice"></p>
 
     <button id="helloGo" class="btn" data-t="hlStart"></button>
+    <!-- 🔴 2026-11-01 — 누름만 쓰실 분: 가입 없이 바로 누름 화면으로 -->
+    <button id="helloNureum" class="btn" type="button" style="margin-top:10px;background:#E4572E;color:#fff;border:none">누름만 쓸래요 · 가입 없이 시작</button>
+    <p class="note" style="margin-top:6px">누름: 정해진 한 사람과 바탕화면 아이콘으로 바로 연결 (엄마 · 아들 · 우리 자기…)</p>
   </div>
 
   <!-- ── 로그인 / 가입 ────────────────────────────────── -->
@@ -178,6 +181,7 @@ const NEXT = new URLSearchParams(location.search).get('next');
 /* 🔴 2026-10-23 — 첫 화면을 부름 번호판으로 고른 분(이 폰)은 번호판으로 */
 function landing(){
   try { if (localStorage.getItem('burum_first_screen') === 'dial') return 'alias_phone.html?mode=dial'; } catch (e) {}
+  try { if (localStorage.getItem('burum_first_screen') === 'nureum') return 'nureum.html'; } catch (e) {}   // 🔴 2026-11-01 누름만
   return 'alias_contacts.html';
 }
 function goNext(fallback){
@@ -291,6 +295,18 @@ function markHello(){
   try { localStorage.setItem(HELLO_KEY, '1'); } catch (e) {}
 }
 
+document.getElementById('helloNureum').addEventListener('click', async function(){
+  markHello();
+  this.disabled = true;
+  try { localStorage.setItem('burum_first_screen', 'nureum'); } catch (e) {}
+  try {
+    var r = await AL.sb.auth.signInAnonymously();
+    if (r.error) throw r.error;
+  } catch (e) {
+    console.warn('[nureum] 익명 시작 실패', e);   // 누름 첫 화면에서 다시 [가입 없이 바로 시작]을 보여 줍니다
+  }
+  location.href = 'nureum.html';
+});
 document.getElementById('helloGo').addEventListener('click', function(){
   markHello();
   show('stepAuth');
