@@ -270,6 +270,26 @@ NU.welcome = function(box, lead){
     '<a class="nu-btn ghost" href="' + NU.loginUrl(false) + '">부름 계정이 있어요 · 로그인</a>';
 };
 
+/* 🔴 2026-10-31 — "이 사람에게 보일 내 별칭" 고르개.
+   별칭마다 이름 · 얼굴 사진 · 갤러리가 따로라, 사람(용도)마다 다른 모습을 보여 줄 수 있습니다.
+   기본 별칭이 먼저 골라져 있습니다. 고른 별칭은 NU._alias 에 둡니다. */
+NU.aliasPicker = function(box, aliases){
+  NU._alias = aliases[0] || null;
+  if (!aliases.length) { box.innerHTML = ''; return; }
+  function paint(){
+    box.innerHTML = '<span class="nu-lbl">이 사람에게 보일 내 별칭 <span style="font-weight:500;color:var(--nu-sub)">(이름 · 갤러리가 이걸로 보여요)</span></span>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:8px">' + aliases.map(function(a, i){
+        var on = NU._alias && NU._alias.id === a.id;
+        return '<button type="button" data-i="' + i + '" aria-pressed="' + on + '" style="min-height:44px;padding:0 14px;border-radius:14px;font:inherit;font-size:15px;font-weight:700;cursor:pointer;' +
+          'border:2px solid ' + (on ? 'var(--nu-main)' : 'var(--nu-line)') + ';background:' + (on ? 'rgba(228,87,46,.08)' : 'var(--nu-bg)') + ';color:var(--nu-ink)">' +
+          NU.esc(a.display_name) + (a.is_default ? ' <span style="font-weight:500;font-size:12px;color:var(--nu-sub)">기본</span>' : '') + '</button>';
+      }).join('') + '</div>' +
+      '<p class="nu-sub" style="margin:6px 0 0">별칭 · 갤러리는 부름 <b>[나]</b> 화면에서 더 만들고 꾸밀 수 있어요.</p>';
+    box.querySelectorAll('[data-i]').forEach(function(b){ b.onclick = function(){ NU._alias = aliases[+b.dataset.i]; paint(); }; });
+  }
+  paint();
+};
+
 /* 누름 화면 공통 시작: 로그인 확인 */
 NU.boot = async function(){
   if (typeof AL === 'undefined' || !AL.sb) {

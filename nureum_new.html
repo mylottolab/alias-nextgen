@@ -11,7 +11,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="alias_common.js?v=20261030p"></script>
 <script src="alias_qr.js?v=20261019a"></script>
-<script src="nureum.js?v=20261031c"></script>
+<script src="nureum.js?v=20261031d"></script>
 </head>
 <body>
 <!-- 새 라인 만들기 → 짝 맺기 코드(QR) → 상대가 넣으면 연결 → 이용권 · 바탕화면 아이콘
@@ -45,7 +45,7 @@
       <label class="nu-lbl" for="meName">상대에게 보일 내 이름</label>
       <input class="nu-in" id="meName" maxlength="20" placeholder="예: 큰아들" autocomplete="off">
     </div>
-    <p class="nu-sub" id="meNote"></p>
+    <div id="meNote"></div>
     <button class="nu-btn" id="make" type="button">라인 만들고 짝 맺기 코드 받기</button>
     <div class="nu-note"><b>요금</b>은 라인을 만든 분이 냅니다. 라인 1개 · 1개월권 1,650원 · 12개월권 16,500원(부가세 포함). 짝을 맺은 뒤에 고르시면 됩니다.</div>
   </div>
@@ -104,7 +104,7 @@ async function makeLine(){
   var btn = document.getElementById('make'); btn.disabled = true;
   try {
     if (!aliases.length) { try { aliases = await AL.loadAliases(); } catch (e) {} }   // 앞에서 만들어졌을 수 있음
-    var persona = aliases[0];
+    var persona = NU._alias || aliases[0];
     if (!persona) {
       var me = document.getElementById('meName').value.trim();
       if (!me) { NU.showErr('err', '상대에게 보일 내 이름을 적어 주세요.'); btn.disabled = false; return; }
@@ -205,7 +205,7 @@ document.getElementById('share').onclick = function(){
     if (lineId) { await loadLine(); return; }
     aliases = await AL.loadAliases();
     if (aliases.length) {
-      document.getElementById('meNote').innerHTML = '상대에게는 내 부름 별칭 <b>' + NU.esc(aliases[0].display_name) + '</b>(으)로 보여요.';
+      NU.aliasPicker(document.getElementById('meNote'), aliases);
     } else {
       document.getElementById('meBox').classList.remove('nu-hidden');
     }
