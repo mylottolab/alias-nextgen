@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#E4572E">
 <title>이용 현황 · 누름</title>
-<link rel="stylesheet" href="nureum.css?v=20261031b">
+<link rel="stylesheet" href="nureum.css?v=20261101a">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="alias_common.js?v=20261030p"></script>
-<script src="nureum.js?v=20261101b"></script>
+<script src="nureum.js?v=20261101c"></script>
 <style>
 .use{border-radius:22px;background:#1B1B1F;color:#fff;padding:18px;display:flex;flex-direction:column;gap:12px}
 .use .r{display:flex;justify-content:space-between;font-size:14px}
@@ -180,6 +180,12 @@ document.getElementById('pay').onclick = async function(){
   var which = pick || (q.m12 > 0 ? 'm12' : (q.m1 > 0 ? 'm1' : null));
   if (!which) { NU.showErr('err', '1개월권이나 12개월권을 골라 주세요.'); return; }
   if (!pick && q.m1 > 0 && q.m12 > 0) { NU.showErr('err', '한 번에 한 종류만 살 수 있어요. 1개월권이나 12개월권 중 하나만 골라 주세요.'); return; }
+  /* 🔴 2026-11-01 — 가입 없이 쓰는 계정은 결제 전에 꼭 계정을 지키게 합니다(휴대폰을 바꿔도 이용권이 남게) */
+  if (NU.isAnon(await NU.session())) {
+    var ok = await NU.protect('이용권은 계정에 담겨요. 휴대폰을 바꾸거나 앱을 지워도 이용권이 남도록, 결제 전에 아이디 · 비밀번호를 만들어 주세요(30초).');
+    if (!ok) return;
+    NU.closeSheet();
+  }
   if (!STORE) { webPay(which); return; }
   if (buying) return;
   buying = true; this.disabled = true;

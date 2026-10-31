@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#E4572E">
+<title>누름</title>
+<link rel="stylesheet" href="nureum.css?v=20261101a">
+</head>
+<body>
+<!-- 🔴 2026-11-01 — QR 카드를 휴대폰 카메라로 찍었을 때 오는 곳 (로그인 필요 없음)
+     · 부름 앱 안(QR 카드 찍기)에서 왔으면 바로 라인 화면으로
+     · 아이폰 카메라: burumnureum://line/<번호> 로 부름 앱을 엽니다(아이폰 1.7 이상)
+     · 안드로이드 카메라: 부름 앱을 열어 보고, 안 되면 이 화면에서 바로 열기 -->
+<div class="nu">
+  <div class="nu-top">
+    <svg width="40" height="40" viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="14" fill="none" stroke="#E4572E" stroke-width="3"></circle><circle cx="17" cy="17" r="6.5" fill="#E4572E"></circle></svg>
+    <h1>누름</h1>
+  </div>
+  <div class="nu-card" style="gap:10px">
+    <b style="font-size:18px">부름 앱을 여는 중…</b>
+    <span class="nu-sub" style="margin:0">앱이 안 열리면 아래 단추를 눌러 주세요.</span>
+    <a class="nu-btn" id="openApp" href="#">부름 앱에서 열기</a>
+    <a class="nu-btn ghost" id="openWeb" href="#">이 화면에서 열기</a>
+    <a class="nu-btn line" href="nureum_get.html">부름 앱 설치하기</a>
+  </div>
+</div>
+<script>
+(function(){
+  var id = (new URLSearchParams(location.search).get('line') || '').toLowerCase();
+  if (!/^[0-9a-f-]{36}$/.test(id)) id = '';
+  var web = id ? 'nureum_line.html?line=' + id : 'nureum.html';
+  var ua = navigator.userAgent || '';
+  var inApp = /BurumApp|; wv\)/.test(ua) || !!window.AliasNative;
+  document.getElementById('openWeb').href = web;
+  if (inApp) { location.replace(web); return; }
+  var app;
+  if (/iPhone|iPad|iPod/.test(ua)) {
+    app = 'burumnureum://' + (id ? 'line/' + id : 'home');
+  } else if (/Android/.test(ua)) {
+    var fb = location.href.replace(/[^/]*$/, '') + web;
+    app = 'intent://' + (id ? 'line/' + id : 'home') + '#Intent;scheme=burumnureum;package=com.weaveapp.alias;S.browser_fallback_url=' + encodeURIComponent(fb) + ';end';
+  } else {
+    location.replace(web); return;
+  }
+  document.getElementById('openApp').href = app;
+  setTimeout(function(){ location.href = app; }, 200);
+})();
+</script>
+</body>
+</html>

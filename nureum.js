@@ -313,14 +313,119 @@ NU.loginUrl = function(signup){
 };
 /* 로그인 전 안내 판 — box 안을 채웁니다 */
 NU.welcome = function(box, lead){
+  /* 🔴 2026-11-01 — 가입 없이 바로 시작이 첫째. 부름 계정이 있는 분은 로그인 */
   box.innerHTML =
     '<div class="nu-card" style="border-color:#E4572E;gap:12px">' +
       '<b style="font-size:19px">' + (lead || '한 사람과만, 누르면 바로') + '</b>' +
       '<span class="nu-sub" style="margin:0;color:var(--nu-ink)">누름은 정해진 한 사람과만 쓰는 직통 연결입니다. 라인마다 바탕화면 아이콘이 생기고, 누르면 그 사람에게 바로 전화 · 영상 · 사진 · 문자를 보낼 수 있어요. 서로 전화번호는 보이지 않습니다.</span>' +
-      '<span class="nu-sub" style="margin:0">누름은 <b>부름</b> 계정으로 씁니다. 처음이시면 1분이면 가입돼요(전화번호 없이 아이디만).</span>' +
+      '<span class="nu-sub" style="margin:0"><b>가입 없이</b> 바로 시작할 수 있어요. 아이디는 나중에 만들어도 됩니다.</span>' +
     '</div>' +
-    '<a class="nu-btn" href="' + NU.loginUrl(true) + '">처음이에요 · 가입하고 시작</a>' +
-    '<a class="nu-btn ghost" href="' + NU.loginUrl(false) + '">부름 계정이 있어요 · 로그인</a>';
+    '<button class="nu-btn" type="button" id="nuAnonGo">가입 없이 바로 시작</button>' +
+    '<a class="nu-btn line" href="nureum_join.html">받은 코드 · QR로 바로 연결</a>' +
+    '<a class="nu-btn ghost" href="' + NU.loginUrl(false) + '">부름 계정이 있어요 · 로그인</a>' +
+    '<div id="nuAnonErr" class="nu-err" role="alert"></div>';
+  box.querySelector('#nuAnonGo').onclick = async function(){
+    this.disabled = true;
+    try { await NU.startAnon(); location.reload(); }
+    catch (e) { this.disabled = false; NU.showErr('nuAnonErr', NU.anonErrText(e)); }
+  };
+};
+
+/* =====================================================================
+   🔴 2026-11-01 — 가입 없이 시작 (익명 계정)
+   · 이 휴대폰에서만 쓰는 계정이 바로 생깁니다(Supabase 익명 로그인).
+   · 나중에 [계정 지키기]로 아이디 · 비밀번호를 붙이면 같은 계정 그대로 부름 계정이 됩니다.
+   · 이용권을 살 때는 꼭 계정을 지키게 합니다(휴대폰을 바꾸면 사라지니까).
+   ===================================================================== */
+NU.isAnon = function(user){ return !!(user && (user.is_anonymous || (!user.email && !user.phone))); };
+NU.startAnon = async function(){
+  var r = await AL.sb.auth.signInAnonymously();
+  if (r.error) throw r.error;
+  try { localStorage.setItem('burum_first_screen', 'nureum'); } catch (e) {}
+  return r.data && r.data.user;
+};
+NU.anonErrText = function(e){
+  var m = String((e && e.message) || e || '');
+  if (/anonymous.*disabled|Anonymous sign-ins are disabled/i.test(m)) return '지금은 가입 없이 시작을 쓸 수 없어요. [로그인]으로 들어와 주세요. (관리자: 익명 로그인 켜기)';
+  if (NU.netErr(e)) return '인터넷 연결이 잠깐 끊겼어요. 다시 눌러 주세요.';
+  return '시작하지 못했어요: ' + m;
+};
+/* 로그인 안 됐으면 익명으로 시작하고, 됐으면 그대로 */
+NU.quickSession = async function(){
+  try { var r = await AL.sb.auth.getSession(); return (r.data && r.data.session) ? r.data.session.user : null; } catch (e) { return null; }
+};
+NU.ensureUser = async function(){
+  var u = await NU.quickSession();   // 화면을 연 지 한참 뒤라 바로 물어봐도 됩니다
+  if (u) return u;
+  return await NU.startAnon();
+};
+
+/* [계정 지키기] — 아이디 · 비밀번호를 붙입니다. 같은 계정 그대로(라인 · 이용권 그대로).
+   끝나면 true, 닫으면 false */
+NU.protect = function(reason){
+  return new Promise(function(res){
+    var done = false;
+    var sh = NU.sheet('<h2>계정 지키기</h2>' +
+      '<p class="nu-sub" style="color:var(--nu-ink)">' + (reason || '지금은 이 휴대폰에서만 쓰는 계정이에요. 아이디 · 비밀번호를 만들어 두면 휴대폰을 바꿔도 라인 · 이용권이 그대로 남아요.') + '</p>' +
+      '<label class="nu-lbl" for="pkNick">아이디 (닉네임)</label><input class="nu-in" id="pkNick" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="20">' +
+      '<label class="nu-lbl" for="pkPw" style="margin-top:10px">비밀번호 (8자 이상)</label><input class="nu-in" id="pkPw" type="password" autocomplete="new-password">' +
+      '<div id="pkErr" class="nu-err" role="alert"></div>' +
+      '<button class="nu-btn" id="pkGo" type="button" style="margin-top:12px">계정 지키기</button>' +
+      '<button class="nu-btn ghost" data-close type="button" style="margin-top:8px">나중에</button>');
+    sh.querySelector('[data-close]').addEventListener('click', function(){ if (!done) res(false); });
+    sh.querySelector('#pkGo').onclick = async function(){
+      var btn = this; NU.showErr('pkErr', '');
+      var nc = AL.checkNick(sh.querySelector('#pkNick').value);
+      if (!nc.ok) { NU.showErr('pkErr', nc.msg); return; }
+      var pw = sh.querySelector('#pkPw').value;
+      if (pw.length < 8) { NU.showErr('pkErr', '비밀번호는 8자 이상으로 해 주세요.'); return; }
+      btn.disabled = true;
+      try {
+        var r1 = await AL.sb.auth.updateUser({ email: AL.nicknameToEmail(nc.nick) });
+        if (r1.error) {
+          var m = String(r1.error.message || '').toLowerCase();
+          if (/already|registered|exists/.test(m)) throw new Error('이미 있는 아이디예요. 다른 아이디로 해 주세요.');
+          throw r1.error;
+        }
+        var r2 = await AL.sb.auth.updateUser({ password: pw });
+        if (r2.error) throw r2.error;
+        /* 복구 코드(가입할 때와 같은 방식). 해시만 저장 */
+        var code = AL.makeRecoveryCode(), hash = await AL.hashRecoveryCode(code);
+        var uid = (await AL.sb.auth.getSession()).data.session.user.id;
+        await AL.sb.from('recovery_codes').insert({ account_id: uid, code_hash: hash });
+        done = true;
+        NU.sheet('<h2>계정을 지켰어요</h2>' +
+          '<p class="nu-sub" style="color:var(--nu-ink)">이제 아이디 <b>' + NU.esc(nc.nick) + '</b> 로 어느 휴대폰에서든 들어올 수 있어요.</p>' +
+          '<p class="nu-sub">비밀번호를 잊었을 때 쓰는 <b>복구 코드</b>입니다. 사진을 찍거나 적어 두세요. 다시 보여 드리지 않아요.</p>' +
+          '<div class="nu-code" style="font-size:20px;letter-spacing:2px;margin:8px 0">' + NU.esc(code) + '</div>' +
+          '<button class="nu-btn ghost" data-close type="button">적어 뒀어요</button>');
+        res(true);
+      } catch (e) {
+        btn.disabled = false;
+        NU.showErr('pkErr', NU.netErr(e) ? '인터넷 연결이 잠깐 끊겼어요. 다시 눌러 주세요.' : (e.message || String(e)));
+      }
+    };
+  });
+};
+
+/* 🔴 2026-11-01 — 짝이 맺어지면 바로 바탕화면 아이콘을 권합니다.
+   안드로이드 앱: 곧바로 휴대폰 "추가" 창을 띄웁니다(단추 찾을 필요 없음).
+   그 밖: 큰 단추 하나짜리 판을 띄웁니다. */
+NU.offerPin = function(line){
+  if (!line || !NU.canPin()) return;
+  var key = 'nureum_pin_offered_' + line.id;
+  try { if (localStorage.getItem(key)) return; localStorage.setItem(key, '1'); } catch (e) {}
+  if (NU.isApp() && NU.platform() === 'android' && window.AliasNative && typeof AliasNative.pinShortcut === 'function') {
+    setTimeout(function(){ NU.pin(line); }, 700);
+    return;
+  }
+  setTimeout(function(){
+    var sh = NU.sheet('<h2>바탕화면에 "' + NU.esc(line.name) + '" 아이콘을 놓을까요?</h2>' +
+      '<p class="nu-sub" style="color:var(--nu-ink)">놓아 두면 다음부터는 앱을 찾을 필요 없이 아이콘만 누르시면 됩니다.</p>' +
+      '<button class="nu-btn" id="opGo" type="button">네, 놓을게요</button>' +
+      '<button class="nu-btn ghost" data-close type="button" style="margin-top:8px">나중에</button>');
+    sh.querySelector('#opGo').onclick = function(){ NU.closeSheet(); NU.pin(line); };
+  }, 500);
 };
 
 /* 🔴 2026-10-31 — "이 사람에게 보일 내 별칭" 고르개.
@@ -349,5 +454,47 @@ NU.boot = async function(){
     document.body.innerHTML = '<div style="padding:24px;line-height:1.7">화면을 불러오지 못했습니다. 잠시 뒤 다시 열어 주세요.</div>';
     return null;
   }
-  return await AL.requireLogin();
+  /* 🔴 2026-11-01 — 로그인 안 됐으면 가입 화면으로 보내지 않고, 이 자리에서 [가입 없이 바로 시작] */
+  var u = await NU.session();
+  if (u) return u;
+  NU.showWelcome();
+  return null;
+};
+NU.showWelcome = function(lead){
+  var host = document.querySelector('.nu');
+  if (!host) return;
+  Array.prototype.forEach.call(host.children, function(e){ if (!e.classList.contains('nu-top')) e.classList.add('nu-hidden'); });
+  var w = document.createElement('div'); w.style.cssText = 'display:flex;flex-direction:column;gap:12px';
+  host.appendChild(w); NU.welcome(w, lead);
+};
+
+/* 🔴 2026-11-01 — 누름 [나] 판: 계정 지키기 · 첫 화면 · 별칭 · 부름 · 로그아웃 */
+NU.meSheet = async function(){
+  var u = await NU.session();
+  var anon = NU.isAnon(u);
+  var nick = '';
+  try { nick = decodeURIComponent(String((u && u.email) || '').split('@')[0]); } catch (e) {}
+  var first = ''; try { first = localStorage.getItem('burum_first_screen') || ''; } catch (e) {}
+  var sh = NU.sheet('<h2>나</h2>' +
+    (anon
+      ? '<div class="nu-note" style="margin-bottom:10px"><b>이 휴대폰에서만 쓰는 계정</b>이에요. 휴대폰을 바꾸거나 앱을 지우면 라인이 사라질 수 있어요.</div>' +
+        '<button class="nu-btn" id="mProtect" type="button">계정 지키기 (아이디 만들기)</button>'
+      : '<p class="nu-sub" style="margin:0 0 10px">로그인: <b>' + NU.esc(nick || '부름 계정') + '</b></p>') +
+    '<button class="nu-btn ghost" id="mFirst" type="button" style="margin-top:8px">' + (first === 'nureum' ? '앱을 열면: 누름 화면 ✓ (부름으로 바꾸기)' : '앱을 열면 누름 화면부터 보기') + '</button>' +
+    '<a class="nu-btn ghost" href="alias_me.html" style="margin-top:8px">내 별칭 · 사진 · 갤러리</a>' +
+    '<a class="nu-btn ghost" href="alias_contacts.html" style="margin-top:8px">부름 메신저 열기</a>' +
+    '<button class="nu-btn ghost" id="mOut" type="button" style="margin-top:8px">로그아웃</button>' +
+    '<button class="nu-btn ghost" data-close type="button" style="margin-top:8px">닫기</button>');
+  var bp = sh.querySelector('#mProtect');
+  if (bp) bp.onclick = function(){ NU.protect(); };
+  sh.querySelector('#mFirst').onclick = function(){
+    try { localStorage.setItem('burum_first_screen', first === 'nureum' ? 'contacts' : 'nureum'); } catch (e) {}
+    NU.meSheet();
+  };
+  sh.querySelector('#mOut').onclick = async function(){
+    if (anon) {
+      if (!confirm('가입 없이 쓰는 계정은 로그아웃하면 다시 들어올 수 없어요. 라인도 다시 맺어야 해요.\n\n그래도 로그아웃할까요? (먼저 [계정 지키기]를 권해요)')) return;
+    } else if (!confirm('로그아웃할까요?')) return;
+    await AL.sb.auth.signOut(); location.href = 'nureum.html';
+  };
 };

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#E4572E">
+<title>QR 카드 · 누름</title>
+<link rel="stylesheet" href="nureum.css?v=20261101a">
+<script src="alias_qrlib.js"></script>
+<script src="alias_config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="alias_common.js?v=20261030p"></script>
+<script src="alias_qr.js?v=20261019a"></script>
+<script src="nureum.js?v=20261101c"></script>
+<style>
+/* 🔴 2026-11-01 — 냉장고 자석(9cm 네모) · 지갑 카드(8.5 × 5.4cm) */
+.cards{display:flex;flex-direction:column;gap:18px;align-items:center}
+.card{background:#fff;color:#1B1B1F;border:1px dashed #bbb;box-sizing:border-box;display:flex;overflow:hidden}
+.card.mag{width:90mm;height:90mm;flex-direction:column;align-items:center;justify-content:center;gap:2.5mm;padding:5mm}
+.card.wal{width:85mm;height:54mm;align-items:center;gap:4mm;padding:4mm 5mm}
+.card img.face{border-radius:22%;object-fit:cover}
+.card.mag img.face{width:34mm;height:34mm}
+.card.wal img.face{width:26mm;height:26mm}
+.card .nm{font-weight:900;letter-spacing:-.5px}
+.card.mag .nm{font-size:9mm}
+.card.wal .nm{font-size:7mm}
+.card .how{font-size:2.6mm;color:#555;line-height:1.35;text-align:center}
+.card.wal .how{text-align:left}
+.card .qr canvas,.card .qr img{display:block}
+.card .brand{font-size:2.4mm;color:#E4572E;font-weight:800}
+@media print{
+  body{background:#fff !important}
+  .nu-top,.noprint{display:none !important}
+  .nu{padding:0 !important;max-width:none !important}
+  .card{border:1px dashed #999;break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<div class="nu">
+  <div class="nu-top">
+    <a class="nu-back" id="back" href="nureum.html" aria-label="뒤로">‹</a>
+    <h1>QR 카드</h1>
+  </div>
+  <div id="err" class="nu-err" role="alert"></div>
+  <p class="nu-sub noprint">냉장고에 붙이거나 지갑에 넣어 두세요. 앱 아이콘을 못 찾을 때 <b>부름 앱 → 누름 → [QR 카드 찍기]</b> 또는 휴대폰 카메라로 찍으면 바로 이 사람 화면이 열려요.</p>
+  <button class="nu-btn noprint" id="print" type="button">🖨 인쇄하기</button>
+  <p class="nu-sub noprint" style="margin:0">인쇄할 때 "배율 100%(실제 크기)"로 하세요. 점선을 따라 자르면 됩니다. 냉장고 자석은 문구점의 "자석 시트"에 붙이면 돼요.</p>
+  <div class="cards" id="cards"></div>
+</div>
+<script>
+(async function(){
+  if (!await NU.boot()) return;
+  var id = NU.q('line');
+  document.getElementById('back').href = 'nureum_line.html?line=' + encodeURIComponent(id || '');
+  try {
+    var L = await NU.rpc('nureum_line', { p_line: id });
+    if (!L.ok || !L.paired) { NU.showErr('err', '짝을 맺은 라인만 카드를 만들 수 있어요.'); return; }
+    var face = await NU.icon(L, 512, true);
+    var url = location.href.replace(/[^/]*$/, '') + 'nureum_go.html?line=' + encodeURIComponent(L.id);
+    var how = '부름 앱 → 누름 → [QR 카드 찍기]<br>또는 휴대폰 카메라로 찍기';
+    document.getElementById('cards').innerHTML =
+      '<div class="card mag"><img class="face" alt="" src="' + face + '"><div class="nm">' + NU.esc(L.name) + '</div>' +
+        '<div style="display:flex;align-items:center;gap:3mm"><div class="qr" id="q1"></div><div class="how">' + how + '<br><span class="brand">누름 · 누르면 바로</span></div></div></div>' +
+      '<div class="card wal"><img class="face" alt="" src="' + face + '"><div style="display:flex;flex-direction:column;gap:1.5mm;flex:1;min-width:0">' +
+        '<div class="nm">' + NU.esc(L.name) + '</div><div class="how">' + how + '</div><span class="brand">누름 · 누르면 바로</span></div><div class="qr" id="q2"></div></div>';
+    await AL.drawQr(document.getElementById('q1'), url, 96);
+    await AL.drawQr(document.getElementById('q2'), url, 84);
+  } catch (e) { NU.showErr('err', e.message || String(e)); }
+})();
+document.getElementById('print').onclick = function(){ window.print(); };
+</script>
+</body>
+</html>
