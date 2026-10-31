@@ -4559,6 +4559,8 @@ AL.topBar = async function(){
         } catch (e) {}
       }
       if (sess) bar.appendChild(mk('👤 MyPage', function(){ AL.openMyPage(); }));
+      /* 🔴 2026-11-01 — 누름으로 돌아가기 (누름만 쓰다가 부름에 온 분도 길을 잃지 않게) */
+      if (sess) bar.appendChild(mk(en ? '📌 Nureum' : '📌 누름', function(){ location.href = 'nureum.html'; }));
       bar.appendChild(mk(sess ? (en ? 'Log out' : '로그아웃') : (en ? 'Log in' : '로그인'), function(){
         if (sess) { if (confirm(AL.t('outAsk'))) AL.signOut(); }
         else location.href = 'alias_auth.html?next=' + encodeURIComponent(page + location.search);

@@ -37,7 +37,7 @@
 <link rel="stylesheet" href="alias_theme.css?v=20261021d">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20261030p"></script>
+<script src="alias_common.js?v=20261101a"></script>
 <script src="alias_call.js?v=20261020g"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
@@ -1032,7 +1032,7 @@ async function askFirstScreen(){
     const people = (rows || []).filter(r => r.kind !== 'group');
     if (people.length) { host.style.display = 'none'; return; }
     let nick = '';
-    try { const s = (await AL.sb.auth.getSession()).data.session; nick = decodeURIComponent(String(s.user.email).split('@')[0]); } catch (e) {}
+    try { const s = (await AL.sb.auth.getSession()).data.session; nick = s.user.email ? decodeURIComponent(String(s.user.email).split('@')[0]) : ''; } catch (e) {}
     const big = 'display:flex;align-items:center;gap:12px;padding:14px 14px;border-radius:14px;margin:0 0 9px;text-decoration:none;color:inherit;' +
                 'background:rgba(255,255,255,.06);border:1px solid rgba(128,128,128,.35)';
     host.innerHTML = '<div style="' + card + 'background:rgba(143,227,176,.10);border:1.5px solid rgba(143,227,176,.5)">' +
