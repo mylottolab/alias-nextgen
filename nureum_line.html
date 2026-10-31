@@ -11,7 +11,7 @@
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="alias_common.js?v=20261030p"></script>
-<script src="nureum.js?v=20261031c"></script>
+<script src="nureum.js?v=20261031d"></script>
 <style>
 .big{flex:1;min-height:250px;border:none;border-radius:36px;background:#1F8A5B;color:#fff;font:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;cursor:pointer}
 .big span{font-size:40px;font-weight:900}
@@ -190,12 +190,33 @@ document.getElementById('bCall').onclick = function(){ call('voice'); };
 document.getElementById('bVideo').onclick = function(){ call('video'); };
 document.getElementById('bPhoto').onclick = function(){ if (!L.active) return planNeeded(); chat('attach'); };
 document.getElementById('bText').onclick = function(){ if (!L.active) return planNeeded(); chat('text'); };
-/* 🔴 2026-10-31 — 갤러리: 이 사람이 부름에서 꾸민 사진첩(부름 연락처의 [갤러리]와 같은 곳) */
-document.getElementById('bGal').onclick = async function(){
+/* 🔴 2026-10-31 — 갤러리: 두 가지를 고릅니다
+   ① 상대의 갤러리 보기 — 상대가 이 관계에서 쓰는 부름 별칭의 사진첩
+   ② 내 갤러리 꾸미기 — 내가 이 관계에서 쓰는 별칭의 사진첩(상대에게 이렇게 보여요) */
+async function myPersonaId(){
+  try {
+    var u = (await AL.sb.auth.getUser()).data.user;
+    var r = await AL.sb.from('link_sides').select('persona_id').eq('link_id', L.link_id).eq('account_id', u.id).maybeSingle();
+    return r.data ? r.data.persona_id : null;
+  } catch (e) { return null; }
+}
+document.getElementById('bGal').onclick = function(){
   if (!L || !L.link_id) return;
-  var pp = await AL.peerPersona(L.link_id);
-  if (!pp) { NU.sheet('<h2>갤러리</h2><p class="nu-sub" style="color:var(--nu-ink)">아직 볼 수 있는 갤러리가 없어요.</p><button class="nu-btn ghost" data-close>닫기</button>'); return; }
-  location.href = 'alias_gallery.html?p=' + encodeURIComponent(pp.persona_id) + '&n=' + encodeURIComponent(L.name || pp.display_name || '');
+  var sh = NU.sheet('<h2>갤러리</h2>' +
+    '<button class="nu-btn" id="gPeer" type="button">' + NU.esc(L.name) + '의 갤러리 보기</button>' +
+    '<button class="nu-btn ghost" id="gMine" type="button" style="margin-top:10px">내 갤러리 꾸미기 <span style="font-weight:500;font-size:13px">(' + NU.esc(L.name) + '에게 보여요)</span></button>' +
+    '<p class="nu-sub" style="margin:12px 0 0">갤러리는 사진 · 영상을 모아 두는 나만의 사진첩입니다. 서로 상대의 갤러리를 볼 수 있어요.</p>' +
+    '<button class="nu-btn ghost" data-close style="margin-top:10px">닫기</button>');
+  sh.querySelector('#gPeer').onclick = async function(){
+    var pp = await AL.peerPersona(L.link_id);
+    if (!pp) { NU.closeSheet(); NU.sheet('<h2>갤러리</h2><p class="nu-sub" style="color:var(--nu-ink)">' + NU.esc(L.name) + '님이 아직 갤러리를 꾸미지 않았어요.</p><button class="nu-btn ghost" data-close>닫기</button>'); return; }
+    location.href = 'alias_gallery.html?p=' + encodeURIComponent(pp.persona_id) + '&n=' + encodeURIComponent(L.name || pp.display_name || '');
+  };
+  sh.querySelector('#gMine').onclick = async function(){
+    var id = await myPersonaId();
+    if (!id) { alert('내 갤러리를 찾지 못했습니다. 부름 [나] 화면의 별칭 옆 [갤러리]에서 꾸밀 수 있어요.'); return; }
+    location.href = 'alias_gallery.html?p=' + encodeURIComponent(id) + '&edit=1';
+  };
 };
 document.getElementById('bAll').onclick = function(){ if (L) menu(); };
 

@@ -10,7 +10,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="alias_common.js?v=20261030p"></script>
 <script src="alias_qr.js?v=20261019a"></script>
-<script src="nureum.js?v=20261031c"></script>
+<script src="nureum.js?v=20261031d"></script>
 </head>
 <body>
 <!-- 받는 쪽: 코드(또는 QR 주소 ?c=)로 짝 맺기.
@@ -51,7 +51,7 @@
       <label class="nu-lbl" for="meName">상대에게 보일 내 이름</label>
       <input class="nu-in" id="meName" maxlength="20" placeholder="예: 엄마" autocomplete="off">
     </div>
-    <p class="nu-sub" id="meNote"></p>
+    <div id="meNote"></div>
     <button class="nu-btn" id="go" type="button">연결하기</button>
   </div>
 
@@ -100,7 +100,7 @@ async function join(){
   busy = true; var btn = document.getElementById('go'); btn.disabled = true;
   try {
     if (!aliases.length) { try { aliases = await AL.loadAliases(); } catch (e) {} }
-    var persona = aliases[0];
+    var persona = NU._alias || aliases[0];
     if (!persona) {
       var me = document.getElementById('meName').value.trim();
       if (!me) throw new Error('상대에게 보일 내 이름을 적어 주세요.');
@@ -149,7 +149,7 @@ document.getElementById('name').addEventListener('input', paintPreview);
   NU.colorPicker(document.getElementById('colors'), color, function(c){ color = c; paintPreview(); });
   try {
     aliases = await AL.loadAliases();
-    if (aliases.length) document.getElementById('meNote').innerHTML = '상대에게는 내 부름 별칭 <b>' + NU.esc(aliases[0].display_name) + '</b>(으)로 보여요.';
+    if (aliases.length) NU.aliasPicker(document.getElementById('meNote'), aliases);
     else document.getElementById('meBox').classList.remove('nu-hidden');
   } catch (e) {}
   var c = NU.q('c');
