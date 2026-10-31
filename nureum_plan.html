@@ -9,7 +9,7 @@
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="alias_common.js?v=20261030p"></script>
-<script src="nureum.js?v=20261031b"></script>
+<script src="nureum.js?v=20261031c"></script>
 <style>
 .use{border-radius:22px;background:#1B1B1F;color:#fff;padding:18px;display:flex;flex-direction:column;gap:12px}
 .use .r{display:flex;justify-content:space-between;font-size:14px}
@@ -180,10 +180,7 @@ document.getElementById('pay').onclick = async function(){
   var which = pick || (q.m12 > 0 ? 'm12' : (q.m1 > 0 ? 'm1' : null));
   if (!which) { NU.showErr('err', '1개월권이나 12개월권을 골라 주세요.'); return; }
   if (!pick && q.m1 > 0 && q.m12 > 0) { NU.showErr('err', '한 번에 한 종류만 살 수 있어요. 1개월권이나 12개월권 중 하나만 골라 주세요.'); return; }
-  if (!STORE) {
-    NU.sheet('<h2>결제는 부름 앱에서</h2><p class="nu-sub" style="color:var(--nu-ink)">누름 이용권은 휴대폰의 <b>부름 앱</b>에서 살 수 있어요(구글 · 애플 결제). 웹 결제는 곧 열립니다.</p><button class="nu-btn ghost" data-close>닫기</button>');
-    return;
-  }
+  if (!STORE) { webPay(which); return; }
   if (buying) return;
   buying = true; this.disabled = true;
   try {
@@ -198,6 +195,100 @@ document.getElementById('pay').onclick = async function(){
     NU.showErr('err', e.message || String(e));
   }
 };
+/* =====================================================================
+   🔴 2026-10-31 — 웹(브라우저) 결제: 카드(이니시스) · PayPal
+   서버 함수 nureum-web-pay 가 값을 직접 계산하고, 결제가 확인되면 라인에 넣습니다.
+   ===================================================================== */
+var WEB_NAMES = { m1: '1개월권', m12: '12개월권', voice: '음성 +300분', video: '영상 +100분', storage: '저장 +1GB' };
+var KIND = { m1: '1m', m12: '12m', voice: 'voice', video: 'video', storage: 'storage' };
+var _ini = null;
+function loadIni(){
+  if (window.INIPayPro) return Promise.resolve();
+  if (_ini) return _ini;
+  _ini = new Promise(function(res, rej){
+    var s = document.createElement('script'); s.src = 'https://paypro.inicis.com/std/payment/js/INIPayPro_v2.js';
+    s.charset = 'UTF-8'; s.onload = res; s.onerror = function(){ _ini = null; rej(new Error('카드 결제창을 불러오지 못했습니다')); };
+    document.head.appendChild(s);
+  });
+  return _ini;
+}
+function webPay(which){
+  var qty = pick ? 1 : (q[which] || 1);
+  var P = L.prices, unit = which === 'm1' ? P.m1 : which === 'm12' ? P.m12 : P.extra;
+  var sh = NU.sheet('<h2>' + WEB_NAMES[which] + (qty > 1 ? ' ' + qty + '장' : '') + ' · ' + NU.won(unit * qty) + '</h2>' +
+    '<span class="nu-lbl">카드 결제</span>' +
+    '<input class="nu-in" id="wpName" placeholder="구매자 이름" autocomplete="name" style="margin-bottom:8px">' +
+    '<input class="nu-in" id="wpTel" placeholder="휴대폰 번호 (선택)" inputmode="tel" autocomplete="tel" style="margin-bottom:10px">' +
+    '<button class="nu-btn" id="wpCard" type="button">카드로 결제</button>' +
+    '<span class="nu-lbl" style="margin-top:16px">해외 카드 · PayPal</span><div id="wpPP" style="min-height:48px"></div>' +
+    '<div id="wpErr" class="nu-err" style="margin-top:10px"></div>' +
+    '<button class="nu-btn ghost" data-close style="margin-top:10px">닫기</button>');
+  function err(m){ NU.showErr('wpErr', m); }
+  loadIni().catch(function(){});
+  sh.querySelector('#wpCard').onclick = async function(){
+    err('');
+    var name = sh.querySelector('#wpName').value.trim();
+    if (!name) { err('구매자 이름을 적어 주세요.'); return; }
+    this.disabled = true;
+    try {
+      var out = await AL.callFn('nureum-web-pay', { action: 'inicis_prepare', lineId: L.id, kind: KIND[which], qty: qty,
+        buyername: name, buyertel: sh.querySelector('#wpTel').value.trim() });
+      if (!out || !out.ok) throw new Error((out && out.error) || '결제를 준비하지 못했습니다');
+      await loadIni();
+      var dev = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ? 'MOBILE' : 'WEB';
+      window.INIPayPro.requestPayment({
+        P_MID: out.mid, P_OID: out.oid, P_PAY_TYPE: 'CARD', P_DEVICE_TYPE: dev, P_IDCCODE: 'Y',
+        P_AMT: out.amt, P_GOODS: out.goodname, P_UNAME: out.buyername, P_MOBILE: out.buyertel || '', P_EMAIL: '',
+        P_NEXT_URL: out.nextUrl, P_NOTI_URL: out.notiUrl, P_CLOSE_URL: out.closeUrl, P_CHARSET: 'UTF-8',
+        P_TIMESTAMP: out.timestamp, P_CHKFAKE: out.chkfake,
+      });
+    } catch (e) { err(e.message || String(e)); this.disabled = false; }
+  };
+  /* PayPal 단추 */
+  (async function(){
+    try {
+      if (!window.paypal) {
+        var c = await AL.callFn('alias-paypal-client-id', {});
+        if (!c || !c.clientId) throw new Error('PayPal 준비 안 됨');
+        await new Promise(function(res, rej){
+          var s = document.createElement('script');
+          s.src = 'https://www.paypal.com/sdk/js?client-id=' + encodeURIComponent(c.clientId) + '&currency=USD';
+          s.onload = res; s.onerror = rej; document.head.appendChild(s);
+        });
+      }
+      window.paypal.Buttons({
+        createOrder: async function(){
+          err('');
+          var o; try { o = await AL.callFn('nureum-web-pay', { action: 'paypal_create', lineId: L.id, kind: KIND[which], qty: qty }); }
+          catch (e) { err(e.message || String(e)); throw e; }
+          if (!o || !o.ok || !o.id) { err((o && o.error) || 'PayPal 주문을 만들지 못했습니다'); throw new Error('create'); }
+          return o.id;
+        },
+        onApprove: async function(data){
+          var r; try { r = await AL.callFn('nureum-web-pay', { action: 'paypal_capture', orderID: data.orderID }); }
+          catch (e) { err(e.message || String(e)); return; }
+          if (r && r.ok) { NU.closeSheet(); payDone({ ok: true, already: r.already }); }
+          else err((r && r.error) || '결제를 마치지 못했습니다');
+        },
+        onError: function(){ err('PayPal 결제 중 문제가 생겼습니다.'); },
+      }).render(sh.querySelector('#wpPP'));
+    } catch (e) {
+      sh.querySelector('#wpPP').innerHTML = '<span class="nu-sub">PayPal 을 불러오지 못했습니다.</span>';
+    }
+  })();
+}
+
+/* 이니시스에서 돌아왔을 때 (?pay=ok / fail) */
+(function(){
+  var pay = NU.q('pay');
+  if (!pay) return;
+  setTimeout(function(){
+    if (pay === 'ok') { var ok = document.getElementById('ok'); ok.textContent = '결제가 끝났어요. 이용권을 넣어 드렸습니다.'; ok.classList.add('on'); }
+    else NU.showErr('err', '결제를 마치지 못했습니다.' + (NU.q('msg') ? '\n(' + NU.q('msg') + ')' : ''));
+    try { history.replaceState(null, '', 'nureum_plan.html?line=' + lineId); } catch (e) {}
+  }, 300);
+})();
+
 /* 앱에서는 장수 고르기를 숨깁니다(수량은 결제창에서). 한 번에 한 종류만. */
 if (STORE) {
   document.querySelectorAll('.step').forEach(function(x){ x.style.display = 'none'; });
