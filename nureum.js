@@ -150,9 +150,38 @@ NU.setPageIcon = async function(line){
   m.content = line.name;
 };
 
-/* 🔴 2026-10-31 — 아이폰 앱에는 아직 바탕화면 위젯이 없습니다(다음 판). 그동안 [바탕화면에 놓기]를 숨깁니다
-   (애플 심사: 안 되는 단추를 두지 않기) */
-NU.canPin = function(){ return !(NU.isApp() && NU.platform() === 'ios'); };
+/* 🔴 2026-10-31 — 아이폰 앱 1.7 부터 바탕화면 "누름 위젯"이 있습니다(AliasNative.nureumWidget).
+   그 전 판 아이폰 앱에는 [바탕화면에 놓기]를 숨깁니다(애플 심사: 안 되는 단추를 두지 않기) */
+NU.iosWidget = function(){
+  try { return NU.isApp() && NU.platform() === 'ios' && !!(window.AliasNative && AliasNative.nureumWidget && typeof AliasNative.nureumSync === 'function'); }
+  catch (e) { return false; }
+};
+NU.canPin = function(){ return !(NU.isApp() && NU.platform() === 'ios') || NU.iosWidget(); };
+
+/* 🔴 2026-10-31 — 아이폰 위젯에 내 라인 목록(이름 · 그림)을 넣어 둡니다.
+   위젯은 인터넷을 쓰지 않고 이 목록만 봅니다. 라인 화면 · 첫 화면을 열 때마다 새로 넣습니다. */
+NU._syncT = null;
+NU.syncWidget = function(lines){
+  if (!NU.iosWidget()) return Promise.resolve(false);
+  return new Promise(function(res){
+    clearTimeout(NU._syncT);
+    NU._syncT = setTimeout(async function(){
+      try {
+        if (!lines) lines = await NU.rpc('nureum_my_lines');
+        var items = [];
+        for (var i = 0; i < lines.length && items.length < 40; i++) {
+          var l = lines[i];
+          if (!l || !l.id || l.link_id === null || l.ended) continue;   // 짝 맺은 라인만
+          var ic = await NU.icon(l, 256);
+          items.push({ id: l.id, name: l.name, icon: ic.split(',')[1] });
+        }
+        AliasNative.nureumSync(items);
+        res(true);
+      } catch (e) { console.warn('[nureum] syncWidget', e); res(false); }
+    }, 300);
+  });
+};
+
 NU.isApp = function(){ try { return !!(AL.isNativeApp && AL.isNativeApp()); } catch (e) { return false; } };
 NU.platform = function(){
   var ua = navigator.userAgent || '';
@@ -185,6 +214,22 @@ NU.pin = async function(line){
         return;
       }
     } catch (e) { console.warn('[nureum] pinShortcut', e); }
+  }
+  /* 🔴 2026-10-31 — 아이폰 앱 1.7: 위젯 목록을 넣고, 위젯 놓는 법을 알려 드립니다 */
+  if (NU.iosWidget()) {
+    await NU.syncWidget();
+    NU.sheet('<h2>바탕화면에 "' + NU.esc(line.name) + '" 위젯 놓기</h2>' +
+      '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px"><img alt="" src="' + iconUrl + '" style="width:56px;height:56px;border-radius:16px">' +
+      '<b style="font-size:17px">' + NU.esc(line.name) + '</b></div>' +
+      '<ol class="nu-sub" style="color:var(--nu-ink);padding-left:20px;margin:0;line-height:1.7">' +
+      '<li>바탕화면 빈 곳을 <b>꾹</b> 누르세요(아이콘이 흔들릴 때까지).</li>' +
+      '<li>왼쪽 위 <b>[편집]</b> → <b>[위젯 추가]</b>.</li>' +
+      '<li>검색 칸에 <b>부름</b> → <b>누름</b> → 아래 <b>[위젯 추가]</b>.</li>' +
+      '<li>놓인 위젯을 <b>꾹</b> → <b>[위젯 편집]</b> → 사람에서 <b>' + NU.esc(line.name) + '</b> 고르기.</li>' +
+      '</ol>' +
+      '<p class="nu-sub" style="margin-top:10px">사람마다 위젯을 하나씩 놓을 수 있어요. 다음부터는 위젯만 누르시면 이 화면이 바로 열립니다.</p>' +
+      '<button class="nu-btn ghost" data-close style="margin-top:12px">알겠어요</button>');
+    return;
   }
   var p = NU.platform(), how;
   if (NU.isApp() && p === 'ios') {
