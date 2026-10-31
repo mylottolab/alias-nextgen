@@ -7,11 +7,11 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>누름</title>
-<link rel="stylesheet" href="nureum.css?v=20261030c">
+<link rel="stylesheet" href="nureum.css?v=20261031b">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="alias_common.js?v=20261030p"></script>
-<script src="nureum.js?v=20261031a"></script>
+<script src="nureum.js?v=20261031b"></script>
 <style>
 .big{flex:1;min-height:250px;border:none;border-radius:36px;background:#1F8A5B;color:#fff;font:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;cursor:pointer}
 .big span{font-size:40px;font-weight:900}
@@ -28,10 +28,15 @@
 <div class="nu" id="wrap" style="gap:14px">
   <div style="display:flex;align-items:center;gap:14px">
     <a href="nureum.html" class="nu-ico" id="ico" style="width:72px;height:72px;border-radius:24px;font-size:32px;text-decoration:none;background:#999" aria-label="누름 처음 화면">·</a>
-    <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+    <div style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1">
       <b id="name" style="font-size:30px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">…</b>
       <span id="state" style="font-size:16px;font-weight:700;color:#1F8A5B"></span>
     </div>
+    <!-- 🔴 2026-10-31 — 갤러리(이 사람이 꾸민 사진첩) -->
+    <button type="button" id="bGal" aria-label="갤러리" style="flex:none;width:72px;height:72px;border:none;border-radius:22px;background:var(--nu-soft);color:var(--nu-ink);font:inherit;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg>
+      <span style="font-size:13px;font-weight:900">갤러리</span>
+    </button>
   </div>
   <div id="err" class="nu-err" role="alert"></div>
   <a id="needPlan" class="nu-btn nu-hidden" href="#">이용권 고르기</a>
@@ -102,7 +107,12 @@ function menu(){
 
 function settings(){
   var c = L.color;
+  var photo = L.photo || null;
   var sh = NU.sheet('<h2>이 라인 설정</h2>' +
+    '<span class="nu-lbl">사진 (바탕화면 아이콘 · 이 화면 위쪽에 나와요)</span>' +
+    '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px"><span id="sPv"></span>' +
+    '<button class="nu-btn ghost" id="sPick" type="button" style="width:auto;height:46px;padding:0 16px;font-size:15px">사진 고르기</button>' +
+    '<button class="nu-btn ghost" id="sNoPic" type="button" style="width:auto;height:46px;padding:0 14px;font-size:15px">사진 빼기</button></div>' +
     '<label class="nu-lbl" for="sName">내 휴대폰에 보일 이름</label><input class="nu-in" id="sName" maxlength="20">' +
     '<label class="nu-lbl" for="sGlyph" style="margin-top:12px">아이콘 글자</label><input class="nu-in" id="sGlyph" maxlength="2" style="width:120px;text-align:center">' +
     '<span class="nu-lbl" style="margin-top:12px">색</span><div class="nu-colors" id="sColors"></div>' +
@@ -114,13 +124,30 @@ function settings(){
   sh.querySelector('#sName').value = L.name;
   sh.querySelector('#sGlyph').value = L.glyph || '';
   sh.querySelector('#sAuto').checked = !!L.auto_answer;
-  NU.colorPicker(sh.querySelector('#sColors'), c, function(v){ c = v; });
+  function pv(){
+    sh.querySelector('#sPv').innerHTML = NU.icoHtml({ name: L.name, glyph: L.glyph, color: c, photo: photo }, 'width:64px;height:64px;border-radius:20px');
+    sh.querySelector('#sNoPic').style.display = photo ? '' : 'none';
+  }
+  NU.colorPicker(sh.querySelector('#sColors'), c, function(v){ c = v; pv(); });
+  pv();
+  sh.querySelector('#sPick').onclick = async function(){ var p = await NU.pickPhoto(); if (p) { photo = p; pv(); } };
+  sh.querySelector('#sNoPic').onclick = function(){ photo = null; pv(); };
   sh.querySelector('#sSave').onclick = async function(){
     this.disabled = true;
     try {
       await NU.rpc('nureum_set_side', { p_line: L.id, p_name: sh.querySelector('#sName').value, p_color: c,
         p_glyph: sh.querySelector('#sGlyph').value, p_auto: sh.querySelector('#sAuto').checked });
+      var changedPic = (photo || null) !== (L.photo || null);
+      if (changedPic) {
+        var r = await NU.rpc('nureum_set_photo', { p_line: L.id, p_photo: photo });
+        if (!r.ok) throw new Error('사진을 저장하지 못했습니다. 다른 사진으로 해 보세요.');
+      }
       NU.closeSheet(); await load();
+      if (changedPic && NU.canPin()) {
+        NU.sheet('<h2>사진을 바꿨어요</h2><p class="nu-sub" style="color:var(--nu-ink)">바탕화면 아이콘에도 새 사진을 넣으려면 <b>[바탕화면에 놓기]</b>를 다시 눌러 주세요. 예전 아이콘은 꾹 눌러 지우시면 됩니다.</p>' +
+          '<button class="nu-btn" id="rePin" type="button">지금 바탕화면에 놓기</button><button class="nu-btn ghost" data-close style="margin-top:10px">나중에</button>')
+          .querySelector('#rePin').onclick = function(){ NU.closeSheet(); NU.pin(L); };
+      }
     } catch (e) { this.disabled = false; alert(e.message || e); }
   };
   sh.querySelector('#sEnd').onclick = async function(){
@@ -143,7 +170,9 @@ async function load(){
   L = d;
   NU.setPageIcon(L);
   var ico = document.getElementById('ico');
-  ico.style.background = L.color; ico.textContent = NU.glyph(L);
+  ico.style.background = L.color;
+  if (L.photo) { ico.textContent = ''; ico.style.backgroundImage = 'url(' + L.photo + ')'; ico.style.backgroundSize = 'cover'; ico.style.backgroundPosition = 'center'; }
+  else { ico.style.backgroundImage = ''; ico.textContent = NU.glyph(L); }
   document.getElementById('name').textContent = L.name;
   var st = document.getElementById('state'), np = document.getElementById('needPlan');
   document.getElementById('wrap').classList.toggle('off', !L.active);
@@ -161,6 +190,13 @@ document.getElementById('bCall').onclick = function(){ call('voice'); };
 document.getElementById('bVideo').onclick = function(){ call('video'); };
 document.getElementById('bPhoto').onclick = function(){ if (!L.active) return planNeeded(); chat('attach'); };
 document.getElementById('bText').onclick = function(){ if (!L.active) return planNeeded(); chat('text'); };
+/* 🔴 2026-10-31 — 갤러리: 이 사람이 부름에서 꾸민 사진첩(부름 연락처의 [갤러리]와 같은 곳) */
+document.getElementById('bGal').onclick = async function(){
+  if (!L || !L.link_id) return;
+  var pp = await AL.peerPersona(L.link_id);
+  if (!pp) { NU.sheet('<h2>갤러리</h2><p class="nu-sub" style="color:var(--nu-ink)">아직 볼 수 있는 갤러리가 없어요.</p><button class="nu-btn ghost" data-close>닫기</button>'); return; }
+  location.href = 'alias_gallery.html?p=' + encodeURIComponent(pp.persona_id) + '&n=' + encodeURIComponent(L.name || pp.display_name || '');
+};
 document.getElementById('bAll').onclick = function(){ if (L) menu(); };
 
 (async function(){
