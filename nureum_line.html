@@ -11,7 +11,7 @@
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="alias_common.js?v=20261030p"></script>
-<script src="nureum.js?v=20261031d"></script>
+<script src="nureum.js?v=20261031e"></script>
 <style>
 .big{flex:1;min-height:250px;border:none;border-radius:36px;background:#1F8A5B;color:#fff;font:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;cursor:pointer}
 .big span{font-size:40px;font-weight:900}
@@ -143,7 +143,9 @@ function settings(){
         if (!r.ok) throw new Error('사진을 저장하지 못했습니다. 다른 사진으로 해 보세요.');
       }
       NU.closeSheet(); await load();
-      if (changedPic && NU.canPin()) {
+      if (changedPic && NU.iosWidget()) {
+        NU.sheet('<h2>사진을 바꿨어요</h2><p class="nu-sub" style="color:var(--nu-ink)">바탕화면의 누름 위젯에도 새 사진이 곧 들어갑니다. 따로 하실 일은 없어요.</p><button class="nu-btn ghost" data-close>알겠어요</button>');
+      } else if (changedPic && NU.canPin()) {
         NU.sheet('<h2>사진을 바꿨어요</h2><p class="nu-sub" style="color:var(--nu-ink)">바탕화면 아이콘에도 새 사진을 넣으려면 <b>[바탕화면에 놓기]</b>를 다시 눌러 주세요. 예전 아이콘은 꾹 눌러 지우시면 됩니다.</p>' +
           '<button class="nu-btn" id="rePin" type="button">지금 바탕화면에 놓기</button><button class="nu-btn ghost" data-close style="margin-top:10px">나중에</button>')
           .querySelector('#rePin').onclick = function(){ NU.closeSheet(); NU.pin(L); };
@@ -169,6 +171,7 @@ async function load(){
   if (!d.paired) { location.replace('nureum_new.html?line=' + d.id); return; }
   L = d;
   NU.setPageIcon(L);
+  NU.syncWidget();   // 🔴 아이폰 위젯 목록 · 사진 새로
   var ico = document.getElementById('ico');
   ico.style.background = L.color;
   if (L.photo) { ico.textContent = ''; ico.style.backgroundImage = 'url(' + L.photo + ')'; ico.style.backgroundSize = 'cover'; ico.style.backgroundPosition = 'center'; }
