@@ -4473,6 +4473,143 @@ AL.bridgedBanner = function(){
 if (document.readyState === 'complete') AL.bridgedBanner();
 else window.addEventListener('load', AL.bridgedBanner);
 
+
+/* =====================================================================
+   🔴🔴 2026-11-01 — 접속요청 판 (AL.requestSheet)
+   받은 접속신청 · 보낸 접속요청을 탭 두 개로 한 판에. 받은 것은 [승인하고 바로 접속],
+   보낸 것이 승인되면 [바로 접속]. 새로 보내기는 alias_requests.html 로.
+   단추 숫자 = 받은 신청 수 + 상대가 승인했지만 아직 안 열어 본 보낸 요청 수
+   ===================================================================== */
+AL._rqSeenKey = 'burum_rq_seen_accepted';
+AL._rqSeen = function(){ try { return JSON.parse(localStorage.getItem(AL._rqSeenKey) || '[]') || []; } catch (e) { return []; } };
+AL._rqMarkSeen = function(id){ try { var a = AL._rqSeen(); if (a.indexOf(id) < 0) { a.push(id); localStorage.setItem(AL._rqSeenKey, JSON.stringify(a.slice(-200))); } } catch (e) {} };
+AL._rqLoad = async function(){
+  var inb = [], sent = [];
+  try { var r1 = await AL.sb.rpc('nick_requests_inbox'); inb = (r1 && r1.data) || []; } catch (e) {}
+  try { var r2 = await AL.sb.rpc('nick_requests_sent'); sent = (r2 && r2.data) || []; } catch (e) {}
+  var seen = AL._rqSeen();
+  var fresh = sent.filter(function(x){ return x.status === 'accepted' && x.link_id && seen.indexOf(x.id) < 0; });
+  return { inb: inb, sent: sent, fresh: fresh };
+};
+AL.requestBadge = async function(){
+  if (!AL._rqVis) { AL._rqVis = true; document.addEventListener('visibilitychange', function(){ if (!document.hidden) AL.requestBadge(); }); }
+  try {
+    var b = document.getElementById('alReqBtn');
+    if (!b) { AL._rqTry = (AL._rqTry || 0) + 1; if (AL._rqTry < 10) setTimeout(AL.requestBadge, 300); return; }
+    var d = await AL._rqLoad();
+    b = document.getElementById('alReqBtn') || b;
+    var n = d.inb.length + d.fresh.length, en = AL.lang === 'en';
+    b.textContent = (en ? '📨 Requests' : '📨 접속요청') + (n ? ' ' + n : '');
+    b.style.background = n ? 'rgba(242,201,76,.22)' : 'rgba(128,128,128,.12)';
+    b.style.borderColor = n ? 'rgba(242,201,76,.6)' : 'rgba(128,128,128,.35)';
+  } catch (e) {}
+};
+AL.requestSheet = async function(startTab){
+  var en = AL.lang === 'en';
+  function L(k, e){ return en ? e : k; }
+  var old = document.getElementById('rqSheet'); if (old) old.remove();
+  var oldBg = document.getElementById('rqSheetBg'); if (oldBg) oldBg.remove();
+  var bg = document.createElement('div'); bg.className = 'pk-bg'; bg.id = 'rqSheetBg'; bg.style.zIndex = '58';
+  var sh = document.createElement('div'); sh.className = 'pk'; sh.id = 'rqSheet'; sh.style.zIndex = '59'; sh.style.maxHeight = '86vh';
+  document.body.appendChild(bg); document.body.appendChild(sh);
+  function close(){ bg.remove(); sh.remove(); document.removeEventListener('keydown', onKey); AL.requestBadge(); }
+  function onKey(e){ if (e.key === 'Escape') close(); }
+  document.addEventListener('keydown', onKey);
+  bg.addEventListener('click', close);
+  var css = '<style>' +
+    '#rqSheet .rq-tabs{display:flex;gap:6px;margin:0 0 12px}' +
+    '#rqSheet .rq-tabs button{flex:1;padding:11px 6px;border-radius:11px;font-size:14px;font-weight:800;font-family:inherit;cursor:pointer;background:var(--raise2);color:var(--text);border:1px solid var(--line)}' +
+    '#rqSheet .rq-tabs button.on{background:rgba(143,227,176,.2);color:#8FE3B0;border-color:rgba(143,227,176,.55)}' +
+    '#rqSheet .rq-tabs b{display:inline-block;min-width:20px;padding:0 6px;margin-left:5px;border-radius:999px;background:#F2C94C;color:#1a1a1a;font-size:12px;line-height:20px}' +
+    '#rqSheet .c{border:1px solid var(--line);border-radius:13px;padding:12px 13px;margin:0 0 9px;background:var(--raise2)}' +
+    '#rqSheet .c.new{border-color:rgba(242,201,76,.7)}' +
+    '#rqSheet .t{display:flex;align-items:center;gap:8px;font-weight:800;font-size:15px}' +
+    '#rqSheet .st{margin-left:auto;font-size:11.5px;font-weight:800;padding:2px 9px;border-radius:999px;background:rgba(128,128,128,.18)}' +
+    '#rqSheet .st.pending{background:rgba(242,201,76,.16);color:#F2C94C}' +
+    '#rqSheet .st.accepted{background:rgba(143,227,176,.18);color:#8FE3B0}' +
+    '#rqSheet .n{margin:5px 0 0;font-size:13.5px;line-height:1.55;opacity:.9;word-break:break-word}' +
+    '#rqSheet .w{font-size:11.5px;opacity:.6;margin-top:3px}' +
+    '#rqSheet .a{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap}' +
+    '#rqSheet .a button{flex:1;min-width:76px;margin:0;padding:11px 6px;border-radius:10px;font-size:13.5px;font-weight:800;font-family:inherit;cursor:pointer;background:rgba(128,128,128,.12);color:inherit;border:1px solid rgba(128,128,128,.35)}' +
+    '#rqSheet .a button.go{flex:2;background:#2E9E6B;border-color:#2E9E6B;color:#fff}' +
+    '#rqSheet .a button.bad{color:#FFB4B4;border-color:rgba(255,120,120,.4);background:rgba(255,120,120,.1)}' +
+    '#rqSheet .e{opacity:.65;font-size:14px;padding:10px 2px 14px;line-height:1.6}' +
+    '#rqSheet .ft{display:flex;gap:8px;margin-top:12px}' +
+    '#rqSheet .ft button{flex:1;padding:13px;border-radius:11px;font-size:14px;font-weight:800;font-family:inherit;cursor:pointer;background:var(--raise2);color:var(--text);border:1px solid var(--line)}' +
+    '#rqSheet .ft button.p{background:rgba(143,227,176,.18);color:#8FE3B0;border-color:rgba(143,227,176,.5)}' +
+    '</style>';
+  sh.innerHTML = css + '<div class="grip"></div><p class="pk-title" style="font-size:17px;font-weight:800">' + L('📨 접속요청', '📨 Requests') + '</p>' +
+    '<div class="e">' + L('불러오는 중…', 'Loading…') + '</div>';
+  var tab = startTab || null, d = null;
+  function when(t){ try { return AL.fmtWhen ? AL.fmtWhen(t) : new Date(t).toLocaleString(); } catch (e) { return ''; } }
+  function nickOf(k){ try { return decodeURIComponent(String(k || '').split('@')[0]); } catch (e) { return String(k || '').split('@')[0]; } }
+  function goChat(link){ close(); location.href = 'alias_chat.html?link=' + encodeURIComponent(link); }
+  async function reload(){ d = await AL._rqLoad(); if (!tab) tab = (d.inb.length || !d.fresh.length) ? 'in' : 'out'; paint(); }
+  function paint(){
+    var inN = d.inb.length, outN = d.fresh.length;
+    var h = css + '<div class="grip"></div><p class="pk-title" style="font-size:17px;font-weight:800">' + L('📨 접속요청', '📨 Requests') + '</p>' +
+      '<div class="rq-tabs"><button type="button" data-tab="in" class="' + (tab === 'in' ? 'on' : '') + '">' + L('받은 접속신청', 'Received') + (inN ? '<b>' + inN + '</b>' : '') + '</button>' +
+      '<button type="button" data-tab="out" class="' + (tab === 'out' ? 'on' : '') + '">' + L('보낸 접속요청', 'Sent') + (outN ? '<b>' + outN + '</b>' : '') + '</button></div>';
+    if (tab === 'in') {
+      if (!inN) h += '<div class="e">' + L('받은 접속신청이 없습니다.<br>내 닉네임을 알려 주면 상대가 신청을 보낼 수 있어요.', 'No requests for you.<br>Share your nickname so people can send you one.') + '</div>';
+      else h += d.inb.map(function(x){
+        return '<div class="c new"><div class="t">' + AL.esc(x.from_name || L('(이름 없음)', '(no name)')) +
+          (x.source === 'aliascall' ? '<span class="st">Aliascall</span>' : '') + '</div>' +
+          (x.note ? '<p class="n">“' + AL.esc(x.note) + '”</p>' : '') +
+          '<div class="w">' + AL.esc(when(x.created_at)) + '</div>' +
+          '<div class="a"><button type="button" class="go" data-ok="' + AL.esc(x.id) + '">' + L('✓ 승인하고 바로 접속', '✓ Accept & open') + '</button>' +
+          '<button type="button" data-no="' + AL.esc(x.id) + '">' + L('거절', 'Decline') + '</button>' +
+          '<button type="button" class="bad" data-block="' + AL.esc(x.id) + '">' + L('차단', 'Block') + '</button></div></div>';
+      }).join('');
+    } else {
+      var ST = { pending: L('기다리는 중', 'Waiting'), accepted: L('승인됨', 'Accepted'), closed: L('끝남', 'Closed'), canceled: L('거둠', 'Withdrawn') };
+      if (!d.sent.length) h += '<div class="e">' + L('보낸 접속요청이 없습니다.', 'Nothing sent yet.') + '</div>';
+      else h += d.sent.map(function(x){
+        var isNew = d.fresh.some(function(f){ return f.id === x.id; });
+        return '<div class="c' + (isNew ? ' new' : '') + '"><div class="t">→ ' + AL.esc(nickOf(x.to_key)) +
+          '<span class="st ' + AL.esc(x.status) + '">' + AL.esc((isNew ? '🆕 ' : '') + (ST[x.status] || x.status)) + '</span></div>' +
+          '<div class="w">' + AL.esc(L('내 별칭 ', 'As ') + (x.my_name || '')) + ' · ' + AL.esc(when(x.created_at)) + '</div>' +
+          (x.note ? '<p class="n">“' + AL.esc(x.note) + '”</p>' : '') +
+          (x.status === 'accepted' && x.link_id
+            ? '<div class="a"><button type="button" class="go" data-chat="' + AL.esc(x.link_id) + '" data-rid="' + AL.esc(x.id) + '">' + L('💬 바로 접속', '💬 Open chat') + '</button></div>'
+            : x.status === 'pending'
+              ? '<div class="a"><button type="button" data-cancel="' + AL.esc(x.id) + '">' + L('요청 거두기', 'Withdraw') + '</button></div>' : '') +
+          '</div>';
+      }).join('');
+    }
+    h += '<div class="ft"><button type="button" class="p" data-new>' + L('＋ 새 접속요청 보내기', '＋ Send a request') + '</button><button type="button" data-x>' + L('닫기', 'Close') + '</button></div>';
+    sh.innerHTML = h;
+    sh.querySelectorAll('[data-tab]').forEach(function(b){ b.onclick = function(){ tab = b.getAttribute('data-tab'); paint(); }; });
+    sh.querySelector('[data-x]').onclick = close;
+    sh.querySelector('[data-new]').onclick = function(){ close(); location.href = 'alias_requests.html'; };
+    sh.querySelectorAll('[data-ok]').forEach(function(b){ b.onclick = async function(){
+      var list = []; try { list = await AL.loadAliases(); } catch (e) {}
+      var p = list.length === 1 ? list[0] : await AL.pickAlias({ note: L('이 분에게 보일 내 별칭을 고르세요', 'Choose the alias this person will see') });
+      if (!p) return;
+      b.disabled = true;
+      var r = await AL.sb.rpc('nick_request_answer', { p_id: b.getAttribute('data-ok'), p_answer: 'accept', p_persona: p.id, p_label: null });
+      var out = (r && r.data) || {};
+      if (r.error || !out.ok) { b.disabled = false; alert(out.error === 'gone' ? L('보낸 분이 별칭을 지워 연결할 수 없습니다.', 'The sender removed that alias.') : L('연결하지 못했습니다. 잠시 뒤 다시 해 주세요.', 'Could not connect. Please try again.')); return; }
+      goChat(out.link_id);
+    }; });
+    sh.querySelectorAll('[data-no]').forEach(function(b){ b.onclick = async function(){
+      if (!confirm(L('이 신청을 거절할까요? 상대에게는 따로 알리지 않습니다.', 'Decline this request? They will not be told.'))) return;
+      await AL.sb.rpc('nick_request_answer', { p_id: b.getAttribute('data-no'), p_answer: 'decline', p_persona: null, p_label: null });
+      reload();
+    }; });
+    sh.querySelectorAll('[data-block]').forEach(function(b){ b.onclick = async function(){
+      if (!confirm(L('이 분의 신청을 앞으로 받지 않습니다. 상대에게는 알리지 않습니다.', 'You will no longer receive requests from them. They won\'t be told.'))) return;
+      await AL.sb.rpc('nick_request_answer', { p_id: b.getAttribute('data-block'), p_answer: 'block', p_persona: null, p_label: null });
+      reload();
+    }; });
+    sh.querySelectorAll('[data-chat]').forEach(function(b){ b.onclick = function(){ AL._rqMarkSeen(b.getAttribute('data-rid')); goChat(b.getAttribute('data-chat')); }; });
+    sh.querySelectorAll('[data-cancel]').forEach(function(b){ b.onclick = async function(){
+      await AL.sb.rpc('nick_request_cancel', { p_id: b.getAttribute('data-cancel') }); reload();
+    }; });
+  }
+  reload();
+};
+
 /* =====================================================================
    🔴🔴 2026-10-01 — 세 화면(연락처 · 통화 기록 · 나) 맨 위에 [MyPage] [로그아웃]
    전에는 로그인은 첫 화면에만, 로그아웃은 "나" 맨 아래에만 있어 찾기 어려웠습니다.
@@ -4525,17 +4662,13 @@ AL.topBar = async function(){
       location.reload();
     }));
 
-    /* 🔴 2026-10-07 — 받은 닉네임 연결 요청이 있으면 [📨 요청 N] */
+    /* 🔴 2026-11-01 — [📨 접속요청] 늘 보이는 단추. 받은 신청 · 보낸 요청을 한 판에서 바로 승인 · 접속
+       (전에는 받은 요청이 있을 때만 [📨 요청 N] 이 나왔습니다) */
     if (tabbed) {
-      try {
-        var rq = await AL.sb.rpc('nick_requests_inbox');
-        var rn = (rq && rq.data && rq.data.length) || 0;
-        if (rn) {
-          var rb = mk((en ? '📨 Requests ' : '📨 요청 ') + rn, function(){ location.href = 'alias_requests.html'; });
-          rb.style.background = 'rgba(242,201,76,.22)'; rb.style.borderColor = 'rgba(242,201,76,.6)';
-          bar.appendChild(rb);
-        }
-      } catch (e) { /* 표가 아직 없으면(SQL 전) 조용히 넘어갑니다 */ }
+      var rb = mk(en ? '📨 Requests' : '📨 접속요청', function(){ AL.requestSheet(); });
+      rb.id = 'alReqBtn';
+      bar.appendChild(rb);
+      AL.requestBadge();
     }
 
     /* 🔴 2026-10-05 — [❓ 사용법] 사용설명서(한국어 · 영어) */
