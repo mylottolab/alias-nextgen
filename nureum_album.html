@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#E4572E">
+<title>우리 둘 앨범 · 누름</title>
+<link rel="stylesheet" href="nureum.css?v=20261101a">
+<script src="alias_config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="alias_common.js?v=20261101b"></script>
+<script src="nureum.js?v=20261101c"></script>
+<style>
+.al-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.al-it{position:relative;border:none;padding:0;border-radius:14px;overflow:hidden;background:var(--nu-soft);aspect-ratio:1/1;cursor:pointer}
+.al-it img{width:100%;height:100%;object-fit:cover;display:block}
+.al-it .who{position:absolute;left:5px;bottom:5px;font-size:10.5px;font-weight:900;color:#fff;background:rgba(0,0,0,.45);border-radius:999px;padding:1px 7px}
+.al-add{border:2px dashed var(--nu-line);background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--nu-sub);font:inherit;font-weight:900}
+.al-add b{font-size:28px;line-height:1}
+.al-bar{height:8px;border-radius:4px;background:var(--nu-soft);overflow:hidden}
+.al-bar i{display:block;height:8px;background:var(--nu-main)}
+.al-view img{width:100%;max-height:64vh;object-fit:contain;border-radius:14px;background:#000;display:block}
+</style>
+</head>
+<body>
+<!-- 🔴 2026-11-03 — 우리 둘 앨범: 이 라인의 두 사람만 보고, 둘 다 넣을 수 있는 사진첩 -->
+<div class="nu" id="wrap">
+  <div class="nu-top">
+    <a class="nu-back" id="back" href="index.html" aria-label="뒤로">‹</a>
+    <h1 id="ttl">우리 둘 앨범</h1>
+  </div>
+  <p class="nu-sub" id="lead">이 앨범은 <b>두 사람만</b> 봐요. 둘 다 사진을 넣을 수 있어요.</p>
+  <div id="err" class="nu-err" role="alert"></div>
+  <div class="nu-card" style="gap:8px">
+    <div style="display:flex;justify-content:space-between;font-size:13.5px;font-weight:800"><span id="cnt">사진 0장</span><span id="mb"></span></div>
+    <div class="al-bar"><i id="bar" style="width:0"></i></div>
+  </div>
+  <div class="al-grid" id="grid"></div>
+  <button class="nu-btn ghost nu-hidden" id="more" type="button">더 보기</button>
+  <input type="file" id="file" accept="image/*" multiple class="nu-hidden">
+</div>
+
+<script>
+var lineId = NU.q('line'), L = null, items = [], last = null, urls = {};
+var B = 'nureum-album';
+function esc(v){ return NU.esc(v); }
+
+async function signed(paths){
+  var need = paths.filter(function(p){ return !urls[p]; });
+  if (need.length) {
+    var r = await AL.sb.storage.from(B).createSignedUrls(need, 3600);
+    (r.data || []).forEach(function(x){ if (x.signedUrl) urls[x.path] = x.signedUrl; });
+  }
+}
+
+async function load(reset){
+  if (reset) { items = []; last = null; }
+  var r = await AL.sb.rpc('nureum_album_list', { p_line: lineId, p_before: last });
+  if (r.error || !r.data || !r.data.ok) { NU.showErr('err', r.data && r.data.error === 'not_member' ? '이 앨범을 볼 수 없어요.' : '불러오지 못했어요. ' + ((r.error && r.error.message) || '')); return; }
+  var d = r.data;
+  items = items.concat(d.photos);
+  if (d.photos.length) last = d.photos[d.photos.length - 1].at;
+  document.getElementById('cnt').textContent = '사진 ' + d.count + '장';
+  document.getElementById('mb').textContent = d.used_mb + 'MB / ' + (d.max_mb >= 1024 ? (d.max_mb / 1024).toFixed(d.max_mb % 1024 ? 1 : 0) + 'GB' : d.max_mb + 'MB');
+  document.getElementById('bar').style.width = Math.min(100, d.used_mb / d.max_mb * 100) + '%';
+  document.getElementById('more').classList.toggle('nu-hidden', d.photos.length < 60);
+  await signed(items.map(function(p){ return p.thumb; }));
+  var g = document.getElementById('grid');
+  g.innerHTML = '<button type="button" class="al-it al-add" id="add"><b>＋</b>사진 넣기</button>' + items.map(function(p, i){
+    return '<button type="button" class="al-it" data-i="' + i + '"><img loading="lazy" alt="" src="' + (urls[p.thumb] || '') + '">' +
+      '<span class="who">' + (p.mine ? '나' : esc(L ? L.name : '상대')) + '</span></button>';
+  }).join('');
+  document.getElementById('add').onclick = function(){ document.getElementById('file').click(); };
+  g.querySelectorAll('[data-i]').forEach(function(b){ b.onclick = function(){ view(items[+b.getAttribute('data-i')]); }; });
+}
+document.getElementById('more').onclick = function(){ load(false); };
+
+async function view(p){
+  await signed([p.path]);
+  var sh = NU.sheet('<div class="al-view"><img alt="" src="' + (urls[p.path] || '') + '"></div>' +
+    '<p class="nu-sub" style="margin:10px 0 4px">' + (p.mine ? '내가 넣은 사진' : esc(L ? L.name : '상대') + '이(가) 넣은 사진') + ' · ' + new Date(p.at).toLocaleDateString('ko-KR') + '</p>' +
+    (p.mine
+      ? '<textarea class="nu-in" id="vCap" maxlength="200" rows="2" style="height:auto;padding:10px 14px;font-size:16px" placeholder="한마디 남기기">' + esc(p.caption) + '</textarea>' +
+        '<div style="display:flex;gap:8px;margin-top:10px"><button class="nu-btn" id="vSave" type="button">저장</button><button class="nu-btn ghost" id="vDel" type="button">지우기</button></div>'
+      : (p.caption ? '<p style="font-size:16px;line-height:1.6;white-space:pre-line;margin:4px 0">' + esc(p.caption) + '</p>' : '')) +
+    '<a class="nu-btn ghost" href="' + (urls[p.path] || '#') + '" download target="_blank" style="margin-top:10px">⬇ 내 휴대폰에 저장</a>' +
+    '<button class="nu-btn ghost" data-close type="button" style="margin-top:8px">닫기</button>');
+  var sv = sh.querySelector('#vSave');
+  if (sv) sv.onclick = async function(){ await AL.sb.rpc('nureum_album_caption', { p_id: p.id, p_caption: sh.querySelector('#vCap').value.trim() }); NU.closeSheet(); load(true); };
+  var dl = sh.querySelector('#vDel');
+  if (dl) dl.onclick = async function(){
+    if (!confirm('이 사진을 지울까요? 두 사람 모두에게서 사라져요.')) return;
+    var r = await AL.sb.rpc('nureum_album_delete', { p_id: p.id });
+    if (r.data && r.data.ok) { try { await AL.sb.storage.from(B).remove([r.data.path, r.data.thumb]); } catch (e) {} }
+    NU.closeSheet(); load(true);
+  };
+}
+
+/* 사진 넣기 — 줄여서(촬영 장소 정보 지워짐) 큰 그림 · 작은 그림 두 장을 올립니다. 여러 장 한꺼번에 */
+function shrink(img, max, q){
+  var w = img.naturalWidth, h = img.naturalHeight, k = Math.min(1, max / Math.max(w, h));
+  var c = document.createElement('canvas'); c.width = Math.round(w * k); c.height = Math.round(h * k);
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  return new Promise(function(res){ c.toBlob(function(b){ res({ blob: b, w: c.width, h: c.height }); }, 'image/jpeg', q); });
+}
+function loadImg(f){
+  return new Promise(function(res, rej){ var u = URL.createObjectURL(f), i = new Image();
+    i.onload = function(){ URL.revokeObjectURL(u); res(i); }; i.onerror = rej; i.src = u; });
+}
+document.getElementById('file').onchange = async function(){
+  var files = Array.prototype.slice.call(this.files || []).slice(0, 20); this.value = '';
+  if (!files.length) return;
+  NU.showErr('err', '');
+  var sh = NU.sheet('<h2>사진 넣는 중…</h2><p class="nu-sub" id="prog">0 / ' + files.length + '</p>');
+  var ok = 0;
+  for (var i = 0; i < files.length; i++) {
+    var paths = [];
+    try {
+      var img = await loadImg(files[i]);
+      var big = await shrink(img, 1920, 0.85), small = await shrink(img, 400, 0.78);
+      var id = (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '_' + i);
+      var p1 = lineId + '/' + id + '.jpg', p2 = lineId + '/' + id + '_t.jpg';
+      var u1 = await AL.sb.storage.from(B).upload(p1, big.blob, { contentType: 'image/jpeg' }); if (u1.error) throw u1.error; paths.push(p1);
+      var u2 = await AL.sb.storage.from(B).upload(p2, small.blob, { contentType: 'image/jpeg' }); if (u2.error) throw u2.error; paths.push(p2);
+      var r = await AL.sb.rpc('nureum_album_add', { p_line: lineId, p_path: p1, p_thumb: p2, p_bytes: big.blob.size + small.blob.size, p_w: big.w, p_h: big.h, p_caption: '' });
+      if (r.error || !r.data.ok) throw new Error(r.data && r.data.error === 'full' ? 'full' : ((r.error && r.error.message) || r.data.error));
+      ok++;
+      var pg = document.getElementById('prog'); if (pg) pg.textContent = ok + ' / ' + files.length;
+    } catch (e) {
+      if (paths.length) { try { await AL.sb.storage.from(B).remove(paths); } catch (x) {} }
+      if (String(e.message) === 'full') { NU.showErr('err', '보관 용량이 다 찼어요. [이용 현황]에서 보관 용량을 늘리거나 다음 달 몫을 당겨 쓸 수 있어요.'); break; }
+      console.error(e); NU.showErr('err', '사진 한 장을 넣지 못했어요. ' + (e.message || e));
+    }
+  }
+  NU.closeSheet(); load(true);
+};
+
+(async function(){
+  if (!lineId) { location.replace('index.html'); return; }
+  document.getElementById('back').href = 'nureum_line.html?line=' + encodeURIComponent(lineId);
+  if (!await NU.boot()) return;
+  try { var d = await NU.rpc('nureum_line', { p_line: lineId }); if (d && d.ok !== false) { L = d; document.getElementById('ttl').textContent = (d.name ? d.name + ' · ' : '') + '우리 둘 앨범'; } } catch (e) {}
+  load(true);
+})();
+</script>
+</body>
+</html>

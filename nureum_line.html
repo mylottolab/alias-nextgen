@@ -97,6 +97,7 @@ function menu(){
     NU.canPin() ? ['📌', '바탕화면에 놓기', function(){ NU.pin(L); }] : null,
     ['🖨', 'QR 카드 만들기 (냉장고 · 지갑)', function(){ location.href = 'nureum_card.html?line=' + L.id; }],
     ['⚙️', '이 라인 설정', settings],
+    ['💞', '우리 둘 앨범', function(){ location.href = 'nureum_album.html?line=' + encodeURIComponent(L.id); }],
     ['🏠', '누름 처음 화면', function(){ location.href = 'nureum.html'; }],
   ].filter(Boolean);
   var sh = NU.sheet('<h2>전체 메뉴</h2><div class="nu-menu">' + items.map(function(it, i){
@@ -204,22 +205,33 @@ async function myPersonaId(){
     return r.data ? r.data.persona_id : null;
   } catch (e) { return null; }
 }
-document.getElementById('bGal').onclick = function(){
+document.getElementById('bGal').onclick = async function(){
   if (!L || !L.link_id) return;
-  var sh = NU.sheet('<h2>갤러리</h2>' +
-    '<button class="nu-btn" id="gPeer" type="button">' + NU.esc(L.name) + '의 갤러리 보기</button>' +
-    '<button class="nu-btn ghost" id="gMine" type="button" style="margin-top:10px">내 갤러리 꾸미기 <span style="font-weight:500;font-size:13px">(' + NU.esc(L.name) + '에게 보여요)</span></button>' +
-    '<p class="nu-sub" style="margin:12px 0 0">갤러리는 사진 · 영상을 모아 두는 나만의 사진첩입니다. 서로 상대의 갤러리를 볼 수 있어요.</p>' +
+  /* 🔴 2026-11-03 — ① 우리 둘 앨범(둘만) ② 상대 사진첩 ③ 내 사진첩 · 이 라인에 보이기 켜고 끄기 */
+  var pg = null; try { pg = (await AL.sb.rpc('nureum_peer_gallery', { p_line: L.id })).data; } catch (e) {}
+  var myOpen = !pg || pg.my_open !== false;
+  var sh = NU.sheet('<h2>사진</h2>' +
+    '<a class="nu-btn" href="nureum_album.html?line=' + encodeURIComponent(L.id) + '">💞 우리 둘 앨범 <span style="font-weight:600;font-size:13px">(두 사람만 봐요)</span></a>' +
+    '<button class="nu-btn ghost" id="gPeer" type="button" style="margin-top:10px">' + NU.esc(L.name) + '의 사진첩 보기</button>' +
+    '<button class="nu-btn ghost" id="gMine" type="button" style="margin-top:10px">내 사진첩 꾸미기</button>' +
+    '<button class="nu-btn line" id="gOpen" type="button" style="margin-top:10px">내 사진첩을 ' + NU.esc(L.name) + '에게: ' + (myOpen ? '🔓 보이기' : '🔒 숨기기') + '</button>' +
+    '<p class="nu-sub" style="margin:12px 0 0">· <b>우리 둘 앨범</b>은 이 라인의 두 사람만 봐요. 둘만의 추억은 여기에 넣으세요.<br>· <b>내 사진첩</b>은 내 별칭의 사진첩이라, 보이기로 둔 모든 라인 상대에게 똑같이 보여요. 라인마다 보이기 · 숨기기를 따로 정할 수 있어요.</p>' +
     '<button class="nu-btn ghost" data-close style="margin-top:10px">닫기</button>');
   sh.querySelector('#gPeer').onclick = async function(){
-    var pp = await AL.peerPersona(L.link_id);
-    if (!pp) { NU.closeSheet(); NU.sheet('<h2>갤러리</h2><p class="nu-sub" style="color:var(--nu-ink)">' + NU.esc(L.name) + '님이 아직 갤러리를 꾸미지 않았어요.</p><button class="nu-btn ghost" data-close>닫기</button>'); return; }
+    if (pg && pg.ok && !pg.open) { NU.closeSheet(); NU.sheet('<h2>사진첩</h2><p class="nu-sub" style="color:var(--nu-ink)">' + NU.esc(L.name) + '님이 이 라인에는 사진첩을 숨겨 두었어요. 둘만의 사진은 <b>우리 둘 앨범</b>에서 함께 보세요.</p><a class="nu-btn" href="nureum_album.html?line=' + encodeURIComponent(L.id) + '">💞 우리 둘 앨범</a><button class="nu-btn ghost" data-close style="margin-top:10px">닫기</button>'); return; }
+    var pp = (pg && pg.persona_id) ? { persona_id: pg.persona_id, display_name: pg.name } : await AL.peerPersona(L.link_id);
+    if (!pp) { NU.closeSheet(); NU.sheet('<h2>사진첩</h2><p class="nu-sub" style="color:var(--nu-ink)">' + NU.esc(L.name) + '님이 아직 사진첩을 꾸미지 않았어요.</p><button class="nu-btn ghost" data-close>닫기</button>'); return; }
     location.href = 'alias_gallery.html?p=' + encodeURIComponent(pp.persona_id) + '&n=' + encodeURIComponent(L.name || pp.display_name || '');
   };
   sh.querySelector('#gMine').onclick = async function(){
     var id = await myPersonaId();
-    if (!id) { alert('내 갤러리를 찾지 못했습니다. 부름 [나] 화면의 별칭 옆 [갤러리]에서 꾸밀 수 있어요.'); return; }
+    if (!id) { alert('내 사진첩을 찾지 못했습니다.'); return; }
     location.href = 'alias_gallery.html?p=' + encodeURIComponent(id) + '&edit=1';
+  };
+  sh.querySelector('#gOpen').onclick = async function(){
+    var r = await AL.sb.rpc('nureum_set_gallery_open', { p_line: L.id, p_on: !myOpen });
+    if (r.error) { alert('바꾸지 못했어요. 잠시 뒤 다시 해 주세요.'); return; }
+    NU.closeSheet(); document.getElementById('bGal').click();
   };
 };
 document.getElementById('bAll').onclick = function(){ if (L) menu(); };
