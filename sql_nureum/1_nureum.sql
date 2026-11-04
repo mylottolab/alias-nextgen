@@ -5,14 +5,14 @@
 --
 --   라인 하나 = 부름 1:1 연결(link) 하나 + 누름 표의 한 줄
 --   · 만든 사람(개설자)이 요금을 냅니다. 라인마다 따로 계산.
---   · 1개월권 1,650원 · 12개월권 16,500원(부가세 포함), 여러 장 구입 가능
+--   · 1개월권 1,700원 · 12개월권 16,500원(부가세 포함), 여러 장 구입 가능
 --   · 한 달 기본 용량: 음성 200분 · 영상 70분 · 저장 1GB (설정 표에서 바꿀 수 있음)
 --   · 넘으면 ① 추가 구입(각 1,100원) ② 다음 달 것 당겨 쓰기(남은 기간 1개월 줄어듦)
 -- =====================================================================
 
 create table if not exists public.nureum_settings (
   id int primary key default 1 check (id = 1),
-  price_1m int not null default 1650,
+  price_1m int not null default 1700,   -- 🔴 2026-11-05 애플 가격 단계에 맞춰 1,700원
   price_12m int not null default 16500,
   voice_min int not null default 200,
   video_min int not null default 70,
