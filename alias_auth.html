@@ -56,6 +56,9 @@ document.addEventListener("DOMContentLoaded", function(){
 .safe-note p.on{display:inline-block}
 html[data-mode="light"] .safe-note p{color:#B4410C;background:rgba(234,88,12,.07);
   border-color:rgba(234,88,12,.35)}
+/* 🔴 2026-11-06 — 사업자 정보(footer)가 로그인 칸 옆으로 붙어 폭이 좁아지던 것: 늘 아래 줄로 */
+body.center{flex-wrap:wrap;align-content:center}
+body.center > footer{flex:0 0 100%;max-width:none !important;box-sizing:border-box;padding-left:max(18px,calc(50% - 280px)) !important;padding-right:max(18px,calc(50% - 280px)) !important}
 </style>
 </head>
 <body class="center" data-t-title="ttAuth">
