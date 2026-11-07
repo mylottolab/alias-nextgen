@@ -98,6 +98,7 @@ function menu(){
     ['🖨', 'QR 카드 만들기 (냉장고 · 지갑)', function(){ location.href = 'nureum_card.html?line=' + L.id; }],
     ['⚙️', '이 라인 설정', settings],
     ['💞', '우리 둘 앨범', function(){ location.href = 'nureum_album.html?line=' + encodeURIComponent(L.id); }],
+    ['💛', '카카오톡으로 문의', function(){ window.open('http://pf.kakao.com/_ZxexexeX/chat', '_blank'); }],
     ['🏠', '누름 처음 화면', function(){ location.href = 'nureum.html'; }],
   ].filter(Boolean);
   var sh = NU.sheet('<h2>전체 메뉴</h2><div class="nu-menu">' + items.map(function(it, i){
