@@ -339,7 +339,7 @@ NU.welcome = function(box, lead){
    ===================================================================== */
 NU.isAnon = function(user){ return !!(user && (user.is_anonymous || (!user.email && !user.phone))); };
 NU.startAnon = async function(){
-  var r = await AL.sb.auth.signInAnonymously();
+  var r = await AL.sb.auth.signInAnonymously({ options: { data: { app: 'nureum' } } });   // 🔴 2026-11-09 앱별 가입 통계
   if (r.error) throw r.error;
   try { localStorage.setItem('burum_first_screen', 'nureum'); } catch (e) {}
   return r.data && r.data.user;

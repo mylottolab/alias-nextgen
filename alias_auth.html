@@ -234,7 +234,7 @@ async function start(){
 
   try {
     const email = AL.nicknameToEmail(nickCheck.nick);
-    const signUpRes = await AL.sb.auth.signUp({ email: email, password: pw });
+    const signUpRes = await AL.sb.auth.signUp({ email: email, password: pw, options: { data: { app: 'burum' } } });   // 🔴 2026-11-09 앱별 가입 통계
 
     const msg = String((signUpRes.error && signUpRes.error.message) || '').toLowerCase();
     const taken = msg.includes('already registered') || msg.includes('already exists') || msg.includes('user already');
@@ -314,7 +314,7 @@ async function startNureumOnly(){
   document.querySelectorAll('.nuOnly').forEach(function(b){ b.disabled = true; });
   try { localStorage.setItem('burum_first_screen', 'nureum'); } catch (e) {}
   try {
-    var r = await AL.sb.auth.signInAnonymously();
+    var r = await AL.sb.auth.signInAnonymously({ options: { data: { app: 'nureum' } } });
     if (r.error) throw r.error;
   } catch (e) {
     console.warn('[nureum] 익명 시작 실패', e);   // 누름 첫 화면에서 다시 [가입 없이 바로 시작]을 보여 줍니다
