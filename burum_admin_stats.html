@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>부름 일일 통계</title>
+<title>부름 · 누름 · 바로너 일일 통계</title>
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="alias_common.js"></script>
@@ -58,7 +58,7 @@ tr.sum td{ font-weight:800; border-top:2px solid var(--ink); }
 </div></div>
 
 <header>
-  <h1>📊 부름 일일 통계</h1>
+  <h1>📊 부름 · 누름 · 바로너 일일 통계</h1>
   <span class="who" id="who"></span>
   <a href="burum_admin_numbers.html" style="color:#fff;font-size:13px;font-weight:700;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);border-radius:8px;padding:7px 12px;text-decoration:none">🔢 번호 · 🎁 선물</a>
   <a href="burum_admin_music.html" style="color:#fff;font-size:13px;font-weight:700;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);border-radius:8px;padding:7px 12px;text-decoration:none">🎵 배경음</a>
@@ -79,6 +79,11 @@ tr.sum td{ font-weight:800; border-top:2px solid var(--ink); }
   </div>
 
   <div class="cards" id="cards"></div>
+
+  <section>
+    <h2>앱별 매출 (기간 합계)</h2>
+    <div class="cards" id="appCards"></div>
+  </section>
 
   <section>
     <h2>일일 현황</h2>
@@ -107,6 +112,8 @@ tr.sum td{ font-weight:800; border-top:2px solid var(--ink); }
 
 <script>
 const el = (id) => document.getElementById(id);
+const APPS = ['부름', '누름 · 바로너 핫라인'];
+const APP_OF = (p) => /nureum/.test(String(p || '')) ? '누름 · 바로너 핫라인' : '부름';
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 function money(obj){
   if (!obj) return '0';
@@ -152,6 +159,14 @@ function paint(data){
     ['전체 회원', (data.totals.members_total || 0).toLocaleString() + '명', '지금까지'],
   ].map((c) => '<div class="card"><div class="k">' + esc(c[0]) + '</div><div class="v">' + esc(c[1]) + '</div><div class="s">' + esc(c[2]) + '</div></div>').join('');
 
+
+  /* 🔴 2026-11-09 앱별 매출 — 같은 결제 장부를 쓰는 앱을 상품으로 나눠 보여 줍니다(누름 · 바로너 핫라인은 purpose 'nureum') */
+  const apps = {};
+  prods.forEach((p) => { const a = APP_OF(p.product); const k = a + '|' + p.currency;
+    apps[k] = apps[k] || { app: a, currency: p.currency, orders: 0, amount: 0 }; apps[k].orders += p.orders; apps[k].amount += Number(p.amount); });
+  const al = Object.values(apps).sort((a, b) => APPS.indexOf(a.app) - APPS.indexOf(b.app));
+  APPS.forEach((a) => { if (!al.some((x) => x.app === a)) al.push({ app: a, currency: 'KRW', orders: 0, amount: 0 }); });
+  el('appCards').innerHTML = al.map((x) => '<div class="card"><div class="k">' + esc(x.app) + '</div><div class="v">' + esc(fmtAmt(x.amount, x.currency)) + '</div><div class="s">결제 ' + x.orders + '건</div></div>').join('');
   const maxS = Math.max(1, ...days.map((d) => d.signups || 0));
   el('daily').querySelector('tbody').innerHTML = days.map((d) => {
     const z = !(d.signups || d.orders || d.refunds);
@@ -201,7 +216,7 @@ const SB = () => AL.sb;
 const PNAME = { burum_number_silver: '부름 좋은 번호 · 실버', burum_number_gold: '부름 좋은 번호 · 골드', burum_number_platinum: '부름 좋은 번호 · 프리미엄',
   burum_number_extra: '부름번호 하나 더', burum_number_change: '부름번호 바꾸기', burum_number_keep: '부름번호 1년 더 잡아 두기', burum_number_transfer: '부름번호 명의 이전 수수료' };
 const KNAME = { silver: '좋은 번호 · 실버', gold: '좋은 번호 · 골드', platinum: '좋은 번호 · 프리미엄', extra: '번호 하나 더', change: '번호 바꾸기', keep: '1년 더 잡아 두기', transfer: '명의 이전 수수료', normal: '일반' };
-const NAME = (p) => PNAME[p] || p;
+const NAME = (p) => PNAME[p] || (p === 'nureum' ? '누름 · 바로너 핫라인 이용권' : p);
 /* 🔴 2026-10-18 — 부름번호 통계. 서버에 함수가 아직 없으면 이 칸만 조용히 안내합니다 */
 async function loadNumbers(){
   const sec = el('bnSec');
