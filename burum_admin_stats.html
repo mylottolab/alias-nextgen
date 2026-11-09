@@ -112,8 +112,9 @@ tr.sum td{ font-weight:800; border-top:2px solid var(--ink); }
 
 <script>
 const el = (id) => document.getElementById(id);
-const APPS = ['부름', '누름 · 바로너 핫라인'];
-const APP_OF = (p) => /nureum/.test(String(p || '')) ? '누름 · 바로너 핫라인' : '부름';
+const APPS = ['부름', '누름', '바로너'];
+/* 🔴 2026-11-09 상품 번호로 앱을 나눕니다: baronu_… = 바로너, nureum_… = 누름, 예전 기록(번호 없는 nureum) = 누름·바로너(구분 전) */
+const APP_OF = (p) => { p = String(p || ''); if (/^baronu/.test(p)) return '바로너'; if (/^nureum_/.test(p)) return '누름'; if (p === 'nureum') return '누름·바로너(구분 전)'; return '부름'; };
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 function money(obj){
   if (!obj) return '0';
@@ -164,8 +165,9 @@ function paint(data){
   const apps = {};
   prods.forEach((p) => { const a = APP_OF(p.product); const k = a + '|' + p.currency;
     apps[k] = apps[k] || { app: a, currency: p.currency, orders: 0, amount: 0 }; apps[k].orders += p.orders; apps[k].amount += Number(p.amount); });
-  const al = Object.values(apps).sort((a, b) => APPS.indexOf(a.app) - APPS.indexOf(b.app));
+  const al = Object.values(apps).sort((a, b) => ((APPS.indexOf(a.app) + 1) || 99) - ((APPS.indexOf(b.app) + 1) || 99));
   APPS.forEach((a) => { if (!al.some((x) => x.app === a)) al.push({ app: a, currency: 'KRW', orders: 0, amount: 0 }); });
+  try { if (parent !== window) parent.postMessage({ type: 'weave_rev', src: 'bu', from: (data.totals || {}).from, to: (data.totals || {}).to, apps: al }, 'https://aliascall.com'); } catch (e) {}
   el('appCards').innerHTML = al.map((x) => '<div class="card"><div class="k">' + esc(x.app) + '</div><div class="v">' + esc(fmtAmt(x.amount, x.currency)) + '</div><div class="s">결제 ' + x.orders + '건</div></div>').join('');
   const maxS = Math.max(1, ...days.map((d) => d.signups || 0));
   el('daily').querySelector('tbody').innerHTML = days.map((d) => {
@@ -216,7 +218,14 @@ const SB = () => AL.sb;
 const PNAME = { burum_number_silver: '부름 좋은 번호 · 실버', burum_number_gold: '부름 좋은 번호 · 골드', burum_number_platinum: '부름 좋은 번호 · 프리미엄',
   burum_number_extra: '부름번호 하나 더', burum_number_change: '부름번호 바꾸기', burum_number_keep: '부름번호 1년 더 잡아 두기', burum_number_transfer: '부름번호 명의 이전 수수료' };
 const KNAME = { silver: '좋은 번호 · 실버', gold: '좋은 번호 · 골드', platinum: '좋은 번호 · 프리미엄', extra: '번호 하나 더', change: '번호 바꾸기', keep: '1년 더 잡아 두기', transfer: '명의 이전 수수료', normal: '일반' };
-const NAME = (p) => PNAME[p] || (p === 'nureum' ? '누름 · 바로너 핫라인 이용권' : p);
+const HOT = { '1m': '1개월권', '12m': '12개월권', voice: '음성 +300분', video: '영상 +100분', storage: '보관 +1GB' };
+const NAME = (p) => {
+  if (PNAME[p]) return PNAME[p];
+  if (p === 'nureum') return '누름 · 바로너 핫라인(구분 전)';
+  let m = /^(baronu|nureum)_(?:web_)?(?:line_)?(1m|12m|voice|video|storage|old)/.exec(p || '');
+  if (m) return (m[1] === 'baronu' ? '바로너' : '누름') + ' · ' + (HOT[m[2]] || (m[2] === 'old' ? '이전 결제' : m[2]));
+  return p;
+};
 /* 🔴 2026-10-18 — 부름번호 통계. 서버에 함수가 아직 없으면 이 칸만 조용히 안내합니다 */
 async function loadNumbers(){
   const sec = el('bnSec');
