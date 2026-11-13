@@ -117,14 +117,15 @@ const METHOD = { google_play: 'Google Play', app_store: 'App Store', kg_inicis: 
 
 const KIND = { '1m': '1개월', '12m': '12개월', voice: '음성 추가', video: '영상 추가', storage: '저장공간' };
 const NU = (app) => app === 'baronu' ? '바로너' : app === 'nureum' ? '누름' : '누름·바로너';
-function PNAME_M(p, r){ return ({ plan: '부름 이용권', nureum: NU(r && r.app) + ' 이용권', storage: '저장공간 추가', number: '부름번호' })[p] || p || ''; }
+function PNAME_M(p, r){ if (/sos_12m/.test(p || '')) return '안심 긴급 12개월'; if (/sos_1m/.test(p || '')) return '안심 긴급 1개월'; return ({ plan: '부름 이용권', nureum: NU(r && r.app) + ' 이용권', storage: '저장공간 추가', number: '부름번호', sos: '안심 긴급' })[p] || p || ''; }
 function PNAME(r){
   const p = r.purpose || r.product;
+  if (p === 'sos') return PNAME_M(r.product || 'sos');
   if (p === 'plan') return '부름 이용권' + (r.months ? ' ' + r.months + '개월' : '');
   if (p === 'nureum') return NU(r.user_app) + ' 이용권' + (KIND[r.kind] ? ' ' + KIND[r.kind] : '');
   return PNAME_M(p, { app: r.user_app });
 }
-const PAPP = (r) => (r.purpose || r.product) === 'nureum' ? (r.user_app === 'baronu' ? '바로너' : '누름') : '부름';
+const PAPP = (r) => (r.purpose || r.product) === 'nureum' || ((r.purpose === 'sos') && /baronu/.test(String(r.product || '') + String(r.user_app || ''))) ? (r.user_app === 'baronu' || /baronu/.test(String(r.product || '')) ? '바로너' : '누름') : '부름';
 function PUNTIL(r){ if (r.until) return day(r.until); if ((r.purpose || r.product) === 'number') return '기간 없음'; return ''; }
 function VALID(r){
   const a = [];
