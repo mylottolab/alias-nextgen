@@ -155,8 +155,20 @@ window.SOS = window.SOS || {};
   };
 
   /* ── 바탕화면 긴급 아이콘 ─────────────────────────────────────────── */
-  S.canPinNative = function(){ return !!(window.AliasNative && typeof AliasNative.pinSos === 'function'); };
-  S.pinNative = function(){ try { return AliasNative.pinSos(JSON.stringify({ app: S.APP })) !== false; } catch (e) { return false; } };
+  /* 새 안드로이드 앱(sosAlarm 이 있는 판)은 누름 아이콘 놓기(pinShortcut)로 빨간 「긴급」 아이콘을 놓습니다 */
+  S.canPinNative = function(){ return !!(window.AliasNative && typeof AliasNative.sosAlarm === 'function' && typeof AliasNative.pinShortcut === 'function'); };
+  S.iconB64 = function(){
+    var c = document.createElement('canvas'); c.width = c.height = 192; var g = c.getContext('2d');
+    var gr = g.createLinearGradient(0, 0, 192, 192); gr.addColorStop(0, '#E02424'); gr.addColorStop(1, '#FF5A4F');
+    g.fillStyle = gr; g.beginPath(); g.arc(96, 96, 96, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#fff'; g.beginPath(); g.arc(96, 96, 66, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#E02424'; g.font = '900 54px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('SOS', 96, 100);
+    return c.toDataURL('image/png').split(',')[1];
+  };
+  S.pinNative = function(){
+    try { return AliasNative.pinShortcut(JSON.stringify({ id: 'sos', name: '긴급', url: 'https://burum.kr/sos.html?go=1', icon: S.iconB64() })) !== false; }
+    catch (e) { return false; }
+  };
   S.iosWidget = function(){ try { return !!(window.webkit && webkit.messageHandlers && webkit.messageHandlers.nureumWidget); } catch (e) { return false; } };
 
   /* ── 결제 (앱: 구글 · 애플 / 웹: 카드) ─────────────────────────────── */
