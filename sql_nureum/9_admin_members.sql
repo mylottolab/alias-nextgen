@@ -5,30 +5,17 @@
 --   관리자(is_admin)만 부를 수 있습니다. 아무것도 바꾸지 않고 읽기만 합니다.
 --
 --   ⚠ Supabase(부름 프로젝트) → SQL Editor 에 통째로 붙여 Run. 다시 돌려도 안전합니다.
---   ⚠ 부름 이용권 기한(plan_until)이 들어 있는 표를 스스로 찾아 연결합니다(맨 아래 결과에 표 이름이 나옵니다).
+--   ⚠ 부름 이용권 기한은 subscriptions 표(plan_until · trial_until)에서 읽습니다. (2026-11-13 고침: 처음 판은 plan_grants 를 잘못 잡았습니다)
 -- =====================================================================
 
--- ① 부름 이용권 기한이 있는 표를 찾아 '_admin_plan_src' 로 이어 둡니다 -----------------------------
-do $do$
-declare t text; k text;
-begin
-  select c.table_name into t
-    from information_schema.columns c
-   where c.table_schema = 'public' and c.column_name = 'plan_until' and c.table_name not like 'nureum%'
-     and exists (select 1 from information_schema.columns d where d.table_schema = 'public' and d.table_name = c.table_name
-                  and d.column_name in ('account_id', 'user_id', 'id'))
-     and exists (select 1 from information_schema.tables x where x.table_schema = 'public' and x.table_name = c.table_name and x.table_type = 'BASE TABLE')
-   order by (c.table_name in ('accounts', 'account_settings', 'profiles', 'account_plans')) desc, c.table_name
-   limit 1;
-  if t is not null then
-    select column_name into k from information_schema.columns
-     where table_schema = 'public' and table_name = t and column_name in ('account_id', 'user_id', 'id')
-     order by array_position(array['account_id', 'user_id', 'id'], column_name::text) limit 1;
-    execute format('create or replace view public._admin_plan_src as select %I::uuid as uid, %L::text as src, to_jsonb(x) as j from public.%I x', k, t, t);
-  else
-    execute 'create or replace view public._admin_plan_src as select null::uuid as uid, null::text as src, null::jsonb as j where false';
-  end if;
-end $do$;
+-- ① 부름 이용권 기한(subscriptions)을 '_admin_plan_src' 로 이어 둡니다 -------------------------------------
+--    체험 기한이 비어 있으면 가입일 + 14일 (admin_find_user 와 같은 규칙)
+drop view if exists public._admin_plan_src;
+create view public._admin_plan_src as
+  select s.account_id as uid, 'subscriptions'::text as src,
+         jsonb_build_object('plan_until', s.plan_until,
+                            'trial_until', coalesce(s.trial_until, u.created_at + interval '14 days')) as j
+    from public.subscriptions s join auth.users u on u.id = s.account_id;
 revoke all on public._admin_plan_src from public, anon, authenticated;
 
 create or replace function public.admin_member_report()
@@ -41,13 +28,12 @@ begin
       'id', u.id,
       'joined', u.created_at,
       'app', coalesce(nullif(u.raw_user_meta_data->>'app', ''), 'burum?'),
-      'nick', coalesce(ps.j->>'nickname', ps.j->>'display_name',
-                       (select pe.display_name from personas pe where pe.account_id = u.id order by pe.is_default desc, pe.created_at limit 1)),
+      'nick', case when u.email is null then (select pe.display_name from personas pe where pe.account_id = u.id order by pe.is_default desc, pe.created_at limit 1) end,
       'login', u.email,
       'anon', coalesce((to_jsonb(u)->>'is_anonymous')::boolean, false),
       'last_in', u.last_sign_in_at,
       'plan_until', ps.j->>'plan_until',
-      'trial_until', ps.j->>'trial_until',
+      'trial_until', coalesce(ps.j->>'trial_until', (u.created_at + interval '14 days')::text),
       'nureum_until', (select max(l.plan_until) from nureum_lines l where l.owner_id = u.id and l.ended_at is null),
       'nureum_lines', (select count(*) from nureum_lines l where l.owner_id = u.id and l.ended_at is null and l.plan_until > now()),
       'pay_n', coalesce(pp.n, 0), 'pay_krw', coalesce(pp.krw, 0), 'pay_other', pp.other, 'products', pp.products,
@@ -78,8 +64,7 @@ begin
       'id', to_jsonb(q)->>'id',
       'at', coalesce(q.completed_at, q.created_at),
       'user_id', q.user_id,
-      'nick', coalesce(ps.j->>'nickname', ps.j->>'display_name',
-                       (select pe.display_name from personas pe where pe.account_id = q.user_id order by pe.is_default desc, pe.created_at limit 1)),
+      'nick', case when u.email is null then (select pe.display_name from personas pe where pe.account_id = q.user_id order by pe.is_default desc, pe.created_at limit 1) end,
       'login', u.email,
       'joined', u.created_at,
       'user_app', u.raw_user_meta_data->>'app',
