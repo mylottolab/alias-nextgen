@@ -10,10 +10,11 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 const SITE = Deno.env.get('SITE_BASE_URL') || 'https://burum.kr';
+const BARONU = Deno.env.get('BARONU_SITE_URL') || 'https://baronu.kr';   // 🔴 2026-11-03 바로너
 
-function go(line: string | null, q: string) {
-  const path = line ? `nureum_plan.html?line=${line}&${q}` : `nureum.html?${q}`;
-  return new Response(null, { status: 302, headers: { Location: `${SITE}/${path}` } });
+function go(line: string | null, q: string, BN = false) {   // BN: 바로너에서 온 주문(주문번호 끝 _BN)
+  const path = line ? `nureum_plan.html?line=${line}&${q}` : (BN ? `index.html?${q}` : `nureum.html?${q}`);
+  return new Response(null, { status: 302, headers: { Location: `${BN ? BARONU : SITE}/${path}` } });
 }
 
 async function approve(idc: string, mid: string, tid: string, amt: string) {
@@ -30,29 +31,57 @@ async function approve(idc: string, mid: string, tid: string, amt: string) {
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return go(null, 'pay=fail');
   let line: string | null = null;
+  let bn = false;
   try {
     const f = await req.formData();
     const st = f.get('P_STATUS') as string, msg = (f.get('P_RMESG') as string) || '결제실패';
     const oid = f.get('P_OID') as string, mid = f.get('P_MID') as string;
     const tid = f.get('P_AUTH_TID') as string, amt = f.get('P_AMT') as string;
     const idc = (f.get('P_IDCNAME') as string) || '';
-    if (!oid || !oid.startsWith('ALNG_NU_')) return go(null, 'pay=fail');
+    bn = !!oid && oid.endsWith('_BN');
+    /* 🔴 2026-11-14 — 안심 긴급(SOS) 이용권 */
+    if (oid && oid.startsWith('ALNG_SOS_')) {
+      const back = (q: string) => new Response(null, { status: 302, headers: { Location: `${bn ? BARONU : SITE}/sos.html?${q}` } });
+      const { data: p } = await supabase.from('payments').select('id, user_id, amount_minor_units, status').eq('external_payment_id', oid).maybeSingle();
+      if (!p) return back('pay=fail');
+      if (st !== '00') return back('pay=fail&msg=' + encodeURIComponent(msg));
+      if (p.status === 'completed') return back('pay=ok');
+      if (String(p.amount_minor_units) !== String(amt)) {
+        console.error('[nureum-inicis-return] 🔴 안심 긴급 금액이 다릅니다', oid, p.amount_minor_units, amt);
+        return back('pay=fail&msg=' + encodeURIComponent('금액이 맞지 않습니다'));
+      }
+      const ap = await approve(idc, mid, tid, amt);
+      if (ap.P_STATUS !== '00') {
+        await supabase.from('payments').update({ status: 'failed' }).eq('external_payment_id', oid);
+        return back('pay=fail&msg=' + encodeURIComponent(ap.P_RMESG || '승인실패'));
+      }
+      const months = Number(oid.split('_')[2]) === 12 ? 12 : 1;
+      /* 같은 주문이 두 번 와도 한 번만 — 먼저 completed 로 바꾼 쪽만 기간을 늘립니다 */
+      const { data: upd } = await supabase.from('payments').update({ status: 'completed', completed_at: new Date().toISOString() })
+        .eq('external_payment_id', oid).neq('status', 'completed').select('id');
+      if (upd && upd.length) {
+        const { error } = await supabase.rpc('sos_extend_for_user', { p_user: p.user_id, p_months: months });
+        if (error) console.error('[nureum-inicis-return] 🔴 안심 긴급 기간을 못 넣었습니다 — 돈은 받았습니다:', oid, JSON.stringify(error));
+      }
+      return back('pay=ok');
+    }
+    if (!oid || !oid.startsWith('ALNG_NU_')) return go(null, 'pay=fail', bn);
 
     const { data: o } = await supabase.from('nureum_orders').select('*').eq('oid', oid).maybeSingle();
-    if (!o) return go(null, 'pay=fail');
+    if (!o) return go(null, 'pay=fail', bn);
     line = o.line_id;
-    if (st !== '00') return go(line, 'pay=fail&msg=' + encodeURIComponent(msg));
-    if (o.status === 'completed') return go(line, 'pay=ok');
+    if (st !== '00') return go(line, 'pay=fail&msg=' + encodeURIComponent(msg), bn);
+    if (o.status === 'completed') return go(line, 'pay=ok', bn);
     if (String(o.amount_krw) !== String(amt)) {
       console.error('[nureum-inicis-return] 🔴 금액이 다릅니다', oid, o.amount_krw, amt);
-      return go(line, 'pay=fail&msg=' + encodeURIComponent('금액이 맞지 않습니다'));
+      return go(line, 'pay=fail&msg=' + encodeURIComponent('금액이 맞지 않습니다'), bn);
     }
 
     const ap = await approve(idc, mid, tid, amt);
     if (ap.P_STATUS !== '00') {
       await supabase.from('nureum_orders').update({ status: 'failed' }).eq('oid', oid);
       await supabase.from('payments').update({ status: 'failed' }).eq('external_payment_id', oid);
-      return go(line, 'pay=fail&msg=' + encodeURIComponent(ap.P_RMESG || '승인실패'));
+      return go(line, 'pay=fail&msg=' + encodeURIComponent(ap.P_RMESG || '승인실패'), bn);
     }
 
     const { data: r, error } = await supabase.rpc('nureum_apply', {
@@ -64,9 +93,9 @@ Deno.serve(async (req) => {
     }
     await supabase.from('nureum_orders').update({ status: 'completed', completed_at: new Date().toISOString() }).eq('oid', oid);
     await supabase.from('payments').update({ status: 'completed', completed_at: new Date().toISOString() }).eq('external_payment_id', oid);
-    return go(line, 'pay=ok');
+    return go(line, 'pay=ok', bn);
   } catch (e) {
     console.error('[nureum-inicis-return] 오류', e);
-    return go(line, 'pay=fail');
+    return go(line, 'pay=fail', bn);
   }
 });

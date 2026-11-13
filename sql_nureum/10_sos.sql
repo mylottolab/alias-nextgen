@@ -111,6 +111,27 @@ do $$ declare t text; begin
 end $$;
 grant usage, select on sequence public.sos_locs_id_seq, public.sos_provide_log_id_seq to service_role;
 
+-- ①-2 결제 장부(payments.purpose)에 'sos' 를 쓸 수 있게 ------------------------------------
+do $$
+declare v_type text; v_udt text; c record; v_def text;
+begin
+  select data_type, udt_name into v_type, v_udt from information_schema.columns
+   where table_schema = 'public' and table_name = 'payments' and column_name = 'purpose';
+  if v_type = 'USER-DEFINED' then
+    execute format('alter type public.%I add value if not exists %L', v_udt, 'sos');
+  end if;
+  for c in select conname, pg_get_constraintdef(oid) as def from pg_constraint
+            where conrelid = 'public.payments'::regclass and contype = 'c' and pg_get_constraintdef(oid) ilike '%purpose%' loop
+    if c.def not ilike '%''sos''%' then
+      v_def := regexp_replace(c.def, 'ARRAY\[', 'ARRAY[''sos''::text, ');
+      if v_def = c.def then v_def := regexp_replace(c.def, '\(purpose\s*=', '(purpose = ''sos''::text OR purpose ='); end if;
+      execute format('alter table public.payments drop constraint %I', c.conname);
+      execute format('alter table public.payments add constraint %I %s', c.conname, v_def);
+      raise notice 'payments.purpose 규칙에 sos 를 더했습니다: %', c.conname;
+    end if;
+  end loop;
+end $$;
+
 -- ② 안쪽 도우미 ----------------------------------------------------------------
 create or replace function public._sos_sub_until(p_user uuid)
 returns timestamptz language sql stable security definer set search_path = public as $$

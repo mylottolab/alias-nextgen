@@ -1,5 +1,5 @@
 // =====================================================================
-// 부름 — nureum-web-pay  (2026-10-31)
+// 부름 — nureum-web-pay  (2026-10-31 · 2026-11-14 안심 긴급 카드 결제 더함: body.product = 'sos')
 //   누름 웹(브라우저) 결제 — 이니시스 카드 · 페이팔
 //   부름 이용권의 alias-plan-inicis-prepare · alias-plan-paypal-create/capture 를 본떴습니다.
 //
@@ -18,6 +18,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 const SITE = Deno.env.get('SITE_BASE_URL') || 'https://burum.kr';
+const BARONU = Deno.env.get('BARONU_SITE_URL') || 'https://baronu.kr';   // 🔴 2026-11-03 바로너
 const FN = Deno.env.get('SUPABASE_URL')!.replace('.supabase.co', '.supabase.co/functions/v1');
 const PAYPAL_MODE = Deno.env.get('PAYPAL_MODE') || 'sandbox';
 const PAYPAL_API = PAYPAL_MODE === 'live' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com';
@@ -102,6 +103,31 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const action = String(body.action || '');
 
+    /* 🔴 2026-11-14 — 안심 긴급(SOS) 이용권: 카드만. 라인 없이 이용자 계정에 넣습니다(nureum-inicis-return 이 마무리) */
+    if (action === 'inicis_prepare' && body.product === 'sos') {
+      const kind = String(body.kind || '');
+      if (kind !== 'sos_1m' && kind !== 'sos_12m') return bad('모르는 상품입니다');
+      const { data: st } = await supabase.from('sos_settings').select('price_1m, price_12m').eq('id', 1).maybeSingle();
+      if (!st) return bad('안심 긴급 요금 설정을 못 읽었습니다', 500);
+      const krw = kind === 'sos_1m' ? st.price_1m : st.price_12m;
+      const buyername = String(body.buyername || '').trim();
+      if (!buyername) return bad('구매자 이름이 없습니다');
+      const ts = Date.now().toString();
+      const bn = body.site === 'baronu';
+      const oid = `ALNG_SOS_${kind === 'sos_1m' ? 1 : 12}_${ts}` + (bn ? '_BN' : '');
+      const amt = String(krw);
+      const chkfake = await sha512Base64(`${amt}${oid}${ts}${Deno.env.get('INICIS_PRO_HASHKEY')}`);
+      const { error: e0 } = await supabase.from('payments').insert({
+        user_id: userId, method: 'inicis_card', external_payment_id: oid, amount_minor_units: krw,
+        currency_code: 'KRW', status: 'pending', purpose: 'sos', google_product_id: (bn ? 'baronu_web_' : 'burum_web_') + kind });
+      if (e0) return bad('결제 준비 중 오류: ' + e0.message, 500);
+      return json({
+        ok: true, mid: Deno.env.get('INICIS_MID'), oid, amt, goodname: kind === 'sos_1m' ? '안심 긴급 1개월' : '안심 긴급 12개월', buyername,
+        buyertel: String(body.buyertel || ''), buyeremail: '', timestamp: ts, chkfake,
+        nextUrl: `${FN}/nureum-inicis-return`, notiUrl: `${FN}/nureum-inicis-return`,
+        closeUrl: `${bn ? BARONU : SITE}/sos.html`,
+      });
+    }
     if (action === 'inicis_prepare' || action === 'paypal_create') {
       const kind = String(body.kind || '');
       const qty = Math.floor(Number(body.qty || 1));
@@ -110,13 +136,17 @@ Deno.serve(async (req) => {
       const why = await checkLine(userId, body.lineId);
       if (why) return bad(why, 403);
       const p = await price(kind, qty);
+      if (body.site === 'baronu' && kind === '1m') p.krw = 1700 * qty;   // 🔴 2026-11-05 바로너 1개월권 1,700원(애플 가격 단계에 맞춤)
       const goods = NAMES[kind] + (qty > 1 ? ' ×' + qty : '');
+      /* 🔴 2026-11-09 — 어느 앱에서 샀는지 결제 장부에 남깁니다(관리자 통계 '앱별 매출') */
+      const appPid = (body.site === 'baronu' ? 'baronu_web_' : 'nureum_web_') + kind;
 
       if (action === 'inicis_prepare') {
         const buyername = String(body.buyername || '').trim();
         if (!buyername) return bad('구매자 이름이 없습니다');
         const ts = Date.now().toString();
-        const oid = `ALNG_NU_${kind}_${qty}_${ts}`;
+        const bn = body.site === 'baronu';   // 🔴 바로너에서 산 것 — 끝에 _BN 을 붙여 결제 뒤 baronu.kr 로 돌려보냅니다
+        const oid = `ALNG_NU_${kind}_${qty}_${ts}` + (bn ? '_BN' : '');
         const amt = String(p.krw);
         const chkfake = await sha512Base64(`${amt}${oid}${ts}${Deno.env.get('INICIS_PRO_HASHKEY')}`);
         const { error: e1 } = await supabase.from('nureum_orders').insert({
@@ -124,12 +154,12 @@ Deno.serve(async (req) => {
         if (e1) return bad('결제 준비 중 오류: ' + e1.message, 500);
         await supabase.from('payments').insert({
           user_id: userId, method: 'inicis_card', external_payment_id: oid, amount_minor_units: p.krw,
-          currency_code: 'KRW', status: 'pending', purpose: 'nureum' });
+          currency_code: 'KRW', status: 'pending', purpose: 'nureum', google_product_id: appPid });
         return json({
           ok: true, mid: Deno.env.get('INICIS_MID'), oid, amt, goodname: goods, buyername,
           buyertel: String(body.buyertel || ''), buyeremail: '', timestamp: ts, chkfake,
           nextUrl: `${FN}/nureum-inicis-return`, notiUrl: `${FN}/nureum-inicis-return`,
-          closeUrl: `${SITE}/nureum_plan.html?line=${body.lineId}`,
+          closeUrl: `${bn ? BARONU : SITE}/nureum_plan.html?line=${body.lineId}`,
         });
       }
 
@@ -149,7 +179,7 @@ Deno.serve(async (req) => {
       if (e2) return bad('결제 준비 중 오류: ' + e2.message, 500);
       await supabase.from('payments').insert({
         user_id: userId, method: 'paypal', external_payment_id: d.id, amount_minor_units: Math.round(p.usd * 100),
-        currency_code: 'USD', status: 'pending', purpose: 'nureum' });
+        currency_code: 'USD', status: 'pending', purpose: 'nureum', google_product_id: appPid });
       return json({ ok: true, id: d.id });
     }
 

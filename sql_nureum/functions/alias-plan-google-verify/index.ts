@@ -1,42 +1,44 @@
-/* =====================================================================
-   부름 — alias-plan-google-verify
-   2026-09-24 · 2026-09-28 추가 용량 상품
+// 바로너 앱 결제를 더한 판 (2026-11-03) — 이 줄부터 파일 끝까지 통째로 붙여 넣으세요
+// =====================================================================
+// 부름 — alias-plan-google-verify
+// 2026-09-24 · 2026-09-28 추가 용량 상품
+// 
+// 무엇을 하나
+// 안드로이드 앱에서 Google Play 로 결제가 끝나면, 앱이 영수증(구매 토큰)을
+// 이 함수로 보냅니다. 이 함수가 **구글에 직접 물어보고** 진짜일 때만
+// 이용권을 늘리거나 추가 용량을 드립니다.
+// 
+// 🔴 왜 서버가 물어봐야 하나
+// 앱이 "결제했어요" 라고 보낸 말을 그대로 믿으면, 누군가 가짜 신호를
+// 만들어 **공짜로 이용권을 받을 수 있습니다.** 앱은 손님 폰에 있어서
+// 뜯어볼 수 있기 때문입니다. 이니시스·PayPal 때와 같은 원칙입니다.
+// 
+// 순서
+// ① 로그인한 사람인지 확인한다 (Authorization 헤더)
+// ② 구글에 구매 토큰을 물어본다
+// ③ 결제가 끝난 것이 맞는지 본다 (purchaseState = 0)
+// ④ 이미 쓴 영수증인지 본다
+// ⑤ 이용권을 늘리거나 추가 용량 묶음을 넣는다
+// ⑥ 구글에 "잘 받았다" 고 알린다 (acknowledge)
+// 
+// ⚠ ⑥을 빼면 구글이 **사흘 뒤 자동으로 환불**합니다. 앱이 물건을 못 준
+// 것으로 보기 때문입니다. 꼭 해야 합니다.
+// 
+// 🔴 2026-09-28 — 추가 용량 (burum_storage_1gb_3m)
+// 1GB · 3개월 · 2,000원. 구글 결제창에서 **수량을 골라** 한 번에 여러 개
+// 살 수 있습니다(Play Console 에서 "수량 여러 개" 를 켜둡니다).
+// 🔴 몇 개를 샀는지는 **구글 답(quantity)** 으로만 셉니다. 앱이 보내는
+// 숫자는 믿지 않습니다. 1개 값으로 5GB 를 받아가는 일을 막습니다.
+// 산 것은 storage_packs 에 **묶음 하나**로 들어갑니다(수량만큼 GB,
+// 산 날부터 3개월). 같은 영수증은 한 번만 들어갑니다(external_payment_id).
+// 
+// ⚠ 이 함수는 Verify JWT 를 **켜 둡니다.** 손님이 로그인한 채로 부릅니다.
+// 
+// ⚠ 필요한 비밀값
+// GOOGLE_PLAY_SERVICE_ACCOUNT   구글 클라우드에서 받은 서비스 계정 JSON
+// (FIREBASE_SERVICE_ACCOUNT 와 **다른 것**입니다. 헷갈리지 마세요.)
+// =====================================================================
 
-   무엇을 하나
-     안드로이드 앱에서 Google Play 로 결제가 끝나면, 앱이 영수증(구매 토큰)을
-     이 함수로 보냅니다. 이 함수가 **구글에 직접 물어보고** 진짜일 때만
-     이용권을 늘리거나 추가 용량을 드립니다.
-
-   🔴 왜 서버가 물어봐야 하나
-     앱이 "결제했어요" 라고 보낸 말을 그대로 믿으면, 누군가 가짜 신호를
-     만들어 **공짜로 이용권을 받을 수 있습니다.** 앱은 손님 폰에 있어서
-     뜯어볼 수 있기 때문입니다. 이니시스·PayPal 때와 같은 원칙입니다.
-
-   순서
-     ① 로그인한 사람인지 확인한다 (Authorization 헤더)
-     ② 구글에 구매 토큰을 물어본다
-     ③ 결제가 끝난 것이 맞는지 본다 (purchaseState = 0)
-     ④ 이미 쓴 영수증인지 본다
-     ⑤ 이용권을 늘리거나 추가 용량 묶음을 넣는다
-     ⑥ 구글에 "잘 받았다" 고 알린다 (acknowledge)
-
-   ⚠ ⑥을 빼면 구글이 **사흘 뒤 자동으로 환불**합니다. 앱이 물건을 못 준
-     것으로 보기 때문입니다. 꼭 해야 합니다.
-
-   🔴 2026-09-28 — 추가 용량 (burum_storage_1gb_3m)
-     1GB · 3개월 · 2,000원. 구글 결제창에서 **수량을 골라** 한 번에 여러 개
-     살 수 있습니다(Play Console 에서 "수량 여러 개" 를 켜둡니다).
-     🔴 몇 개를 샀는지는 **구글 답(quantity)** 으로만 셉니다. 앱이 보내는
-       숫자는 믿지 않습니다. 1개 값으로 5GB 를 받아가는 일을 막습니다.
-     산 것은 storage_packs 에 **묶음 하나**로 들어갑니다(수량만큼 GB,
-     산 날부터 3개월). 같은 영수증은 한 번만 들어갑니다(external_payment_id).
-
-   ⚠ 이 함수는 Verify JWT 를 **켜 둡니다.** 손님이 로그인한 채로 부릅니다.
-
-   ⚠ 필요한 비밀값
-       GOOGLE_PLAY_SERVICE_ACCOUNT   구글 클라우드에서 받은 서비스 계정 JSON
-       (FIREBASE_SERVICE_ACCOUNT 와 **다른 것**입니다. 헷갈리지 마세요.)
-   ===================================================================== */
 
 /* 🔴 2026-10-30 — 누름(Nureum) 라인 이용권 · 용량 추가를 더했습니다(handleNureum).
    상품 번호: nureum_line_1m · nureum_line_12m · nureum_voice_300 · nureum_video_100 · nureum_storage_1gb
@@ -52,6 +54,9 @@ const CORS = {
 };
 
 const PACKAGE = 'com.weaveapp.alias';
+/* 🔴 2026-11-03 — 바로너 앱(com.weaveapp.baronu)도 이 함수로 확인합니다. 상품 번호가 baronu_ 로 시작하면 바로너 앱 것 */
+const BARONU_PACKAGE = 'com.weaveapp.baronu';
+function pkgOf(productId: string) { return String(productId || '').startsWith('baronu_') ? BARONU_PACKAGE : PACKAGE; }
 
 /* 상품 번호 → 개월수. 화면(AL.STORE_SKUS)과 **같아야** 합니다. */
 const SKU_MONTHS: Record<string, number> = {
@@ -82,15 +87,27 @@ const NUMBER_SKUS: Record<string, { kind: string; krw: number }> = {
 /* 🔴 2026-10-30 — 누름 상품. 화면(nureum_plan.html) · Play Console · App Store Connect 와 **같아야** 합니다.
    모두 소모성 상품(여러 번 살 수 있음, 구글은 "수량 여러 개" 켜기). 값은 원(KRW, 부가세 포함). */
 const NUREUM_SKUS: Record<string, { kind: string; krw: number }> = {
-  nureum_line_1m:     { kind: '1m',      krw: 1650 },
+  nureum_line_1m:     { kind: '1m',      krw: 1700 },   // 🔴 2026-11-05 1,700원
   nureum_line_12m:    { kind: '12m',     krw: 16500 },
   nureum_voice_300:   { kind: 'voice',   krw: 1100 },
   nureum_video_100:   { kind: 'video',   krw: 1100 },
   nureum_storage_1gb: { kind: 'storage', krw: 1100 },
+  /* 🔴 2026-11-03 — 바로너 앱 상품(같은 누름 라인에 넣습니다. 애플은 상품 번호를 앱마다 따로 써야 해서 이름만 다름) */
+  baronu_line_1m:     { kind: '1m',      krw: 1700 },   // 🔴 2026-11-05 바로너는 1,700원
+  baronu_line_12m:    { kind: '12m',     krw: 16500 },
+  baronu_voice_300:   { kind: 'voice',   krw: 1100 },
+  baronu_video_100:   { kind: 'video',   krw: 1100 },
+  baronu_storage_1gb: { kind: 'storage', krw: 1100 },
 };
 
 /* 🔴 2026-10-11 — 애플 결제를 기록할 때 쓰는 이름(payments.method · storage_packs.source) */
 const APPLE_METHOD = 'app_store';
+/* 🔴 2026-11-14 — 안심 긴급(SOS) 이용권. 화면(sos.js SOS.SKU) · Play Console · App Store Connect 와 **같아야** 합니다(소모성).
+   부름 앱: sos_1m · sos_12m / 바로너 앱: baronu_sos_1m · baronu_sos_12m */
+const SOS_SKUS: Record<string, { months: number; krw: number }> = {
+  sos_1m: { months: 1, krw: 1100 }, sos_12m: { months: 12, krw: 9900 },
+  baronu_sos_1m: { months: 1, krw: 1100 }, baronu_sos_12m: { months: 12, krw: 9900 },
+};
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -184,7 +201,7 @@ function cancelledReply(productId: string, why: string) {
 async function askGoogle(productId: string, purchaseToken: string) {
   const token = await googleToken();
   const url = 'https://androidpublisher.googleapis.com/androidpublisher/v3/applications/'
-    + PACKAGE + '/purchases/products/' + encodeURIComponent(productId)
+    + pkgOf(productId) + '/purchases/products/' + encodeURIComponent(productId)
     + '/tokens/' + encodeURIComponent(purchaseToken);
   const res = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
   const info = await res.json();
@@ -202,11 +219,11 @@ async function askGoogle(productId: string, purchaseToken: string) {
    ===================================================================== */
 function isApple(purchaseToken: string) { return String(purchaseToken || '').startsWith('apple:'); }
 
-let appleJwtCache: string | null = null;
-let appleJwtAt = 0;
-async function appleJwt(): Promise<string> {
+const appleJwtCache: Record<string, string> = {};
+const appleJwtAt: Record<string, number> = {};
+async function appleJwt(bid: string = PACKAGE): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
-  if (appleJwtCache && now - appleJwtAt < 15 * 60) return appleJwtCache;
+  if (appleJwtCache[bid] && now - (appleJwtAt[bid] || 0) < 15 * 60) return appleJwtCache[bid];
   const p8 = Deno.env.get('APPLE_IAP_KEY_P8') || '';
   const kid = (Deno.env.get('APPLE_IAP_KEY_ID') || '').replace(/[^A-Za-z0-9]/g, '');
   const iss = (Deno.env.get('APPLE_IAP_ISSUER_ID') || '').replace(/[^A-Za-z0-9-]/g, '');
@@ -216,11 +233,11 @@ async function appleJwt(): Promise<string> {
   const key = await crypto.subtle.importKey('pkcs8', raw.buffer, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
   const enc = new TextEncoder();
   const unsigned = b64url(enc.encode(JSON.stringify({ alg: 'ES256', kid: kid, typ: 'JWT' }))) + '.' +
-    b64url(enc.encode(JSON.stringify({ iss: iss, iat: now, exp: now + 1200, aud: 'appstoreconnect-v1', bid: PACKAGE })));
+    b64url(enc.encode(JSON.stringify({ iss: iss, iat: now, exp: now + 1200, aud: 'appstoreconnect-v1', bid: bid })));
   const sig = await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, key, enc.encode(unsigned));
-  appleJwtCache = unsigned + '.' + b64url(new Uint8Array(sig));
-  appleJwtAt = now;
-  return appleJwtCache;
+  appleJwtCache[bid] = unsigned + '.' + b64url(new Uint8Array(sig));
+  appleJwtAt[bid] = now;
+  return appleJwtCache[bid];
 }
 
 function jwsPayload(jws: string): any {
@@ -232,7 +249,7 @@ function jwsPayload(jws: string): any {
 /* askGoogle 과 같은 모양({ res, info, url, token })으로 돌려줍니다 */
 async function askApple(productId: string, purchaseToken: string, userId: string) {
   const id = purchaseToken.slice(6).replace(/[^0-9]/g, '');
-  const jwt = await appleJwt();
+  const jwt = await appleJwt(pkgOf(productId));
   let res: Response | null = null;
   let env = 'Production';
   // 정식 → 시험(TestFlight · 샌드박스) 순서로 묻습니다
@@ -251,7 +268,7 @@ async function askApple(productId: string, purchaseToken: string, userId: string
   }
   const body = await res.json();
   const tx = jwsPayload(body.signedTransactionInfo);
-  if (tx.bundleId !== PACKAGE) return fail(400, '다른 앱의 결제입니다');
+  if (tx.bundleId !== pkgOf(productId)) return fail(400, '다른 앱의 결제입니다');
   if (String(tx.productId).replace(/_nr[0-9]*$/, '') !== productId) return fail(400, '상품 번호가 다릅니다');   // 애플 비갱신 상품은 끝에 _nr
   if (!tx.appAccountToken || String(tx.appAccountToken).toLowerCase() !== String(userId).toLowerCase()) {
     return fail(403, '다른 계정으로 산 결제입니다');
@@ -465,6 +482,8 @@ async function handleNureum(userId: string, productId: string, purchaseToken: st
     currency_code: 'KRW',
     status: 'completed',
     purpose: 'nureum',
+    /* 🔴 2026-11-09 — 어느 앱에서 샀는지(관리자 통계 '앱별 매출'). baronu_ 로 시작하면 바로너, 아니면 누름 */
+    google_product_id: productId,
     completed_at: new Date().toISOString(),
   });
   if (payErr) console.error('[google-verify] payments 저장 실패 — 누름 이용권은 드렸습니다:', orderId, payErr.message);
@@ -472,6 +491,44 @@ async function handleNureum(userId: string, productId: string, purchaseToken: st
   await acknowledge(info, url, token);
   console.log('[google-verify] ✓ 누름:', productId, 'x' + qty, lineId, userId);
   return okJson({ ok: true, nureum: true, line_id: lineId, kind: item.kind, qty, until: ap.plan_until || null });
+}
+
+/* ── 🔴 2026-11-14 안심 긴급(SOS) 이용권 ─────────────────────────────
+   영수증 하나 = 이용자 계정의 「안심 긴급」 기간 N개월(수량만큼). 같은 영수증은 한 번만. */
+async function handleSos(userId: string, productId: string, purchaseToken: string, orderId: string | null) {
+  const item = SOS_SKUS[productId];
+  const { data: dup } = await supabase.from('payments').select('id, status').eq('external_payment_id', purchaseToken).maybeSingle();
+  if (dup && dup.status === 'completed') return okJson({ ok: true, already: true, sos: true });
+
+  const { res, info, url, token } = await askStore(productId, purchaseToken, userId);
+  if (res.status === 410) return cancelledReply(productId, '410');
+  if (!res.ok) return bad('스토어가 영수증을 확인해 주지 않았습니다: ' + JSON.stringify(info).slice(0, 300));
+  if (info.purchaseState === 1) return cancelledReply(productId, 'state 1');
+  if (info.purchaseState !== 0) return bad('아직 결제가 끝나지 않았습니다 (상태 ' + info.purchaseState + ')');
+  let qty = Number(info.quantity);
+  if (!Number.isFinite(qty) || qty < 1) qty = 1;
+  qty = Math.min(Math.floor(qty), 10);
+
+  /* 결제 기록을 먼저(같은 영수증이 동시에 두 번 오면 두 번째는 여기서 막힘) */
+  const { error: payErr } = await supabase.from('payments').insert({
+    user_id: userId, method: isApple(purchaseToken) ? APPLE_METHOD : 'google_play', external_payment_id: purchaseToken,
+    amount_minor_units: item.krw * qty, currency_code: 'KRW', status: 'completed', purpose: 'sos',
+    google_product_id: productId, completed_at: new Date().toISOString(),
+  });
+  if (payErr) {
+    if (String(payErr.code) === '23505') return okJson({ ok: true, already: true, sos: true });
+    console.error('[google-verify] 🔴 안심 긴급 결제 기록 실패:', JSON.stringify(payErr));
+    return bad('결제를 기록하지 못했습니다. 잠시 뒤 앱을 다시 열어주세요.', 500);
+  }
+  const { data: until, error: exErr } = await supabase.rpc('sos_extend_for_user', { p_user: userId, p_months: item.months * qty });
+  if (exErr) {
+    console.error('[google-verify] 🔴 안심 긴급 기간을 못 넣었습니다 — 돈은 받았습니다:', userId, JSON.stringify(exErr));
+    await supabase.from('payments').update({ status: 'pending' }).eq('external_payment_id', purchaseToken);
+    return bad('기간을 넣지 못했습니다. 잠시 뒤 앱을 다시 열어주세요.', 500);
+  }
+  await acknowledge(info, url, token);
+  console.log('[google-verify] ✓ 안심 긴급 ' + (item.months * qty) + '개월:', userId, orderId || '');
+  return okJson({ ok: true, sos: true, months: item.months * qty, until });
 }
 
 Deno.serve(async (req) => {
@@ -494,6 +551,11 @@ Deno.serve(async (req) => {
        같은 결제를 "다른 영수증" 처럼 여러 번 쓰는 일을 막습니다(이용권 · 용량 · 번호 모두). */
     if (isApple(purchaseToken)) purchaseToken = 'apple:' + String(purchaseToken).slice(6).replace(/[^0-9]/g, '');
     if (!productId || !purchaseToken) return bad('영수증이 없습니다');
+
+    /* 🔴 2026-11-14 — 안심 긴급 */
+    if (SOS_SKUS[productId]) {
+      return await handleSos(userId, productId, purchaseToken, orderId || null);
+    }
 
     /* 🔴 2026-10-30 — 누름 */
     if (NUREUM_SKUS[productId]) {
