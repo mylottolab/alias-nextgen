@@ -4628,7 +4628,7 @@ AL.topBar = async function(){
     var ACCT_ONLY = ['alias_chat.html', 'alias_phone.html'];
     var acctOnly = ACCT_ONLY.indexOf(page) >= 0;
     if (SKIP.indexOf(page) >= 0 && !acctOnly) return;
-    if (page.indexOf('nureum') === 0) return;   // 🔴 2026-10-30 — 누름 화면은 따로 꾸밉니다
+    if (page.indexOf('nureum') === 0 || page === 'sos.html') return;   // 🔴 2026-10-30 — 누름 화면은 따로 꾸밉니다
     var wrap = document.querySelector('.wrap') || document.querySelector('.phwrap') || document.body;
     var tabbed = document.body.classList.contains('tabbed');
     /* MyPage · 로그아웃을 붙일 화면: 아래 탭 화면 + 대화 · 전화번호부 · 부름번호 · 동시통보 */
@@ -5088,6 +5088,11 @@ AL.registerPush = async function(){
     PN.addListener('pushNotificationReceived', function(n){
       console.log('[push] 알림이 왔습니다', n);
       try { AL.alertNew && AL.alertNew(); } catch (e) {}
+      /* 🔴 2026-11-14 앱을 보고 있을 때 긴급(보호자 쪽)이 오면 곧바로 긴급 화면으로 */
+      try {
+        var nd = (n && n.data) || {};
+        if (nd.kind === 'sos_sos' && nd.event_id && location.search.indexOf(nd.event_id) < 0) location.href = 'sos.html?e=' + encodeURIComponent(nd.event_id);
+      } catch (e) {}
     });
 
     /* 잠금화면의 알림을 눌러서 들어온 경우입니다.
@@ -5097,6 +5102,8 @@ AL.registerPush = async function(){
         var d = (a && a.notification && a.notification.data) || {};
         /* 🔴 2026-10-07 — 닉네임 연결 요청 알림 → 받은 요청 화면 */
         if (d.kind === 'request') { location.href = 'alias_requests.html'; return; }
+        /* 🔴 2026-11-14 안심 긴급 알림 → 그 긴급 화면 */
+        if (String(d.kind || '').indexOf('sos_') === 0 && d.event_id) { location.href = 'sos.html?e=' + encodeURIComponent(d.event_id); return; }
         if (!d.link_id) return;
 
         /* 🔴 2026-09-09: 알림 종류에 따라 갈 곳이 다릅니다.

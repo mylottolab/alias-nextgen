@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>안심 긴급</title>
+<link rel="stylesheet" href="nureum.css?v=20261114">
+<script src="alias_config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="alias_common.js?v=20261114a"></script>
+<script src="alias_qr.js?v=20261019a"></script>
+<script src="nureum.js?v=20261114a"></script>
+<script src="sos.js?v=20261114a"></script>
+<style>
+:root{ --sos:#E02424; --sos2:#FF5A4F; --sos-soft:#FDECEC; --sos-ok:#0E9C77; }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --sos-soft:#3A1717; } }
+:root[data-theme="dark"]{ --sos-soft:#3A1717; }
+.sos-big{width:100%;aspect-ratio:1/1;max-width:300px;margin:6px auto;border:none;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,var(--sos2),var(--sos) 70%);color:#fff;font:inherit;font-weight:900;font-size:34px;
+  box-shadow:0 0 0 12px rgba(224,36,36,.15),0 14px 34px rgba(224,36,36,.4);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
+.sos-big small{font-size:16px;font-weight:700;opacity:.92}
+.sos-big:disabled{filter:grayscale(.7);opacity:.6}
+.sos-red{background:linear-gradient(135deg,var(--sos),var(--sos2))!important;box-shadow:0 6px 16px rgba(224,36,36,.3)!important}
+.sos-head{background:linear-gradient(135deg,var(--sos),var(--sos2));color:#fff;border-radius:22px;padding:18px;display:flex;flex-direction:column;gap:6px}
+.sos-head b{font-size:23px;line-height:1.35}
+.sos-head span{font-size:15px;opacity:.95;line-height:1.5}
+.sos-head.test{background:linear-gradient(135deg,#5F5A7A,#8A84A8)}
+.sos-head.ended{background:linear-gradient(135deg,#0E9C77,#12C79A)}
+.sos-count{font-size:96px;font-weight:900;text-align:center;color:var(--sos);line-height:1}
+.sos-row{display:flex;gap:10px}
+.sos-row > *{flex:1;min-width:0}
+.sos-map{width:100%;height:260px;border:0;border-radius:18px;background:var(--nu-soft)}
+.sos-li{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--nu-line)}
+.sos-li:first-of-type{border-top:none}
+.sos-li .nm{flex:1;min-width:0;font-weight:800;font-size:16px}
+.sos-li .nm small{display:block;font-weight:600;font-size:13px;color:var(--nu-sub);margin-top:2px}
+.sos-li button{border:1.5px solid var(--nu-line);background:var(--nu-card);color:var(--nu-ink);border-radius:999px;padding:7px 12px;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.sos-tag{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12.5px;font-weight:800}
+.sos-tag.ok{background:#E3F7EF;color:var(--sos-ok)} .sos-tag.no{background:var(--nu-soft);color:var(--nu-sub)} .sos-tag.bad{background:var(--sos-soft);color:var(--sos)}
+.sos-steps{margin:0;padding-left:20px;font-size:14.5px;line-height:1.75;color:var(--nu-ink)}
+.sos-119{font-size:13.5px;color:var(--nu-sub);text-align:center;line-height:1.6}
+.sos-sw{display:flex;align-items:center;gap:10px;font-weight:800;font-size:15px;cursor:pointer}
+.sos-sw input{width:22px;height:22px}
+</style>
+</head>
+<body>
+<div class="nu" id="app">
+  <div class="nu-top"><a class="nu-back" id="back" href="javascript:history.length>1?history.back():location.replace('index.html')">←</a><h1 id="ttl">🆘 안심 긴급</h1></div>
+  <div id="err" class="nu-err" role="alert"></div>
+  <div id="ok" class="nu-ok" role="status"></div>
+  <div id="view" style="display:flex;flex-direction:column;gap:14px"><p class="nu-sub">불러오는 중…</p></div>
+  <p class="sos-119">생명이 위급하면 <b>119에 먼저</b> 신고하세요. 안심 긴급은 보호자에게 알리는 서비스이며,<br>휴대폰 · 통신 상태에 따라 전달이 늦거나 실패할 수 있습니다.</p>
+</div>
+
+<script>
+(function(){
+'use strict';
+var $ = function(id){ return document.getElementById(id); };
+var V = $('view'), Q = new URLSearchParams(location.search), E = SOS.esc;
+var ST = null, stopFollow = null, poll = null;
+function err(m){ NU.showErr('err', m || ''); }
+function ok(m){ var o = $('ok'); o.textContent = m || ''; o.classList.toggle('on', !!m); }
+function setT(t){ $('ttl').textContent = t; document.title = t; }
+function clearTimers(){ if (stopFollow) { stopFollow(); stopFollow = null; } if (poll) { clearInterval(poll); poll = null; } }
+
+/* ── 시작 ─────────────────────────────────────────────── */
+async function boot(){
+  err(''); ok('');
+  var me = await NU.session();
+  if (Q.get('invite')) return showInvite(Q.get('invite'), me);
+  if (!me) {
+    V.innerHTML = '<div class="nu-card"><b style="font-size:18px">안심 긴급을 쓰려면 먼저 시작해 주세요</b><span class="nu-sub">가입 없이 바로 시작할 수 있어요.</span></div>' +
+      '<button class="nu-btn" id="anon" type="button">바로 시작</button><a class="nu-btn ghost" href="' + NU.loginUrl() + '">계정이 있어요 · 로그인</a>';
+    $('anon').onclick = async function(){ this.disabled = true; try { await NU.ensureUser(); location.reload(); } catch (e) { this.disabled = false; err(NU.anonErrText(e)); } };
+    return;
+  }
+  SOS.markDevice();
+  /* 담아 둔 긴급이 있으면(신호가 없던 때) 지금 보냅니다 */
+  if (SOS.pending()) { var f = await SOS.flush(); if (f && f.ok) { location.replace('sos.html?e=' + f.event + '&mine=1'); return; } }
+  if (Q.get('e')) return showEvent(Q.get('e'));
+  if (Q.get('go')) return goFlow(false);
+  return showHome();
+}
+
+async function load(){ ST = await SOS.rpc('sos_state'); if (!ST || !ST.ok) throw new Error(SOS.err(ST && ST.error)); return ST; }
+
+/* ── 첫 화면: 이용자(나를 지키는 보호자) + 보호자(내가 지키는 분) ─────────────────── */
+async function showHome(){
+  clearTimers(); setT('🆘 안심 긴급');
+  try { await load(); } catch (e) { V.innerHTML = ''; err(e.message || String(e)); return; }
+  var g = ST.guardians || [], live = ST.sub_until && new Date(ST.sub_until) > new Date();
+  var tested = g.filter(function(x){ return x.test_ok_at; }).length;
+  var ready = live && g.length >= ST.min && tested >= ST.min;
+  var h = '';
+
+  /* 열린 긴급이 있으면 맨 위에 */
+  if (ST.open) h += '<a class="nu-btn sos-red" href="sos.html?e=' + ST.open.id + '&mine=1">' + (ST.open.test ? '🔔 시험 신호 보는 중 — 열기' : '🆘 긴급이 진행 중입니다 — 열기') + '</a>';
+  (ST.wards || []).forEach(function(w){ if (w.open) h += '<a class="nu-btn sos-red" href="sos.html?e=' + w.open.id + '">' + (w.open.test ? '🔔 ' : '🆘 ') + E(w.name) + '님 ' + (w.open.test ? '시험 신호' : '긴급!') + ' — 열기</a>'; });
+
+  /* 큰 버튼 */
+  h += '<button class="sos-big" id="bigSos" type="button"' + ((live && g.length) ? '' : ' disabled') + '>🆘 긴급<small>누르면 5초 뒤 보호자에게</small></button>';
+
+  /* 개통 상태 */
+  h += '<div class="nu-card" style="gap:8px"><b style="font-size:17px">' + (ready ? '✅ 개통 완료 — 언제든 누르시면 됩니다' : '개통까지 남은 일') + '</b>' +
+    '<span class="nu-sub" style="margin:0">' +
+      (live ? '✅ 이용권 · ' + SOS.date(ST.sub_until) + '까지' : '⬜ 「안심 긴급」 이용권 (1개월 ' + NU.won(ST.price_1m) + ' · 12개월 ' + NU.won(ST.price_12m) + ')') + '<br>' +
+      (g.length >= ST.min ? '✅' : '⬜') + ' 보호자 ' + g.length + '명 연결 (최소 ' + ST.min + '명 · 최대 ' + ST.max + '명)<br>' +
+      (tested >= ST.min ? '✅' : '⬜') + ' 시험 신호 확인 ' + tested + '명 (보호자 휴대폰이 실제로 울리는지)' +
+    '</span>' +
+    (live ? '' : '<div class="sos-row"><button class="nu-btn" id="buy1" type="button">1개월 ' + NU.won(ST.price_1m) + '</button><button class="nu-btn mint" id="buy12" type="button">12개월 ' + NU.won(ST.price_12m) + '</button></div>') +
+  '</div>';
+
+  /* 보호자 */
+  h += '<div class="nu-card"><b style="font-size:17px">👨‍👩‍👧 나를 지키는 보호자</b>';
+  if (!ST.consent_at) {
+    h += '<span class="nu-sub">보호자를 연결하기 전에 아래 내용에 동의해 주세요.</span>' +
+      '<div style="background:var(--nu-soft);border-radius:14px;padding:12px;font-size:13.5px;line-height:1.7">' +
+      '· 긴급 버튼을 누르면 내 <b>현재 위치 · 배터리</b>를 연결된 보호자에게 보냅니다(긴급이 끝날 때까지 2분마다).<br>' +
+      '· 위치는 긴급 상황에만 쓰며 7일 뒤 지웁니다. 보낸 기록(언제 · 누구에게)은 법에 따라 6개월 보관합니다.<br>' +
+      '· 보호자의 전화번호는 서버에 저장하지 않습니다.<br>· 동의는 언제든 이 화면에서 거둘 수 있습니다(보호자 연결도 함께 끊깁니다).</div>' +
+      '<label class="sos-sw"><input type="checkbox" id="agree"> 위치정보 이용 · 보호자 제공에 동의합니다</label>' +
+      '<button class="nu-btn" id="agreeGo" type="button" disabled>동의하고 보호자 연결하기</button>';
+  } else {
+    h += g.length ? g.map(function(x){
+      return '<div class="sos-li"><div class="nm">' + E(x.name) + '<small>' + (x.test_ok_at ? '<span class="sos-tag ok">시험 확인 ✓</span>' : '<span class="sos-tag no">시험 전</span>') +
+        (x.reachable ? '' : ' <span class="sos-tag bad">알림 꺼짐 — 보호자 앱 알림을 켜야 해요</span>') + '</small></div>' +
+        '<button type="button" data-ren="' + x.id + '">이름</button><button type="button" data-un="' + x.id + '">끊기</button></div>';
+    }).join('') : '<span class="nu-sub">아직 연결된 보호자가 없어요. 아래 「보호자 초대」를 눌러 주세요.</span>';
+    (ST.invites || []).forEach(function(i){
+      h += '<div class="sos-li"><div class="nm">' + E(i.name) + ' <small>초대 보냄 · 코드 ' + E(i.code) + ' · ' + SOS.date(i.expires_at) + '까지</small></div><button type="button" data-show="' + E(i.code) + '" data-nm="' + E(i.name) + '">다시 보기</button><button type="button" data-cx="' + E(i.code) + '">지우기</button></div>';
+    });
+    if (g.length < ST.max) h += '<button class="nu-btn" id="inv" type="button">＋ 보호자 초대</button>';
+    if (g.length) h += '<button class="nu-btn line" id="test" type="button">🔔 시험 신호 보내기</button>';
+  }
+  h += '</div>';
+
+  /* 이 휴대폰 문자 (선택) */
+  var nums = SOS.smsNumbers();
+  h += '<div class="nu-card"><b style="font-size:17px">📩 이 휴대폰 문자도 함께 (선택)</b>' +
+    '<span class="nu-sub" style="margin:0">긴급 버튼을 누르면 보호자 번호 · 위치가 채워진 문자창이 함께 뜹니다. <b>[보내기]</b>만 누르면 내 요금제로 나갑니다. 인터넷이 안 되는 곳에서도 문자는 나갈 수 있어요.<br>번호는 <b>이 휴대폰 안에만</b> 저장됩니다(앱을 지우거나 휴대폰을 바꾸면 다시 넣어 주세요).</span>' +
+    '<label class="sos-sw"><input type="checkbox" id="smsOn"' + (SOS.smsOn() ? ' checked' : '') + (nums.length ? '' : ' disabled') + '> 긴급 때 문자창도 띄우기</label>' +
+    nums.map(function(n, i){ return '<div class="sos-li"><div class="nm">' + E(n.name || '보호자') + '<small>' + E(n.phone) + '</small></div><button type="button" data-delnum="' + i + '">지우기</button></div>'; }).join('') +
+    (nums.length < 3 ? '<div class="sos-row"><input class="nu-in" id="numName" placeholder="이름 (예: 큰딸)" style="flex:.8"><input class="nu-in" id="numPhone" placeholder="010-0000-0000" inputmode="tel"></div><button class="nu-btn ghost" id="numAdd" type="button">번호 넣기</button>' : '') +
+  '</div>';
+
+  /* 바탕화면 긴급 아이콘 */
+  h += '<div class="nu-card"><b style="font-size:17px">📲 바탕화면에 긴급 버튼</b>' +
+    '<span class="nu-sub" style="margin:0">앱을 찾지 않아도 바탕화면의 빨간 아이콘 하나로 바로 긴급을 보냅니다.</span>' +
+    '<button class="nu-btn ghost" id="pin" type="button">바탕화면에 긴급 버튼 놓기</button></div>';
+
+  /* 내가 지키는 분 */
+  if ((ST.wards || []).length) {
+    h += '<div class="nu-card"><b style="font-size:17px">🛡 내가 지키는 분</b>' + ST.wards.map(function(w){
+      return '<div class="sos-li"><div class="nm">' + E(w.name) + '<small>' + SOS.date(w.since) + '부터 보호자</small></div>' +
+        (w.open ? '<a class="sos-tag bad" href="sos.html?e=' + w.open.id + '">' + (w.open.test ? '시험 신호' : '긴급!') + '</a>' : '<span class="sos-tag ok">평온</span>') +
+        '<button type="button" data-ren="' + w.link + '">이름</button><button type="button" data-un="' + w.link + '">그만 지키기</button></div>';
+    }).join('') + '</div>';
+  }
+  h += '<a class="nu-btn ghost" href="sos.html?join=1" id="joinLink">초대 코드로 보호자 되기</a>';
+  if (ST.consent_at) h += '<button class="nu-btn ghost" id="withdraw" type="button" style="font-size:14px;height:46px">위치정보 동의 거두기</button>';
+  V.innerHTML = h;
+  wireHome();
+}
+
+function wireHome(){
+  var b = $('bigSos'); if (b) b.onclick = function(){ goFlow(false); };
+  if ($('buy1')) $('buy1').onclick = function(){ buy('m1'); };
+  if ($('buy12')) $('buy12').onclick = function(){ buy('m12'); };
+  if ($('agree')) $('agree').onchange = function(){ $('agreeGo').disabled = !this.checked; };
+  if ($('agreeGo')) $('agreeGo').onclick = async function(){ this.disabled = true; try { await SOS.rpc('sos_consent', { p_version: '2026-11-14' }); showHome(); } catch (e) { err(e.message); this.disabled = false; } };
+  if ($('inv')) $('inv').onclick = inviteSheet;
+  if ($('test')) $('test').onclick = function(){ goFlow(true); };
+  if ($('pin')) $('pin').onclick = pinSheet;
+  if ($('withdraw')) $('withdraw').onclick = function(){
+    var sh = NU.sheet('<h2>동의를 거둘까요?</h2><p class="nu-sub">보호자 연결이 모두 끊기고, 긴급 버튼을 누를 수 없게 됩니다.</p><button class="nu-btn sos-red" id="wdGo" type="button">동의 거두기</button><button class="nu-btn ghost" data-close>그대로 두기</button>');
+    sh.querySelector('#wdGo').onclick = async function(){ await SOS.rpc('sos_consent_withdraw'); NU.closeSheet(); showHome(); };
+  };
+  V.querySelectorAll('[data-un]').forEach(function(x){ x.onclick = function(){
+    var id = x.dataset.un;
+    var sh = NU.sheet('<h2>연결을 끊을까요?</h2><p class="nu-sub">끊으면 긴급 때 이 분에게 알림이 가지 않습니다.</p><button class="nu-btn sos-red" id="unGo" type="button">끊기</button><button class="nu-btn ghost" data-close>그대로 두기</button>');
+    sh.querySelector('#unGo').onclick = async function(){ await SOS.rpc('sos_unlink', { p_link: id }); NU.closeSheet(); showHome(); };
+  }; });
+  V.querySelectorAll('[data-ren]').forEach(function(x){ x.onclick = function(){
+    var id = x.dataset.ren;
+    var sh = NU.sheet('<h2>부를 이름</h2><input class="nu-in" id="rnIn" maxlength="20" placeholder="예: 큰딸 · 어머니"><button class="nu-btn" id="rnGo" type="button">바꾸기</button><button class="nu-btn ghost" data-close>닫기</button>');
+    sh.querySelector('#rnGo').onclick = async function(){ var v = sh.querySelector('#rnIn').value.trim(); if (!v) return; await SOS.rpc('sos_rename', { p_link: id, p_name: v }); NU.closeSheet(); showHome(); };
+  }; });
+  V.querySelectorAll('[data-cx]').forEach(function(x){ x.onclick = async function(){ await SOS.rpc('sos_invite_cancel', { p_code: x.dataset.cx }); showHome(); }; });
+  V.querySelectorAll('[data-show]').forEach(function(x){ x.onclick = function(){ inviteShow(x.dataset.show, x.dataset.nm); }; });
+  if ($('smsOn')) $('smsOn').onchange = function(){ SOS.setSmsOn(this.checked); };
+  V.querySelectorAll('[data-delnum]').forEach(function(x){ x.onclick = function(){ var a = SOS.smsNumbers(); a.splice(Number(x.dataset.delnum), 1); SOS.setSmsNumbers(a); if (!a.length) SOS.setSmsOn(false); showHome(); }; });
+  if ($('numAdd')) $('numAdd').onclick = function(){
+    var p = SOS.cleanPhone($('numPhone').value), n = $('numName').value.trim().slice(0, 12);
+    if (p.replace(/\D/g, '').length < 9) { err('전화번호를 확인해 주세요.'); return; }
+    var a = SOS.smsNumbers(); a.push({ name: n || '보호자', phone: p }); SOS.setSmsNumbers(a); SOS.setSmsOn(true); err(''); showHome();
+  };
+}
+
+/* ── 보호자 초대 ─────────────────────────────────────────── */
+function inviteSheet(){
+  var sh = NU.sheet('<h2>보호자 초대</h2><p class="nu-sub">보호자를 뭐라고 부르시나요? (긴급 화면에 이 이름이 보여요)</p>' +
+    '<input class="nu-in" id="ivName" maxlength="20" placeholder="예: 큰딸 · 아들 · 남편">' +
+    '<button class="nu-btn" id="ivGo" type="button">초대 만들기</button><div id="ivErr" class="nu-err"></div><button class="nu-btn ghost" data-close>닫기</button>');
+  sh.querySelector('#ivGo').onclick = async function(){
+    this.disabled = true;
+    try {
+      var r = await SOS.rpc('sos_invite', { p_guardian_name: sh.querySelector('#ivName').value.trim() });
+      if (!r.ok) throw new Error(SOS.err(r.error));
+      inviteShow(r.code, sh.querySelector('#ivName').value.trim() || '보호자');
+    } catch (e) { NU.showErr('ivErr', e.message); this.disabled = false; }
+  };
+}
+function inviteUrl(code){ return location.origin + '/sos.html?invite=' + code; }
+function inviteShow(code, name){
+  var url = inviteUrl(code);
+  var sh = NU.sheet('<h2>' + E(name) + '님께 보내세요</h2>' +
+    '<ol class="sos-steps"><li>보호자 휴대폰에 <b>' + SOS.APPNAME + ' 앱</b>을 설치합니다.</li><li>아래 링크를 열거나 QR을 찍어 「보호자 되기」를 누릅니다.</li><li>연결되면 여기서 <b>🔔 시험 신호</b>를 보내 휴대폰이 실제로 울리는지 확인합니다.</li></ol>' +
+    '<div id="ivQr" style="display:flex;justify-content:center;padding:8px;background:#fff;border-radius:16px"></div>' +
+    '<p class="nu-sub" style="text-align:center">코드 <b style="font-size:22px;letter-spacing:2px;color:var(--nu-ink)">' + E(code) + '</b> · 3일 동안 쓸 수 있어요</p>' +
+    '<button class="nu-btn" id="ivShare" type="button" style="background:#FEE500;color:#1B1B1F">카톡 · 문자로 보내기</button>' +
+    '<button class="nu-btn ghost" data-close>닫기</button>');
+  AL.drawQr(sh.querySelector('#ivQr'), url, 200).catch(function(){});
+  sh.querySelector('#ivShare').onclick = function(){
+    AL.shareText('[' + SOS.APPNAME + ' 안심 긴급] 제 보호자가 되어 주세요. 긴급 버튼을 누르면 휴대폰이 울리고 제 위치가 보입니다.\n① ' + SOS.APPNAME + ' 앱 설치 ② 아래 주소 열기 (코드 ' + code + ', 3일 안에)\n' + url);
+  };
+  NU.closeSheet && sh.querySelector('[data-close]').addEventListener('click', function(){ showHome(); });
+}
+
+/* ── 초대 받기 (보호자 쪽) ─────────────────────────────────── */
+async function showInvite(code, me){
+  setT('🛡 보호자 되기');
+  var pk = null; try { pk = await SOS.rpc('sos_invite_peek', { p_code: code }); } catch (e) {}
+  if (!pk || !pk.ok) { V.innerHTML = '<div class="nu-card"><b>' + E(SOS.err(pk && pk.error)) + '</b></div><a class="nu-btn ghost" href="sos.html">안심 긴급 화면으로</a>'; return; }
+  if (pk.mine) { V.innerHTML = '<div class="nu-card"><b>' + E(SOS.err('self')) + '</b><span class="nu-sub">이 링크를 보호자 휴대폰으로 보내 주세요.</span></div><a class="nu-btn ghost" href="sos.html">돌아가기</a>'; return; }
+  V.innerHTML = '<div class="nu-card" style="gap:10px"><b style="font-size:19px">「' + E(pk.name) + '」님을 보호자로 초대했어요</b>' +
+    '<span class="nu-sub" style="margin:0">보호자가 되면, 그분이 긴급 버튼을 누를 때 <b>이 휴대폰이 크게 울리고</b> 그분의 위치가 보입니다. 내 전화번호는 그분께도, 서버에도 남지 않습니다.</span>' +
+    '<span class="nu-lbl">그분을 뭐라고 부르시나요?</span><input class="nu-in" id="acName" maxlength="20" placeholder="예: 어머니 · 아버지 · 우리 아이">' +
+    (SOS.isApp() ? '' : '<span class="nu-sub" style="margin:0;color:var(--sos)">⚠ 긴급 알림을 받으려면 <b>' + SOS.APPNAME + ' 앱</b>에서 열어야 합니다. 앱을 설치한 뒤 이 링크를 앱에서 열거나, 앱의 「초대 코드로 보호자 되기」에 코드 <b>' + E(code.toUpperCase()) + '</b>를 넣어 주세요.</span>') +
+    '</div><button class="nu-btn" id="acGo" type="button">보호자 되기</button>' +
+    (SOS.isApp() ? '' : appButtons());
+  $('acGo').onclick = async function(){
+    this.disabled = true; err('');
+    try {
+      if (!me) me = await NU.ensureUser();
+      var r = await SOS.rpc('sos_accept', { p_code: code, p_owner_name: $('acName').value.trim() });
+      if (!r.ok) throw new Error(SOS.err(r.error));
+      SOS.markDevice();
+      var push = true; try { push = await AL.pushReady(); } catch (e) {}
+      V.innerHTML = '<div class="nu-card" style="gap:8px"><b style="font-size:19px">✅ 보호자가 되었습니다</b><span class="nu-sub" style="margin:0">이제 그분 휴대폰에서 <b>🔔 시험 신호</b>를 보내 달라고 하세요. 이 휴대폰이 울리면 「확인했어요」를 눌러 주시면 개통이 끝납니다.</span>' +
+        (push ? '' : '<span class="nu-sub" style="margin:0;color:var(--sos)">⚠ 이 휴대폰은 지금 알림을 받을 수 없는 상태예요. 휴대폰 설정에서 ' + SOS.APPNAME + ' 알림을 켜 주세요.</span>') + '</div>' +
+        '<a class="nu-btn ghost" href="sos.html">안심 긴급 화면으로</a>';
+    } catch (e) { err(e.message || String(e)); this.disabled = false; }
+  };
+}
+function appButtons(){
+  var a = SOS.APP === 'baronu'
+    ? ['https://play.google.com/store/apps/details?id=com.weaveapp.baronu', 'https://apps.apple.com/kr/app/id6830149213']
+    : ['https://play.google.com/store/apps/details?id=com.weaveapp.alias', 'https://apps.apple.com/app/id6819847165'];
+  return '<div class="sos-row"><a class="nu-btn line" href="' + a[0] + '" target="_blank" rel="noopener" style="font-size:15px">▶ 안드로이드 앱</a><a class="nu-btn line" href="' + a[1] + '" target="_blank" rel="noopener" style="font-size:15px">📱 아이폰 앱</a></div>';
+}
+function joinByCode(){
+  setT('🛡 보호자 되기');
+  V.innerHTML = '<div class="nu-card"><b style="font-size:18px">받은 초대 코드를 넣어 주세요</b><input class="nu-in" id="jc" maxlength="8" placeholder="예: 7K3F9A2C" style="text-transform:uppercase;letter-spacing:2px;font-size:20px"></div><button class="nu-btn" id="jcGo" type="button">다음</button>';
+  $('jcGo').onclick = function(){ var c = $('jc').value.trim().toUpperCase(); if (c.length < 6) { err('코드를 확인해 주세요.'); return; } location.href = 'sos.html?invite=' + encodeURIComponent(c); };
+}
+
+/* ── 긴급 보내기 (이용자) ─────────────────────────────────── */
+async function goFlow(test){
+  clearTimers(); err(''); ok('');
+  if (!ST) { try { await load(); } catch (e) {} }
+  setT(test ? '🔔 시험 신호' : '🆘 긴급');
+  var n = test ? 3 : 5, cancelled = false;
+  var locP = SOS.where(12000);           // 세는 동안 위치를 미리 잡습니다
+  V.innerHTML = '<div class="sos-head' + (test ? ' test' : '') + '"><b>' + (test ? '시험 신호를 보냅니다' : '보호자에게 긴급 신호를 보냅니다') + '</b><span>' + (test ? '보호자 휴대폰이 울리는지 확인하는 시험입니다.' : '잘못 누르셨으면 아래 [취소]를 누르세요.') + '</span></div>' +
+    '<div class="sos-count" id="cnt">' + n + '</div>' +
+    '<button class="nu-btn ghost" id="cx" type="button" style="height:72px;font-size:22px">취소</button>' +
+    (test ? '' : '<button class="nu-btn sos-red" id="now" type="button">지금 바로 보내기</button>');
+  var go = function(){ if (cancelled) return; cancelled = true; clearInterval(iv); send(test, locP); };
+  $('cx').onclick = function(){ cancelled = true; clearInterval(iv); if (Q.get('go')) history.replaceState(null, '', 'sos.html'); showHome(); };
+  if ($('now')) $('now').onclick = go;
+  var iv = setInterval(function(){ n--; var c = $('cnt'); if (c) c.textContent = n; if (n <= 0) go(); }, 1000);
+}
+
+async function send(test, locP){
+  V.innerHTML = '<div class="sos-head' + (test ? ' test' : '') + '"><b>' + (test ? '시험 신호를 보내는 중…' : '긴급 신호를 보내는 중…') + '</b><span id="stx">위치를 잡고 있어요</span></div>';
+  var loc = await Promise.race([locP, new Promise(function(r){ setTimeout(function(){ r(null); }, 6000); })]);   // 위치는 6초만 기다리고 먼저 보냅니다
+  var r = await SOS.start(test, loc);
+  if (!test && SOS.smsOn()) setTimeout(function(){ SOS.openSms(loc); }, r.ok ? 1200 : 300);   // 이 휴대폰 문자창도 (선택)
+  if (r.ok) { location.replace('sos.html?e=' + r.event + '&mine=1' + (r.sent === 0 ? '&nodev=1' : '')); return; }
+  if (r.offline) {
+    V.innerHTML = '<div class="sos-head"><b>📶 신호가 약해 아직 못 보냈어요</b><span>이 휴대폰에 담아 두었습니다. 신호가 잡히면 <b>곧바로 저절로</b> 보냅니다. 이 화면을 켜 두세요.</span></div>' +
+      emergencyButtons(loc) + '<button class="nu-btn ghost" id="retry" type="button">지금 다시 보내 보기</button>';
+    wireEmergency(loc);
+    $('retry').onclick = async function(){ this.disabled = true; var f = await SOS.flush(); if (f && f.ok) location.replace('sos.html?e=' + f.event + '&mine=1'); else this.disabled = false; };
+    SOS.onFlushed = function(f){ location.replace('sos.html?e=' + f.event + '&mine=1'); };
+    poll = setInterval(async function(){ var f = await SOS.flush(); if (f && f.ok) location.replace('sos.html?e=' + f.event + '&mine=1'); }, 15000);
+    return;
+  }
+  V.innerHTML = '<div class="sos-head"><b>보내지 못했어요</b><span>' + E(SOS.err(r.error)) + '</span></div>' + emergencyButtons(loc) +
+    (r.error === 'no_sub' ? '<button class="nu-btn" type="button" onclick="location.href=\'sos.html\'">이용권 보기</button>' : '<a class="nu-btn ghost" href="sos.html">돌아가기</a>');
+  wireEmergency(loc);
+}
+function emergencyButtons(){
+  return '<div class="sos-row"><button class="nu-btn sos-red" id="c119" type="button">📞 119 전화</button><button class="nu-btn ghost" id="s119" type="button">✉️ 119 문자</button></div>' +
+    (SOS.smsNumbers().length ? '<button class="nu-btn" id="smsG" type="button">📩 보호자에게 문자 보내기</button>' : '');
+}
+function wireEmergency(loc){
+  if ($('c119')) $('c119').onclick = SOS.call119;
+  if ($('s119')) $('s119').onclick = function(){ SOS.sms119(loc); };
+  if ($('smsG')) $('smsG').onclick = function(){ SOS.openSms(loc); };
+}
+
+/* ── 긴급 한 건 보기 (이용자 · 보호자) ─────────────────────── */
+async function showEvent(id){
+  clearTimers();
+  var v;
+  try { v = await SOS.rpc('sos_view', { p_event: id }); } catch (e) { err(e.message); return; }
+  if (!v || !v.ok) { V.innerHTML = '<div class="nu-card"><b>' + E(SOS.err(v && v.error)) + '</b></div><a class="nu-btn ghost" href="sos.html">돌아가기</a>'; return; }
+  var mine = v.me === 'owner';
+  paintEvent(v);
+  if (mine && !v.ended_at) {
+    stopFollow = SOS.follow(id, function(nv){ if (nv && nv.ok) paintEvent(nv); });
+  } else if (!v.ended_at) {
+    poll = setInterval(async function(){ try { var nv = await SOS.rpc('sos_view', { p_event: id }); if (nv && nv.ok) { paintEvent(nv); if (nv.ended_at) clearInterval(poll); } } catch (e) {} }, 10000);
+  }
+}
+function paintEvent(v){
+  var mine = v.me === 'owner', ended = !!v.ended_at, acks = v.acks || [];
+  setT(v.test ? '🔔 시험 신호' : (mine ? '🆘 내 긴급' : '🆘 ' + (v.name || '') + '님 긴급'));
+  var head = mine
+    ? (ended ? '<b>긴급이 끝났습니다</b><span>' + SOS.ago(v.ended_at) + '에 끝남</span>'
+             : '<b>' + (v.test ? '시험 신호를 보냈어요' : '보호자 ' + v.guardians + '명에게 긴급 신호를 보냈어요') + '</b><span>' +
+               (acks.length ? '✅ ' + acks.map(function(a){ return E(a.name); }).join(', ') + '님이 확인했습니다' : '보호자가 확인하기를 기다리는 중… (확인이 없으면 5분마다 다시 울립니다)') +
+               (v.test ? '' : '<br>내 위치를 보호자에게 2분마다 보내는 중입니다. 이 화면을 켜 두시면 더 정확합니다.') + '</span>')
+    : (ended ? '<b>' + E(v.name) + '님 긴급이 끝났습니다</b><span>' + SOS.ago(v.ended_at) + '</span>'
+             : '<b>' + (v.test ? '🔔 ' + E(v.name) + '님의 시험 신호입니다' : '🆘 ' + E(v.name) + '님이 도움을 요청했습니다') + '</b><span>' + SOS.ago(v.started_at) + ' 시작' +
+               (v.battery != null ? ' · 배터리 ' + v.battery + '%' : '') + (acks.length ? '<br>✅ 확인: ' + acks.map(function(a){ return E(a.name); }).join(', ') : '') + '</span>');
+  var h = '<div class="sos-head' + (v.test ? ' test' : '') + (ended ? ' ended' : '') + '">' + head + '</div>';
+  if (mine && Q.get('nodev') && !ended) h += '<div class="nu-card" style="border-color:var(--sos)"><b style="color:var(--sos)">⚠ 알림을 받을 수 있는 보호자 휴대폰이 없습니다</b><span class="nu-sub" style="margin:0">보호자 앱의 알림이 꺼져 있을 수 있어요. 119 · 문자를 함께 쓰세요.</span></div>';
+
+  if (!mine && !ended && !v.test && !v.acked) h += '<button class="nu-btn sos-red" id="ack" type="button" style="height:68px;font-size:20px">✅ 확인했어요 (제가 챙길게요)</button>';
+  if (!mine && !ended && v.test && !v.acked) h += '<button class="nu-btn mint" id="ack" type="button" style="height:68px;font-size:20px">✅ 시험 신호 잘 받았어요</button>';
+  if (!mine && v.acked && v.test) h += '<div class="nu-card"><b>✅ 시험 확인 완료</b><span class="nu-sub" style="margin:0">긴급 때 이 휴대폰이 이렇게 울립니다.</span></div>';
+
+  if (v.lat != null && v.lng != null) {
+    var L = SOS.mapLinks(v.lat, v.lng, v.name || '긴급 위치');
+    h += '<div class="nu-card" style="gap:10px"><b style="font-size:16px">📍 ' + (mine ? '보낸 위치' : '지금 위치') + '</b>' +
+      '<span class="nu-sub" style="margin:0">' + SOS.ago(v.loc_at) + ' · 오차 약 ' + (v.acc != null ? Math.round(v.acc) + 'm' : '알 수 없음') + ((v.track || []).length > 1 ? ' · 위치 ' + v.track.length + '번 받음' : '') + '</span>' +
+      '<iframe class="sos-map" src="' + SOS.mapEmbed(v.lat, v.lng) + '" loading="lazy" title="지도"></iframe>' +
+      '<div class="sos-row"><a class="nu-btn line" href="' + L.kakao + '" target="_blank" rel="noopener" style="font-size:15px">카카오맵</a><a class="nu-btn line" href="' + L.kakaoTo + '" target="_blank" rel="noopener" style="font-size:15px">길찾기</a><a class="nu-btn line" href="' + L.naver + '" target="_blank" rel="noopener" style="font-size:15px">네이버</a></div></div>';
+  } else if (!v.test) {
+    h += '<div class="nu-card"><b>📍 위치를 아직 받지 못했어요</b><span class="nu-sub" style="margin:0">' + (mine ? '휴대폰 위치(GPS)를 켜 주세요. 위치가 잡히면 바로 보냅니다.' : '위치가 들어오면 이 화면에 바로 나타납니다.') + '</span></div>';
+  }
+  if (!ended && !v.test) h += emergencyButtons();
+  if (!ended) h += '<button class="nu-btn ghost" id="end" type="button">' + (mine ? (v.test ? '시험 끝내기' : '괜찮아졌어요 · 긴급 끝내기') : (v.test ? '닫기' : '상황 정리됨 · 긴급 끝내기')) + '</button>';
+  h += '<a class="nu-btn ghost" href="sos.html">안심 긴급 첫 화면</a>';
+  V.innerHTML = h;
+  wireEmergency(v.lat != null ? { lat: v.lat, lng: v.lng, acc: v.acc } : null);
+  if ($('ack')) $('ack').onclick = async function(){
+    this.disabled = true;
+    try { var r = await SOS.rpc('sos_ack', { p_event: v.id }); if (!r.ok) throw new Error(SOS.err(r.error)); SOS.alert(v.id, 'ack'); showEvent(v.id); }
+    catch (e) { err(e.message); this.disabled = false; }
+  };
+  if ($('end')) $('end').onclick = function(){
+    if (!mine && v.test) { location.href = 'sos.html'; return; }
+    var sh = NU.sheet('<h2>' + (v.test ? '시험을 끝낼까요?' : '긴급을 끝낼까요?') + '</h2><p class="nu-sub">' + (v.test ? '' : '보호자 모두에게 「끝났습니다」 알림이 갑니다.') + '</p><button class="nu-btn" id="endGo" type="button">끝내기</button><button class="nu-btn ghost" data-close>아니요</button>');
+    sh.querySelector('#endGo').onclick = async function(){ await SOS.rpc('sos_end', { p_event: v.id, p_reason: mine ? 'owner' : 'guardian' }); if (!v.test) SOS.alert(v.id, 'end'); NU.closeSheet(); clearTimers(); showEvent(v.id); };
+  };
+}
+
+/* ── 바탕화면 긴급 버튼 ─────────────────────────────────── */
+function pinSheet(){
+  if (SOS.canPinNative()) {
+    if (SOS.pinNative()) { NU.sheet('<h2>휴대폰이 묻는 창에서 [추가]를 눌러 주세요</h2><p class="nu-sub">바탕화면에 빨간 <b>🆘 긴급</b> 아이콘이 생깁니다. 누르면 5초 뒤 보호자에게 보냅니다.</p><button class="nu-btn ghost" data-close>알겠어요</button>'); return; }
+  }
+  var ios = SOS.isIOS(), app = SOS.isApp();
+  var how = ios && app
+    ? '<ol class="sos-steps"><li>바탕화면 빈 곳을 <b>꾹</b> 누릅니다.</li><li>왼쪽 위 <b>[＋]</b> 또는 <b>[편집 → 위젯 추가]</b>를 누릅니다.</li><li><b>' + SOS.APPNAME + '</b>를 찾아 <b>「긴급」</b> 위젯을 고르고 [위젯 추가]를 누릅니다.</li></ol><p class="nu-sub">잠금 화면에도 같은 방법으로 놓을 수 있어요. 아이폰 15 Pro 이상은 설정 → 동작 버튼 → 단축어에서 「' + SOS.APPNAME + ' 긴급」을 고를 수 있어요.</p>'
+    : app
+      ? '<p class="nu-sub">이 기능은 다음 앱 업데이트에 들어갑니다. 플레이 스토어에서 ' + SOS.APPNAME + '를 업데이트한 뒤 다시 눌러 주세요.</p>'
+      : ios
+        ? '<ol class="sos-steps"><li>사파리 아래쪽 <b>공유(□↑)</b>를 누릅니다.</li><li><b>[홈 화면에 추가]</b>를 누릅니다.</li></ol>'
+        : '<ol class="sos-steps"><li>브라우저 오른쪽 위 <b>⋮</b> 메뉴를 누릅니다.</li><li><b>[홈 화면에 추가]</b>를 누릅니다.</li></ol>';
+  NU.sheet('<h2>바탕화면에 긴급 버튼 놓기</h2>' + how + '<button class="nu-btn ghost" data-close>알겠어요</button>');
+}
+
+/* ── 결제 ─────────────────────────────────────────────── */
+async function buy(which){
+  err('');
+  var how = await SOS.buy(which, function(r){
+    NU.closeSheet();
+    if (r && r.ok) { ok(r.already ? '이미 넣어 드린 결제입니다.' : '결제가 끝났어요. 「안심 긴급」 이용권을 넣어 드렸습니다.'); showHome(); return; }
+    if (r && r.canceled) return;
+    if (r && r.pending) { err('결제가 아직 확정되지 않았습니다. 확정되면 저절로 들어갑니다.'); return; }
+    err('결제를 마치지 못했습니다.' + (r && r.error ? '\n(' + r.error + ')' : ''));
+  });
+  if (how === 'store') { NU.sheet('<h2>결제창을 여는 중…</h2><p class="nu-sub">결제를 마치면 이 화면이 저절로 바뀝니다.</p>'); return; }
+  if (how === 'web') webPay(which);
+}
+function webPay(which){
+  var price = which === 'm1' ? ST.price_1m : ST.price_12m;
+  var sh = NU.sheet('<h2>안심 긴급 ' + (which === 'm1' ? '1개월' : '12개월') + ' · ' + NU.won(price) + '</h2>' +
+    '<input class="nu-in" id="wpName" placeholder="구매자 이름" autocomplete="name" style="margin-bottom:8px">' +
+    '<input class="nu-in" id="wpTel" placeholder="휴대폰 번호 (선택)" inputmode="tel" autocomplete="tel" style="margin-bottom:10px">' +
+    '<button class="nu-btn" id="wpCard" type="button">카드로 결제</button><div id="wpErr" class="nu-err" style="margin-top:10px"></div><button class="nu-btn ghost" data-close style="margin-top:10px">닫기</button>');
+  sh.querySelector('#wpCard').onclick = async function(){
+    var name = sh.querySelector('#wpName').value.trim();
+    if (!name) { NU.showErr('wpErr', '구매자 이름을 적어 주세요.'); return; }
+    this.disabled = true;
+    try {
+      var out = await AL.callFn('nureum-web-pay', { action: 'inicis_prepare', site: SOS.APP === 'baronu' ? 'baronu' : 'burum', product: 'sos', kind: which === 'm1' ? 'sos_1m' : 'sos_12m', qty: 1,
+        buyername: name, buyertel: sh.querySelector('#wpTel').value.trim() });
+      if (!out || !out.ok) throw new Error((out && out.error) || '결제를 준비하지 못했습니다');
+      await new Promise(function(res, rej){ if (window.INIPayPro) return res(); var s = document.createElement('script'); s.src = 'https://paypro.inicis.com/std/payment/js/INIPayPro_v2.js'; s.charset = 'UTF-8'; s.onload = res; s.onerror = function(){ rej(new Error('카드 결제창을 불러오지 못했습니다')); }; document.head.appendChild(s); });
+      var dev = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ? 'MOBILE' : 'WEB';
+      window.INIPayPro.requestPayment({ P_MID: out.mid, P_OID: out.oid, P_PAY_TYPE: 'CARD', P_DEVICE_TYPE: dev, P_IDCCODE: 'Y', P_AMT: out.amt, P_GOODS: out.goodname,
+        P_UNAME: out.buyername, P_MOBILE: out.buyertel || '', P_EMAIL: '', P_NEXT_URL: out.nextUrl, P_NOTI_URL: out.notiUrl, P_CLOSE_URL: out.closeUrl,
+        P_CHARSET: 'UTF-8', P_TIMESTAMP: out.timestamp, P_CHKFAKE: out.chkfake });
+    } catch (e) { NU.showErr('wpErr', e.message || String(e)); this.disabled = false; }
+  };
+}
+
+/* 카드 결제에서 돌아왔을 때 (?pay=ok / fail) */
+if (Q.get('pay')) setTimeout(function(){
+  if (Q.get('pay') === 'ok') ok('결제가 끝났어요. 「안심 긴급」 이용권을 넣어 드렸습니다.'); else err('결제를 마치지 못했습니다.' + (Q.get('msg') ? '\n(' + Q.get('msg') + ')' : ''));
+  try { history.replaceState(null, '', 'sos.html'); } catch (e) {}
+}, 400);
+
+if (Q.get('join')) { NU.session().then(function(){ joinByCode(); }); }
+else boot().catch(function(e){ err(e.message || String(e)); });
+document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'visible' && SOS.pending()) SOS.flush().then(function(f){ if (f && f.ok) location.replace('sos.html?e=' + f.event + '&mine=1'); }); });
+})();
+</script>
+</body>
+</html>
