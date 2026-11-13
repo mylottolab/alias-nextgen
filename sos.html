@@ -50,7 +50,7 @@
   <div id="err" class="nu-err" role="alert"></div>
   <div id="ok" class="nu-ok" role="status"></div>
   <div id="view" style="display:flex;flex-direction:column;gap:14px"><p class="nu-sub">불러오는 중…</p></div>
-  <p class="sos-119">생명이 위급하면 <b>119에 먼저</b> 신고하세요. 안심 긴급은 보호자에게 알리는 서비스이며,<br>휴대폰 · 통신 상태에 따라 전달이 늦거나 실패할 수 있습니다.</p>
+  <p class="sos-119">생명이 위급하면 <b>119</b>, 범죄 · 위협이면 <b>112</b>에 먼저 신고하세요. 안심 긴급은 보호자에게 알리는 서비스이며,<br>휴대폰 · 통신 상태에 따라 전달이 늦거나 실패할 수 있습니다.</p>
 </div>
 
 <script>
@@ -302,12 +302,16 @@ async function send(test, locP){
   wireEmergency(loc);
 }
 function emergencyButtons(){
-  return '<div class="sos-row"><button class="nu-btn sos-red" id="c119" type="button">📞 119 전화</button><button class="nu-btn ghost" id="s119" type="button">✉️ 119 문자</button></div>' +
+  return '<div class="sos-row"><button class="nu-btn sos-red" id="c119" type="button">📞 119 전화</button><button class="nu-btn" id="c112" type="button" style="background:linear-gradient(135deg,#1D4ED8,#3B82F6);box-shadow:0 6px 16px rgba(29,78,216,.3)">🚓 112 전화</button></div>' +
+    '<div class="sos-row"><button class="nu-btn ghost" id="s119" type="button" style="height:48px;font-size:15px">✉️ 119 문자</button><button class="nu-btn ghost" id="s112" type="button" style="height:48px;font-size:15px">✉️ 112 문자</button></div>' +
+    '<p class="sos-119" style="margin:-4px 0 0">119 — 아프거나 다쳤을 때 · 불 · 사고 &nbsp;|&nbsp; 112 — 범죄 · 위협 · 실종(길 잃음)</p>' +
     (SOS.smsNumbers().length ? '<button class="nu-btn" id="smsG" type="button">📩 보호자에게 문자 보내기</button>' : '');
 }
 function wireEmergency(loc){
   if ($('c119')) $('c119').onclick = SOS.call119;
   if ($('s119')) $('s119').onclick = function(){ SOS.sms119(loc); };
+  if ($('c112')) $('c112').onclick = SOS.call112;
+  if ($('s112')) $('s112').onclick = function(){ SOS.sms112(loc); };
   if ($('smsG')) $('smsG').onclick = function(){ SOS.openSms(loc); };
 }
 
@@ -337,7 +341,7 @@ function paintEvent(v){
              : '<b>' + (v.test ? '🔔 ' + E(v.name) + '님의 시험 신호입니다' : '🆘 ' + E(v.name) + '님이 도움을 요청했습니다') + '</b><span>' + SOS.ago(v.started_at) + ' 시작' +
                (v.battery != null ? ' · 배터리 ' + v.battery + '%' : '') + (acks.length ? '<br>✅ 확인: ' + acks.map(function(a){ return E(a.name); }).join(', ') : '') + '</span>');
   var h = '<div class="sos-head' + (v.test ? ' test' : '') + (ended ? ' ended' : '') + '">' + head + '</div>';
-  if (mine && Q.get('nodev') && !ended) h += '<div class="nu-card" style="border-color:var(--sos)"><b style="color:var(--sos)">⚠ 알림을 받을 수 있는 보호자 휴대폰이 없습니다</b><span class="nu-sub" style="margin:0">보호자 앱의 알림이 꺼져 있을 수 있어요. 119 · 문자를 함께 쓰세요.</span></div>';
+  if (mine && Q.get('nodev') && !ended) h += '<div class="nu-card" style="border-color:var(--sos)"><b style="color:var(--sos)">⚠ 알림을 받을 수 있는 보호자 휴대폰이 없습니다</b><span class="nu-sub" style="margin:0">보호자 앱의 알림이 꺼져 있을 수 있어요. 119 · 112 · 문자를 함께 쓰세요.</span></div>';
 
   if (!mine && !ended && !v.test && !v.acked) h += '<button class="nu-btn sos-red" id="ack" type="button" style="height:68px;font-size:20px">✅ 확인했어요 (제가 챙길게요)</button>';
   if (!mine && !ended && v.test && !v.acked) h += '<button class="nu-btn mint" id="ack" type="button" style="height:68px;font-size:20px">✅ 시험 신호 잘 받았어요</button>';

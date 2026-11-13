@@ -130,7 +130,7 @@ function texts(kind: string, role: string, label: string, test: boolean) {
   if (kind === 'sos') {
     return test
       ? { title: '🔔 [시험] ' + who + '님의 안심 긴급 시험 신호', body: '눌러서 「확인했어요」를 눌러 주세요. 실제 긴급이 아닙니다.' }
-      : { title: '🆘 ' + who + '님이 긴급 도움을 요청했습니다', body: '지금 눌러서 위치를 확인하세요. 위급하면 119에 먼저 신고하세요.' };
+      : { title: '🆘 ' + who + '님이 긴급 도움을 요청했습니다', body: '지금 눌러서 위치를 확인하세요. 위급하면 119(범죄 · 위협은 112)에 먼저 신고하세요.' };
   }
   if (kind === 'ack') {
     return role === 'owner'

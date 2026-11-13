@@ -95,6 +95,8 @@ window.SOS = window.SOS || {};
   S.openSms = function(loc){ var n = S.smsNumbers().map(function(x){ return x.phone; }); if (!n.length) return false; location.href = S.smsUrl(n, S.smsText(loc)); return true; };
   S.call119 = function(){ location.href = 'tel:119'; };
   S.sms119 = function(loc){ location.href = S.smsUrl(['119'], S.smsText(loc).replace('[긴급] ', '[119 문자신고] ')); };
+  S.call112 = function(){ location.href = 'tel:112'; };   // 🔴 2026-11-14 범죄 · 실종 · 위협
+  S.sms112 = function(loc){ location.href = S.smsUrl(['112'], S.smsText(loc).replace('[긴급] ', '[112 문자신고] ')); };
 
   /* ── 신호가 없을 때: 담아 두었다가 다시 ─────────────────────────────── */
   S.pending = function(){ return S.store.get(KEY_PENDING, null); };
