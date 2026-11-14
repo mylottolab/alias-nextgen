@@ -483,6 +483,7 @@ NU.meSheet = async function(){
     '<button class="nu-btn ghost" id="mFirst" type="button" style="margin-top:8px">' + (first === 'nureum' ? '앱을 열면: 누름 화면 ✓ (부름으로 바꾸기)' : '앱을 열면 누름 화면부터 보기') + '</button>' +
     '<a class="nu-btn ghost" href="alias_me.html" style="margin-top:8px">내 별칭 · 사진 · 갤러리</a>' +
     '<a class="nu-btn ghost" href="alias_contacts.html" style="margin-top:8px">부름 메신저 열기</a>' +
+    '<a class="nu-btn ghost" href="support.html?app=nureum" style="margin-top:8px">💬 고객센터 · 문의하기</a>' +   // 🔴 2026-11-15
     '<button class="nu-btn ghost" id="mOut" type="button" style="margin-top:8px">로그아웃</button>' +
     '<button class="nu-btn ghost" data-close type="button" style="margin-top:8px">닫기</button>');
   var bp = sh.querySelector('#mProtect');
