@@ -4628,7 +4628,7 @@ AL.topBar = async function(){
     var ACCT_ONLY = ['alias_chat.html', 'alias_phone.html'];
     var acctOnly = ACCT_ONLY.indexOf(page) >= 0;
     if (SKIP.indexOf(page) >= 0 && !acctOnly) return;
-    if (page.indexOf('nureum') === 0 || page === 'sos.html') return;   // 🔴 2026-10-30 — 누름 화면은 따로 꾸밉니다
+    if (page.indexOf('nureum') === 0 || page === 'sos.html' || page === 'support.html') return;   // 🔴 2026-10-30 — 누름 화면은 따로 꾸밉니다
     var wrap = document.querySelector('.wrap') || document.querySelector('.phwrap') || document.body;
     var tabbed = document.body.classList.contains('tabbed');
     /* MyPage · 로그아웃을 붙일 화면: 아래 탭 화면 + 대화 · 전화번호부 · 부름번호 · 동시통보 */
@@ -5104,6 +5104,8 @@ AL.registerPush = async function(){
         if (d.kind === 'request') { location.href = 'alias_requests.html'; return; }
         /* 🔴 2026-11-14 안심 긴급 알림 → 그 긴급 화면 */
         if (String(d.kind || '').indexOf('sos_') === 0 && d.event_id) { location.href = 'sos.html?e=' + encodeURIComponent(d.event_id); return; }
+        /* 🔴 2026-11-15 고객센터 답장 알림 → 그 문의 */
+        if (d.kind === 'support' && d.ticket) { location.href = 'support.html?t=' + encodeURIComponent(d.ticket) + (d.app === 'nureum' ? '&app=nureum' : ''); return; }
         if (!d.link_id) return;
 
         /* 🔴 2026-09-09: 알림 종류에 따라 갈 곳이 다릅니다.
