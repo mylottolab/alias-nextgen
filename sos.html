@@ -19,7 +19,7 @@
   background:radial-gradient(circle at 35% 30%,var(--sos2),var(--sos) 70%);color:#fff;font:inherit;font-weight:900;font-size:34px;
   box-shadow:0 0 0 12px rgba(224,36,36,.15),0 14px 34px rgba(224,36,36,.4);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
 .sos-big small{font-size:16px;font-weight:700;opacity:.92}
-.sos-big:disabled{filter:grayscale(.7);opacity:.6}
+.sos-big[data-ready="0"] small{font-size:15px}
 .sos-red{background:linear-gradient(135deg,var(--sos),var(--sos2))!important;box-shadow:0 6px 16px rgba(224,36,36,.3)!important}
 .sos-head{background:linear-gradient(135deg,var(--sos),var(--sos2));color:#fff;border-radius:22px;padding:18px;display:flex;flex-direction:column;gap:6px}
 .sos-head b{font-size:23px;line-height:1.35}
@@ -99,7 +99,8 @@ async function showHome(){
   (ST.wards || []).forEach(function(w){ if (w.open) h += '<a class="nu-btn sos-red" href="sos.html?e=' + w.open.id + '">' + (w.open.test ? '🔔 ' : '🆘 ') + E(w.name) + '님 ' + (w.open.test ? '시험 신호' : '긴급!') + ' — 열기</a>'; });
 
   /* 큰 버튼 */
-  h += '<button class="sos-big" id="bigSos" type="button"' + ((live && g.length) ? '' : ' disabled') + '>🆘 긴급<small>누르면 5초 뒤 보호자에게</small></button>';
+  /* 🔴 2026-11-14 개통 전에도 빨간 그대로 — 누르면 무엇이 남았는지 알려 줌(회색으로 죽어 보이지 않게) */
+  h += '<button class="sos-big" id="bigSos" type="button" data-ready="' + ((live && g.length) ? '1' : '0') + '">🆘 긴급<small>' + ((live && g.length) ? '누르면 5초 뒤 보호자에게' : '이용권 · 보호자 연결 뒤 쓸 수 있어요') + '</small></button>';
 
   /* 개통 상태 */
   h += '<div class="nu-card" style="gap:8px"><b style="font-size:17px">' + (ready ? '✅ 개통 완료 — 언제든 누르시면 됩니다' : '개통까지 남은 일') + '</b>' +
@@ -166,7 +167,16 @@ async function showHome(){
 }
 
 function wireHome(){
-  var b = $('bigSos'); if (b) b.onclick = function(){ goFlow(false); };
+  var b = $('bigSos'); if (b) b.onclick = function(){
+    if (b.dataset.ready === '1') { goFlow(false); return; }
+    var live = ST.sub_until && new Date(ST.sub_until) > new Date(), n = (ST.guardians || []).length;
+    NU.sheet('<h2>아직 긴급을 보낼 수 없어요</h2><ol class="sos-steps">' +
+      (live ? '' : '<li>아래 <b>「안심 긴급」 이용권</b>을 먼저 구입해 주세요.</li>') +
+      (n ? '' : '<li><b>보호자를 1명 이상</b> 연결해 주세요(개통은 2명부터).</li>') +
+      '</ol><p class="nu-sub">지금 위급하면 119 · 112 에 바로 신고하세요.</p>' +
+      '<div class="sos-row"><button class="nu-btn sos-red" type="button" onclick="SOS.call119()">📞 119</button><button class="nu-btn" type="button" style="background:linear-gradient(135deg,#1D4ED8,#3B82F6)" onclick="SOS.call112()">🚓 112</button></div>' +
+      '<button class="nu-btn ghost" data-close>알겠어요</button>');
+  };
   if ($('buy1')) $('buy1').onclick = function(){ buy('m1'); };
   if ($('buy12')) $('buy12').onclick = function(){ buy('m12'); };
   if ($('agree')) $('agree').onchange = function(){ $('agreeGo').disabled = !this.checked; };
