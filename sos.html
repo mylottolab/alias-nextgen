@@ -108,7 +108,9 @@ async function showHome(){
       (g.length >= ST.min ? '✅' : '⬜') + ' 보호자 ' + g.length + '명 연결 (최소 ' + ST.min + '명 · 최대 ' + ST.max + '명)<br>' +
       (tested >= ST.min ? '✅' : '⬜') + ' 시험 신호 확인 ' + tested + '명 (보호자 휴대폰이 실제로 울리는지)' +
     '</span>' +
-    (live ? '' : '<div class="sos-row"><button class="nu-btn" id="buy1" type="button">1개월 ' + NU.won(ST.price_1m) + '</button><button class="nu-btn mint" id="buy12" type="button">12개월 ' + NU.won(ST.price_12m) + '</button></div>') +
+    /* 🔴 2026-11-14 애플 심사: 이용권이 있어도 결제 단추가 늘 보이게(연장) */
+    (live ? '<span class="nu-sub" style="margin:0">이용권 연장 (남은 기간에 더해집니다)</span>' : '') +
+    '<div class="sos-row"><button class="nu-btn" id="buy1" type="button">1개월 ' + NU.won(ST.price_1m) + '</button><button class="nu-btn mint" id="buy12" type="button">12개월 ' + NU.won(ST.price_12m) + '</button></div>' +
   '</div>';
 
   /* 보호자 */
