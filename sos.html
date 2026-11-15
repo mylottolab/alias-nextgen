@@ -471,6 +471,7 @@ function verifySheet(){
 }
 /* ── 📱 휴대폰 사용도 소식으로 치기 (안드로이드 앱 · 2026-11-15 · 14_care_usage.sql · CareUsage.java) ──
    앱이 한 시간쯤마다 「마지막으로 휴대폰을 쓴 시각」 하나만 서버로 보냅니다. 무슨 앱을 썼는지는 보내지 않습니다. */
+var CU_HINT = false;
 var CU = { has: false, old: false, access: false, on: false, waiting: false };
 function usageRead(){
   CU.has = !!(window.AliasNative && typeof AliasNative.careUsageState === 'function');
@@ -480,7 +481,8 @@ function usageRead(){
 }
 usageRead();
 function usageBox(){
-  if (CU.old) return '<span class="nu-sub" style="margin:0;font-size:13px">📱 앱을 최신으로 업데이트하면 유튜브 · 카톡 · 전화처럼 <b>휴대폰을 쓴 것</b>도 소식으로 쳐요.</span>';
+  /* 새 앱이 플레이 스토어에 나온 뒤 CU_HINT 를 true 로 — 그 전에는 옛 앱에 업데이트 안내를 보이지 않습니다 */
+  if (CU.old && CU_HINT) return '<span class="nu-sub" style="margin:0;font-size:13px">📱 앱을 최신으로 업데이트하면 유튜브 · 카톡 · 전화처럼 <b>휴대폰을 쓴 것</b>도 소식으로 쳐요.</span>';
   if (!CU.has || CU.ok === false) return '';
   var box = '<div style="background:var(--nu-soft);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:8px"><b>📱 휴대폰 사용도 소식으로 치기</b>';
   if (CU.on && CU.access) return box + '<span class="nu-sub" style="margin:0">✅ 켜져 있어요. 유튜브 · 카톡 · 전화 등 <b>휴대폰을 쓰시면</b> 소식이 있는 것으로 봐요. 보내는 것은 「마지막으로 쓴 시각」 하나뿐이에요.</span>' +
