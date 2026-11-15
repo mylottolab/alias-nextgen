@@ -113,6 +113,7 @@ var CARE_TXT = { '기관 사칭 전화': '「검찰 · 경찰 · 금감원」이
 async function showHome(){
   clearTimers(); setT('🆘 안심 긴급');
   try { await load(); } catch (e) { V.innerHTML = ''; err(e.message || String(e)); return; }
+  usageRead();
   var g = ST.guardians || [], live = ST.sub_until && new Date(ST.sub_until) > new Date();
   var tested = g.filter(function(x){ return x.test_ok_at; }).length;
   var ready = live && g.length >= ST.min && tested >= ST.min;
@@ -177,12 +178,13 @@ async function showHome(){
   if (CS) {
     var hrs = CS.nosign_hours || 12;
     h += '<div class="nu-card" style="gap:10px"><b style="font-size:17px">🌙 무소식 알림</b>' +
-      '<span class="nu-sub" style="margin:0">정한 시간 동안 이 앱을 한 번도 쓰지 않으면, 먼저 <b>「괜찮으세요?」</b>를 묻고 1시간 안에 답이 없으면 <b>보호자에게 알립니다</b>. 쓰러지거나 버튼을 누를 수 없을 때를 위한 기능입니다.<br>' +
+      '<span class="nu-sub" style="margin:0">정한 시간 동안 ' + (CU.on ? '<b>휴대폰을</b>' : '이 앱을') + ' 한 번도 쓰지 않으면, 먼저 <b>「괜찮으세요?」</b>를 묻고 1시간 안에 답이 없으면 <b>보호자에게 알립니다</b>. 쓰러지거나 버튼을 누를 수 없을 때를 위한 기능입니다.<br>' +
       '밤 10시 ~ 아침 7시에는 묻지 않아요. 위치는 보내지 않습니다.</span>' +
       '<label class="sos-sw"><input type="checkbox" id="nsOn"' + (CS.nosign_on ? ' checked' : '') + '> 무소식 알림 켜기</label>' +
       '<div class="care-sel" id="nsHours">' + [6, 12, 24].map(function(x){ return '<button type="button" data-h="' + x + '"' + (x === hrs ? ' class="on"' : '') + '>' + x + '시간</button>'; }).join('') + '</div>' +
       (CS.nosign_on ? '<span class="nu-sub" style="margin:0">' + (CS.last_at ? '마지막으로 쓴 때: ' + SOS.ago(CS.last_at) : '') + (CS.ready ? '' : '<br><b style="color:var(--sos)">⚠ 이용권과 보호자 연결이 있어야 알림이 갑니다.</b>') + '</span>' : '') +
-      '<span class="nu-sub" style="margin:0;font-size:13px">앱을 하루에 한 번이라도 여시면 됩니다. 「괜찮으세요?」 알림을 눌러도 됩니다.</span>' +
+      (CU.on ? '' : '<span class="nu-sub" style="margin:0;font-size:13px">앱을 하루에 한 번이라도 여시면 됩니다. 「괜찮으세요?」 알림을 눌러도 됩니다.</span>') +
+      (CS.nosign_on ? usageBox() : '') +
     '</div>';
   }
 
@@ -233,6 +235,9 @@ function wireHome(){
       '</ol>' + scamTips() + '<button class="nu-btn ghost" data-close>알겠어요</button>');
   };
   if ($('nsOn')) $('nsOn').onchange = function(){ saveNosign(this.checked, (CS && CS.nosign_hours) || 12); };
+  if ($('cuOn')) $('cuOn').onclick = usageOn;
+  if ($('cuSet')) $('cuSet').onclick = function(){ CU.waiting = true; AliasNative.careUsageOpen(); };
+  if ($('cuOff')) $('cuOff').onclick = function(){ usageOff(true); };
   V.querySelectorAll('#nsHours [data-h]').forEach(function(x){ x.onclick = function(){ saveNosign(true, Number(x.dataset.h)); }; });
   if ($('buy1')) $('buy1').onclick = function(){ buy('m1'); };
   if ($('buy12')) $('buy12').onclick = function(){ buy('m12'); };
@@ -464,8 +469,59 @@ function verifySheet(){
     NU.closeSheet(); location.href = 'sos.html?c=' + r.event + (r.sent === 0 ? '&nodev=1' : '');
   }; });
 }
+/* ── 📱 휴대폰 사용도 소식으로 치기 (안드로이드 앱 · 2026-11-15 · 14_care_usage.sql · CareUsage.java) ──
+   앱이 한 시간쯤마다 「마지막으로 휴대폰을 쓴 시각」 하나만 서버로 보냅니다. 무슨 앱을 썼는지는 보내지 않습니다. */
+var CU = { has: false, old: false, access: false, on: false, waiting: false };
+function usageRead(){
+  CU.has = !!(window.AliasNative && typeof AliasNative.careUsageState === 'function');
+  CU.old = !CU.has && !!window.AliasNative && /Android/i.test(navigator.userAgent);
+  if (!CU.has) { CU.on = false; return; }
+  try { var j = JSON.parse(AliasNative.careUsageState()); CU.access = !!j.access; CU.on = !!j.on && !!j.supported; CU.ok = !!j.supported; } catch (e) { CU.has = false; }
+}
+usageRead();
+function usageBox(){
+  if (CU.old) return '<span class="nu-sub" style="margin:0;font-size:13px">📱 앱을 최신으로 업데이트하면 유튜브 · 카톡 · 전화처럼 <b>휴대폰을 쓴 것</b>도 소식으로 쳐요.</span>';
+  if (!CU.has || CU.ok === false) return '';
+  var box = '<div style="background:var(--nu-soft);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:8px"><b>📱 휴대폰 사용도 소식으로 치기</b>';
+  if (CU.on && CU.access) return box + '<span class="nu-sub" style="margin:0">✅ 켜져 있어요. 유튜브 · 카톡 · 전화 등 <b>휴대폰을 쓰시면</b> 소식이 있는 것으로 봐요. 보내는 것은 「마지막으로 쓴 시각」 하나뿐이에요.</span>' +
+    '<button class="nu-btn ghost" id="cuOff" type="button">끄기</button></div>';
+  if (CU.on && !CU.access) return box + '<span class="nu-sub" style="margin:0"><b style="color:var(--sos)">⚠ 「사용 정보 접근」이 꺼져 있어 휴대폰 사용을 알 수 없어요.</b> 아래 단추를 눌러 이 앱을 다시 허용해 주세요.</span>' +
+    '<button class="nu-btn" id="cuSet" type="button">설정에서 허용하기</button><button class="nu-btn ghost" id="cuOff" type="button">끄기</button></div>';
+  return box + '<span class="nu-sub" style="margin:0">이 앱을 안 여셔도 유튜브 · 카톡 · 전화처럼 <b>휴대폰을 쓰시면</b> 소식이 있는 것으로 봐요. 괜한 「괜찮으세요?」가 줄어요.<br>' +
+    '보내는 것은 <b>「마지막으로 쓴 시각」 하나뿐</b>이에요. 무슨 앱을 썼는지, 얼마나 썼는지는 보내지 않아요.</span>' +
+    '<button class="nu-btn" id="cuOn" type="button">켜기</button></div>';
+}
+async function usageOn(){
+  usageRead();
+  if (!CU.access) {
+    var sh = NU.sheet('<h2>📱 「사용 정보 접근」 허용</h2><p class="nu-sub">휴대폰을 언제 썼는지 알려면 한 번만 허용해 주시면 돼요.</p>' +
+      '<ol class="care-tips"><li>아래 <b>[설정 열기]</b>를 누르세요.</li><li>목록에서 <b>' + (/baronu/.test(location.hostname) ? '「바로너」를' : '「부름」을') + '</b> 찾아 누르세요.</li><li><b>「사용 정보 접근 허용」</b>을 켜고 뒤로 돌아오세요.</li></ol>' +
+      '<p class="nu-sub" style="font-size:13px">무슨 앱을 썼는지는 서버로 보내지 않아요. 「마지막으로 쓴 시각」만 보내요.</p>' +
+      '<button class="nu-btn" id="cuGo" type="button">설정 열기</button><button class="nu-btn ghost" data-close>나중에</button>');
+    sh.querySelector('#cuGo').onclick = function(){ CU.waiting = true; NU.closeSheet(); AliasNative.careUsageOpen(); };
+    return;
+  }
+  try {
+    var r = await SOS.rpc('care_usage_key', {});
+    if (!r || !r.key) throw new Error((r && r.error) || 'key');
+    AliasNative.careUsageStart(r.key, AL.SUPABASE_URL, AL.SUPABASE_ANON);
+    ok('휴대폰 사용도 소식으로 쳐요. 👍'); showHome();
+  } catch (e) { err('켜지 못했어요: ' + (e.message || e)); }
+}
+async function usageOff(show){
+  try { if (CU.has) AliasNative.careUsageStop(); } catch (e) {}
+  try { await SOS.rpc('care_usage_key', { p_off: true }); } catch (e) {}
+  if (show) { ok('휴대폰 사용으로 확인하기를 껐어요.'); showHome(); }
+}
+document.addEventListener('visibilitychange', function(){
+  if (document.visibilityState !== 'visible' || !CU.waiting) return;
+  CU.waiting = false; usageRead();
+  if (CU.access) { if (CU.on) showHome(); else usageOn(); } else showHome();
+});
+
 async function saveNosign(on, hours){
   try { localStorage.removeItem('care_ping_next'); } catch (x) {}
+  if (!on && CU.on) await usageOff(false);
   try { await SOS.rpc('care_set', { p_on: !!on, p_hours: hours }); ok(on ? '무소식 알림을 켰어요 (' + hours + '시간).' : '무소식 알림을 껐어요.'); showHome(); }
   catch (e) { err(e.message || String(e)); }
 }

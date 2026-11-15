@@ -146,7 +146,7 @@ function texts(kind: string, role: string, label: string, ev: any) {
     return { title: '🌙 괜찮으세요?', body: '휴대폰이 ' + (ev.hours || 12) + '시간 동안 조용했어요. 이 알림을 눌러 주시면 보호자에게 알리지 않아요.' };
   }
   if (kind === 'alert') {
-    return { title: '🌙 ' + who + '님 휴대폰이 ' + (ev.hours || 12) + '시간 넘게 조용해요', body: '안부 전화를 한번 드려 보세요. 위급 신호가 아닌 자동 안부 알림입니다.' };
+    return { title: '🌙 ' + who + '님 휴대폰이 ' + (ev.hours || 12) + '시간 넘게 조용해요', body: '안부 전화를 한번 드려 보세요. 휴대폰이 꺼졌거나 배터리가 다 됐을 수도 있어요. 위급 신호가 아닌 자동 안부 알림입니다.' };
   }
   return { title: '✅ ' + who + '님이 휴대폰을 다시 쓰셨어요', body: '무소식 알림이 풀렸습니다.' };
 }
