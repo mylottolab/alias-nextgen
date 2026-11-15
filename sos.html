@@ -473,7 +473,7 @@ function verifySheet(){
 }
 /* ── 📱 휴대폰 사용도 소식으로 치기 (안드로이드 앱 · 2026-11-15 · 14_care_usage.sql · CareUsage.java) ──
    앱이 한 시간쯤마다 「마지막으로 휴대폰을 쓴 시각」 하나만 서버로 보냅니다. 무슨 앱을 썼는지는 보내지 않습니다. */
-var CU_HINT = false;
+var CU_HINT = /baronu/.test(location.hostname);   // 새 앱 출시: 바로너 2026-11-15 ✓ · 부름은 승인 뒤 true
 var CU = { has: false, old: false, access: false, on: false, waiting: false };
 function usageRead(){
   CU.has = !!(window.AliasNative && typeof AliasNative.careUsageState === 'function');
