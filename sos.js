@@ -9,6 +9,8 @@
                (선택) 이 휴대폰 문자창을 보호자 번호 · 위치가 채워진 채로 띄움 — 번호는 이 휴대폰에만 저장
      · 보호자: 알림 → 긴급 화면(지도 · 배터리 · 「확인했어요」 · 119)
    ⚠ 보호자 전화번호를 서버로 보내지 않습니다. 문자용 번호는 localStorage 에만 둡니다.
+   🛡 2026-11-15 더함: 가족 확인(수상한 전화 · 송금 전 보호자에게 확인 부탁) · 무소식 알림(정한 시간 동안 조용하면)
+      — 같은 보호자 연결 · 같은 이용권. 서버는 12_care.sql, 알림은 care-alert 함수.
    ===================================================================== */
 window.SOS = window.SOS || {};
 (function(S){
@@ -172,6 +174,25 @@ window.SOS = window.SOS || {};
     catch (e) { return false; }
   };
   S.iosWidget = function(){ try { return !!(window.webkit && webkit.messageHandlers && webkit.messageHandlers.nureumWidget); } catch (e) { return false; } };
+
+  /* ── 🛡 안심 더하기 (2026-11-15) — 가족 확인 · 무소식 알림 ─────────────────── */
+  S.ERR.too_many = '잠시 뒤에 다시 보내 주세요.';
+  S.REASONS = [
+    ['기관 사칭 전화', '🏛', '「검찰 · 경찰 · 금감원」이라는 전화'],
+    ['송금 · 앱 설치 요구', '💸', '돈을 보내라 · 앱을 깔라고 해요'],
+    ['가족 사칭 연락', '👤', '가족이라며 급히 돈을 달래요'],
+    ['이상한 전화 · 문자', '❓', '그 밖에 이상한 전화 · 문자'],
+  ];
+  S.care = async function(eventId, kind){
+    try { return await AL.callFn('care-alert', { eventId: eventId, kind: kind }); }
+    catch (e) { console.warn('[care] 알림 보내기 실패', e); return { ok: false, error: String(e.message || e) }; }
+  };
+  S.verify = async function(reason){
+    var r = await S.rpc('care_verify', { p_reason: reason });
+    if (!r || !r.ok) return { ok: false, error: r && r.error };
+    var a = await S.care(r.event, 'verify');
+    return { ok: true, event: r.event, guardians: r.guardians, sent: a && a.sent };
+  };
 
   /* ── 결제 (앱: 구글 · 애플 / 웹: 카드) ─────────────────────────────── */
   S.STORE = function(){ return !!(window.AliasNative && typeof AliasNative.storeBuy === 'function'); };

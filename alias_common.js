@@ -5092,6 +5092,8 @@ AL.registerPush = async function(){
       try {
         var nd = (n && n.data) || {};
         if (nd.kind === 'sos_sos' && nd.event_id && location.search.indexOf(nd.event_id) < 0) location.href = 'sos.html?e=' + encodeURIComponent(nd.event_id);
+        /* 🛡 2026-11-15 보호자: 가족 확인 요청이 오면 바로 그 화면으로 */
+        if (nd.kind === 'care_verify' && nd.event_id && location.search.indexOf(nd.event_id) < 0) location.href = 'sos.html?c=' + encodeURIComponent(nd.event_id);
       } catch (e) {}
     });
 
@@ -5104,6 +5106,8 @@ AL.registerPush = async function(){
         if (d.kind === 'request') { location.href = 'alias_requests.html'; return; }
         /* 🔴 2026-11-14 안심 긴급 알림 → 그 긴급 화면 */
         if (String(d.kind || '').indexOf('sos_') === 0 && d.event_id) { location.href = 'sos.html?e=' + encodeURIComponent(d.event_id); return; }
+        /* 🛡 2026-11-15 가족 확인 · 무소식 알림 → 그 건 화면 */
+        if (String(d.kind || '').indexOf('care_') === 0 && d.event_id) { location.href = 'sos.html?c=' + encodeURIComponent(d.event_id); return; }
         /* 🔴 2026-11-15 고객센터 답장 알림 → 그 문의 */
         if (d.kind === 'support' && d.ticket) { location.href = 'support.html?t=' + encodeURIComponent(d.ticket) + (d.app === 'nureum' ? '&app=nureum' : ''); return; }
         if (!d.link_id) return;
@@ -5290,4 +5294,29 @@ AL.EN_PATCH = {
     var s = document.createElement('script'); s.src = 'burum_partner_ref.js?v=20261029'; s.defer = true;
     (document.head || document.documentElement).appendChild(s);
   } catch (e) {}
+})();
+
+/* 🛡 2026-11-15 무소식 알림 — 앱을 쓰면 10분에 한 번 「썼어요」를 서버에 적습니다.
+   무소식 알림을 켠 사람만 적히고(care_ping 이 검사), 끈 사람은 6시간 동안 묻지도 않습니다.
+   보호자에게 이미 「조용해요」 알림이 갔었다면 「다시 쓰셨어요」 알림을 보냅니다. */
+(function(){
+  function ping(){
+    try {
+      if (!window.AL || !AL.sb) return;
+      var next = Number(localStorage.getItem('care_ping_next') || 0);
+      if (Date.now() < next) return;
+      AL.sb.auth.getSession().then(function(s){
+        if (!s || !s.data || !s.data.session) return;
+        localStorage.setItem('care_ping_next', String(Date.now() + 10 * 60e3));
+        AL.sb.rpc('care_ping', { p_kind: 'app' }).then(function(r){
+          var d = r && r.data;
+          if (r && r.error) { localStorage.setItem('care_ping_next', String(Date.now() + 6 * 3600e3)); return; }
+          if (d && d.on === false) localStorage.setItem('care_ping_next', String(Date.now() + 6 * 3600e3));
+          if (d && d.alerted && d.resolved && AL.callFn) AL.callFn('care-alert', { eventId: d.resolved, kind: 'nosign_ok' }).catch(function(){});
+        });
+      });
+    } catch (e) {}
+  }
+  setTimeout(ping, 4000);
+  document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'visible') setTimeout(ping, 1500); });
 })();

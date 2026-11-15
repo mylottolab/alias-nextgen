@@ -7,10 +7,10 @@
 <link rel="stylesheet" href="nureum.css?v=20261114">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20261114a"></script>
+<script src="alias_common.js?v=20261115b"></script>
 <script src="alias_qr.js?v=20261019a"></script>
 <script src="nureum.js?v=20261115a"></script>
-<script src="sos.js?v=20261114a"></script>
+<script src="sos.js?v=20261115a"></script>
 <style>
 :root{ --sos:#E02424; --sos2:#FF5A4F; --sos-soft:#FDECEC; --sos-ok:#0E9C77; }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --sos-soft:#3A1717; } }
@@ -42,6 +42,22 @@
 .sos-119{font-size:13.5px;color:var(--nu-sub);text-align:center;line-height:1.6}
 .sos-sw{display:flex;align-items:center;gap:10px;font-weight:800;font-size:15px;cursor:pointer}
 .sos-sw input{width:22px;height:22px}
+/* 🛡 2026-11-15 가족 확인 · 무소식 알림 */
+.care-btn{width:100%;border:none;border-radius:22px;padding:16px 18px;background:linear-gradient(135deg,#C2410C,#F97316);color:#fff;font:inherit;font-weight:900;font-size:22px;
+  display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;box-shadow:0 8px 20px rgba(194,65,12,.28)}
+.care-btn small{font-size:14.5px;font-weight:700;opacity:.95}
+.care-btn[data-ready="0"]{opacity:.75}
+.care-reason{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:1.5px solid var(--nu-line);background:var(--nu-card);color:var(--nu-ink);
+  border-radius:16px;padding:14px;font:inherit;font-size:16.5px;font-weight:800;cursor:pointer}
+.care-reason span{font-size:24px}
+.care-head{background:linear-gradient(135deg,#C2410C,#F97316);color:#fff;border-radius:22px;padding:18px;display:flex;flex-direction:column;gap:6px}
+.care-head b{font-size:22px;line-height:1.35} .care-head span{font-size:15px;line-height:1.55;opacity:.96}
+.care-head.night{background:linear-gradient(135deg,#3B3F8F,#6366F1)}
+.care-head.done{background:linear-gradient(135deg,#0E9C77,#12C79A)}
+.care-tips{margin:0;padding-left:20px;font-size:15px;line-height:1.75}
+.care-sel{display:flex;gap:8px;flex-wrap:wrap}
+.care-sel button{flex:1;min-width:84px;border:1.5px solid var(--nu-line);background:var(--nu-card);color:var(--nu-ink);border-radius:14px;padding:10px;font:inherit;font-weight:800;cursor:pointer}
+.care-sel button.on{background:#3B3F8F;border-color:#3B3F8F;color:#fff}
 </style>
 </head>
 <body>
@@ -79,11 +95,19 @@ async function boot(){
   /* 담아 둔 긴급이 있으면(신호가 없던 때) 지금 보냅니다 */
   if (SOS.pending()) { var f = await SOS.flush(); if (f && f.ok) { location.replace('sos.html?e=' + f.event + '&mine=1'); return; } }
   if (Q.get('e')) return showEvent(Q.get('e'));
+  if (Q.get('c')) return showCare(Q.get('c'));
   if (Q.get('go')) return goFlow(false);
   return showHome();
 }
 
-async function load(){ ST = await SOS.rpc('sos_state'); if (!ST || !ST.ok) throw new Error(SOS.err(ST && ST.error)); return ST; }
+var CS = null;   // 🛡 가족 확인 · 무소식 알림 상태 (12_care.sql 이 없으면 null — 그때는 칸을 숨깁니다)
+async function load(){
+  var r = await Promise.all([SOS.rpc('sos_state'), SOS.rpc('care_state').catch(function(){ return null; })]);
+  ST = r[0]; CS = (r[1] && r[1].ok) ? r[1] : null;
+  if (!ST || !ST.ok) throw new Error(SOS.err(ST && ST.error)); return ST;
+}
+var CARE_TXT = { '기관 사칭 전화': '「검찰 · 경찰 · 금감원」이라는 전화를 받았어요', '송금 · 앱 설치 요구': '돈을 보내라 · 앱을 깔라는 요구를 받았어요',
+                 '가족 사칭 연락': '가족이라며 급히 돈을 달라는 연락을 받았어요', '이상한 전화 · 문자': '이상한 전화나 문자를 받았어요' };
 
 /* ── 첫 화면: 이용자(나를 지키는 보호자) + 보호자(내가 지키는 분) ─────────────────── */
 async function showHome(){
@@ -97,10 +121,21 @@ async function showHome(){
   /* 열린 긴급이 있으면 맨 위에 */
   if (ST.open) h += '<a class="nu-btn sos-red" href="sos.html?e=' + ST.open.id + '&mine=1">' + (ST.open.test ? '🔔 시험 신호 보는 중 — 열기' : '🆘 긴급이 진행 중입니다 — 열기') + '</a>';
   (ST.wards || []).forEach(function(w){ if (w.open) h += '<a class="nu-btn sos-red" href="sos.html?e=' + w.open.id + '">' + (w.open.test ? '🔔 ' : '🆘 ') + E(w.name) + '님 ' + (w.open.test ? '시험 신호' : '긴급!') + ' — 열기</a>'; });
+  /* 🛡 가족 확인 · 무소식 (내 것 · 내가 지키는 분 것) */
+  if (CS) {
+    (CS.open || []).forEach(function(c){ if (c.kind === 'verify') h += '<a class="nu-btn" style="background:linear-gradient(135deg,#C2410C,#F97316)" href="sos.html?c=' + c.id + '">📞 보낸 가족 확인 보기' + (c.acks ? ' — ✅ ' + c.acks + '명 응답' : ' — 응답 기다리는 중') + '</a>'; });
+    (CS.wards || []).forEach(function(c){
+      h += c.kind === 'verify'
+        ? '<a class="nu-btn" style="background:linear-gradient(135deg,#C2410C,#F97316)" href="sos.html?c=' + c.id + '">📞 ' + E(c.name) + '님 확인 요청' + (c.acked ? ' (응답함)' : ' — 지금 전화해 주세요') + '</a>'
+        : '<a class="nu-btn" style="background:linear-gradient(135deg,#3B3F8F,#6366F1)" href="sos.html?c=' + c.id + '">🌙 ' + E(c.name) + '님 휴대폰이 조용해요 — 열기</a>';
+    });
+  }
 
   /* 큰 버튼 */
   /* 🔴 2026-11-14 개통 전에도 빨간 그대로 — 누르면 무엇이 남았는지 알려 줌(회색으로 죽어 보이지 않게) */
   h += '<button class="sos-big" id="bigSos" type="button" data-ready="' + ((live && g.length) ? '1' : '0') + '">🆘 긴급<small>' + ((live && g.length) ? '누르면 5초 뒤 보호자에게' : '이용권 · 보호자 연결 뒤 쓸 수 있어요') + '</small></button>';
+  /* 🛡 가족 확인 — 수상한 전화 · 송금 전에 */
+  if (CS) h += '<button class="care-btn" id="careVerify" type="button" data-ready="' + ((live && g.length) ? '1' : '0') + '">📞 잠깐! 가족 확인<small>수상한 전화를 받았거나 돈을 보내기 전에</small></button>';
 
   /* 개통 상태 */
   h += '<div class="nu-card" style="gap:8px"><b style="font-size:17px">' + (ready ? '✅ 개통 완료 — 언제든 누르시면 됩니다' : '개통까지 남은 일') + '</b>' +
@@ -137,6 +172,19 @@ async function showHome(){
     if (g.length) h += '<button class="nu-btn line" id="test" type="button">🔔 시험 신호 보내기</button>';
   }
   h += '</div>';
+
+  /* 🌙 무소식 알림 */
+  if (CS) {
+    var hrs = CS.nosign_hours || 12;
+    h += '<div class="nu-card" style="gap:10px"><b style="font-size:17px">🌙 무소식 알림</b>' +
+      '<span class="nu-sub" style="margin:0">정한 시간 동안 이 앱을 한 번도 쓰지 않으면, 먼저 <b>「괜찮으세요?」</b>를 묻고 1시간 안에 답이 없으면 <b>보호자에게 알립니다</b>. 쓰러지거나 버튼을 누를 수 없을 때를 위한 기능입니다.<br>' +
+      '밤 10시 ~ 아침 7시에는 묻지 않아요. 위치는 보내지 않습니다.</span>' +
+      '<label class="sos-sw"><input type="checkbox" id="nsOn"' + (CS.nosign_on ? ' checked' : '') + '> 무소식 알림 켜기</label>' +
+      '<div class="care-sel" id="nsHours">' + [6, 12, 24].map(function(x){ return '<button type="button" data-h="' + x + '"' + (x === hrs ? ' class="on"' : '') + '>' + x + '시간</button>'; }).join('') + '</div>' +
+      (CS.nosign_on ? '<span class="nu-sub" style="margin:0">' + (CS.last_at ? '마지막으로 쓴 때: ' + SOS.ago(CS.last_at) : '') + (CS.ready ? '' : '<br><b style="color:var(--sos)">⚠ 이용권과 보호자 연결이 있어야 알림이 갑니다.</b>') + '</span>' : '') +
+      '<span class="nu-sub" style="margin:0;font-size:13px">앱을 하루에 한 번이라도 여시면 됩니다. 「괜찮으세요?」 알림을 눌러도 됩니다.</span>' +
+    '</div>';
+  }
 
   /* 이 휴대폰 문자 (선택) */
   var nums = SOS.smsNumbers();
@@ -177,6 +225,15 @@ function wireHome(){
       '<div class="sos-row"><button class="nu-btn sos-red" type="button" onclick="SOS.call119()">📞 119</button><button class="nu-btn" type="button" style="background:linear-gradient(135deg,#1D4ED8,#3B82F6)" onclick="SOS.call112()">🚓 112</button></div>' +
       '<button class="nu-btn ghost" data-close>알겠어요</button>');
   };
+  var cv = $('careVerify'); if (cv) cv.onclick = function(){
+    if (cv.dataset.ready === '1') { verifySheet(); return; }
+    NU.sheet('<h2>가족 확인은 보호자 연결 뒤에 쓸 수 있어요</h2><ol class="sos-steps">' +
+      (ST.sub_until && new Date(ST.sub_until) > new Date() ? '' : '<li>아래 <b>「안심 긴급」 이용권</b>을 먼저 구입해 주세요(가족 확인 · 무소식 알림이 함께 들어 있어요).</li>') +
+      ((ST.guardians || []).length ? '' : '<li><b>보호자를 1명 이상</b> 연결해 주세요.</li>') +
+      '</ol>' + scamTips() + '<button class="nu-btn ghost" data-close>알겠어요</button>');
+  };
+  if ($('nsOn')) $('nsOn').onchange = function(){ saveNosign(this.checked, (CS && CS.nosign_hours) || 12); };
+  V.querySelectorAll('#nsHours [data-h]').forEach(function(x){ x.onclick = function(){ saveNosign(true, Number(x.dataset.h)); }; });
   if ($('buy1')) $('buy1').onclick = function(){ buy('m1'); };
   if ($('buy12')) $('buy12').onclick = function(){ buy('m12'); };
   if ($('agree')) $('agree').onchange = function(){ $('agreeGo').disabled = !this.checked; };
@@ -383,6 +440,91 @@ function paintEvent(v){
     var sh = NU.sheet('<h2>' + (v.test ? '시험을 끝낼까요?' : '긴급을 끝낼까요?') + '</h2><p class="nu-sub">' + (v.test ? '' : '보호자 모두에게 「끝났습니다」 알림이 갑니다.') + '</p><button class="nu-btn" id="endGo" type="button">끝내기</button><button class="nu-btn ghost" data-close>아니요</button>');
     sh.querySelector('#endGo').onclick = async function(){ await SOS.rpc('sos_end', { p_event: v.id, p_reason: mine ? 'owner' : 'guardian' }); if (!v.test) SOS.alert(v.id, 'end'); NU.closeSheet(); clearTimers(); showEvent(v.id); };
   };
+}
+
+/* ── 🛡 가족 확인 · 무소식 알림 (2026-11-15) ─────────────────── */
+function scamTips(){
+  return '<div style="background:var(--nu-soft);border-radius:14px;padding:12px 14px"><b>지금 바로 하실 일</b><ol class="care-tips">' +
+    '<li><b>그 전화는 끊으세요.</b> 다시 걸려 와도 받지 마세요.</li>' +
+    '<li>검찰 · 경찰 · 금감원은 <b>전화로 돈을 보내라, 앱을 깔라, 현금을 맡겨라 하지 않습니다.</b></li>' +
+    '<li>모르는 링크를 누르거나 앱을 깔지 마세요. 「원격」 앱이 깔렸다면 지우세요.</li></ol></div>' +
+    '<div class="sos-row"><button class="nu-btn" type="button" style="background:linear-gradient(135deg,#1D4ED8,#3B82F6)" onclick="SOS.call112()">🚓 112 신고</button>' +
+    '<button class="nu-btn line" type="button" onclick="location.href=\'tel:1332\'">🏦 금감원 1332</button></div>';
+}
+function verifySheet(){
+  var sh = NU.sheet('<h2>📞 어떤 일인가요?</h2><p class="nu-sub">누르면 보호자 휴대폰에 바로 알림이 가요. 보호자가 직접 전화해 줄 거예요.</p>' +
+    '<div style="display:flex;flex-direction:column;gap:8px">' + SOS.REASONS.map(function(r, i){
+      return '<button class="care-reason" type="button" data-r="' + i + '"><span>' + r[1] + '</span>' + E(r[2]) + '</button>'; }).join('') + '</div>' +
+    '<div id="cvErr" class="nu-err"></div><button class="nu-btn ghost" data-close>닫기</button>');
+  sh.querySelectorAll('[data-r]').forEach(function(b){ b.onclick = async function(){
+    sh.querySelectorAll('[data-r]').forEach(function(x){ x.disabled = true; });
+    b.innerHTML = '<span>⏳</span>보내는 중…';
+    var r = await SOS.verify(SOS.REASONS[Number(b.dataset.r)][0]);
+    if (!r.ok) { NU.showErr('cvErr', SOS.err(r.error)); sh.querySelectorAll('[data-r]').forEach(function(x){ x.disabled = false; }); return; }
+    NU.closeSheet(); location.href = 'sos.html?c=' + r.event + (r.sent === 0 ? '&nodev=1' : '');
+  }; });
+}
+async function saveNosign(on, hours){
+  try { localStorage.removeItem('care_ping_next'); } catch (x) {}
+  try { await SOS.rpc('care_set', { p_on: !!on, p_hours: hours }); ok(on ? '무소식 알림을 켰어요 (' + hours + '시간).' : '무소식 알림을 껐어요.'); showHome(); }
+  catch (e) { err(e.message || String(e)); }
+}
+async function showCare(id){
+  clearTimers();
+  var v;
+  try { v = await SOS.rpc('care_view', { p_event: id }); } catch (e) { err(e.message); return; }
+  if (!v || !v.ok) { V.innerHTML = '<div class="nu-card"><b>' + E(SOS.err(v && v.error)) + '</b></div><a class="nu-btn ghost" href="sos.html">돌아가기</a>'; return; }
+  /* 이용자가 「괜찮으세요?」 알림을 눌러 들어오면 — 신호로 치고 풀어 줍니다 */
+  if (v.me === 'owner' && v.kind === 'nosign' && v.stage !== 'resolved') {
+    try { var p = await SOS.rpc('care_ping', { p_kind: 'ask' }); if (p && p.alerted && p.resolved) SOS.care(p.resolved, 'nosign_ok'); } catch (e) {}
+    try { v = await SOS.rpc('care_view', { p_event: id }); } catch (e) {}
+  }
+  paintCare(v);
+  if (v.stage !== 'resolved') poll = setInterval(async function(){
+    try { var nv = await SOS.rpc('care_view', { p_event: id }); if (nv && nv.ok) { paintCare(nv); if (nv.stage === 'resolved') { clearInterval(poll); poll = null; } } } catch (e) {}
+  }, 10000);
+}
+function paintCare(v){
+  var mine = v.me === 'owner', done = v.stage === 'resolved', acks = v.acks || [], h = '';
+  if (v.kind === 'verify') {
+    setT(mine ? '📞 가족 확인' : '📞 ' + (v.name || '') + '님 확인 요청');
+    if (mine) {
+      h += '<div class="care-head' + (done ? ' done' : '') + '"><b>' + (done ? '가족 확인이 끝났어요' : '보호자 ' + v.guardians + '명에게 확인을 부탁했어요') + '</b><span>' +
+        (acks.length ? '✅ ' + acks.map(function(a){ return E(a.name); }).join(', ') + '님이 곧 전화합니다. <b>그때까지 돈을 보내지 마세요.</b>' : '보호자의 답을 기다리는 중이에요. 그동안 <b>돈을 보내거나 앱을 깔지 마세요.</b>') + '</span></div>';
+      if (Q.get('nodev') && !acks.length) h += '<div class="nu-card" style="border-color:var(--sos)"><b style="color:var(--sos)">⚠ 알림을 받을 수 있는 보호자 휴대폰이 없어요</b><span class="nu-sub" style="margin:0">보호자에게 직접 전화하거나 아래 112 · 1332에 물어보세요.</span></div>';
+      h += scamTips();
+      if (!done) h += '<button class="nu-btn ghost" id="cvDone" type="button">해결됐어요 · 끝내기</button>';
+    } else {
+      h += '<div class="care-head' + (done ? ' done' : '') + '"><b>' + (done ? E(v.name) + '님 확인 요청이 끝났어요' : '📞 ' + E(v.name) + '님이 확인을 부탁했어요') + '</b><span>' +
+        E(CARE_TXT[v.reason] || '확인을 부탁했어요') + ' · ' + SOS.ago(v.created_at) + '</span></div>';
+      if (!done) h += '<div class="nu-card" style="gap:8px"><b style="font-size:17px">지금 ' + E(v.name) + '님께 직접 전화해 주세요</b><ol class="care-tips">' +
+        '<li>「그 전화는 끊으시라」고 말씀해 주세요.</li><li>검찰 · 경찰 · 금감원은 전화로 돈 · 앱 설치를 요구하지 않는다고 알려 주세요.</li>' +
+        '<li>이미 돈을 보냈다면 바로 <b>112</b>나 그 은행에 지급정지를 요청하세요.</li></ol></div>';
+      if (!done && !v.acked) h += '<button class="nu-btn" id="cvAck" type="button" style="height:68px;font-size:20px;background:linear-gradient(135deg,#C2410C,#F97316)">📞 제가 전화할게요</button>';
+      if (v.acked) h += '<div class="nu-card"><b>✅ 「제가 전화할게요」를 보냈어요</b><span class="nu-sub" style="margin:0">' + E(v.name) + '님 화면에 곧 전화가 간다고 떠 있어요.</span></div>';
+      if (acks.length) h += '<span class="nu-sub" style="text-align:center">응답한 보호자: ' + acks.map(function(a){ return E(a.name); }).join(', ') + '</span>';
+      if (!done) h += '<button class="nu-btn ghost" id="cvDone" type="button">해결됐어요 · 끝내기</button>';
+    }
+  } else {
+    setT(mine ? '🌙 무소식 알림' : '🌙 ' + (v.name || '') + '님 안부');
+    if (mine) {
+      h += '<div class="care-head done"><b>고맙습니다, 확인됐어요 😊</b><span>' + (v.alerted_at ? '보호자에게 갔던 알림도 「다시 쓰셨어요」로 바꿔 알렸어요.' : '보호자에게는 알리지 않았어요.') + '</span></div>';
+    } else {
+      h += '<div class="care-head' + (done ? ' done' : ' night') + '"><b>' + (done ? E(v.name) + '님 안부가 확인됐어요' : '🌙 ' + E(v.name) + '님 휴대폰이 ' + (v.hours || 12) + '시간 넘게 조용해요') + '</b><span>' +
+        (done ? (v.resolved_how === 'signal' ? E(v.name) + '님이 휴대폰을 다시 쓰셨어요.' : '안부 확인이 끝났어요.') : '「괜찮으세요?」에도 1시간 동안 답이 없었어요. 위급 신호가 아닌 자동 안부 알림입니다.') + '</span></div>';
+      if (!done) h += '<div class="nu-card" style="gap:6px"><b style="font-size:17px">안부 전화를 한번 드려 보세요</b><span class="nu-sub" style="margin:0">통화가 안 되고 걱정되면 가까운 분께 들러 봐 달라고 하거나, 위급하다고 생각되면 119에 신고하세요.</span></div>' +
+        '<button class="nu-btn" id="cvAck" type="button" style="height:64px;font-size:19px;background:linear-gradient(135deg,#3B3F8F,#6366F1)">✅ 안부 확인했어요</button>' +
+        '<button class="nu-btn sos-red" type="button" onclick="SOS.call119()">📞 119</button>';
+    }
+  }
+  h += '<a class="nu-btn ghost" href="sos.html">안심 첫 화면</a>';
+  V.innerHTML = h;
+  if ($('cvAck')) $('cvAck').onclick = async function(){
+    this.disabled = true;
+    try { var r = await SOS.rpc('care_ack', { p_event: v.id }); if (!r.ok) throw new Error(SOS.err(r.error)); if (v.kind === 'verify') SOS.care(v.id, 'ack'); showCare(v.id); }
+    catch (e) { err(e.message); this.disabled = false; }
+  };
+  if ($('cvDone')) $('cvDone').onclick = async function(){ this.disabled = true; try { await SOS.rpc('care_resolve', { p_event: v.id }); showCare(v.id); } catch (e) { err(e.message); this.disabled = false; } };
 }
 
 /* ── 바탕화면 긴급 버튼 ─────────────────────────────────── */
