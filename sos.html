@@ -157,8 +157,10 @@ async function showHome(){
       '<div style="background:var(--nu-soft);border-radius:14px;padding:12px;font-size:13.5px;line-height:1.7">' +
       '· 긴급 버튼을 누르면 내 <b>현재 위치 · 배터리</b>를 연결된 보호자에게 보냅니다(긴급이 끝날 때까지 2분마다).<br>' +
       '· 위치는 긴급 상황에만 쓰며 7일 뒤 지웁니다. 보낸 기록(언제 · 누구에게)은 법에 따라 6개월 보관합니다.<br>' +
-      '· 보호자의 전화번호는 서버에 저장하지 않습니다.<br>· 동의는 언제든 이 화면에서 거둘 수 있습니다(보호자 연결도 함께 끊깁니다).</div>' +
-      '<label class="sos-sw"><input type="checkbox" id="agree"> 위치정보 이용 · 보호자 제공에 동의합니다</label>' +
+      '· 보호자의 전화번호는 서버에 저장하지 않습니다.<br>· 동의는 언제든 이 화면에서 거둘 수 있습니다(보호자 연결도 함께 끊깁니다).<br>' +
+      '· <b>14세 미만</b>은 부모님(법정대리인)이 함께 읽고 동의해 주세요.<br>' +
+      '· 자세한 내용: <a href="location_terms.html" style="color:inherit;font-weight:700">위치기반서비스 이용약관 ›</a></div>' +
+      '<label class="sos-sw"><input type="checkbox" id="agree"> 위치기반서비스 이용약관과 위치정보 이용 · 보호자 제공에 동의합니다</label>' +
       '<button class="nu-btn" id="agreeGo" type="button" disabled>동의하고 보호자 연결하기</button>';
   } else {
     h += g.length ? g.map(function(x){
