@@ -10,6 +10,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="alias_common.js?v=20261114a"></script>
 <script src="alias_call.js?v=20261020g"></script>
+<script src="padstyle.js?v=20261119"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -672,6 +673,24 @@ function initDial(){
   const q = new URLSearchParams(location.search).get('dial');
   if (q) typed = q.replace(/\D/g, '').slice(0, 10);
   paintDisp(); paintDial();
+  /* 🔴 2026-11-19 번호판 네 가지 모양(다이얼 · 네모 · 동그라미 · 섞기) + 효과음 — padstyle.js (와파 · 가림콜과 같은 파일)
+     숫자는 늘 원래 단추를 누르는 것으로 넣으므로 단축다이얼(꾸욱) · 10자리 규칙은 그대로입니다. */
+  if (window.PadStyle) {
+    const pad = document.getElementById('dlPad');
+    PadStyle.attach({
+      key: 'burum_padstyle', watch: pad, holdMs: 600,
+      digits: function(){ const o = {}; pad.querySelectorAll('[data-k]').forEach(function(b){ if (/^\d$/.test(b.dataset.k)) o[b.dataset.k] = b; }); return o; },
+      bar: function(){ return { parent: document.getElementById('dialBox'), before: pad }; },
+      rotaryAt: function(){ return { parent: document.getElementById('dialBox'), before: document.querySelector('#dialBox .dl-acts') }; },
+      hide: function(){ return [pad]; },
+      del: function(){ return pad.querySelector('[data-k="⌫"]'); },
+      center: function(){ return KR ? ['부름', '부름 전화', ''] : ['Burum', 'Burum phone', '']; },
+      colors: { plate:'#1E7A4C', rim:'#145A37', base:'#F4F1E6', ink:'#1B2430', stop:'#B9BEC4', on:'#8FE3B0', onInk:'#0E1621' },
+      css: '.ps-square.dl-pad{gap:10px}.ps-square .dl-k{width:100%;border-radius:16px}',
+      defaults: { mode:'round', key:'dtmf', rot:true },
+      lang: function(){ return KR ? 'ko' : 'en'; }
+    });
+  }
   /* 첫 화면으로 아직 안 정했으면 작은 단추 하나 */
   if (firstPref() !== 'dial') {
     const pin = document.createElement('button');
