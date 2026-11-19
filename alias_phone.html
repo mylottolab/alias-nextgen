@@ -221,6 +221,10 @@ html[data-mode="light"] .dl-k{background:rgba(0,0,0,.04);border-color:rgba(0,0,0
 html[data-mode="light"] .dl-k .w,html[data-mode="light"] .dl-row a,html[data-mode="light"] .dl-row button{color:#1E7A4C}
 html[data-mode="light"] .dl-row .ed{color:inherit}
 html[data-mode="light"] .dl-msg{color:#9A6B00}
+/* 🔴 2026-11-19 번호판 판 — 번호판 둘레를 바탕과 다른 색으로 묶어 위아래와 구분 (야간 · 주간 따로) */
+body.dialmode #dialBox{background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.1);border-radius:24px;padding:12px 12px 14px;margin:2px 0 14px}
+body.dialmode #dialBox .phsep{display:none}
+html[data-mode="light"] body.dialmode #dialBox{background:rgba(20,40,30,.07);border-color:rgba(0,0,0,.14)}
 /* 첫 화면 고르기 안내 */
 #firstAsk{display:none;margin:0 0 14px;padding:14px 15px;border-radius:16px;background:rgba(143,227,176,.12);border:1.5px solid rgba(143,227,176,.5);word-break:keep-all}
 #firstAsk b{font-size:15.5px}
