@@ -9,6 +9,7 @@
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="alias_common.js?v=20261114a"></script>
+<script src="padstyle.js?v=20261119b"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function(){
   if (typeof AL === "undefined" || typeof AL.t !== "function") {
@@ -32,6 +33,10 @@ document.addEventListener("DOMContentLoaded", function(){
 .bn-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:320px;margin:14px auto}
 .bn-pad button{margin:0;height:62px;border-radius:50%;font-size:26px;font-weight:700;cursor:pointer;
   background:rgba(255,255,255,.07);color:inherit;border:1px solid rgba(128,128,128,.25);aspect-ratio:1/1;width:62px;justify-self:center}
+.bn-pad.ps-square button{border-radius:16px;width:100%;aspect-ratio:auto}
+/* 🔴 2026-11-19 번호판 판 — 위(탭) · 아래와 구분 (야간 · 주간 따로) */
+#pDial.on{background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.1);border-radius:24px;padding:12px 12px 14px;margin-top:4px}
+html[data-mode="light"] #pDial.on{background:rgba(20,40,30,.07);border-color:rgba(0,0,0,.14)}
 .bn-go{display:flex;gap:10px;max-width:320px;margin:6px auto 0}
 .bn-go button{flex:1;margin:0;padding:14px 6px;border-radius:14px;font-size:16px;font-weight:800;cursor:pointer;border:none}
 .bn-go .v{background:#3BB273;color:#fff}.bn-go .vv{background:#2F6FB5;color:#fff}.bn-go .m{background:#8FE3B0;color:#0E1621}
@@ -525,6 +530,22 @@ async function loadShop(reset){
   el('chips').onclick = (e) => { const g = e.target && e.target.dataset && e.target.dataset.g; if (g === undefined) return; shopGrade = g; paintText(); loadShop(true); };
   let tmr = null; el('digits').oninput = () => { clearTimeout(tmr); tmr = setTimeout(() => loadShop(true), 350); };
   el('more').onclick = () => loadShop(false);
+  /* 🔴 2026-11-19 번호판 네 가지 모양 + 효과음 — padstyle.js (부름 전화 화면과 같은 설정을 함께 씀) */
+  if (window.PadStyle) {
+    const pad = el('pad');
+    PadStyle.attach({
+      key: 'burum_padstyle', watch: pad,
+      digits: function(){ const o = {}; pad.querySelectorAll('[data-k]').forEach(function(b){ if (/^\d$/.test(b.dataset.k)) o[b.dataset.k] = b; }); return o; },
+      bar: function(){ return { parent: el('pDial'), before: pad }; },
+      rotaryAt: function(){ return { parent: el('pDial'), before: document.querySelector('#pDial .bn-go') }; },
+      hide: function(){ return [pad]; },
+      del: function(){ return pad.querySelector('[data-k="⌫"]'); },
+      center: function(){ return en ? ['Burum', 'Burum number', ''] : ['부름', '부름번호', '']; },
+      colors: { plate:'#1E7A4C', rim:'#145A37', base:'#F4F1E6', ink:'#1B2430', stop:'#B9BEC4', on:'#8FE3B0', onInk:'#0E1621' },
+      defaults: { mode:'round', key:'dtmf', rot:true },
+      lang: function(){ return en ? 'en' : 'ko'; }
+    });
+  }
   me = await AL.requireLogin();
   if (!me) return;
   try { aliases = await AL.loadAliases(); } catch (e) { aliases = []; }
