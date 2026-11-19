@@ -35,8 +35,15 @@ document.addEventListener("DOMContentLoaded", function(){
   background:rgba(255,255,255,.07);color:inherit;border:1px solid rgba(128,128,128,.25);aspect-ratio:1/1;width:62px;justify-self:center}
 .bn-pad.ps-square button{border-radius:16px;width:100%;aspect-ratio:auto}
 /* 🔴 2026-11-19 번호판 판 — 위(탭) · 아래와 구분 (야간 · 주간 따로) */
-#pDial.on{background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.1);border-radius:24px;padding:12px 12px 14px;margin-top:4px}
-html[data-mode="light"] #pDial.on{background:rgba(20,40,30,.07);border-color:rgba(0,0,0,.14)}
+.bn-panel{background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.1);border-radius:24px;padding:10px 12px 14px;margin-top:4px}
+html[data-mode="light"] .bn-panel{background:rgba(20,40,30,.07);border-color:rgba(0,0,0,.14)}
+/* 누른 번호 칸 — 오른쪽에 ⌫ (가림콜처럼) */
+.bn-disp{display:flex;flex-wrap:wrap;align-items:center;gap:8px;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:8px 8px 6px 14px;margin:8px 0 10px}
+html[data-mode="light"] .bn-disp{background:rgba(255,255,255,.7);border-color:rgba(0,0,0,.12)}
+.bn-disp .no{flex:1;min-width:0;text-align:left;white-space:nowrap;overflow:hidden}
+.bn-disp .del{flex:0 0 auto;width:56px;height:46px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);color:inherit;font-size:22px;cursor:pointer}
+html[data-mode="light"] .bn-disp .del{border-color:rgba(0,0,0,.15);background:rgba(0,0,0,.05)}
+.bn-disp small{flex-basis:100%;text-align:left}
 .bn-go{display:flex;gap:10px;max-width:320px;margin:6px auto 0}
 .bn-go button{flex:1;margin:0;padding:14px 6px;border-radius:14px;font-size:16px;font-weight:800;cursor:pointer;border:none}
 .bn-go .v{background:#3BB273;color:#fff}.bn-go .vv{background:#2F6FB5;color:#fff}.bn-go .m{background:#8FE3B0;color:#0E1621}
@@ -88,7 +95,9 @@ html[data-mode="light"] #pDial.on{background:rgba(20,40,30,.07);border-color:rgb
 
   <!-- ① 다이얼 -->
   <div class="bn-pane on" id="pDial">
-    <div class="bn-disp" id="disp">&nbsp;<small id="dispHint"></small></div>
+    <!-- 🔴 2026-11-19 번호판 판: [모양 · 소리] → 누른 번호(오른쪽 ⌫) → 번호판 → 음성 · 영상 · 문자. 112 · 119 는 판 밖 맨 아래 -->
+    <div class="bn-panel" id="dialPanel">
+    <div class="bn-disp" id="disp"><span class="no" id="dispNo">&nbsp;</span><button type="button" class="del" id="dispDel" aria-label="지움">⌫</button><small id="dispHint"></small></div>
     <div class="bn-pad" id="pad"></div>
     <div class="bn-go">
       <button type="button" class="v" id="callV"></button>
@@ -102,6 +111,7 @@ html[data-mode="light"] #pDial.on{background:rgba(20,40,30,.07);border-color:rgb
       <button type="button" id="noteGo"></button>
     </div>
     <div class="bn-msg" id="dialMsg"></div>
+    </div>
     <!-- 🔴 2026-10-18 — 누른 번호를 전화번호부에 저장 -->
     <div style="text-align:center;margin-top:8px"><a href="#" id="saveNo" style="font-size:13.5px;font-weight:700;color:#8FE3B0"></a></div>
     <div class="bn-sos">
@@ -174,7 +184,7 @@ html[data-mode="light"] #pDial.on{background:rgba(20,40,30,.07);border-color:rgb
    ===================================================================== */
 const en = (AL.lang === 'en');
 const T = en ? {
-  ttl: 'Burum number', tDial: 'Dial', tMine: 'My numbers', tShop: 'Special numbers',
+  ttl: 'Burum number', tDial: 'Call', tMine: 'My numbers', tShop: 'Special numbers',
   dispHint: '10 digits · Burum users only', callV: '📞 Voice', callVV: '🎥 Video', callM: '💬 Text', saveNo: '💾 Save this number to the phone book',
   notePh: 'Message (up to 60 characters)', noteHint: 'If you already know each other, the chat opens right away. Otherwise this message goes with your connection request.', noteGo: 'Send', requestedM: 'Your message was sent with a connection request. You can chat as soon as they accept.',
   sos: 'Burum numbers cannot reach emergency services. Use your phone app:',
@@ -199,7 +209,7 @@ const T = en ? {
   changeFor: 'Choose a new number to replace ', cancelChange: 'Cancel',
   e_taken: 'Someone just took this number. Please pick another.', e_need_plan: 'A Burum plan is needed.', e_fail: 'Something went wrong. Please try again.',
 } : {
-  ttl: '부름번호', tDial: '다이얼', tMine: '내 번호', tShop: '좋은 번호',
+  ttl: '부름번호', tDial: '전화걸기', tMine: '내 번호', tShop: '좋은 번호',
   dispHint: '10자리 · 부름 사용자끼리만 연결', callV: '📞 음성', callVV: '🎥 영상', callM: '💬 문자', saveNo: '💾 이 번호를 전화번호부에 저장',
   notePh: '보낼 메시지 (60자까지)', noteHint: '이미 아는 사이면 바로 대화방이 열립니다. 모르는 번호면 이 메시지가 연결 요청과 함께 갑니다.', noteGo: '보내기', requestedM: '메시지를 연결 요청과 함께 보냈습니다. 상대가 수락하면 바로 대화할 수 있어요.',
   sos: '부름번호로는 긴급전화가 걸리지 않습니다. 폰의 전화 앱으로 거세요.',
@@ -247,7 +257,9 @@ function paintText(){
     .map((c) => '<button type="button" data-g="' + c[0] + '"' + (c[0] === shopGrade ? ' class="on"' : '') + '>' + esc(c[1]) + '</button>').join('');
 }
 function paintDisp(){
-  el('disp').innerHTML = (typed ? esc(fmt(typed)) : '&nbsp;') + '<small>' + esc(T.dispHint) + '</small>';
+  el('dispNo').innerHTML = typed ? esc(fmt(typed)) : '&nbsp;';
+  el('dispHint').textContent = T.dispHint;
+  el('dispDel').style.visibility = typed ? 'visible' : 'hidden';
 }
 
 /* ── 탭 ──────────────────────────────────────────────────── */
@@ -530,16 +542,17 @@ async function loadShop(reset){
   el('chips').onclick = (e) => { const g = e.target && e.target.dataset && e.target.dataset.g; if (g === undefined) return; shopGrade = g; paintText(); loadShop(true); };
   let tmr = null; el('digits').oninput = () => { clearTimeout(tmr); tmr = setTimeout(() => loadShop(true), 350); };
   el('more').onclick = () => loadShop(false);
+  /* 🔴 2026-11-19 누른 번호 옆 ⌫ — 번호판의 ⌫ 를 누른 것과 같음(다이얼 모양에서도 됨) */
+  el('dispDel').onclick = function(){ const k = el('pad').querySelector('[data-k="⌫"]'); if (k) k.click(); };
   /* 🔴 2026-11-19 번호판 네 가지 모양 + 효과음 — padstyle.js (부름 전화 화면과 같은 설정을 함께 씀) */
   if (window.PadStyle) {
     const pad = el('pad');
     PadStyle.attach({
       key: 'burum_padstyle', watch: pad,
       digits: function(){ const o = {}; pad.querySelectorAll('[data-k]').forEach(function(b){ if (/^\d$/.test(b.dataset.k)) o[b.dataset.k] = b; }); return o; },
-      bar: function(){ return { parent: el('pDial'), before: pad }; },
-      rotaryAt: function(){ return { parent: el('pDial'), before: document.querySelector('#pDial .bn-go') }; },
+      bar: function(){ return { parent: el('dialPanel'), before: el('disp') }; },
+      rotaryAt: function(){ return { parent: el('dialPanel'), before: document.querySelector('#pDial .bn-go') }; },
       hide: function(){ return [pad]; },
-      del: function(){ return pad.querySelector('[data-k="⌫"]'); },
       center: function(){ return en ? ['Burum', 'Burum number', ''] : ['부름', '부름번호', '']; },
       colors: { plate:'#1E7A4C', rim:'#145A37', base:'#F4F1E6', ink:'#1B2430', stop:'#B9BEC4', on:'#8FE3B0', onInk:'#0E1621' },
       defaults: { mode:'round', key:'dtmf', rot:true },
