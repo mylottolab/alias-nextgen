@@ -840,6 +840,7 @@ AL.STR = {
   cntLegend:  { kr:'이름이 셋인 이유\n· 큰 글씨 — 내가 상대를 부르는 이름. 상대는 못 봅니다.\n· 상대 별칭 — 상대가 나에게 보여주는 이름.\n· 내 별칭 — 내가 상대에게 보여주는 이름.',
                 en:'Why three names\n· Large — what you call them. They never see it.\n· Their alias — the name they show you.\n· Your alias — the name they see for you.' },
   cntLegendOpen:{ kr:'이름이 왜 셋인가요?', en:'Why three names?' },
+  sosBar:{ kr:'🆘 안심 긴급 · 보호자에게 바로 알림', en:'🆘 SOS · Alert your guardians now' },
 
   /* 🔴 2026-09-12 신설 — 별표 · 단축번호 · 정렬 */
   cntSort:      { kr:'정렬', en:'Sort' },
