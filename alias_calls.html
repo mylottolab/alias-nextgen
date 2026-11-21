@@ -9,7 +9,8 @@
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="alias_common.js?v=20261121a"></script>
-<script src="alias_call.js?v=20261020g"></script>
+<script src="alias_call.js?v=20261121a"></script>
+<script src="alias_media.js?v=20260927a"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -81,6 +82,11 @@ document.addEventListener("DOMContentLoaded", function(){
     <button class="toggle" id="grpBtn" data-t="clByFace"></button>
   </div>
 
+  <!-- 📮 2026-11-21 음성사서함 — 내가 안 받은 전화에 남긴 음성 메시지(최근 30개) -->
+  <div id="vmBox" hidden style="margin:6px 0 14px">
+    <div style="font-weight:800;font-size:14px;margin:0 2px 6px;opacity:.8" id="vmTitle"></div>
+    <div id="vmList" style="display:flex;flex-direction:column;gap:6px"></div>
+  </div>
   <div id="list"></div>
   <p class="note" data-t="clSoonNote"></p>
   <div id="err" class="err"></div>
@@ -401,10 +407,50 @@ document.getElementById('grpBtn').addEventListener('click', function(){
   paint();
 });
 
+/* 📮 음성사서함 — ▶ 바로 듣기 · 💬 대화방 · ✕ 이 폰에서 지우기 */
+var vms = [], vmAudio = null;
+function vmHidden(){ try { return JSON.parse(localStorage.getItem('wafa_vm_hidden') || '[]'); } catch (e) { return []; } }
+async function loadVm(){
+  try { var r = await AL.sb.rpc('wafa_voicemails', { p_limit: 30 }); vms = (r && !r.error && r.data) || []; } catch (e) { vms = []; }
+  var hid = vmHidden(); vms = vms.filter(function(v){ return hid.indexOf(v.id) < 0; });
+  drawVm();
+}
+function drawVm(){
+  var en = AL.lang === 'en', box = document.getElementById('vmBox');
+  box.hidden = !vms.length;
+  document.getElementById('vmTitle').textContent = en ? '📮 Voicemail' : '📮 음성사서함';
+  document.getElementById('vmList').innerHTML = vms.map(function(v, i){
+    var d = new Date(v.at), sec = Math.round((v.ms || 0) / 1000);
+    var when = d.toDateString() === new Date().toDateString() ? d.toLocaleTimeString(en ? 'en-US' : 'ko-KR', { hour: 'numeric', minute: '2-digit' }) : d.toLocaleDateString(en ? 'en-US' : 'ko-KR', { month: 'short', day: 'numeric' });
+    var bs = 'width:40px;height:40px;border-radius:50%;border:0;font-size:16px;cursor:pointer;';
+    return '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:var(--card,rgba(128,128,128,.12))">' +
+      '<span style="font-size:22px">📮</span><div style="flex:1;min-width:0"><b style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + AL.esc(v.name || (v.number && String(v.number).length === 10 ? String(v.number).slice(0, 4) + '-' + String(v.number).slice(4, 7) + '-' + String(v.number).slice(7) : '?')) + '</b>' +
+      '<span style="font-size:13px;opacity:.7">' + AL.esc(when) + ' · ' + Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0') + '</span></div>' +
+      '<button data-vx="' + i + '" style="' + bs + 'background:rgba(128,128,128,.2);color:inherit" aria-label="remove">✕</button>' +
+      '<button data-vo="' + i + '" style="' + bs + 'background:rgba(128,128,128,.2)" aria-label="chat">💬</button>' +
+      '<button data-vp="' + i + '" style="' + bs + 'background:#3B82F6;color:#fff" aria-label="play">▶</button></div>'; }).join('');
+}
+document.getElementById('vmList').onclick = async function(e){
+  var x = e.target.closest('[data-vx]'), o = e.target.closest('[data-vo]'), pb = e.target.closest('[data-vp]');
+  if (x) { var v = vms[+x.dataset.vx];
+    try { var h = vmHidden(); h.push(v.id); localStorage.setItem('wafa_vm_hidden', JSON.stringify(h.slice(-500))); } catch (er) {}
+    try { var k = 'al_hidden_' + v.link_id, c = JSON.parse(localStorage.getItem(k) || '[]'); c.push(v.id); localStorage.setItem(k, JSON.stringify(c.slice(-3000))); } catch (er) {}
+    if (vmAudio) { try { vmAudio.pause(); } catch (er) {} vmAudio = null; }
+    vms.splice(+x.dataset.vx, 1); drawVm(); return; }
+  if (o) { location.href = 'alias_chat.html?link=' + encodeURIComponent(vms[+o.dataset.vo].link_id); return; }
+  if (!pb) return;
+  if (vmAudio && vmAudio._b === pb) { vmAudio.pause(); vmAudio = null; pb.textContent = '▶'; return; }
+  if (vmAudio) { vmAudio.pause(); vmAudio._b.textContent = '▶'; vmAudio = null; }
+  try { pb.textContent = '…'; var a = new Audio(await AL.mediaUrl(vms[+pb.dataset.vp].path)); a._b = pb; vmAudio = a;
+    a.onended = function(){ pb.textContent = '▶'; if (vmAudio === a) vmAudio = null; }; await a.play(); pb.textContent = '❚❚';
+  } catch (er) { pb.textContent = '▶'; vmAudio = null; }
+};
+
 (async function(){
   AL.paintText();
   if (!await AL.requireLogin()) return;
   await reload();
+  loadVm();
   AL.showPlanBar();   // 🔴 2026-09-14
   AL.showPushBar();   // 🔴 2026-09-15 — 전화를 못 받는 상태면 알립니다
   AL.showExpiringBar();   // 🔴 2026-09-19 — 곧 지워질 녹음

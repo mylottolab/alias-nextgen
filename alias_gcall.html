@@ -10,7 +10,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="alias_common.js?v=20261121a"></script>
 <script src="alias_media.js?v=20260927a"></script>
-<script src="alias_call.js?v=20261020g"></script>
+<script src="alias_call.js?v=20261121a"></script>
 <script src="alias_gcall.js?v=20260927a"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function(){
@@ -164,7 +164,60 @@ function paintActs(){
   box.appendChild(x);
 }
 
+/* 👥 2026-11-21 와파 3자 통화 — 방을 만든 사람(나)이면: 새로 부른 사람에게 「3자 통화 초대」 알림,
+   나갈 때 통화 시간을 내 사용량에 더함(받은 사람은 무료 · wafa_call_used) */
+var W3 = null;
+try { var w3 = JSON.parse(sessionStorage.getItem('wafa3_invite') || 'null'); if (w3 && w3.room === linkId && Date.now() - w3.at < 10 * 60 * 1000) W3 = w3; } catch (e) {}
+function wafa3Invite(){
+  if (!W3 || W3.pushed) return;
+  W3.pushed = true;
+  try { sessionStorage.setItem('wafa3_invite', JSON.stringify(W3)); } catch (e) {}
+  var en = AL.lang === 'en';
+  /* 🔴 2026-11-21 (09) — 새 사람에게는 진짜 전화벨(1:1 대화방의 전화 한 통, 표 = w3 + 방). 45초 안 받으면 거둠 */
+  if (W3.ring && W3.ring.call) {
+    var R = W3.ring, me = (view && view.my_face) || '';
+    AL.callFn('alias-push-call', { linkId: R.link, callId: R.call, sessionToken: R.token, callType: callType,
+      who: me ? me + (en ? ' · 3-way call' : ' · 3자 통화') : (en ? 'WAFA 3-way call' : '와파 3자 통화') }).catch(function(e){ console.warn('[w3] 벨 실패', e); });
+    setTimeout(async function(){
+      try {
+        var r = await AL.sb.rpc('wafa_three_way_ring_end', { p_call: R.call });
+        var o = (r && r.data) || {};
+        if (o.ok && !o.answered) AL.callFn('alias-push-call', { linkId: R.link, callId: R.call, cancel: true }).catch(function(){});
+      } catch (e) {}
+    }, 45000);
+    return;
+  }
+  setTimeout(function(){
+    try {
+      AL.callFn('alias-push-call', { linkId: linkId, group: true, callType: callType,
+        title: en ? '📞 3-way call' : '📞 3자 통화 초대',
+        body: (view && view.my_face ? view.my_face + (en ? ' invited you · tap to join' : ' 님이 통화에 불렀어요 · 눌러서 들어가세요') : (en ? 'Tap to join' : '눌러서 들어가세요')) }).catch(function(){});
+    } catch (e) {}
+  }, 1500);
+}
+/* 🔴 2026-11-21 3자 통화 초대 전화를 받고 들어온 사람 — 받음 표시 · 울리던 알림 끄기, 나갈 때 아이폰 통화 화면 닫기 */
+var W3CALL = new URLSearchParams(location.search).get('w3call');
+if (W3CALL) {
+  setTimeout(function(){
+    try { AL.sb.rpc('wafa_three_way_answered', { p_call: W3CALL }); } catch (e) {}
+    try { if (window.AliasNative && AliasNative.cancelCall) AliasNative.cancelCall(String(W3CALL)); } catch (e) {}
+  }, 800);
+}
+function w3NativeEnd(){ if (!W3CALL) return; try { if (window.AliasNative && AliasNative.callEnded) AliasNative.callEnded(); } catch (e) {} }
+var w3Done = false;
+function wafa3Usage(){
+  return;   // 부름 — 와파 요금(사용량)과 상관없음
+  if (!W3 || w3Done || !t0) return;
+  w3Done = true;
+  var sec = Math.round((Date.now() - t0) / 1000);
+  try {
+    fetch(AL.SUPABASE_URL + '/rest/v1/rpc/wafa_call_used', { method: 'POST', keepalive: true,
+      headers: { 'apikey': AL.SUPABASE_ANON, 'Authorization': 'Bearer ' + (AL._lastToken || AL.SUPABASE_ANON), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_video: callType === 'video', p_sec: sec }) });
+  } catch (e) {}
+}
 async function leave(){
+  wafa3Usage(); w3NativeEnd();
   if (tick) { clearInterval(tick); tick = null; }
   await AL.leaveGroupCall();
   leaveTo('alias_chat.html?link=' + encodeURIComponent(linkId));
@@ -194,6 +247,7 @@ async function leave(){
       onChange: paintPeople,
     });
     paintPeople();
+    wafa3Invite();
   } catch (e) {
     // ⚠ 오류를 뭉뚱그리면 원인을 못 찾습니다. 그대로 보여줍니다.
     console.error('[gcall] 실패', e);
@@ -211,6 +265,7 @@ async function leave(){
      sendBeacon 은 Supabase 호출에 못 쓰므로, 먼저 신호를 보내고
      leave_call 은 keepalive 로 던집니다. */
 function leaveQuietly(){
+  wafa3Usage(); w3NativeEnd();
   try {
     if (AL.gcall.channel && AL.gcall.mySideId) {
       AL.gcall.channel.send({

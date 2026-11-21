@@ -879,6 +879,8 @@ async function handleSignal(m){
 
      ⚠ 여기서는 전달만 합니다. 판단은 화면이 합니다.
      ⚠ 통화가 붙은 뒤에만 오갑니다. 채널이 살아 있어야 하니까요. */
+  /* 🔴 2026-11-21 와파 보류 — 상대가 나를 보류했다 / 풀었다 */
+  if (m.kind === 'hold') { say('hold', { on: !!m.on }); return; }
   if (m.kind.indexOf('rec-') === 0) {
     console.log('[rec] 신호:', m.kind);
     say('rec', { kind: m.kind, days: m.days, who: m.who });
@@ -1662,6 +1664,13 @@ AL.boostSend = async function(){
     if (AL.boost === b) AL.boostStop();
     else if (b) { try { b.ctx.close(); } catch (e3) {} }
   }
+};
+
+/* 🔴 2026-11-21 와파 보류 — 내 마이크 · 상대 소리를 끄고 상대에게 "보류" 를 알림 */
+AL.setHold = function(on){
+  try { if (AL.call.local) AL.call.local.getAudioTracks().forEach(function(t){ t.enabled = !on; }); } catch (e) {}
+  try { if (AL.call.local) AL.call.local.getVideoTracks().forEach(function(t){ t.enabled = !on; }); } catch (e) {}
+  send('hold', { on: !!on });
 };
 
 AL.toggleMute = function(){

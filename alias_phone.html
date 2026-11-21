@@ -9,7 +9,7 @@
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="alias_common.js?v=20261121a"></script>
-<script src="alias_call.js?v=20261020g"></script>
+<script src="alias_call.js?v=20261121a"></script>
 <script src="padstyle.js?v=20261119f"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
@@ -260,6 +260,8 @@ html[data-mode="light"] body.dialmode #dialBox{background:rgba(20,40,30,.07);bor
       <button type="button" class="m" id="dlM"></button>
     </div>
     <div class="dl-msg" id="dlMsg"></div>
+    <!-- 🕘 2026-11-21 최근 통화 · 📮 음성사서함 -->
+    <div style="text-align:center;margin-top:10px"><a href="alias_calls.html" id="toRecent" style="display:inline-block;padding:10px 18px;border-radius:999px;background:rgba(128,128,128,.18);color:inherit;font-weight:800;text-decoration:none">🕘 최근 통화 · 📮 음성사서함</a></div>
     <p class="dl-hint" id="dlHint"></p>
     <div class="dl-row">
       <button type="button" class="ed" id="dlEdit"></button>
@@ -935,5 +937,6 @@ document.getElementById('setupLink').textContent =
   });
 })();
 </script>
+<script>try { if (AL.lang === 'en') document.getElementById('toRecent').textContent = '🕘 Recents · 📮 Voicemail'; } catch (e) {}</script>
 </body>
 </html>
