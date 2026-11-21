@@ -4887,6 +4887,13 @@ AL.savePushToken = async function(token, platform){
 
     AL._pushErr = '';
     try { localStorage.setItem(AL.DEVICE_ID_KEY, res.data); } catch (e) {}
+    /* 🔴 2026-11-22 — 새 앱이면(알림에서 바로 답장 qr1) 서버에 적어 둡니다. 그 폰에만 위에 뜨는 답장 알림이 갑니다 */
+    try {
+      if (window.AliasNative && typeof AliasNative.caps === 'function') {
+        var caps = String(AliasNative.caps() || '');
+        if (caps) await AL.sb.rpc('set_device_caps', { p_token: token, p_caps: caps });
+      }
+    } catch (e) {}
     console.log('[push] 기기 줄을 저장했습니다');
 
     /* 🔴🔴 2026-09-16 — 계정이 바뀌었으면 한 번만 알려드립니다.
