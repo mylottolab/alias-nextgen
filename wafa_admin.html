@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>와파 관리</title>
+<!-- 📶 2026-11-22 와파 관리 — 가입 · 구독 · 번호 · 결제 · 사용량 (읽기만). 부름 서버 · wafa/sql/10_wafa_admin.sql 의 admin_wafa_report -->
+<script src="alias_config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="alias_common.js"></script>
+<style>
+:root{ --bg:#F4F6F8; --card:#fff; --ink:#16212E; --soft:#5A6878; --line:#DDE3EA; --acc:#1E8C7C; --bad:#B4412F; --ok:#1F8A4C; }
+*{ box-sizing:border-box; } [hidden]{ display:none !important; }
+body{ margin:0; background:var(--bg); color:var(--ink); font-family:system-ui,-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif; font-size:14px; }
+header{ background:var(--acc); color:#fff; padding:12px 18px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+header h1{ margin:0; font-size:17px; } header .who{ margin-left:auto; font-size:12.5px; opacity:.85; }
+header button, header input{ background:rgba(255,255,255,.18); color:#fff; border:1px solid rgba(255,255,255,.35); border-radius:8px; padding:6px 10px; font-size:12.5px; }
+header input{ color-scheme:dark; }
+main{ max-width:1300px; margin:0 auto; padding:14px; }
+.cards{ display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:10px; margin-bottom:14px; }
+.card{ background:#fff; border:1px solid var(--line); border-radius:12px; padding:12px 14px; }
+.card .k{ font-size:12px; color:var(--soft); } .card .v{ font-size:22px; font-weight:800; margin:2px 0; } .card .s{ font-size:12px; color:var(--soft); }
+h2{ font-size:15px; margin:18px 0 8px; }
+.bar{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:8px; }
+.bar input{ border:1px solid var(--line); border-radius:8px; padding:7px 9px; font:inherit; min-width:220px; }
+.tbl{ overflow:auto; background:#fff; border:1px solid var(--line); border-radius:12px; max-height:640px; }
+table{ border-collapse:collapse; width:100%; } th,td{ padding:8px 10px; border-bottom:1px solid var(--line); text-align:left; white-space:nowrap; } th{ background:#E8F5F2; font-size:12.5px; position:sticky; top:0; }
+.tag{ display:inline-block; border-radius:20px; padding:1px 8px; font-size:11.5px; font-weight:800; }
+.t-on{ background:#E3F4EA; color:var(--ok); } .t-off{ background:#EEF1F4; color:var(--soft); } .t-warn{ background:#FFF3D6; color:#9A6400; }
+.small{ font-size:12px; color:var(--soft); }
+.err{ display:none; background:#FBEAE6; color:var(--bad); border-radius:10px; padding:10px 14px; margin-bottom:12px; }
+#login{ position:fixed; inset:0; background:rgba(22,33,46,.55); display:none; align-items:center; justify-content:center; z-index:10; }
+#login .box{ background:#fff; border-radius:16px; padding:22px; width:min(360px,92vw); display:flex; flex-direction:column; gap:10px; }
+#login button{ background:var(--acc); color:#fff; border:none; border-radius:8px; padding:11px; font-weight:800; cursor:pointer; }
+</style>
+</head>
+<body>
+<div id="login"><div class="box"><b style="font-size:17px">와파 관리</b><div class="small">부름 관리자 계정으로 로그인해 주세요(부름 관리 화면과 같은 계정).</div><button type="button" id="lGo">로그인하러 가기</button></div></div>
+<header><h1>📶 와파 관리</h1><input type="date" id="from"> ~ <input type="date" id="to"><button type="button" id="go">조회</button><span class="who" id="who"></span><button type="button" id="logout">로그아웃</button></header>
+<main>
+<div class="err" id="err"></div>
+<div class="cards" id="cards"></div>
+<div class="cards" id="cards2"></div>
+<h2>📅 날짜별 (가입 · 결제)</h2>
+<div class="tbl" style="max-height:300px"><table><thead><tr><th>날짜</th><th>새 가입</th><th>결제</th><th>금액</th></tr></thead><tbody id="daily"></tbody></table></div>
+<h2>👥 가입자 (최근 500명)</h2>
+<div class="bar"><input id="q" placeholder="아이디 · 번호 찾기"><label class="small"><input type="checkbox" id="onlySub"> 구독 중인 분만</label><span class="small" id="cnt"></span></div>
+<div class="tbl"><table><thead><tr><th>가입</th><th>아이디</th><th>와파 번호</th><th>메인</th><th>구독</th><th>끝나는 날</th><th>스토어</th><th>이번 달 음성/영상</th><th>마지막 접속</th></tr></thead><tbody id="mem"></tbody></table></div>
+<h2>💳 결제 (기간 안, 최근 300건)</h2>
+<div class="tbl" style="max-height:400px"><table><thead><tr><th>일시</th><th>아이디</th><th>상품</th><th>금액</th></tr></thead><tbody id="pays"></tbody></table></div>
+<p class="small">· 읽기만 하는 화면입니다. 구독 해지 · 환불은 Google Play Console · App Store Connect 에서 합니다.<br>· 금액은 결제 기록에 남은 값이며, 스토어 수수료를 빼기 전 금액입니다. 기록에 금액이 없으면 0원으로 셉니다.</p>
+</main>
+<script>
+const el = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+const kst = (t, n) => t ? new Date(new Date(t).getTime() + 9 * 3600e3).toISOString().slice(0, n || 10).replace('T', ' ') : '';
+const won = (n) => Number(n || 0).toLocaleString('ko-KR') + '원';
+const num = (s) => s ? String(s).replace(/^(\d{4})(\d{3})(\d{3})$/, '$1-$2-$3') : '';
+const id = (e) => { const loc = String(e || '').split('@')[0]; try { return decodeURIComponent(loc); } catch (x) { return loc; } };
+const PROD = { wafa_1m: '1개월', wafa_3m: '3개월', wafa_6m: '6개월', wafa_12m: '12개월' };
+const STORE = { google: '구글', apple: '애플', web: '웹' };
+const KIND = { free: '무료', bought: '좋은 번호', extra: '하나 더', given: '회사 부여' };
+let D = null;
+function err(t){ el('err').textContent = t; el('err').style.display = t ? 'block' : 'none'; }
+async function load(){
+  err('');
+  const r = await AL.sb.rpc('admin_wafa_report', { p_from: el('from').value || null, p_to: el('to').value || null });
+  if (r.error) return err(/not_admin/.test(r.error.message) ? '관리자 권한이 없는 계정입니다.' : /admin_wafa_report|function/.test(r.error.message) ? '서버에 와파 관리 함수가 아직 없습니다. 10_wafa_admin.sql 을 부름 서버에서 Run 해 주세요.' : r.error.message);
+  D = r.data; el('from').value = D.from; el('to').value = D.to; paint();
+}
+function paint(){
+  const t = D.totals;
+  const c = [['전체 가입자', t.accounts + '명', '오늘 +' + t.today + ' · 기간 +' + t.new], ['구독 중', t.subs + '명', '자동 갱신 끔 ' + t.renew_off + '명'],
+    ['기간 결제', won(t.krw), t.pays + '건 (' + D.from + ' ~ ' + D.to + ')'], ['와파 번호', t.numbers + '개', Object.entries(D.by_kind || {}).map(([k, v]) => (KIND[k] || k) + ' ' + v).join(' · ')],
+    ['이번 달 통화', t.voice_min + '분', '영상 ' + t.video_min + '분 · ' + D.ym], ['7일 안 접속', t.seen7 + '명', '최근 일주일 앱을 연 분']];
+  el('cards').innerHTML = c.map((x) => '<div class="card"><div class="k">' + esc(x[0]) + '</div><div class="v">' + esc(x[1]) + '</div><div class="s">' + esc(x[2]) + '</div></div>').join('');
+  el('cards2').innerHTML = '<div class="card"><div class="k">구독 상품</div><div class="s" style="font-size:13px;color:var(--ink)">' + (Object.entries(D.by_product || {}).map(([k, v]) => (PROD[k] || k) + ' ' + v + '명').join(' · ') || '없음') + '</div></div>' +
+    '<div class="card"><div class="k">스토어</div><div class="s" style="font-size:13px;color:var(--ink)">' + (Object.entries(D.by_store || {}).map(([k, v]) => (STORE[k] || k) + ' ' + v + '명').join(' · ') || '없음') + '</div></div>' +
+    '<div class="card"><div class="k">기간 결제 상품</div><div class="s" style="font-size:13px;color:var(--ink)">' + ((D.by_sku || []).map((x) => esc(x.sku) + ' ' + x.n + '건').join(' · ') || '없음') + '</div></div>';
+  el('daily').innerHTML = (D.daily || []).map((x) => '<tr><td>' + esc(x.day) + '</td><td>' + x.new + '</td><td>' + x.pays + '</td><td>' + won(x.krw) + '</td></tr>').join('');
+  paintMem();
+  el('pays').innerHTML = (D.pay_list || []).length ? D.pay_list.map((p) => '<tr><td>' + kst(p.at, 16) + '</td><td>' + esc(id(p.login)) + '</td><td>' + esc(p.sku) + '</td><td>' + won(p.amount) + '</td></tr>').join('') : '<tr><td colspan="4" class="small">이 기간 결제가 없습니다.</td></tr>';
+  try { if (parent !== window) parent.postMessage({ type: 'weave_wafa', subs: t.subs, krw: t.krw, accounts: t.accounts, today: t.today }, 'https://aliascall.com'); } catch (x) {}
+}
+function paintMem(){
+  const q = el('q').value.trim().toLowerCase(), only = el('onlySub').checked;
+  const live = (m) => (m.status === 'active' || m.status === 'grace') && new Date(m.until) > new Date();
+  const rows = (D.members || []).filter((m) => (!only || live(m)) && (!q || (id(m.login) + ' ' + (m.num || '')).toLowerCase().includes(q)));
+  el('cnt').textContent = rows.length + '명';
+  el('mem').innerHTML = rows.map((m) => '<tr><td>' + kst(m.at) + '</td><td>' + esc(id(m.login)) + '</td><td>' + esc(num(m.num)) + (m.nums > 1 ? ' <span class="small">+' + (m.nums - 1) + '</span>' : '') + '</td><td>' + (m.main === 'private' ? '별칭' : '번호') + '</td>' +
+    '<td>' + (m.status ? '<span class="tag ' + (live(m) ? (m.renew ? 't-on' : 't-warn') : 't-off') + '">' + (PROD[m.product] || m.product) + ' · ' + esc(m.status) + (live(m) && !m.renew ? ' · 갱신 끔' : '') + '</span>' : '<span class="small">없음</span>') + '</td>' +
+    '<td>' + kst(m.until) + '</td><td>' + (STORE[m.store] || '') + '</td><td>' + (m.vmin || 0) + '분 / ' + (m.dmin || 0) + '분</td><td>' + kst(m.seen, 16) + '</td></tr>').join('') || '<tr><td colspan="9" class="small">없습니다.</td></tr>';
+}
+el('q').oninput = paintMem; el('onlySub').onchange = paintMem; el('go').onclick = load;
+el('lGo').onclick = () => { location.href = 'alias_auth.html?next=' + encodeURIComponent('wafa_admin.html'); };
+el('logout').onclick = async () => { await AL.sb.auth.signOut(); location.reload(); };
+(async function(){
+  if (!window.AL || !AL.sb) return err('alias_common.js 를 읽지 못했습니다.');
+  const { data: { session } } = await AL.sb.auth.getSession();
+  if (!session) { el('login').style.display = 'flex'; return; }
+  el('who').textContent = id(session.user.email); load();
+})();
+</script>
+</body>
+</html>
