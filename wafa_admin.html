@@ -78,7 +78,7 @@ function paint(){
   el('cards2').innerHTML = '<div class="card"><div class="k">구독 상품</div><div class="s" style="font-size:13px;color:var(--ink)">' + (Object.entries(D.by_product || {}).map(([k, v]) => (PROD[k] || k) + ' ' + v + '명').join(' · ') || '없음') + '</div></div>' +
     '<div class="card"><div class="k">스토어</div><div class="s" style="font-size:13px;color:var(--ink)">' + (Object.entries(D.by_store || {}).map(([k, v]) => (STORE[k] || k) + ' ' + v + '명').join(' · ') || '없음') + '</div></div>' +
     '<div class="card"><div class="k">기간 결제 상품</div><div class="s" style="font-size:13px;color:var(--ink)">' + ((D.by_sku || []).map((x) => esc(x.sku) + ' ' + x.n + '건').join(' · ') || '없음') + '</div></div>';
-  el('daily').innerHTML = (D.daily || []).map((x) => '<tr><td>' + esc(x.day) + '</td><td>' + x.new + '</td><td>' + x.pays + '</td><td>' + won(x.krw) + '</td></tr>').join('');
+  el('daily').innerHTML = (D.daily || []).map((x) => '<tr><td>' + esc(String(x.day).slice(0, 10)) + '</td><td>' + x.new + '</td><td>' + x.pays + '</td><td>' + won(x.krw) + '</td></tr>').join('');
   paintMem();
   el('pays').innerHTML = (D.pay_list || []).length ? D.pay_list.map((p) => '<tr><td>' + kst(p.at, 16) + '</td><td>' + esc(id(p.login)) + '</td><td>' + esc(p.sku) + '</td><td>' + won(p.amount) + '</td></tr>').join('') : '<tr><td colspan="4" class="small">이 기간 결제가 없습니다.</td></tr>';
   try { if (parent !== window) parent.postMessage({ type: 'weave_wafa', subs: t.subs, krw: t.krw, accounts: t.accounts, today: t.today }, 'https://aliascall.com'); } catch (x) {}
