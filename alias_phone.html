@@ -351,13 +351,13 @@ async function dialNo(b, kind){
   if (b.link_id) { if (kind === 'chat') return chatTo(b.link_id); return callTo(b.link_id, kind); }
   if (kind === 'chat') { location.href = 'alias_number.html?dial=' + b.number + '&msg=1'; return; }
   if (!await AL.requirePlan()) return;
-  const r = await AL.sb.rpc('bn_dial', { p_number: b.number, p_persona: null, p_note: null });
+  const r = await AL.sb.rpc('bn_dial_call', { p_number: b.number, p_persona: null, p_note: null });   // 📲 2026-11-21 착신전환(항상)
   const d = r.data || {};
   if (r.error || !d.ok) {
     if (d.error === 'need_plan') { AL.needPlan(); return; }
     info(d.error === 'slow_down' ? BT.slow : d.error === 'own' ? BT.own : BT.notFound); return;
   }
-  if (d.state === 'linked' && d.link_id) { await reload(); return callTo(d.link_id, kind); }
+  if (d.state === 'linked' && d.link_id) { await reload(); return callTo(d.link_id, kind, d.fwd_to); }
   info(d.again ? BT.again : BT.requested);
 }
 
@@ -380,11 +380,18 @@ function isRoom(r){ return r.kind === 'group'; }
 function newTicket(){
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
-async function callTo(linkId, kind){
+async function callTo(linkId, kind, fwdTo){
   if (!await AL.requirePlan()) return;   // 🔴 2026-09-14 이용권
   /* 🔴 2026-09-12 — 기본은 늘 음성입니다. 영상은 따로 골라야 합니다. */
-  location.href = 'alias_call.html?link=' + encodeURIComponent(linkId) +
-    '&type=' + (kind === 'video' ? 'video' : 'voice') + '&once=' + newTicket();
+  var go = 'alias_call.html?link=' + encodeURIComponent(linkId) +
+    '&type=' + (kind === 'video' ? 'video' : 'voice') + '&once=' + newTicket() + (fwdTo ? '&fw=1' : '');
+  /* 📲 2026-11-21 받는 사람이 「항상」 착신전환 — 잠깐 알리고 넘긴 번호로 */
+  if (fwdTo) {
+    var m = (AL.lang === 'en' ? '📲 Forwarded — connecting to ' : '📲 착신전환 — ') + fmtNo(fwdTo) + (AL.lang === 'en' ? '' : ' 로 연결합니다');
+    try { dlSay(m); } catch (e) {} try { info(m); } catch (e) {}
+    setTimeout(function(){ location.href = go; }, 1200); return;
+  }
+  location.href = go;
 }
 async function chatTo(linkId){
   location.href = 'alias_chat.html?link=' + encodeURIComponent(linkId);
@@ -643,13 +650,13 @@ async function dialTyped(kind){
   }
   if (!await AL.requirePlan()) return;
   dlSay(DT.linking);
-  const r = await AL.sb.rpc('bn_dial', { p_number: typed, p_persona: null, p_note: null });
+  const r = await AL.sb.rpc('bn_dial_call', { p_number: typed, p_persona: null, p_note: null });   // 📲 2026-11-21 착신전환(항상)
   const d = r.data || {};
   if (r.error || !d.ok) {
     if (d.error === 'need_plan') { dlSay(''); AL.needPlan(); return; }
     dlSay(d.error === 'slow_down' ? BT.slow : d.error === 'own' ? BT.own : BT.notFound); return;
   }
-  if (d.state === 'linked' && d.link_id) return callTo(d.link_id, kind);
+  if (d.state === 'linked' && d.link_id) return callTo(d.link_id, kind, d.fwd_to);
   dlSay(d.again ? BT.again : BT.requested);
 }
 /* 🔴 2026-10-23 — 안드로이드 앱은 아이콘으로 켤 때 스스로 연락처 화면으로 옮깁니다(MainActivity 의 "아이콘마다 제 집으로").

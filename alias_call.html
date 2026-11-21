@@ -1065,6 +1065,10 @@ async function vmOffer(state){
     try {
       var fr = await AL.sb.rpc('wafa_forward_noanswer', { p_link: linkId, p_kind: callType });
       var fo = (fr && !fr.error && fr.data) || {};
+      /* 부름 — 부름번호로 이어진 사이면 부름번호 착신전환(안 받을 때) */
+      if (!(fo.ok && fo.link_id)) {
+        try { var br = await AL.sb.rpc('bn_forward_noanswer', { p_link: linkId }); fo = (br && !br.error && br.data) || {}; } catch (e) { fo = {}; }
+      }
       if (fo.ok && fo.link_id) {
         var fn = String(fo.fwd_to || '');
         setStatus(vmT('착신전환 중…', 'Forwarding…'));

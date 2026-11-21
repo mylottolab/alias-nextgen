@@ -139,6 +139,15 @@ html[data-mode="light"] .bn-disp .del{border-color:rgba(0,0,0,.15);background:rg
     <div id="hold"></div>
     <div id="credits"></div>
     <div id="mine"></div>
+    <!-- 📲 2026-11-21 착신전환 — 부름번호로 온 전화만 다른 부름번호로 -->
+    <div id="fwdBox" hidden style="margin-top:14px;padding:13px;border-radius:14px;border:1px solid rgba(143,227,176,.35);background:rgba(143,227,176,.06)">
+      <div style="font-weight:800;font-size:15px" id="fwT"></div>
+      <div style="font-size:12.5px;opacity:.75;line-height:1.55;margin:4px 0 10px" id="fwD"></div>
+      <div id="fwOpts" style="display:flex;flex-direction:column;gap:6px"></div>
+      <input id="fwNo" inputmode="numeric" maxlength="12" placeholder="0000-000-000" style="width:100%;box-sizing:border-box;margin-top:8px;padding:11px;border-radius:10px;font-size:17px;font-weight:700;letter-spacing:1px;background:rgba(255,255,255,.07);color:inherit;border:1px solid rgba(255,255,255,.2)">
+      <button type="button" id="fwSave" style="margin-top:10px;width:100%;padding:12px;border-radius:10px;border:none;background:#8FE3B0;color:#0E1621;font-weight:800"></button>
+      <div id="fwMsg" style="min-height:1.2em;margin-top:6px;font-size:13px"></div>
+    </div>
     <!-- 🔴 2026-10-18 — [🔄 다른 번호] : 마음에 안 들면 새 번호 3개 -->
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
       <div class="sect" id="newTtl"></div>
@@ -281,7 +290,8 @@ async function dial(kind){
   if (!await AL.requirePlan()) return;
   el('dialMsg').textContent = T.linked;
   const note = kind === 'chat' ? el('noteTx').value.trim() : '';
-  const r = await AL.sb.rpc('bn_dial', { p_number: typed, p_persona: null, p_note: note || null });
+  /* 📲 2026-11-21 음성 · 영상은 bn_dial_call — 받는 사람이 「항상」 착신전환이면 넘긴 번호로 */
+  const r = await AL.sb.rpc(kind === 'chat' ? 'bn_dial' : 'bn_dial_call', { p_number: typed, p_persona: null, p_note: note || null });
   const d = r.data || {};
   if (r.error || !d.ok) {
     if (d.error === 'need_plan') { el('dialMsg').textContent = ''; AL.needPlan(); return; }
@@ -292,18 +302,57 @@ async function dial(kind){
     return;
   }
   if (d.state === 'linked' && d.link_id) {
-    location.href = 'alias_call.html?link=' + encodeURIComponent(d.link_id) + '&type=' + kind +
-      '&once=' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    const go = 'alias_call.html?link=' + encodeURIComponent(d.link_id) + '&type=' + kind +
+      '&once=' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8) + (d.fwd_to ? '&fw=1' : '');
+    if (d.fwd_to) { el('dialMsg').textContent = (en ? '📲 Forwarded — connecting to ' : '📲 착신전환 — ') + fmt(d.fwd_to) + (en ? '' : ' 로 연결합니다'); setTimeout(function(){ location.href = go; }, 1200); return; }
+    location.href = go;
     return;
   }
+  if (d.fwd_to) { el('dialMsg').textContent = (en ? '📲 Forwarded to ' : '📲 착신전환된 번호 ') + fmt(d.fwd_to) + ' · ' + (d.again ? T.again : T.requested); return; }
   el('dialMsg').textContent = d.again ? T.again : (kind === 'chat' ? T.requestedM : T.requested);
   if (kind === 'chat' && !d.again) { el('noteTx').value = ''; el('noteBox').classList.remove('on'); }
 }
+
+/* ── 📲 착신전환 (2026-11-21) ─────────────────────────────── */
+const FW = en ? {
+  t: '📲 Call forwarding', d: 'Only calls dialed to your Burum number are forwarded, to another Burum number. Calls between accepted contacts are never forwarded. Texts are not forwarded.',
+  off: 'Off', no: 'When I don’t answer (40 s or declined)', al: 'Always', save: 'Save', saved: 'Saved',
+  e_none: 'No such Burum number', e_self: 'That is your own number', e_no_number: 'You need a Burum number first', e_need: 'Enter all 10 digits', e_fail: 'Could not save. Try again.'
+} : {
+  t: '📲 착신전환', d: '내 부름번호로 걸려 온 전화만 다른 부름번호로 넘깁니다. 서로 수락한 연락처끼리의 전화는 넘기지 않고, 문자도 넘기지 않습니다.',
+  off: '끄기', no: '안 받을 때 (40초 · 거절)', al: '항상', save: '저장', saved: '저장했어요',
+  e_none: '없는 부름번호예요', e_self: '내 번호로는 넘길 수 없어요', e_no_number: '내 부름번호가 있어야 해요', e_need: '번호 10자리를 넣어 주세요', e_fail: '저장하지 못했어요. 다시 눌러 주세요.'
+};
+let fwCur = { mode: 'off', number: null };
+async function loadFwd(){
+  const box = el('fwdBox');
+  if (!mineList.length) { box.hidden = true; return; }
+  box.hidden = false;
+  el('fwT').textContent = FW.t; el('fwD').textContent = FW.d; el('fwSave').textContent = FW.save;
+  try { const r = await AL.sb.rpc('bn_get_forward'); if (r.data) fwCur = r.data; } catch (e) {}
+  el('fwOpts').innerHTML = [['off', FW.off], ['noanswer', FW.no], ['always', FW.al]].map(function(o){
+    return '<label style="display:flex;gap:8px;align-items:center;font-size:14.5px;font-weight:700"><input type="radio" name="fw" value="' + o[0] + '"' + (fwCur.mode === o[0] ? ' checked' : '') + ' style="width:18px;height:18px;accent-color:#8FE3B0">' + esc(o[1]) + '</label>'; }).join('');
+  el('fwNo').value = fwCur.number ? fmt(fwCur.number) : '';
+  const sync = function(){ el('fwNo').style.display = (document.querySelector('input[name=fw]:checked') || {}).value === 'off' ? 'none' : ''; };
+  el('fwOpts').onchange = sync; sync();
+}
+el('fwNo') && (el('fwNo').oninput = function(){ this.value = fmt(this.value.replace(/\D/g, '').slice(0, 10)); });
+el('fwSave') && (el('fwSave').onclick = async function(){
+  const m = (document.querySelector('input[name=fw]:checked') || {}).value || 'off', n = el('fwNo').value.replace(/\D/g, '');
+  el('fwMsg').style.color = '#FFB4B4';
+  if (m !== 'off' && n.length !== 10) { el('fwMsg').textContent = FW.e_need; return; }
+  this.disabled = true;
+  let d = null; try { const r = await AL.sb.rpc('bn_set_forward', { p_mode: m, p_number: m === 'off' ? null : n }); d = r.data; } catch (e) {}
+  this.disabled = false;
+  if (!d || !d.ok) { el('fwMsg').textContent = FW['e_' + (d && d.error)] || FW.e_fail; return; }
+  el('fwMsg').style.color = '#8FE3B0'; el('fwMsg').textContent = FW.saved;
+});
 
 /* ── ② 내 번호 ────────────────────────────────────────────── */
 async function loadMine(){
   const [a, b] = await Promise.all([AL.sb.rpc('my_numbers'), AL.sb.rpc('my_number_wallet')]);
   mineList = a.data || []; wallet = b.data || { free_first: true, credits: [] };
+  loadFwd();   // 📲 2026-11-21
   const opt = (sel) => aliases.map((x) => '<option value="' + x.id + '"' + (x.id === sel ? ' selected' : '') + '>' + esc(x.display_name) + '</option>').join('');
   const modes = (m) => ['request', 'all', 'off'].map((k) => '<option value="' + k + '"' + (k === m ? ' selected' : '') + '>' + esc(T['m_' + k]) + '</option>').join('');
   el('mine').innerHTML = mineList.map((n) =>
