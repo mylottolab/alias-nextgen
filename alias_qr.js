@@ -104,8 +104,29 @@ AL.loadJsQr = function(){
   return AL._jsqrP;
 };
 
+/* 🔴 2026-11-23 QR 찍기 창의 모양 — 부름 화면은 alias_common.css 에 있지만, 바로너 · 누름 화면(nureum.css)에는 없어서
+   창이 화면 맨 아래 보이지 않는 곳에 생겼습니다("카메라 창이 안 열림"). 그런 화면에서만 여기서 넣어 줍니다. */
+AL._qrCss = function(){
+  if (document.getElementById('alQrCss') || document.querySelector('link[href*="alias_common.css"]')) return;
+  var st = document.createElement('style'); st.id = 'alQrCss';
+  st.textContent =
+    '.pk-bg{position:fixed;inset:0;z-index:1000;background:rgba(4,8,14,.72)}' +
+    '.pk{position:fixed;left:0;right:0;bottom:0;z-index:1001;background:var(--nu-card,#fff);color:var(--nu-ink,#1B2430);border-top:1px solid var(--nu-line,rgba(128,128,128,.3));' +
+      'border-radius:18px 18px 0 0;padding:10px 18px 26px;padding-bottom:calc(26px + env(safe-area-inset-bottom));max-height:86vh;overflow-y:auto;font-family:inherit}' +
+    '.pk .grip{width:38px;height:4px;background:rgba(128,128,128,.4);border-radius:2px;margin:0 auto 14px}' +
+    '.pk-title{font-size:16px;font-weight:800;margin:0 0 6px}' +
+    '.pk-note{font-size:13px;opacity:.75;margin:0 0 12px;line-height:1.6;white-space:pre-line}' +
+    '.pk-err{margin-top:12px;padding:11px 13px;background:rgba(217,106,106,.1);border:1px solid rgba(217,106,106,.35);border-radius:10px;font-size:13px;color:#C0392B;line-height:1.5;white-space:pre-line}' +
+    '.pk-go{width:100%;padding:13px;font-size:15px;font-weight:800;font-family:inherit;background:var(--nu-main,#4A2BE0);color:#fff;border:none;border-radius:12px;cursor:pointer}' +
+    '.qr-cam{width:100%;max-width:420px;margin:12px auto;aspect-ratio:1;border-radius:14px;overflow:hidden;background:#000}' +
+    '.qr-cam video{width:100%;height:100%;object-fit:cover;display:block}' +
+    '.qr-note{font-size:12.5px;opacity:.75;line-height:1.6;text-align:center;white-space:pre-line;margin:0 0 4px}';
+  document.head.appendChild(st);
+};
+
 AL.openScanner = function(){
   return new Promise(function(resolve){
+    AL._qrCss();
     var bg = document.createElement('div'); bg.className = 'pk-bg';
     var sheet = document.createElement('div'); sheet.className = 'pk';
     document.body.appendChild(bg); document.body.appendChild(sheet);
