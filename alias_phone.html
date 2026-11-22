@@ -329,14 +329,14 @@ const BT = KR ? {
   none: '없음', ok: '저장', del: '이 번호 지우기', edit: '저장한 번호 고치기', add: '부름번호 저장',
   wait: '수락 전', needNo: '부름번호 10자리를 넣어 주세요.', delAsk: '전화번호부에서 지울까요?',
   requested: '연결 요청을 보냈습니다. 상대가 수락하면 바로 걸 수 있어요.', again: '이미 요청을 보냈습니다. 답을 기다려 주세요.',
-  notFound: '없는 번호이거나 지금은 받지 않는 번호입니다.', slow: '잠시 뒤에 다시 걸어 주세요.', own: '내 번호입니다.',
+  notFound: '현재 개통되지 않았거나 받을 수 없는 번호입니다. 번호를 확인해 주세요.', slow: '없는 번호를 여러 번 누르셨어요. 번호를 확인한 뒤 잠시 뒤에 다시 걸어 주세요.', own: '내 번호입니다.',
   pickNo: '부름번호로 저장한 사람', noSql: '전화번호부 준비가 아직 안 됐습니다(서버). 잠시 뒤 다시 열어 주세요.'
 } : {
   title: 'Phone book', save: '+ Save number', num: '🔢 Burum number', no: 'Burum number (10 digits)', name: 'Name', slot: 'Speed dial',
   none: 'None', ok: 'Save', del: 'Delete this number', edit: 'Edit saved number', add: 'Save a Burum number',
   wait: 'not accepted yet', needNo: 'Please enter a 10-digit Burum number.', delAsk: 'Delete from your phone book?',
   requested: 'Connection request sent. You can call as soon as they accept.', again: 'You already sent a request. Please wait for their answer.',
-  notFound: 'This number does not exist or is not taking calls now.', slow: 'Please try again in a moment.', own: 'This is your own number.',
+  notFound: 'This number is not in service or cannot take calls. Please check the number.', slow: 'Too many numbers that don’t exist. Check the number and try again in a moment.', own: 'This is your own number.',
   pickNo: 'Saved Burum numbers', noSql: 'The phone book is not ready on the server yet. Please try again shortly.'
 };
 function fmtNo(n){ n = String(n || ''); return n.length === 10 ? n.slice(0, 4) + '-' + n.slice(4, 7) + '-' + n.slice(7) : n; }
