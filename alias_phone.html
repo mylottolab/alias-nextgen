@@ -235,7 +235,7 @@ body.dialmode .phtop{margin-bottom:6px}
 body.dialmode .phtop h1{font-size:21px}
 body.dialmode #dialBox{padding:8px 10px 10px;margin:0 0 10px}
 body.dialmode .dl-msg.dl-top{margin:0 2px 2px;padding:5px 10px;font-size:13.5px;line-height:1.45}
-body.dialmode .dl-disp{font-size:28px;line-height:36px;min-height:36px}
+body.dialmode .dl-disp{font-size:clamp(22px,7vw,28px);line-height:36px;min-height:36px;letter-spacing:1.5px}
 body.dialmode .dl-disp small{font-size:11.5px}
 body.dialmode #dialBox .ps-bar{flex-wrap:nowrap;gap:4px;margin:4px auto 2px;max-width:100%;overflow-x:auto;scrollbar-width:none}
 body.dialmode #dialBox .ps-bar::-webkit-scrollbar{display:none}
@@ -244,6 +244,12 @@ body.dialmode #dialBox .ps-rot{gap:2px;margin:2px auto 0;--ps-size:min(272px,72v
 body.dialmode #dialBox .ps-rot p{font-size:11px;line-height:1.4}
 body.dialmode #dialBox .ps-rot .ps-del{padding:6px 16px;font-size:13px}
 body.dialmode .dl-acts{margin-top:8px}
+body.dialmode #dialBox .ps-rot .ps-del{display:none}
+.dl-dispw{position:relative}
+.dl-dispw .dl-disp{padding:0 46px}
+.dl-bk{position:absolute;right:2px;top:2px;width:42px;height:36px;border-radius:12px;border:1px solid rgba(128,128,128,.35);background:rgba(128,128,128,.14);color:inherit;font-size:19px;line-height:1;cursor:pointer;display:grid;place-items:center;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+.dl-bk:active{background:rgba(128,128,128,.3)}
+.dl-bk[disabled]{opacity:.3}
 body.dialmode .dl-acts button{padding:11px 4px}
 body.dialmode #toRecent{padding:8px 16px!important}
 #firstAsk{display:none;margin:0 0 14px;padding:14px 15px;border-radius:16px;background:rgba(143,227,176,.12);border:1.5px solid rgba(143,227,176,.5);word-break:keep-all}
@@ -273,7 +279,7 @@ body.dialmode #toRecent{padding:8px 16px!important}
   <!-- 🔴 2026-10-23 부름 번호판 (dialmode 일 때만) -->
   <div id="dialBox">
     <div class="dl-msg dl-top" id="dlMsg" role="status" aria-live="polite" hidden></div>   <!-- 🔴 2026-11-23 안내는 번호 바로 위(노랑) — 아래에 두면 스크롤해야 보였음 -->
-    <div class="dl-disp" id="dlDisp"></div>
+    <div class="dl-dispw"><div class="dl-disp" id="dlDisp"></div><button type="button" class="dl-bk" id="dlBk" aria-label="지움">⌫</button></div>   <!-- 🔴 2026-11-23 지움은 번호 오른쪽(다이얼 아래 지움 단추는 숨김) -->
     <div class="dl-pad" id="dlPad"></div>
     <div class="dl-acts">
       <button type="button" class="v" id="dlV"></button>
@@ -594,6 +600,14 @@ const DT = KR ? {
   save: '💾 Save this number', mine: '🔢 My Burum numbers', linking: 'Connecting…', emptySlot: ' is empty. Who goes there?'
 };
 let typed = '';
+/* ⌫ 번호 오른쪽 지움 — 원래 번호판의 ⌫ 를 대신 누름 · 꾸욱 = 모두 지움 */
+(function(){
+  var b = document.getElementById('dlBk'); if (!b) return; var t = null, long = false;
+  b.addEventListener('click', function(){ if (long) { long = false; return; } var k = document.querySelector('#dlPad [data-k="⌫"]'); if (k) k.click(); });
+  b.addEventListener('pointerdown', function(){ long = false; t = setTimeout(function(){ long = true; try { typed = ''; paintDisp(); dlSay(''); } catch (e) {} try { navigator.vibrate && navigator.vibrate(20); } catch (e) {} }, 650); });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(function(ev){ b.addEventListener(ev, function(){ clearTimeout(t); }); });
+  b.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+})();
 function dlSay(t){ var m = document.getElementById('dlMsg'); m.textContent = t || ''; m.hidden = !t;
   if (t) { try { var r = m.getBoundingClientRect(); if (r.top < 0 || r.top > innerHeight * .6) m.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {} } }
 function paintDisp(){
