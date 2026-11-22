@@ -596,7 +596,8 @@
     ["프린트", "Print"],
     ["로 인쇄하세요.", " to print it."],
     ["카드 그림을 만들지 못했어요. 잠시 뒤 다시 눌러 주세요.", "Couldn’t make the card image. Please try again shortly."],
-    ["카드가 아직 없으면: 그 사람 화면 → [전체 메뉴] → 🖨 QR 카드 만들기", "No card yet? Open that person’s screen → [Full menu] → 🖨 Make QR card"]
+    ["카드가 아직 없으면: 그 사람 화면 → [전체 메뉴] → 🖨 QR 카드 만들기", "No card yet? Open that person’s screen → [Full menu] → 🖨 Make QR card"],
+    ["인사 영상 (상대 화면에 나와요)", "Greeting video (shows on their screen)"]
   ];
   NX.sort(function(a, b){ return b[0].length - a[0].length; });
   function tr(s){
