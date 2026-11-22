@@ -574,7 +574,17 @@
     ["한국어 · English 단추", "Korean · English button"],
     ["첫 화면 위쪽 단추로 언제든 언어 바꾸기, 휴대폰이 한국어가 아니면 처음부터 영어", "Switch language anytime with the button at the top of the first screen; English by default if the phone isn’t in Korean"],
     ["2026년 11월 22일 기준 · 화면과 기능은 앱 업데이트에 따라 바뀔 수 있습니다.", "As of Nov 22, 2026 · screens and features may change with app updates."],
-    ["용량 추가 · 당겨 쓰기", "Add-ons · borrow ahead"]
+    ["용량 추가 · 당겨 쓰기", "Add-ons · borrow ahead"],
+    ["부름도 쓰려면", "To use Burum too"],
+    ["부름 메신저는", "The Burum messenger needs an"],
+    ["아이디(닉네임)", "ID (nickname)"],
+    ["가 있어야 쓸 수 있어요. 지금은 가입 없이 누름만 쓰는 중이에요.", ". Right now you’re using Nureum only, without signing up."],
+    ["아이디 만들고 부름 쓰기", "Create an ID and use Burum"],
+    ["지금 라인 · 이용권은 그대로 함께 갑니다.", "Your current lines and plans come along."],
+    ["이미 부름 계정이 있어요 · 로그인", "I already have a Burum account · Sign in"],
+    ["⚠ 이 휴대폰에서 가입 없이 만든 누름 라인은 그 계정으로 옮겨지지 않아요.", "⚠ Nureum lines created here without signing up won’t move to that account."],
+    ["부름에서 쓸 아이디(닉네임)와 비밀번호를 정해 주세요. 지금 라인 · 이용권은 그대로예요.", "Choose an ID (nickname) and password for Burum. Your lines and plans stay as they are."],
+    ["적어 뒀어요 · 부름으로 가기", "Saved it · go to Burum"]
   ];
   NX.sort(function(a, b){ return b[0].length - a[0].length; });
   function tr(s){

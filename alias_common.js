@@ -1563,6 +1563,18 @@ AL.requireLogin = async function(){
     }
     return null;
   }
+  /* 🔴 2026-11-23 가입 없이 쓰는 누름 계정(익명)은 부름 메신저 화면에 못 들어옵니다.
+     전에는 들어와서 닉네임이 빈 채로 "이제 이 폰은 "" 의 전화를 받습니다" 처럼 엉뚱하게 동작했습니다.
+     → 누름 화면으로 돌려보내고, 거기서 [아이디 만들고 부름 쓰기] · [부름 계정으로 로그인] 을 고르게 합니다.
+     누름이 쓰는 통화 · 대화 · 사진첩 · 결제 · 계정 삭제 화면은 그대로 들어옵니다. */
+  var u0 = res.data.session.user;
+  if (u0 && !u0.email && !u0.phone) {
+    var pg = location.pathname.split('/').pop();
+    if (/^(alias_(contacts|me|phone|requests|number|invite|calls|room_new|storage)|burum_(home_dial|temp|temp_chat|bcast))\.html$/.test(pg)) {
+      location.replace('nureum.html?list=1&burum=1');
+      return null;
+    }
+  }
   return res.data.session.user;
 };
 

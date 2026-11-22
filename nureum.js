@@ -468,6 +468,34 @@ NU.showWelcome = function(lead){
   host.appendChild(w); NU.welcome(w, lead);
 };
 
+/* 🔴 2026-11-23 [부름도 사용하러 가기] — 가입 없이 쓰는 분은 부름 메신저에 아이디(닉네임)가 있어야 해서 먼저 고르게 합니다.
+   · 아이디 만들기(= 계정 지키기) → 같은 계정 그대로 부름으로(라인 · 이용권 그대로)
+   · 이미 부름 계정이 있으면 로그인(이 휴대폰의 가입 없는 누름 라인은 그 계정으로 옮겨지지 않음) */
+NU.goBurum = async function(href){
+  href = href || 'alias_contacts.html';
+  var u = await NU.session();
+  if (!u || !NU.isAnon(u)) { location.href = href; return; }
+  var sh = NU.sheet('<h2>부름도 쓰려면</h2>' +
+    '<p class="nu-sub" style="color:var(--nu-ink)">부름 메신저는 <b>아이디(닉네임)</b>가 있어야 쓸 수 있어요. 지금은 가입 없이 누름만 쓰는 중이에요.</p>' +
+    '<button class="nu-btn" id="gbMake" type="button">아이디 만들고 부름 쓰기</button>' +
+    '<p class="nu-sub" style="margin:6px 2px 0;font-size:13px">지금 라인 · 이용권은 그대로 함께 갑니다.</p>' +
+    '<button class="nu-btn ghost" id="gbLogin" type="button" style="margin-top:12px">이미 부름 계정이 있어요 · 로그인</button>' +
+    '<p class="nu-sub" style="margin:6px 2px 0;font-size:13px">⚠ 이 휴대폰에서 가입 없이 만든 누름 라인은 그 계정으로 옮겨지지 않아요.</p>' +
+    '<button class="nu-btn ghost" data-close type="button" style="margin-top:12px">닫기</button>');
+  sh.querySelector('#gbMake').onclick = async function(){
+    var ok = await NU.protect('부름에서 쓸 아이디(닉네임)와 비밀번호를 정해 주세요. 지금 라인 · 이용권은 그대로예요.');
+    if (ok) { var b = document.querySelector('#nuSheet [data-close]'); if (b) { b.textContent = '적어 뒀어요 · 부름으로 가기'; b.addEventListener('click', function(){ location.href = href; }); } }   // 복구 코드를 적을 시간을 드림
+  };
+  sh.querySelector('#gbLogin').onclick = function(){ location.href = 'alias_auth.html?login=1&next=' + encodeURIComponent(href); };
+};
+/* 누름 화면의 부름 링크(alias_contacts · alias_me)는 모두 이 길로 */
+document.addEventListener('click', function(e){
+  var a = e.target.closest && e.target.closest('a[href^="alias_contacts.html"],a[href^="alias_me.html"]');
+  if (!a || !/nureum/i.test(location.pathname)) return;
+  e.preventDefault(); NU.goBurum(a.getAttribute('href'));
+}, true);
+if (/[?&]burum=1/.test(location.search)) setTimeout(function(){ NU.goBurum('alias_contacts.html'); }, 400);
+
 /* 🔴 2026-11-01 — 누름 [나] 판: 계정 지키기 · 첫 화면 · 별칭 · 부름 · 로그아웃 */
 NU.meSheet = async function(){
   var u = await NU.session();

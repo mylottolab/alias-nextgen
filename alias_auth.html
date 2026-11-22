@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="alias_theme.css?v=20261021d">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20261122b"></script>
+<script src="alias_common.js?v=20261123a"></script>
 <script src="burum_partner_ref.js?v=20261029"></script>
 <script src="burum_home_mode.js?v=20261122b"></script>
 <script>
@@ -350,7 +350,17 @@ if (AL.keyProblem) {
   showErr(AL.keyProblem);
 } else {
   AL.sb.auth.getSession().then(function(res){
-    if (res.data.session) { goNext(landing()); return; }
+    if (res.data.session) {
+      /* 🔴 2026-11-23 가입 없이 쓰는 누름 계정(익명) — 부름 화면이 아니라 누름으로. [부름 계정으로 로그인]을 눌러 왔으면 로그인 칸을 그대로 보여 줌 */
+      var u = res.data.session.user;
+      if (u && !u.email && !u.phone) {
+        if (/[?&]login=1/.test(location.search)) return;
+        var nd = 'nureum.html';
+        try { if (window.BURUM_HOME === 'dial') nd = 'nureum_home_dial.html'; } catch (e) {}
+        location.href = (NEXT && /^nureum/.test(NEXT)) ? NEXT : nd; return;
+      }
+      goNext(landing()); return;
+    }
     /* 🔴 2026-09-15 — 로그인 안 된 분이고 처음이면 소개부터.
        ⚠ 로그인된 분께는 절대 안 보입니다. 이미 쓰고 계신 분께
          광고를 보여주는 꼴이 됩니다. */
