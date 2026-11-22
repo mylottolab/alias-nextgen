@@ -589,7 +589,7 @@ function paintDial(){
   pad.innerHTML = keys.map(function(k){
     if (!k) return '<span class="dl-k blank"></span>';
     const r = /[1-9]/.test(k) ? map[+k] : null;
-    const who = r ? (r._book ? r._book.label : nameOf(r)) : '';
+    const who = r ? (r._book ? '🔢 ' + r._book.label : nameOf(r)) : '';   // 🔢 2026-11-22 번호로 넣은 칸 표시(모든 앱 같게)
     return '<button type="button" class="dl-k' + (editing && /[1-9]/.test(k) ? ' edit' : '') + '" data-k="' + k + '">' +
       '<span class="d">' + k + '</span>' + (who ? '<span class="w">' + AL.esc(who) + '</span>' : '') + '</button>';
   }).join('');
