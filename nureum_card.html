@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#E4572E">
 <title>QR 카드 · 누름</title>
-<link rel="stylesheet" href="nureum.css?v=20261101a"><script src="nureum_i18n.js?v=20261123b"></script>
+<link rel="stylesheet" href="nureum.css?v=20261101a"><script src="nureum_i18n.js?v=20261123c"></script>
 <script src="alias_qrlib.js"></script>
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -68,7 +68,35 @@
     await AL.drawQr(document.getElementById('q2'), url, 84);
   } catch (e) { NU.showErr('err', e.message || String(e)); }
 })();
-document.getElementById('print').onclick = function(){ window.print(); };
+/* 🖨 2026-11-23 인쇄 — 앱 안에서는 window.print() 가 아무 일도 안 해서 눌러도 반응이 없었습니다.
+   · 안드로이드 앱: 휴대폰 인쇄 창(AliasNative.printPage — PDF로 저장 · 프린터 고르기)
+   · 아이폰 앱: 카드를 그림으로 만들어 공유 창(그 안의 [프린트] · 사진 저장)
+   · 그 밖(브라우저): 원래대로 인쇄 창 */
+var CARD_NAME = '누름_QR카드';
+async function cardImage(){
+  if (!window.html2canvas) await new Promise(function(ok, no){ var sc = document.createElement('script'); sc.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js'; sc.onload = ok; sc.onerror = no; document.head.appendChild(sc); });
+  var cv = await html2canvas(document.getElementById('cards'), { backgroundColor: '#ffffff', scale: 3 });
+  return await new Promise(function(ok){ cv.toBlob(ok, 'image/png'); });
+}
+document.getElementById('print').onclick = async function(){
+  var btn = this;
+  try {
+    if (window.AliasNative && typeof AliasNative.printPage === 'function' && (typeof AliasNative.canPrint !== 'function' || AliasNative.canPrint())) { AliasNative.printPage(CARD_NAME); return; }
+  } catch (e) {}
+  if (NU.isApp() && NU.platform() === 'ios') {
+    btn.disabled = true; var t0 = btn.textContent; btn.textContent = '카드 그림을 만드는 중…';
+    try {
+      var blob = await cardImage(), file = new File([blob], CARD_NAME + '.png', { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: CARD_NAME }); }
+      else {
+        var u = URL.createObjectURL(blob);
+        NU.sheet('<h2>카드 그림</h2><p class="nu-sub">그림을 <b>꾸욱</b> 눌러 사진에 저장한 뒤, 사진 앱의 공유 → <b>프린트</b>로 인쇄하세요.</p><img src="' + u + '" alt="" style="width:100%;border:1px solid #ddd;border-radius:8px"><button class="nu-btn ghost" data-close style="margin-top:12px">닫기</button>');
+      }
+    } catch (e) { if (!e || e.name !== 'AbortError') NU.showErr('err', '카드 그림을 만들지 못했어요. 잠시 뒤 다시 눌러 주세요.'); }
+    btn.disabled = false; btn.textContent = t0; return;
+  }
+  window.print();
+};
 </script>
 </body>
 </html>

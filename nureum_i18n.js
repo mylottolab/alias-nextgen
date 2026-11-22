@@ -588,7 +588,14 @@
     ["👉", "👉"],
     ["꾸욱 눌러 첫 화면 원하는 자리로 옮기세요.", "Press and hold it to move it where you want on your first screen."],
     ["새로 놓인 것은 첫 화면이 아닌 곳에 생길 수 있어요.", "A newly added one may land somewhere other than your first screen."],
-    ["라인마다 바탕화면 아이콘(아이폰 위젯) 하나, 생긴 아이콘은 꾸욱 눌러 첫 화면 원하는 자리로 옮기기(자리는 휴대폰이 정해 첫 화면이 아닐 수 있음)", "One home-screen icon (iPhone widget) per line; press and hold to move it where you want (the phone picks the spot, which may not be your first screen)"]
+    ["라인마다 바탕화면 아이콘(아이폰 위젯) 하나, 생긴 아이콘은 꾸욱 눌러 첫 화면 원하는 자리로 옮기기(자리는 휴대폰이 정해 첫 화면이 아닐 수 있음)", "One home-screen icon (iPhone widget) per line; press and hold to move it where you want (the phone picks the spot, which may not be your first screen)"],
+    ["카드 그림을 만드는 중…", "Making the card image…"],
+    ["카드 그림", "Card image"],
+    ["그림을", "Press and hold the image"],
+    ["눌러 사진에 저장한 뒤, 사진 앱의 공유 →", " to save it to Photos, then in Photos tap Share →"],
+    ["프린트", "Print"],
+    ["로 인쇄하세요.", " to print it."],
+    ["카드 그림을 만들지 못했어요. 잠시 뒤 다시 눌러 주세요.", "Couldn’t make the card image. Please try again shortly."]
   ];
   NX.sort(function(a, b){ return b[0].length - a[0].length; });
   function tr(s){
