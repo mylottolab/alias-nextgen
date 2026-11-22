@@ -3,7 +3,7 @@
 --   라인(핫라인)마다 두 사람이 각자 "상대 화면에 나올 짧은 영상"을 하나씩 올립니다.
 --   상대가 바탕화면 아이콘(위젯)을 눌러 내 화면을 열면, 맨 위에 내 인사 영상이 나옵니다.
 --   · 영상은 잠긴 보관함(nureum-greet)에 "라인번호/올린사람-시각.확장자" 로 둡니다. 두 사람 말고는 못 엽니다.
---   · 한 사람당 라인마다 하나(새로 올리면 바뀜). 30MB · 30초 안쪽(초는 화면이 검사).
+--   · 한 사람당 라인마다 하나(새로 올리면 바뀜). 20MB · 20초 안쪽(초는 화면이 검사).
 --   · 라인을 끊으면 기록도 함께 사라집니다.
 --   ⚠ 부름 Supabase → SQL Editor 에 통째로 붙여 Run. 다시 돌려도 안전합니다. (7_nureum_album.sql 을 먼저 돌린 서버여야 합니다)
 -- =====================================================================
@@ -44,8 +44,8 @@ begin
   if me is null then return jsonb_build_object('ok', false, 'error', 'login'); end if;
   if not public.nureum_album_member(p_line) then return jsonb_build_object('ok', false, 'error', 'not_member'); end if;
   if p_path is null or p_path not like (p_line::text || '/' || me::text || '-%') then return jsonb_build_object('ok', false, 'error', 'bad_path'); end if;
-  if coalesce(p_bytes, 0) > 31457280 then return jsonb_build_object('ok', false, 'error', 'too_big'); end if;
-  if coalesce(p_secs, 0) > 31 then return jsonb_build_object('ok', false, 'error', 'too_long'); end if;
+  if coalesce(p_bytes, 0) > 20971520 then return jsonb_build_object('ok', false, 'error', 'too_big'); end if;
+  if coalesce(p_secs, 0) > 21 then return jsonb_build_object('ok', false, 'error', 'too_long'); end if;
   select path into old from nureum_greet where line_id = p_line and user_id = me;
   insert into nureum_greet(line_id, user_id, path, mime, bytes, secs, updated_at)
   values (p_line, me, p_path, coalesce(p_mime, 'video/mp4'), coalesce(p_bytes, 0), coalesce(p_secs, 0), now())
@@ -68,8 +68,8 @@ grant execute on function public.nureum_greet_get(uuid), public.nureum_greet_set
 
 -- 잠긴 보관함: 그 라인의 두 사람만 보고 · 넣고, 넣은 사람만 지움 ------------------------------
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('nureum-greet', 'nureum-greet', false, 31457280, array['video/mp4', 'video/quicktime', 'video/webm', 'video/3gpp'])
-on conflict (id) do update set public = false, file_size_limit = 31457280, allowed_mime_types = array['video/mp4', 'video/quicktime', 'video/webm', 'video/3gpp'];
+values ('nureum-greet', 'nureum-greet', false, 20971520, array['video/mp4', 'video/quicktime', 'video/webm', 'video/3gpp'])
+on conflict (id) do update set public = false, file_size_limit = 20971520, allowed_mime_types = array['video/mp4', 'video/quicktime', 'video/webm', 'video/3gpp'];
 drop policy if exists nureum_greet_read on storage.objects;
 create policy nureum_greet_read on storage.objects for select to authenticated
   using (bucket_id = 'nureum-greet' and public.nureum_album_member(((storage.foldername(name))[1])::uuid));

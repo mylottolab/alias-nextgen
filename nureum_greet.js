@@ -1,6 +1,6 @@
 /* =====================================================================
    🎬 인사 영상 (2026-11-23) — 누름 · 바로너 라인 화면(nureum_line.html)
-   · 두 사람이 각자 "상대 화면에 나올 짧은 영상"(30초 · 30MB 안쪽, 소리 포함)을 하나씩 올립니다.
+   · 두 사람이 각자 "상대 화면에 나올 짧은 영상"(20초 · 20MB 안쪽, 소리 포함)을 하나씩 올립니다.
    · 상대가 바탕화면 아이콘(위젯)을 눌러 내 화면을 열면 맨 위에 그 영상이 나옵니다.
    · 보는 사람이 고릅니다(이 휴대폰에만 기억): 🔊 소리 켜기/끄기(처음엔 끔) · 언제 보여 줄지(매번 · 하루 한 번 · 안 보기)
    · 아이폰은 소리 있는 자동 재생을 막을 때가 있어, 막히면 소리 없이 틀고 「🔊 눌러서 소리 듣기」 를 띄웁니다.
@@ -8,7 +8,7 @@
    ===================================================================== */
 (function(){
   'use strict';
-  var BUCKET = 'nureum-greet', MAX_S = 30, MAX_B = 30 * 1024 * 1024;
+  var BUCKET = 'nureum-greet', MAX_S = 20, MAX_B = 20 * 1024 * 1024;
   var EN = !!(window.BN && BN.en);
   var T = function(ko, en){ return EN ? en : ko; };
   var esc = function(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); };
@@ -110,8 +110,8 @@
     var p = pref(L.id);
     var mineUrl = d.mine ? await signed(d.mine.path) : null;
     var sh = NU.sheet('<h2>🎬 ' + esc(T('인사 영상', 'Greeting video')) + '</h2>' +
-      '<p class="nu-sub" style="color:var(--nu-ink)">' + esc(T(L.name + '님이 바탕화면 아이콘을 눌러 나를 열면, 맨 위에 내 영상이 나와요. 30초 안쪽, 소리도 함께 나옵니다.',
-        'When ' + L.name + ' opens you from the home-screen icon, your video shows at the top. Up to 30 seconds, with sound.')) + '</p>' +
+      '<p class="nu-sub" style="color:var(--nu-ink)">' + esc(T(L.name + '님이 바탕화면 아이콘을 눌러 나를 열면, 맨 위에 내 영상이 나와요. 20초 안쪽, 소리도 함께 나옵니다. 짧게, 화질은 「보통」으로 찍어 주세요.',
+        'When ' + L.name + ' opens you from the home-screen icon, your video shows at the top. Up to 20 seconds, with sound. Keep it short and record at normal quality.')) + '</p>' +
       (mineUrl ? '<video src="' + esc(mineUrl) + '" controls playsinline style="width:100%;max-height:34vh;border-radius:16px;background:#000;margin:4px 0 10px"></video>' : '') +
       '<button class="nu-btn" id="ngPick" type="button">' + esc(mineUrl ? T('🎬 다른 영상으로 바꾸기', '🎬 Choose another video') : T('🎬 영상 고르기 · 찍기', '🎬 Choose or record a video')) + '</button>' +
       (mineUrl ? '<button class="nu-btn ghost" id="ngDel" type="button" style="margin-top:8px">' + esc(T('내 영상 빼기', 'Remove my video')) + '</button>' : '') +
@@ -145,10 +145,10 @@
         var f = inp.files && inp.files[0]; if (!f) return;
         var btn = sh.querySelector('#ngPick'), err = function(m){ NU.showErr('ngErr', m); btn.disabled = false; btn.textContent = T('🎬 영상 고르기 · 찍기', '🎬 Choose or record a video'); };
         NU.showErr('ngErr', '');
-        if (f.size > MAX_B) return err(T('영상이 너무 커요(30MB까지). 더 짧게 찍어 주세요.', 'The video is too large (max 30MB). Please record a shorter one.'));
+        if (f.size > MAX_B) return err(T('영상이 너무 커요(20MB까지). 더 짧게, 화질 「보통」으로 찍어 주세요.', 'The video is too large (max 20MB). Record a shorter one at normal quality.'));
         var secs = await readVideo(f);
         if (secs < 0) return err(T('이 영상은 열 수 없어요. 다른 영상으로 해 주세요.', 'This video can’t be opened. Please try another.'));
-        if (secs > MAX_S + 0.5) return err(T('영상이 ' + Math.round(secs) + '초예요. 30초 안쪽으로 해 주세요.', 'The video is ' + Math.round(secs) + ' s. Please keep it within 30 s.'));
+        if (secs > MAX_S + 0.5) return err(T('영상이 ' + Math.round(secs) + '초예요. 20초 안쪽으로 해 주세요.', 'The video is ' + Math.round(secs) + ' s. Please keep it within 20 s.'));
         btn.disabled = true; btn.textContent = T('올리는 중…', 'Uploading…');
         try {
           var me = (await AL.sb.auth.getSession()).data.session.user.id;
