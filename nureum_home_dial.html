@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>누름</title>
+<link rel="stylesheet" href="nureum.css?v=20261101a">
+<script src="alias_config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="alias_common.js?v=20261122b"></script>
+<script src="alias_qr.js?v=20261019a"></script>
+<script src="nureum.js?v=20261115b"></script>
+<script src="dialhome.js?v=20261122b"></script>
+<script src="burum_home_mode.js?v=20261122a"></script>
+<style>
+/* ☎ 누름 다이얼 첫 화면 (2026-11-22) — 다이얼 모양 · 돌리기는 dialhome.js(와파 · 부름 · 누름 · 바로너 공용)
+   1~5번 = 내 라인(사람) — 돌리면 그 사람 화면(큰 [전화하기]) · 6 짝 맺기 · 7 QR 카드 찍기 · 8 안심 긴급 · 9 사용법 · 0 고객센터
+   예전 첫 화면이 하던 일도 그대로: 짝 기다림 · 이용권 필요 표시(!), 계정 지키기, ⚙ 나(설정) · [부름도 사용하러 가기] */
+.dh{--dh-card:var(--nu-bg);--dh-line:var(--nu-line);--dh-chip:var(--nu-soft);--dh-ink:var(--nu-ink);--dh-sub:var(--nu-sub);--dh-soft:var(--nu-note)}
+.nu{gap:10px;min-height:0}
+.foot{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;font-size:13px}
+.foot a,.foot button{color:var(--nu-sub);background:none;border:0;font:inherit;text-decoration:underline;cursor:pointer;padding:6px 2px}
+.trybar{background:var(--nu-soft);border-radius:12px;padding:8px 12px;font-size:12.5px;color:var(--nu-sub);text-align:center}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="nu">
+  <div class="nu-top">
+    <svg width="40" height="40" viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="14" fill="none" stroke="#E4572E" stroke-width="3"></circle><circle cx="17" cy="17" r="6.5" fill="#E4572E"></circle></svg>
+    <h1>누름</h1>
+    <button class="nu-back" id="meBtn" type="button" aria-label="나 (설정)" title="나 (설정)" style="width:auto;padding:0 14px;font-size:15px;font-weight:800;margin-left:auto">⚙ 나</button>
+  </div>
+  <div id="trybar" class="trybar" hidden></div>
+  <div id="err" class="nu-err" role="alert"></div>
+  <div id="anonCard" class="nu-note" style="display:flex;align-items:center;gap:10px" hidden>
+    <span style="flex:1">이 휴대폰에서만 쓰는 계정이에요. 휴대폰을 바꿔도 남게 하려면 →</span>
+    <button class="nu-btn line" id="anonProtect" type="button" style="height:40px;width:auto;flex:none;padding:0 12px;font-size:14px">계정 지키기</button>
+  </div>
+  <div id="dial"></div>
+  <a class="nu-btn ghost" href="alias_contacts.html" style="height:46px;font-size:15px">💬 부름도 사용하러 가기</a>
+  <div class="foot">
+    <a href="nureum.html?list=1" id="fList">👥 전체 라인 목록</a>
+    <button type="button" id="fClassic">↩ 예전 첫 화면으로</button>
+  </div>
+</div>
+<script>
+(async function(){
+  'use strict';
+  var MODEKEY = 'burum_home_mode', W = '라인';
+  try { if (/[?&]try=1/.test(location.search)) { localStorage.setItem(MODEKEY, 'dial'); localStorage.setItem('burum_home_active', '1'); localStorage.setItem('burum_first_screen', 'nureum'); history.replaceState(null, '', 'nureum_home_dial.html'); } } catch (e) {}
+  document.getElementById('meBtn').onclick = function(){ NU.meSheet(); };
+  /* 앱이 켜지며 스스로 연락처로 옮겨도 되돌아오게(alias_contacts 맨 위) */
+  try { sessionStorage.setItem('burum_nureum_shown_at', String(Date.now())); } catch (e) {}
+  document.addEventListener('click', function(){ try { sessionStorage.setItem('burum_user_tap', String(Date.now())); } catch (e) {} }, true);
+  
+  var me = await NU.session();
+  if (!me) { location.replace('nureum.html?list=1'); return; }   // 처음 오신 분 안내는 예전 첫 화면에서
+  if (NU.isAnon(me)) document.getElementById('anonCard').hidden = false;
+  document.getElementById('anonProtect').onclick = async function(){ if (await NU.protect()) document.getElementById('anonCard').hidden = true; };
+
+  async function scanCard(){
+    try {
+      var raw = await AL.openScanner(); if (!raw) return;
+      var m = String(raw).match(/[?&]line=([0-9a-fA-F-]{36})/);
+      if (m) { location.href = 'nureum_line.html?line=' + m[1].toLowerCase(); return; }
+      var c = AL.codeFromScan(raw);
+      if (c) { location.href = 'nureum_join.html?c=' + encodeURIComponent(c); return; }
+      NU.showErr('err', '누름 QR이 아니에요.');
+    } catch (e) { NU.showErr('err', 'QR을 읽지 못했어요.'); }
+  }
+
+  function lineItem(l){
+    var waiting = !l.link_id, needPlan = !waiting && !l.active;
+    var state = waiting ? '짝 기다리는 중' : needPlan ? (l.is_owner ? '이용권 필요' : '연장 필요') : '';
+    return { ico: NU.glyph(l), mico: '📞', t: l.name, d: state || '돌리면 바로 ' + l.name + ' 화면', need: !!state,
+      url: waiting ? 'nureum_new.html?line=' + l.id : 'nureum_line.html?line=' + l.id,
+      open: l.name + ' 열기',
+      info: waiting ? '아직 짝을 맺지 않았어요. 짝 맺기 코드(QR)를 상대에게 보여 주세요.'
+          : needPlan ? (l.is_owner ? '이용권이 끝났어요. 이용권을 고르면 바로 다시 전화돼요.' : '만든 분의 이용권이 끝났어요. 연장을 부탁해 보세요.')
+          : l.name + '님과의 ' + W + '입니다. 큰 [전화하기] 단추 하나로 바로 전화해요.',
+      steps: waiting ? ['돌려서 짝 맺기 화면을 여세요', 'QR을 보여 주거나 코드를 카톡 · 문자로 보내세요', '상대가 넣으면 연결 — 바탕화면에 아이콘을 놓으세요']
+           : needPlan ? (l.is_owner ? ['돌려서 ' + l.name + ' 화면을 여세요', '[이용 현황 · 연장]에서 1개월 · 12개월을 고르세요', '결제하면 바로 다시 전화돼요 (상대는 무료)']
+                                    : ['돌려서 ' + l.name + ' 화면을 여세요', '[만든 분께 부탁하기]를 누르세요', '문자로 연장을 부탁하는 글이 보내져요'])
+           : ['돌려서 ' + l.name + ' 화면을 여세요', '큰 [전화하기]를 누르면 바로 전화', '영상 · 사진 · 문자는 그 아래 세 칸'] };
+  }
+  function build(lines){
+    var it = {}, n = lines.length, show = n > 5 ? lines.slice(0, 4) : lines.slice(0, 5);
+    show.forEach(function(l, i){ it[String(i + 1)] = lineItem(l); });
+    var k = show.length + 1;
+    if (n > 5) { it['5'] = { ico: '👥', t: '전체 ' + W + ' (' + n + ')', d: '5번째부터는 목록에서', url: 'nureum.html?list=1',
+      info: W + '이 5개보다 많아요. 목록에서 고르세요.', steps: ['돌려서 전체 목록을 여세요', '사람을 누르세요', '큰 [전화하기]'] }; k = 6; }
+    else if (k <= 5) { it[String(k)] = { ico: '＋', t: '새 ' + W + ' 만들기', d: '부모님 · 아이 · 가족 한 사람과', url: 'nureum_new.html',
+      info: '정한 한 사람과만 이어지는 ' + W + '을 만듭니다. 만든 분만 요금을 내고 상대는 무료예요.',
+      steps: ['상대 이름(예: 엄마)과 아이콘 글자 · 색을 정하세요', '짝 맺기 QR · 코드를 상대에게 보여 주거나 보내세요', '연결되면 이용권을 고르고 바탕화면에 아이콘을 놓으세요'], need: n === 0 }; k++; }
+    for (; k <= 5; k++) it[String(k)] = { ico: '', t: '비어 있음', d: '', blank: true, info: W + '을 더 만들면 여기에 생겨요.' };
+    it['6'] = { ico: '🤝', t: '짝 맺기', d: '받은 코드 · QR로 연결', url: 'nureum_join.html',
+      info: '상대가 만든 ' + W + '에 연결합니다. 받는 분은 무료예요.',
+      steps: ['받은 QR을 찍거나 코드를 넣으세요', '[연결하기]를 한 번 누르세요', '부르는 이름 · 색을 바꿀 수 있어요'] };
+    it['7'] = { ico: '📷', t: 'QR 카드 찍기', d: '냉장고 · 지갑 카드 → 그 사람', go: scanCard, open: '카메라 열기',
+      info: '아이콘을 못 찾을 때 냉장고 자석이나 지갑 카드의 QR을 찍으면 바로 그 사람 화면이 열려요.',
+      steps: ['돌리면 카메라가 열려요', 'QR 카드를 비추세요', '그 사람 화면이 바로 열립니다'] };
+    it['8'] = { ico: '🆘', t: '안심 긴급', d: '보호자에게 바로 알림', url: 'sos.html',
+      info: '단추 하나로 보호자에게 지금 위치와 함께 알립니다.',
+      steps: ['보호자를 초대 코드로 연결하세요', '위급할 때 긴급 단추를 누르세요', '보호자가 위치를 보고 확인합니다'] };
+    it['9'] = { ico: '📘', t: '사용법', d: '전체 기능 소개 · PDF', url: 'nureum_features.html',
+      info: '누름의 모든 기능을 차례로 봅니다. PDF로 내려받을 수도 있어요.',
+      steps: ['기능을 차례로 넘겨 봅니다', 'PDF로 내려받아 둘 수 있어요', '그래도 모르면 0번 고객센터'] };
+    it['0'] = { ico: '🙋', t: '고객센터', d: '묻고 답 받기', url: 'support.html',
+      info: '궁금한 점을 남기면 답을 드립니다. (옛날 전화의 0번 = 교환원)',
+      steps: ['궁금한 점을 적으세요', '보내기를 누르세요', '답이 오면 알려 드립니다'] };
+    return it;
+  }
+  var dh = DialHome.mount(document.getElementById('dial'), {
+    en: false, key: 'nureum', brand: { plate:'#E4572E', rim:'#B8401D', ring:'#8F3216', ink:'#FFFFFF' },
+    center: function(){ return { title: '누름', sub: '숫자 = 사람' }; },
+    hint: '불러오는 중…', next: null, items: build([])
+  });
+  try {
+    var lines = await NU.rpc('nureum_my_lines');
+    try { NU.syncWidget(lines); } catch (e) {}
+    var first = lines.findIndex ? lines.slice(0, 5).findIndex(function(l){ return !l.link_id || !l.active; }) : -1;
+    dh.update({ items: build(lines),
+      next: !lines.length ? '1' : null,
+      hint: !lines.length ? '처음이세요? 1번을 돌려 ' + W + '을 만드세요 (받은 코드가 있으면 6번)'
+          : first >= 0 ? (first + 1) + '번 ' + lines[first].name + ' — 할 일이 있어요 (! 표시)'
+          : '번호를 돌리면 그 사람 화면 · 톡 누르면 안내' });
+  } catch (e) {
+    console.error(e);
+    NU.showErr('err', W + '을 불러오지 못했습니다. ' + (e.message || e));
+    dh.update({ hint: '' });
+  }
+  document.getElementById('fClassic').onclick = function(){ try { localStorage.setItem(MODEKEY, 'classic'); localStorage.setItem('burum_home_active', '0'); } catch (e) {} location.replace('nureum.html?list=1'); };
+  try { if (localStorage.getItem(MODEKEY) === 'dial' && (window.BURUM_HOME_ALL || 'classic') !== 'dial') {
+    var tb = document.getElementById('trybar'); tb.hidden = false; tb.textContent = '시험 중 — 이 폰만 다이얼 첫 화면입니다'; } } catch (e) {}
+})();
+</script>
+</body>
+</html>

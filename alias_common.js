@@ -4642,6 +4642,10 @@ AL.topBar = async function(){
                'font-size:12.5px;font-weight:700;background:rgba(128,128,128,.12);color:inherit;border:1px solid rgba(128,128,128,.35);white-space:nowrap';
     var mk = function(text, fn){ var b = document.createElement('button'); b.type = 'button'; b.style.cssText = pill; b.textContent = text; b.addEventListener('click', fn); return b; };
 
+    /* ☎ 2026-11-22 — 다이얼 첫 화면을 쓰는 폰: 어느 화면에서든 [☎ 다이얼] 로 첫 화면에 돌아가기 */
+    try { if (!acctOnly && page !== 'burum_home_dial.html' && localStorage.getItem('burum_home_active') === '1')
+      bar.appendChild(mk(en ? '☎ Dial home' : '☎ 다이얼', function(){ location.href = 'burum_home_dial.html'; })); } catch (e) {}
+
     if (!acctOnly) {
     /* ☀️ / 🌙 — 지금 화면의 반대로 바꿉니다(설정의 "모드" 와 같은 곳에 저장) */
     var dark = document.documentElement.getAttribute('data-mode') !== 'light';

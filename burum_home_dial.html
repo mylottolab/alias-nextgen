@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>부름</title>
+<link rel="stylesheet" href="alias_common.css?v=20260927a">
+<link rel="stylesheet" href="alias_theme.css?v=20261021d">
+<script src="alias_config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="alias_common.js?v=20261122b"></script>
+<script src="dialhome.js?v=20261122b"></script>
+<style>
+/* ☎ 부름 다이얼 첫 화면 (2026-11-22) — 다이얼 모양 · 돌리기는 dialhome.js(와파 · 부름 · 누름 · 바로너 공용)
+   예전 첫 화면(연락처)이 알려 주던 것: 새 문자(1번 배지) · 받은 연결 요청(4번 배지) · 임시연락처 새 문자(5번 배지) · 이용권 남은 날 */
+.wrap{max-width:520px;margin:0 auto;padding:calc(10px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(30px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:10px}
+.dh{--dh-card:var(--raise);--dh-line:var(--line);--dh-chip:var(--raise2);--dh-ink:var(--text);--dh-sub:var(--dim);--dh-soft:var(--raise2);--dh-center:var(--raise2);--dh-num:var(--text);--dh-lab:var(--dim);--dh-base:var(--raise);--dh-base-line:var(--line)}
+.bhead{display:flex;align-items:center;gap:10px}
+.bhead .lg{width:36px;height:36px;border-radius:11px;background:#1E7A4C;color:#fff;display:grid;place-items:center;font-weight:900;font-size:18px}
+.bhead b{font-size:20px;font-weight:900}
+.bhead span{color:var(--dim);font-size:13px;margin-left:auto;text-align:right}
+.plan{background:var(--raise);border:1px solid var(--line);border-radius:14px;padding:10px 14px;font-size:13.5px;display:flex;justify-content:space-between;gap:10px;align-items:center}
+.plan a{color:var(--steel);font-weight:800;text-decoration:none;white-space:nowrap}
+.foot{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;font-size:13px}
+.foot a,.foot button{color:var(--dim);background:none;border:0;font:inherit;text-decoration:underline;cursor:pointer;padding:6px 2px}
+.trybar{background:var(--raise2);border-radius:12px;padding:8px 12px;font-size:12.5px;color:var(--dim);text-align:center}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="bhead"><div class="lg">부</div><b id="bName">부름</b><span id="bWho"></span></div>
+  <div id="trybar" class="trybar" hidden></div>
+  <div id="dial"></div>
+  <div class="foot">
+    <a href="burum_guide.html" id="fGuide"></a>
+    <a href="features.html" id="fFeat"></a>
+    <button type="button" id="fClassic"></button>
+  </div>
+</div>
+<script src="burum_home_mode.js?v=20261122a"></script>
+<script>
+(async function(){
+  'use strict';
+  var EN = AL.lang === 'en', T = function(ko, en){ return EN ? en : ko; };
+  try { if (/[?&]try=1/.test(location.search)) { localStorage.setItem('burum_home_mode', 'dial'); localStorage.setItem('burum_home_active', '1'); history.replaceState(null, '', 'burum_home_dial.html'); } } catch (e) {}
+  /* 앱이 켜지며 스스로 연락처로 옮겨도 다이얼로 되돌아오게(alias_contacts 맨 위가 봄) */
+  try { sessionStorage.setItem('burum_dialhome_shown_at', String(Date.now())); } catch (e) {}
+  document.addEventListener('click', function(){ try { sessionStorage.setItem('burum_user_tap', String(Date.now())); } catch (e) {} }, true);
+  document.addEventListener('pointerdown', function(){ try { sessionStorage.setItem('burum_user_tap', String(Date.now())); } catch (e) {} }, true);
+
+  var sess = await AL.requireLogin(); if (!sess) return;
+  var u = sess.user || {}, md = u.user_metadata || {};
+  var nick = md.nickname || (u.email ? decodeURIComponent(String(u.email).split('@')[0]) : '');
+  document.getElementById('bName').textContent = T('부름', 'Burum');
+  document.getElementById('bWho').textContent = nick ? nick + T('님', '') : '';
+
+  function items(b){ b = b || {}; return {
+    '1': { ico:'💬', t:T('연락처', 'Contacts'), d:T('대화 · 전화', 'Chat and call'), url:'alias_contacts.html', badge:b.chat,
+           info:T('별칭으로 이어진 사람들입니다. 누르면 대화방, 전화 단추로 음성 · 영상 전화.', 'People connected by alias. Tap to chat, or call by voice or video.'),
+           steps:[T('사람을 누르면 대화방이 열립니다', 'Tap a person to open the chat'), T('글 · 사진 · 동영상 · 음성메시지를 보냅니다', 'Send text, photos, video or voice'), T('위쪽 📞 · 🎥 로 음성 · 영상 전화', 'Use 📞 / 🎥 at the top to call')] },
+    '2': { ico:'☎️', t:T('번호판', 'Keypad'), d:T('부름번호로 걸기', 'Call a Burum number'), url:'alias_phone.html?mode=dial',
+           info:T('10자리 부름번호를 눌러 음성 · 영상 · 문자. 모르는 번호는 연결 요청으로 갑니다.', 'Dial a 10-digit Burum number for voice, video or text. Unknown numbers get a connect request.'),
+           steps:[T('부름번호 10자리를 누르세요', 'Enter a 10-digit Burum number'), T('음성 · 영상 · 문자 중 하나를 누르세요', 'Tap voice, video or text'), T('숫자를 꾸욱 누르면 단축다이얼', 'Press and hold a digit for speed dial')] },
+    '3': { ico:'🕘', t:T('통화 기록', 'Call log'), d:T('걸고 받은 전화 · 녹음 · 음성사서함', 'Calls, recordings, voicemail'), url:'alias_calls.html',
+           info:T('걸고 받은 전화, 부재중 · 거절, 통화 녹음과 음성사서함을 봅니다.', 'Calls made and received, missed and declined, recordings and voicemail.'),
+           steps:[T('맨 위에서 음성사서함을 들어요', 'Listen to voicemail at the top'), T('기록을 누르면 다시 걸 수 있어요', 'Tap a call to call back'), T('녹음한 통화는 ▶ 로 듣고 내려받기', 'Play or download recordings')] },
+    '4': { ico:'🤝', t:T('사람 잇기', 'Connect people'), d:b.req ? T('받은 연결 요청 ' + b.req + '건', b.req + ' request(s) waiting') : T('초대 · QR · 닉네임 요청', 'Invite, QR, nickname request'),
+           url: b.req ? 'alias_contacts.html' : 'alias_invite.html', badge:b.req,
+           info:T('관계마다 다른 별칭으로 사람을 잇습니다. 전화번호는 서로 보이지 않습니다.', 'Connect with a different alias for each relationship. Phone numbers stay hidden.'),
+           steps:[T('쓸 별칭과 메모를 정해 초대를 만드세요', 'Make an invite with the alias to use'), T('링크를 보내거나 QR을 보여 주세요', 'Send the link or show the QR'), T('상대가 수락하면 연락처에 생깁니다 (받은 요청은 수락 · 거절)', 'Once accepted, they appear in contacts (accept or decline requests)')] },
+    '5': { ico:'⏳', t:T('임시연락처', 'One-time contact'), d:T('중고거래 · 소개팅용, 정한 날 끊김', 'For deals or dates, ends on a set day'), url:'burum_temp.html', badge:b.temp,
+           info:T('잠깐 쓰는 연락처입니다. 정한 날이 지나면 저절로 끊기고, 상대는 앱이 없어도 연락할 수 있어요.', 'A short-lived contact that ends by itself. The other side needs no app.'),
+           steps:[T('쓸 기간과 이름을 정하세요', 'Set a name and how long'), T('링크 · QR · 명함으로 알려 주세요', 'Share by link, QR or printed card'), T('정한 날이 되면 저절로 끊깁니다', 'It ends automatically on the day')] },
+    '6': { ico:'🔢', t:T('내 부름번호', 'My Burum number'), d:T('10자리 번호 · 첫 번호 무료', '10-digit number, first one free'), url:'alias_number.html',
+           info:T('부름 안에서만 쓰는 10자리 번호입니다. 번호마다 보일 별칭과 모르는 사람 처리를 정합니다.', 'A 10-digit number used inside Burum. Set the alias shown and how strangers are handled.'),
+           steps:[T('번호를 고르세요 (첫 번호 무료)', 'Pick a number (first is free)'), T('이 번호로 보일 별칭을 정하세요', 'Choose the alias shown for it'), T('모르는 사람이 걸면: 요청으로 · 바로 울리게 · 받지 않기', 'Strangers: request first, ring, or block')] },
+    '7': { ico:'🆘', t:T('안심 긴급', 'Safety alert'), d:T('보호자에게 위치와 함께 알림', 'Alert guardians with location'), url:'sos.html',
+           info:T('단추 하나로 보호자에게 지금 위치와 함께 알립니다. 112 · 119 문자신고 문안도 만들어 줍니다.', 'One tap alerts your guardians with your location, and drafts a 112 / 119 text report.'),
+           steps:[T('보호자를 초대 코드로 연결하세요 (3명까지)', 'Link up to 3 guardians with a code'), T('위급할 때 긴급 단추를 누르세요', 'Press the alert button in an emergency'), T('보호자 화면에서 위치를 보고 확인 · 종료합니다', 'Guardians see your location and close it')] },
+    '8': { ico:'🔘', t:T('누름', 'Nureum'), d:T('1:1 핫라인 · 가족과 아이콘 하나로', '1:1 hotline for family'), url:'nureum.html?list=1',
+           info:T('정한 한 사람에게 바탕화면 아이콘 하나로 바로 전화하는 1:1 핫라인입니다.', 'A 1:1 hotline: one home-screen icon calls one person.'),
+           steps:[T('새 라인을 만들고 상대 이름을 정하세요', 'Make a line and name the person'), T('QR이나 코드로 짝을 맺으세요', 'Pair with a QR or code'), T('바탕화면 아이콘을 누르면 바로 전화', 'Tap the home-screen icon to call')] },
+    '9': { ico:'👤', t:T('MyPage', 'My page'), d:b.plan || T('별칭 · 이용권 · 모양 · 알림', 'Aliases, plan, look, alerts'), url:'alias_me.html', need:!!b.planNeed,
+           info:T('내 별칭과 사진, 이용권 · 저장 공간, 모양 · 글씨 · 알림 · 언어를 정합니다.', 'Your aliases and photos, plan and storage, look, text size, alerts and language.'),
+           steps:[T('별칭마다 이름 · 사진을 정하세요', 'Set a name and photo per alias'), T('이용권 남은 날을 보고 연장하세요', 'Check plan days left and extend'), T('모양 · 글씨 크기 · 알림을 내 마음대로', 'Adjust look, text size and alerts')] },
+    '0': { ico:'🙋', t:T('고객센터', 'Help desk'), d:T('자주 묻는 질문 · 1:1 문의', 'FAQ and 1:1 questions'), url:'support.html',
+           info:T('자주 묻는 질문에 바로 답하고, 1:1로 묻고 답을 받습니다. (옛날 전화의 0번 = 교환원)', 'Instant FAQ answers and 1:1 help. (0 = operator, like old phones)'),
+           steps:[T('궁금한 점을 적으세요', 'Write your question'), T('자주 묻는 질문이면 바로 답이 나와요', 'Common questions get an instant answer'), T('1:1 문의는 답이 오면 알려 드립니다', 'We notify you when we reply')] }
+  }; }
+
+  var dh = DialHome.mount(document.getElementById('dial'), {
+    en: EN, key: 'burum', brand: { plate:'#1E7A4C', rim:'#145A37', ring:'#0E4A2C', ink:'#FFFFFF' },
+    center: function(){ return { title: T('부름', 'Burum'), sub: T('숫자를 돌려 보세요', 'Dial a number') }; },
+    hint: T('숫자를 톡 누르면 안내 · 멈춤쇠까지 돌리면 바로 실행', 'Tap a number for info · dial it to the stop to open'),
+    next: null, items: items()
+  });
+
+  /* ── 배지 · 이용권 (예전 첫 화면이 보여 주던 것) ── */
+  var B = {};
+  try { var r = await AL.sb.rpc('my_contacts'); B.chat = ((r && r.data) || []).reduce(function(a, x){ return a + (x.unread || 0); }, 0); } catch (e) {}
+  try { var q = await AL.sb.rpc('nick_requests_inbox'); B.req = ((q && q.data) || []).length; } catch (e) {}
+  try { var t = await AL.sb.rpc('my_temp_cards'); var now = Date.now();
+    B.temp = ((t && t.data) || []).filter(function(c){ return !c.ended_at && Date.parse(c.expires_at) > now; }).reduce(function(a, c){ return a + (c.unread || 0); }, 0); } catch (e) {}
+  try { var p = await AL.myPlan(true), dl = AL.planDaysLeft(p);
+    B.plan = p.state === 'paid' ? T('이용권 ' + dl + '일 남음', dl + ' days left') : p.state === 'trial' ? T('무료 체험 ' + dl + '일 남음', 'Trial · ' + dl + ' days left') : T('이용권이 끝났어요 (받기 · 읽기는 됨)', 'Plan ended (receiving still works)');
+    B.planNeed = p.state !== 'paid' && (p.state !== 'trial' || dl <= 3); } catch (e) {}
+  dh.update({ items: items(B), next: B.req ? '4' : null,
+    hint: B.req ? T('받은 연결 요청이 있어요 — 4번을 돌려 보세요', 'You have connect requests — dial 4') : T('숫자를 톡 누르면 안내 · 멈춤쇠까지 돌리면 바로 실행', 'Tap a number for info · dial it to the stop to open') });
+
+  document.getElementById('fGuide').textContent = T('📗 사용설명서', '📗 User guide');
+  document.getElementById('fFeat').textContent = T('📘 전체 기능 소개', '📘 All features');
+  document.getElementById('fClassic').textContent = T('↩ 예전 첫 화면으로', '↩ Classic home');
+  document.getElementById('fClassic').onclick = function(){ try { localStorage.setItem('burum_home_mode', 'classic'); localStorage.setItem('burum_home_active', '0'); } catch (e) {} location.replace('alias_contacts.html'); };
+  try { if (localStorage.getItem('burum_home_mode') === 'dial' && (window.BURUM_HOME_ALL || 'classic') !== 'dial') {
+    var tb = document.getElementById('trybar'); tb.hidden = false; tb.textContent = T('시험 중 — 이 폰만 다이얼 첫 화면입니다', 'Preview — dial home on this phone only'); } } catch (e) {}
+})();
+</script>
+</body>
+</html>

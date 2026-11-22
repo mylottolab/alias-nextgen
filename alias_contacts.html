@@ -6,6 +6,15 @@
 /* 🔴 2026-10-23 — 번호판을 첫 화면으로 고른 분: 안드로이드 앱이 켜지며 스스로 연락처로 옮긴 경우 번호판으로 되돌립니다.
    (번호판이 막 보였고(8초 안) 손님이 아무것도 누르지 않았을 때만 — 손님이 직접 [연락처로] 온 것은 그대로) */
 (function(){
+  /* ☎ 2026-11-22 — 다이얼 첫 화면: 앱이 켜지며 스스로 연락처로 옮긴 경우 다이얼로 되돌립니다(손님이 직접 온 것은 그대로) */
+  try {
+    const sd = +(sessionStorage.getItem('burum_dialhome_shown_at') || 0), td = +(sessionStorage.getItem('burum_user_tap') || 0), nd = Date.now();
+    if (localStorage.getItem('burum_home_active') === '1' && sd && nd - sd < 8000 && nd - td > 3000) {
+      sessionStorage.removeItem('burum_dialhome_shown_at');
+      location.replace('burum_home_dial.html');
+      return;
+    }
+  } catch (e) {}
   /* 🔴 2026-11-01 — 누름을 첫 화면으로 고른 분: 앱이 스스로 연락처로 옮긴 경우 누름으로 되돌립니다(손님이 직접 온 것은 그대로) */
   try {
     if (localStorage.getItem('burum_first_screen') === 'nureum') {
@@ -37,7 +46,7 @@
 <link rel="stylesheet" href="alias_theme.css?v=20261021d">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20261122a"></script>
+<script src="alias_common.js?v=20261122b"></script>
 <script src="alias_call.js?v=20261121a"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
