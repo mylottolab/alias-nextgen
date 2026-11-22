@@ -584,7 +584,11 @@
     ["이미 부름 계정이 있어요 · 로그인", "I already have a Burum account · Sign in"],
     ["⚠ 이 휴대폰에서 가입 없이 만든 누름 라인은 그 계정으로 옮겨지지 않아요.", "⚠ Nureum lines created here without signing up won’t move to that account."],
     ["부름에서 쓸 아이디(닉네임)와 비밀번호를 정해 주세요. 지금 라인 · 이용권은 그대로예요.", "Choose an ID (nickname) and password for Burum. Your lines and plans stay as they are."],
-    ["적어 뒀어요 · 부름으로 가기", "Saved it · go to Burum"]
+    ["적어 뒀어요 · 부름으로 가기", "Saved it · go to Burum"],
+    ["👉", "👉"],
+    ["꾸욱 눌러 첫 화면 원하는 자리로 옮기세요.", "Press and hold it to move it where you want on your first screen."],
+    ["새로 놓인 것은 첫 화면이 아닌 곳에 생길 수 있어요.", "A newly added one may land somewhere other than your first screen."],
+    ["라인마다 바탕화면 아이콘(아이폰 위젯) 하나, 생긴 아이콘은 꾸욱 눌러 첫 화면 원하는 자리로 옮기기(자리는 휴대폰이 정해 첫 화면이 아닐 수 있음)", "One home-screen icon (iPhone widget) per line; press and hold to move it where you want (the phone picks the spot, which may not be your first screen)"]
   ];
   NX.sort(function(a, b){ return b[0].length - a[0].length; });
   function tr(s){

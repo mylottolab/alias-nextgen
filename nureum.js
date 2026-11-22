@@ -210,6 +210,7 @@ NU.pin = async function(line){
         NU.sheet('<h2>휴대폰이 묻는 창에서 [추가]를 눌러 주세요</h2>' +
           (kind ? '<p class="nu-sub" style="margin:0 0 6px">' + (kind.indexOf('widget') === 0 ? '방식: 위젯(부름 표시 없음)' : '방식: 바로가기 · ' + NU.esc(kind)) + '</p>' : '') +
           '<p class="nu-sub" style="color:var(--nu-ink)">바탕화면에 <b>' + NU.esc(line.name) + '</b> 아이콘이 생깁니다. 다음부터는 그 아이콘만 누르시면 이 화면이 바로 열려요.</p>' +
+          '<p class="nu-sub" style="margin:8px 0 10px;padding:8px 10px;border-radius:10px;background:rgba(232,115,74,.1);color:var(--nu-ink)">👉 <b>꾸욱 눌러 첫 화면 원하는 자리로 옮기세요.</b> 새로 놓인 것은 첫 화면이 아닌 곳에 생길 수 있어요.</p>' +
           '<p class="nu-sub">창이 안 뜨면 바탕화면 빈 곳을 꾹 → 설정 → "홈 화면 레이아웃 잠금" 이 꺼져 있는지 봐 주세요.</p>' +
           '<button class="nu-btn ghost" data-close>알겠어요</button>');
         return;
@@ -229,6 +230,7 @@ NU.pin = async function(line){
       '<li>놓인 위젯을 <b>꾹</b> → <b>[위젯 편집]</b> → 사람에서 <b>' + NU.esc(line.name) + '</b> 고르기.</li>' +
       '</ol>' +
       '<p class="nu-sub" style="margin-top:10px">사람마다 위젯을 하나씩 놓을 수 있어요. 다음부터는 위젯만 누르시면 이 화면이 바로 열립니다.</p>' +
+      '<p class="nu-sub" style="margin:8px 0 10px;padding:8px 10px;border-radius:10px;background:rgba(232,115,74,.1);color:var(--nu-ink)">👉 <b>꾸욱 눌러 첫 화면 원하는 자리로 옮기세요.</b> 새로 놓인 것은 첫 화면이 아닌 곳에 생길 수 있어요.</p>' +
       (NU.widgetV() >= 2 ? '<p class="nu-sub" style="margin-top:6px;color:var(--nu-ink)"><b>더 있어요</b><br>' +
         '· [위젯 편집] → <b>모양</b>: 기본 · 액자 · 색 바탕 · 전화 단추<br>' +
         '· 위젯 고를 때 옆으로 넘기면 <b>여러 사람</b>(한 판에 2~4명)<br>' +
@@ -260,6 +262,7 @@ NU.pin = async function(line){
     '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px"><img alt="" src="' + iconUrl + '" style="width:56px;height:56px;border-radius:16px">' +
     '<b style="font-size:17px">' + NU.esc(line.name) + '</b></div>' +
     '<p class="nu-sub" style="color:var(--nu-ink)">' + how + '</p>' +
+    '<p class="nu-sub" style="margin:8px 0 10px;padding:8px 10px;border-radius:10px;background:rgba(232,115,74,.1);color:var(--nu-ink)">👉 <b>꾸욱 눌러 첫 화면 원하는 자리로 옮기세요.</b> 새로 놓인 것은 첫 화면이 아닌 곳에 생길 수 있어요.</p>' +
     '<button class="nu-btn ghost" data-close style="margin-top:14px">알겠어요</button>');
 };
 
