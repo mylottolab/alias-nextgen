@@ -23,6 +23,7 @@ try { if (window.BURUM_HOME === 'dial' && localStorage.getItem('burum_first_scre
   <div class="nu-top">
     <svg width="40" height="40" viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="14" fill="none" stroke="#E4572E" stroke-width="3"></circle><circle cx="17" cy="17" r="6.5" fill="#E4572E"></circle></svg>
     <h1>누름</h1>
+    <a class="nu-back" id="dialBtn" href="#" hidden style="width:auto;padding:0 12px;font-size:15px;font-weight:800;margin-left:auto;text-decoration:none;display:none;align-items:center" aria-label="다이얼 첫 화면">☎ 다이얼</a>
     <button class="nu-back" id="meBtn" type="button" aria-label="나 (설정)" title="나 (설정)" style="width:auto;padding:0 14px;font-size:15px;font-weight:800;margin-left:auto">⚙ 나</button>
   </div>
   <p class="nu-sub">한 사람과만, 누르면 바로. 라인마다 바탕화면 아이콘이 하나씩 생겨요.</p>
@@ -50,6 +51,11 @@ try { if (window.BURUM_HOME === 'dial' && localStorage.getItem('burum_first_scre
 
 <script>
 document.getElementById('meBtn').onclick = function(){ NU.meSheet(); };
+/* ☎ 2026-11-22 다이얼 첫 화면을 쓰는 폰이면 위쪽에 [☎ 다이얼] — 목록에서 다이얼로 돌아가기 */
+(function(){ try { if (window.BURUM_HOME !== 'dial') return;
+  var d = document.getElementById('dialBtn'), me = document.getElementById('meBtn');
+  d.href = localStorage.getItem('burum_first_screen') === 'nureum' ? 'nureum_home_dial.html' : 'burum_home_dial.html';
+  d.hidden = false; d.style.display = 'inline-flex'; me.style.marginLeft = '8px'; } catch (e) {} })();
 /* 🔴 2026-11-01 — 냉장고 · 지갑 QR 카드 찍기 → 그 사람 화면 (짝 맺기 QR이면 짝 맺기로) */
 document.getElementById('scanCard').onclick = async function(){
   try {
