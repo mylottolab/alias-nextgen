@@ -4730,9 +4730,10 @@ AL.topBar = async function(){
       } catch (e) {}
       if (dialMode) {
         bk.textContent = en ? 'Go to app main ➜' : '앱 메인으로 ➜';
-        bk.style.cssText += ';padding:10px 18px;font-size:15px;font-weight:900;border-radius:999px;' +
+        bk.style.cssText += ';padding:7px 15px;font-size:14px;font-weight:900;border-radius:999px;' +   // 2026-11-23 조금 작게(번호판 한 화면에)
           'background:linear-gradient(180deg,#F0D27A,#C9A23F);color:#2A1F05;border:1px solid #F5DE95;box-shadow:0 4px 12px rgba(201,162,63,.35)';
         back.style.justifyContent = 'flex-end';
+        back.style.padding = '2px 10px 0';
       }
       back.appendChild(bk);
       wrap.insertBefore(back, wrap.firstChild);
