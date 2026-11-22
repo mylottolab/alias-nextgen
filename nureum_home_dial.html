@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>누름</title>
-<link rel="stylesheet" href="nureum.css?v=20261101a">
+<link rel="stylesheet" href="nureum.css?v=20261101a"><script src="nureum_i18n.js?v=20261122a"></script>
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="alias_common.js?v=20261122b"></script>
@@ -71,18 +71,19 @@
   }
 
   function lineItem(l){
+    var E = function(ko, en){ return (window.BN && BN.en) ? en : ko; }, nm = l.name;
     var waiting = !l.link_id, needPlan = !waiting && !l.active;
-    var state = waiting ? '짝 기다리는 중' : needPlan ? (l.is_owner ? '이용권 필요' : '연장 필요') : '';
-    return { ico: NU.glyph(l), mico: '📞', t: l.name, d: state || '돌리면 바로 ' + l.name + ' 화면', need: !!state,
+    var state = waiting ? E('짝 기다리는 중', 'Waiting to pair') : needPlan ? (l.is_owner ? E('이용권 필요', 'Plan needed') : E('연장 필요', 'Renewal needed')) : '';
+    return { ico: NU.glyph(l), mico: '📞', t: nm, d: state || E('돌리면 바로 ' + nm + ' 화면', 'Dial to open ' + nm), need: !!state,
       url: waiting ? 'nureum_new.html?line=' + l.id : 'nureum_line.html?line=' + l.id,
-      open: l.name + ' 열기',
-      info: waiting ? '아직 짝을 맺지 않았어요. 짝 맺기 코드(QR)를 상대에게 보여 주세요.'
-          : needPlan ? (l.is_owner ? '이용권이 끝났어요. 이용권을 고르면 바로 다시 전화돼요.' : '만든 분의 이용권이 끝났어요. 연장을 부탁해 보세요.')
-          : l.name + '님과의 ' + W + '입니다. 큰 [전화하기] 단추 하나로 바로 전화해요.',
-      steps: waiting ? ['돌려서 짝 맺기 화면을 여세요', 'QR을 보여 주거나 코드를 카톡 · 문자로 보내세요', '상대가 넣으면 연결 — 바탕화면에 아이콘을 놓으세요']
-           : needPlan ? (l.is_owner ? ['돌려서 ' + l.name + ' 화면을 여세요', '[이용 현황 · 연장]에서 1개월 · 12개월을 고르세요', '결제하면 바로 다시 전화돼요 (상대는 무료)']
-                                    : ['돌려서 ' + l.name + ' 화면을 여세요', '[만든 분께 부탁하기]를 누르세요', '문자로 연장을 부탁하는 글이 보내져요'])
-           : ['돌려서 ' + l.name + ' 화면을 여세요', '큰 [전화하기]를 누르면 바로 전화', '영상 · 사진 · 문자는 그 아래 세 칸'] };
+      open: E(nm + ' 열기', 'Open ' + nm),
+      info: waiting ? E('아직 짝을 맺지 않았어요. 짝 맺기 코드(QR)를 상대에게 보여 주세요.', 'Not paired yet. Show the pairing code (QR) to the other person.')
+          : needPlan ? (l.is_owner ? E('이용권이 끝났어요. 이용권을 고르면 바로 다시 전화돼요.', 'Your plan has ended. Pick a plan to call again right away.') : E('만든 분의 이용권이 끝났어요. 연장을 부탁해 보세요.', 'The creator’s plan has ended. Ask them to renew.'))
+          : E(nm + '님과의 ' + W + '입니다. 큰 [전화하기] 단추 하나로 바로 전화해요.', 'Your line with ' + nm + '. One big [Call] button calls right away.'),
+      steps: waiting ? [E('돌려서 짝 맺기 화면을 여세요', 'Dial to open the pairing screen'), E('QR을 보여 주거나 코드를 카톡 · 문자로 보내세요', 'Show the QR or send the code by message'), E('상대가 넣으면 연결 — 바탕화면에 아이콘을 놓으세요', 'Once they enter it you are connected — add the icon to your home screen')]
+           : needPlan ? (l.is_owner ? [E('돌려서 ' + nm + ' 화면을 여세요', 'Dial to open ' + nm), E('[이용 현황 · 연장]에서 1개월 · 12개월을 고르세요', 'Choose 1 or 12 months in [Usage · Renew]'), E('결제하면 바로 다시 전화돼요 (상대는 무료)', 'Pay and call again right away (free for them)')]
+                                    : [E('돌려서 ' + nm + ' 화면을 여세요', 'Dial to open ' + nm), E('[만든 분께 부탁하기]를 누르세요', 'Tap [Ask the creator]'), E('문자로 연장을 부탁하는 글이 보내져요', 'A renewal request is sent by text')])
+           : [E('돌려서 ' + nm + ' 화면을 여세요', 'Dial to open ' + nm), E('큰 [전화하기]를 누르면 바로 전화', 'Tap the big [Call] to call'), E('영상 · 사진 · 문자는 그 아래 세 칸', 'Video, photos and text are the three below')] };
   }
   function build(lines){
     var it = {}, n = lines.length, show = n > 5 ? lines.slice(0, 4) : lines.slice(0, 5);
@@ -111,11 +112,16 @@
       steps: ['궁금한 점을 적으세요', '보내기를 누르세요', '답이 오면 알려 드립니다'] };
     return it;
   }
+  /* 영어 폰이면 다이얼 안의 글도 영어로 (nureum_i18n.js 사전) */
+  var EN = !!(window.BN && BN.en), TR = function(x){ return EN && BN.tr ? BN.tr(x) : x; };
+  function L(o){ if (typeof o === 'string') return TR(o); if (Array.isArray(o)) return o.map(L);
+    if (o && typeof o === 'object') { var r = {}; for (var k in o) r[k] = (typeof o[k] === 'function' || k === 'url' || k === 'ico' || k === 'mico') ? o[k] : L(o[k]); return r; } return o; }
+  var build0 = build; build = function(lines){ return L(build0(lines)); };
   var dh = DialHome.mount(document.getElementById('dial'), {
-    en: false, key: 'nureum', brand: { plate:'#E4572E', rim:'#B8401D', ring:'#8F3216', ink:'#FFFFFF' },
-    center: function(){ return { title: '누름', sub: '숫자 = 사람' }; },
-    hint: '불러오는 중…', next: null, items: build([]),
-    centerTap: { label: '톡 = 전체 목록', go: function(){ location.href = 'nureum.html?list=1'; } },
+    en: EN, key: 'nureum', brand: { plate:'#E4572E', rim:'#B8401D', ring:'#8F3216', ink:'#FFFFFF' },
+    center: function(){ return { title: TR('누름'), sub: TR('숫자 = 사람') }; },
+    hint: TR('불러오는 중…'), next: null, items: build([]),
+    centerTap: { label: TR('톡 = 전체 목록'), go: function(){ location.href = 'nureum.html?list=1'; } },
     firstScreen: function(){ document.getElementById('fClassic').click(); }
   });
   try {
@@ -124,9 +130,9 @@
     var first = lines.findIndex ? lines.slice(0, 5).findIndex(function(l){ return !l.link_id || !l.active; }) : -1;
     dh.update({ items: build(lines),
       next: !lines.length ? '1' : null,
-      hint: !lines.length ? '처음이세요? 1번을 돌려 ' + W + '을 만드세요 (받은 코드가 있으면 6번)'
-          : first >= 0 ? (first + 1) + '번 ' + lines[first].name + ' — 할 일이 있어요 (! 표시)'
-          : '번호를 돌리면 그 사람 화면 · 톡 누르면 안내' });
+      hint: !lines.length ? TR('처음이세요? 1번을 돌려 ' + W + '을 만드세요 (받은 코드가 있으면 6번)')
+          : first >= 0 ? (EN ? 'No. ' + (first + 1) + ' ' + lines[first].name + ' — needs attention (!)' : (first + 1) + '번 ' + lines[first].name + ' — 할 일이 있어요 (! 표시)')
+          : TR('번호를 돌리면 그 사람 화면 · 톡 누르면 안내') });
   } catch (e) {
     console.error(e);
     NU.showErr('err', W + '을 불러오지 못했습니다. ' + (e.message || e));
@@ -134,7 +140,7 @@
   }
   document.getElementById('fClassic').onclick = function(){ try { localStorage.setItem(MODEKEY, 'classic'); localStorage.setItem('burum_home_active', '0'); } catch (e) {} location.replace('nureum.html?list=1'); };
   try { if (localStorage.getItem(MODEKEY) === 'dial' && (window.BURUM_HOME_ALL || 'classic') !== 'dial') {
-    var tb = document.getElementById('trybar'); tb.hidden = false; tb.textContent = '시험 중 — 이 폰만 다이얼 첫 화면입니다'; } } catch (e) {}
+    var tb = document.getElementById('trybar'); tb.hidden = false; tb.textContent = TR('시험 중 — 이 폰만 다이얼 첫 화면입니다'); } } catch (e) {}
 })();
 </script>
 </body>
