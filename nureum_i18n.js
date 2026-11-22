@@ -595,7 +595,8 @@
     ["눌러 사진에 저장한 뒤, 사진 앱의 공유 →", " to save it to Photos, then in Photos tap Share →"],
     ["프린트", "Print"],
     ["로 인쇄하세요.", " to print it."],
-    ["카드 그림을 만들지 못했어요. 잠시 뒤 다시 눌러 주세요.", "Couldn’t make the card image. Please try again shortly."]
+    ["카드 그림을 만들지 못했어요. 잠시 뒤 다시 눌러 주세요.", "Couldn’t make the card image. Please try again shortly."],
+    ["카드가 아직 없으면: 그 사람 화면 → [전체 메뉴] → 🖨 QR 카드 만들기", "No card yet? Open that person’s screen → [Full menu] → 🖨 Make QR card"]
   ];
   NX.sort(function(a, b){ return b[0].length - a[0].length; });
   function tr(s){
