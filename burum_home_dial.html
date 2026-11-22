@@ -9,7 +9,7 @@
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="alias_common.js?v=20261122b"></script>
-<script src="dialhome.js?v=20261122b"></script>
+<script src="dialhome.js?v=20261122c"></script>
 <style>
 /* ☎ 부름 다이얼 첫 화면 (2026-11-22) — 다이얼 모양 · 돌리기는 dialhome.js(와파 · 부름 · 누름 · 바로너 공용)
    예전 첫 화면(연락처)이 알려 주던 것: 새 문자(1번 배지) · 받은 연결 요청(4번 배지) · 임시연락처 새 문자(5번 배지) · 이용권 남은 날 */
@@ -35,10 +35,9 @@
   <div class="foot">
     <a href="burum_guide.html" id="fGuide"></a>
     <a href="features.html" id="fFeat"></a>
-    <button type="button" id="fClassic"></button>
   </div>
 </div>
-<script src="burum_home_mode.js?v=20261122a"></script>
+<script src="burum_home_mode.js?v=20261122b"></script>
 <script>
 (async function(){
   'use strict';
@@ -93,7 +92,9 @@
     en: EN, key: 'burum', brand: { plate:'#1E7A4C', rim:'#145A37', ring:'#0E4A2C', ink:'#FFFFFF' },
     center: function(){ return { title: T('부름', 'Burum'), sub: T('숫자를 돌려 보세요', 'Dial a number') }; },
     hint: T('숫자를 톡 누르면 안내 · 멈춤쇠까지 돌리면 바로 실행', 'Tap a number for info · dial it to the stop to open'),
-    next: null, items: items()
+    next: null, items: items(),
+    centerTap: { label: T('톡 = 연락처', 'Tap = Contacts'), go: function(){ location.href = 'alias_contacts.html'; } },
+    firstScreen: function(){ try { localStorage.setItem('burum_home_mode', 'classic'); localStorage.setItem('burum_home_active', '0'); } catch (e) {} location.replace('alias_contacts.html'); }
   });
 
   /* ── 배지 · 이용권 (예전 첫 화면이 보여 주던 것) ── */
@@ -110,8 +111,6 @@
 
   document.getElementById('fGuide').textContent = T('📗 사용설명서', '📗 User guide');
   document.getElementById('fFeat').textContent = T('📘 전체 기능 소개', '📘 All features');
-  document.getElementById('fClassic').textContent = T('↩ 예전 첫 화면으로', '↩ Classic home');
-  document.getElementById('fClassic').onclick = function(){ try { localStorage.setItem('burum_home_mode', 'classic'); localStorage.setItem('burum_home_active', '0'); } catch (e) {} location.replace('alias_contacts.html'); };
   try { if (localStorage.getItem('burum_home_mode') === 'dial' && (window.BURUM_HOME_ALL || 'classic') !== 'dial') {
     var tb = document.getElementById('trybar'); tb.hidden = false; tb.textContent = T('시험 중 — 이 폰만 다이얼 첫 화면입니다', 'Preview — dial home on this phone only'); } } catch (e) {}
 })();

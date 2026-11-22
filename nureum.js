@@ -493,6 +493,18 @@ NU.meSheet = async function(){
     try { localStorage.setItem('burum_first_screen', first === 'nureum' ? 'contacts' : 'nureum'); } catch (e) {}
     NU.meSheet();
   };
+  /* ☎ 2026-11-22 앱을 열면 — 다이얼 첫 화면 / 목록(본화면) 바로 (이 폰에만) */
+  (function(){
+    var bn = /baronu/i.test(location.hostname), key = bn ? 'baronu_home_mode' : 'burum_home_mode';
+    var all = (bn ? window.BARONU_HOME_ALL : window.BURUM_HOME_ALL) || 'classic', cur = 'classic';
+    try { cur = localStorage.getItem(key) || (localStorage.getItem(bn ? 'baronu_home_active' : 'burum_home_active') === '1' ? 'dial' : all); } catch (e) {}
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'nu-btn ghost'; b.style.marginTop = '8px';
+    b.textContent = cur === 'dial' ? '앱을 열면: ☎ 다이얼 ✓ (목록부터로 바꾸기)' : '앱을 열면 ☎ 다이얼부터 보기';
+    b.onclick = function(){ var to = cur === 'dial' ? 'classic' : 'dial';
+      try { localStorage.setItem(key, to); if (!bn) localStorage.setItem('burum_home_active', to === 'dial' ? '1' : '0'); } catch (e) {}
+      location.href = to === 'dial' ? 'nureum_home_dial.html' : (bn ? 'index.html?list=1' : 'nureum.html?list=1'); };
+    var mo = sh.querySelector('#mOut'); mo.parentNode.insertBefore(b, mo);
+  })();
   sh.querySelector('#mOut').onclick = async function(){
     if (anon) {
       if (!confirm('가입 없이 쓰는 계정은 로그아웃하면 다시 들어올 수 없어요. 라인도 다시 맺어야 해요.\n\n그래도 로그아웃할까요? (먼저 [계정 지키기]를 권해요)')) return;

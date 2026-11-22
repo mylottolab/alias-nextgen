@@ -13,6 +13,7 @@
        center: function(){ return { title:'WAFA', sub:'010 1234 5678' } },
        hint: '숫자를 톡 …',                           // 아무것도 안 골랐을 때 아래 글
        next: '4',                                     // 깜빡일 번호(없으면 null)
+       centerTap: { label:'톡 = 전화 걸기', go:function(){} },   // 가운데를 톡 = 본화면 바로가기(선택)
        items: { '1': { ico:'☎️', t:'전화 걸기', d:'한 줄 설명', info:'설명', steps:['…','…','…'], pic:'<svg…>',
                        need:false, badge:0, url:'page.html' | go:function(){} , blank:false, mico:'목록용 아이콘(선택)' }, … '0': {…} }
      });
@@ -45,6 +46,7 @@
   '.dh-ct{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:31%;text-align:center;pointer-events:none;display:flex;flex-direction:column;align-items:center;gap:3px;word-break:keep-all}' +
   '.dh-ct b{font-size:clamp(14px,4.2vw,19px);line-height:1.25}' +
   '.dh-ct span{font-size:clamp(11px,3vw,13px);color:var(--dh-lab);line-height:1.35}' +
+  '.dh-ct .tap{font-style:normal;font-size:clamp(10.5px,2.9vw,12.5px);font-weight:800;color:var(--dh-brand);border:1.5px solid var(--dh-brand);border-radius:999px;padding:2px 8px;margin-top:3px;white-space:nowrap}' +
   '.dh-ct .k{font:900 clamp(26px,8vw,36px)/1 "Pretendard",system-ui,sans-serif;color:var(--dh-brand)}' +
   '.dh-hint{text-align:center;font-size:14.5px;color:var(--dh-sub);margin:0;min-height:22px;line-height:1.55}' +
   '.dh-go{display:flex;gap:8px}' +
@@ -66,6 +68,8 @@
   '.dh-menu .t{display:flex;flex-direction:column;min-width:0}.dh-menu .t b{font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
   '.dh-menu .t span{font-size:12px;color:var(--dh-sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
   '.dh-menu .bd{position:absolute;top:6px;right:8px;min-width:20px;height:20px;border-radius:10px;background:#E5484D;color:#fff;font-size:11.5px;font-weight:900;display:grid;place-items:center;padding:0 5px}' +
+  '.dh-first{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--dh-card);border:1px solid var(--dh-line);border-radius:14px;padding:10px 14px;font-size:13.5px}' +
+  '.dh-first span{color:var(--dh-sub);min-width:0}.dh-first button{flex:0 0 auto;border:1.5px solid var(--dh-brand);color:var(--dh-brand);background:none;border-radius:999px;padding:7px 12px;font:inherit;font-weight:800;cursor:pointer;white-space:nowrap}' +
   '.dh-tog{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;font-size:13px}' +
   '.dh-tog button{color:var(--dh-sub);background:none;border:0;font:inherit;text-decoration:underline;cursor:pointer;padding:6px 2px}' +
   '@keyframes dhblink{0%,100%{stroke:var(--dh-hot);stroke-width:6}50%{stroke:var(--dh-ring);stroke-width:2.5}}' +
@@ -90,7 +94,8 @@
       '<div class="dh-go" hidden><button type="button" class="c"></button><button type="button" class="o"></button></div>' +
       '<div class="dh-slot-mid"></div>' +
       '<div class="dh-menu"></div>' +
-      '<div class="dh-tog"><button type="button" class="snd"></button><button type="button" class="vce"></button></div>';
+      '<div class="dh-tog"><button type="button" class="snd"></button><button type="button" class="vce"></button></div>' +
+      (O.firstScreen ? '<div class="dh-first"><span></span><button type="button"></button></div>' : '');
     host.appendChild(root);
     var svg = root.querySelector('svg'), ct = root.querySelector('.dh-ct'), hint = root.querySelector('.dh-hint'),
         stepsEl = root.querySelector('.dh-steps'), goEl = root.querySelector('.dh-go'), menu = root.querySelector('.dh-menu');
@@ -150,7 +155,8 @@
       var it = sel && S.items[sel];
       if (!it) {
         var c = O.center ? O.center() : { title:'', sub:'' };
-        ct.innerHTML = '<b>' + esc(c.title) + '</b>' + (c.sub ? '<span>' + esc(c.sub) + '</span>' : '');
+        ct.innerHTML = '<b>' + esc(c.title) + '</b>' + (c.sub ? '<span>' + esc(c.sub) + '</span>' : '') +
+          (O.centerTap ? '<em class="tap">' + esc(O.centerTap.label) + '</em>' : '');
         hint.textContent = S.hint; stepsEl.hidden = true; goEl.hidden = true;
       } else {
         ct.innerHTML = '<span class="k">' + sel + '</span><b>' + esc(it.t) + '</b><span>' + esc(it.d || '') + '</span>';
@@ -199,6 +205,12 @@
     svg.addEventListener('pointerdown', function(e){
       if (drag) return;
       var p = local(e), best = null, bd = 1e9;
+      if (O.centerTap && Math.hypot(p[0] - CX, p[1] - CY) < R_IN - 4) {   // 가운데 톡 = 본화면 바로가기
+        e.preventDefault(); actx(); tick(.08, 1400); buzz(8);
+        if (sel) { sel = null; paint(); }
+        try { sessionStorage.setItem('dh_from_home', String(Date.now())); } catch (er) {}
+        setTimeout(function(){ O.centerTap.go(); }, 60); return;
+      }
       ORDER.forEach(function(k, i){ var h = pt(angOf(i), RR), dd = Math.hypot(p[0] - h[0], p[1] - h[1]); if (dd < bd) { bd = dd; best = i; } });
       if (best === null || bd > HR + 10) return;
       e.preventDefault(); actx();
@@ -231,7 +243,7 @@
     svg.addEventListener('pointerup', release);
     svg.addEventListener('pointercancel', release);
     svg.setAttribute('tabindex', '0');
-    svg.addEventListener('keydown', function(e){ if (/^[0-9]$/.test(e.key)) pick(e.key); else if (e.key === 'Enter' && sel) run(sel); else if (e.key === 'Escape') { sel = null; paint(); } });
+    svg.addEventListener('keydown', function(e){ if (/^[0-9]$/.test(e.key)) pick(e.key); else if (e.key === 'Enter' && sel) run(sel); else if (e.key === 'Enter' && O.centerTap) O.centerTap.go(); else if (e.key === 'Escape') { sel = null; paint(); } });
 
     /* ── 소리 · 목소리 단추 ── */
     var bs = root.querySelector('.snd'), bv = root.querySelector('.vce');
@@ -242,6 +254,14 @@
       if (voiceOn) say(T('목소리 안내를 켰습니다. 숫자를 누르면 읽어 드립니다.', 'Voice guide on. Tap a number and I will read it.')); else { try { speechSynthesis.cancel(); } catch (e) {} } };
     if (!('speechSynthesis' in window)) bv.hidden = true;
     paintTog();
+
+    /* 앱을 열면 무엇부터 — 다이얼 / 본화면 바로 (이 폰에만) */
+    if (O.firstScreen) {
+      var fr = root.querySelector('.dh-first');
+      fr.querySelector('span').textContent = T('앱을 열면: ☎ 다이얼 첫 화면', 'On open: ☎ Dial home');
+      fr.querySelector('button').textContent = T('본화면부터 보기로', 'Open main screen instead');
+      fr.querySelector('button').onclick = function(){ O.firstScreen(); };
+    }
 
     drawUnder(); drawMenu(); paint();
     return {

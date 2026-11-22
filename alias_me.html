@@ -9,6 +9,7 @@
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="alias_common.js?v=20261122b"></script>
+<script src="burum_home_mode.js?v=20261122b"></script>
 <script src="burum_partner_ref.js?v=20261029"></script>
 <!-- 🔴 2026-09-13 — 사진 압축(AL.compressImage)이 여기 있습니다 -->
 <script src="alias_media.js?v=20260928b"></script>
@@ -866,9 +867,19 @@ async function paintPrevBtn(){
   lbl.textContent = KRm ? '로그인하면 첫 화면' : 'First screen after login';
   const nt = document.getElementById('fsNote');
   if (nt) nt.textContent = KRm ? '이 휴대폰에 저장됩니다. 앱 업데이트 · 로그아웃 뒤에도 그대로이고, 앱을 다시 설치하거나 앱 데이터를 지우거나 휴대폰을 바꾸면 다시 정해 주세요.' : 'Saved on this phone. Kept after app updates and logouts; choose again after reinstalling, clearing app data or changing phones.';
-  const cur = function(){ try { return localStorage.getItem('burum_first_screen') === 'dial'; } catch (e) { return false; } };
-  const paintFs = function(){ const d = cur(); b.textContent = d ? (KRm ? '📞 부름 번호판' : '📞 Dial pad') : (KRm ? '📇 연락처' : '📇 Contacts'); b.classList.toggle('on', d); };
-  b.addEventListener('click', function(){ try { localStorage.setItem('burum_first_screen', cur() ? 'contacts' : 'dial'); } catch (e) {} paintFs(); showOk(AL.t('thSaved')); });
+  /* ☎ 2026-11-22 — ☎ 다이얼 첫 화면 → 📇 연락처 → 📞 번호판 → ☎ 다이얼 … 차례로 (이 폰에만) */
+  const st = function(){ try {
+    const hm = localStorage.getItem('burum_home_mode') || window.BURUM_HOME_ALL || 'classic';
+    if (hm === 'dial') return 'home';
+    return localStorage.getItem('burum_first_screen') === 'dial' ? 'pad' : 'contacts'; } catch (e) { return 'contacts'; } };
+  const paintFs = function(){ const d = st();
+    b.textContent = d === 'home' ? (KRm ? '☎ 다이얼 첫 화면' : '☎ Dial home') : d === 'pad' ? (KRm ? '📞 부름 번호판' : '📞 Dial pad') : (KRm ? '📇 연락처' : '📇 Contacts');
+    b.classList.toggle('on', d !== 'contacts'); };
+  b.addEventListener('click', function(){ const d = st(); try {
+      if (d === 'home') { localStorage.setItem('burum_home_mode', 'classic'); localStorage.setItem('burum_home_active', '0'); localStorage.setItem('burum_first_screen', 'contacts'); }
+      else if (d === 'contacts') localStorage.setItem('burum_first_screen', 'dial');
+      else { localStorage.setItem('burum_first_screen', 'contacts'); localStorage.setItem('burum_home_mode', 'dial'); localStorage.setItem('burum_home_active', '1'); }
+    } catch (e) {} paintFs(); showOk(AL.t('thSaved')); });
   paintFs();
 })();
 

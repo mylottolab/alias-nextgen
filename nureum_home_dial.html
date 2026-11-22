@@ -9,9 +9,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="alias_common.js?v=20261122b"></script>
 <script src="alias_qr.js?v=20261019a"></script>
-<script src="nureum.js?v=20261115b"></script>
-<script src="dialhome.js?v=20261122b"></script>
-<script src="burum_home_mode.js?v=20261122a"></script>
+<script src="nureum.js?v=20261122a"></script>
+<script src="dialhome.js?v=20261122c"></script>
+<script src="burum_home_mode.js?v=20261122b"></script>
 <style>
 /* ☎ 누름 다이얼 첫 화면 (2026-11-22) — 다이얼 모양 · 돌리기는 dialhome.js(와파 · 부름 · 누름 · 바로너 공용)
    1~5번 = 내 라인(사람) — 돌리면 그 사람 화면(큰 [전화하기]) · 6 짝 맺기 · 7 QR 카드 찍기 · 8 안심 긴급 · 9 사용법 · 0 고객센터
@@ -41,7 +41,7 @@
   <a class="nu-btn ghost" href="alias_contacts.html" style="height:46px;font-size:15px">💬 부름도 사용하러 가기</a>
   <div class="foot">
     <a href="nureum.html?list=1" id="fList">👥 전체 라인 목록</a>
-    <button type="button" id="fClassic">↩ 예전 첫 화면으로</button>
+    <button type="button" id="fClassic" hidden></button>
   </div>
 </div>
 <script>
@@ -114,7 +114,9 @@
   var dh = DialHome.mount(document.getElementById('dial'), {
     en: false, key: 'nureum', brand: { plate:'#E4572E', rim:'#B8401D', ring:'#8F3216', ink:'#FFFFFF' },
     center: function(){ return { title: '누름', sub: '숫자 = 사람' }; },
-    hint: '불러오는 중…', next: null, items: build([])
+    hint: '불러오는 중…', next: null, items: build([]),
+    centerTap: { label: '톡 = 전체 목록', go: function(){ location.href = 'nureum.html?list=1'; } },
+    firstScreen: function(){ document.getElementById('fClassic').click(); }
   });
   try {
     var lines = await NU.rpc('nureum_my_lines');
