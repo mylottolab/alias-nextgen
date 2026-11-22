@@ -557,7 +557,24 @@
     ["놓기", "Add"],
     ["끊긴 라인", "Ended line"],
     ["용량", "usage"],
-    ["은 라인을 만든 분이 냅니다. 라인 1개 · 1개월권 1,700원 · 12개월권 16,500원(부가세 포함). 짝을 맺은 뒤에 고르시면 됩니다.", " is paid by the line’s creator. One line · 1 month ₩1,700 · 12 months ₩16,500 (VAT incl.). Choose after pairing."]
+    ["은 라인을 만든 분이 냅니다. 라인 1개 · 1개월권 1,700원 · 12개월권 16,500원(부가세 포함). 짝을 맺은 뒤에 고르시면 됩니다.", " is paid by the line’s creator. One line · 1 month ₩1,700 · 12 months ₩16,500 (VAT incl.). Choose after pairing."],
+    ["☎ 다이얼 첫 화면", "☎ Dial first screen"],
+    ["숫자 = 사람", "Number = person"],
+    ["앱을 열면 큰 다이얼, 1~5번은 내 라인(사람) — 돌리면 그 사람 화면의 큰 [전화하기]", "The app opens on a big dial; 1–5 are your lines (people) — dial one to get that person’s big [Call]"],
+    ["6~0번", "6–0"],
+    ["6 짝 맺기 · 7 QR 카드 찍기 · 8 안심 긴급 · 9 사용법 · 0 고객센터", "6 Pair · 7 Scan QR card · 8 Safety SOS · 9 How to use · 0 Help desk"],
+    ["할 일 표시", "Attention marks"],
+    ["짝을 기다리거나 이용권이 끝난 라인에 ! 표시", "A ! marks lines waiting to pair or with an expired plan"],
+    ["톡 누르면 안내 · 돌리면 실행", "Tap for info · dial to open"],
+    ["숫자를 한 번 누르면 설명과 순서, 한 번 더 누르거나 돌리면 바로 열림, 목소리 안내 켜기", "Tap a number once for an explanation and steps; tap again or dial it to open; voice guide available"],
+    ["목록으로 · 다이얼로", "To the list · back to the dial"],
+    ["가운데 톡 = 전체 라인 목록, 목록 위쪽 「☎ 다이얼 첫 화면으로」로 돌아오기", "Tap the center for all lines; “☎ Back to dial home” at the top of the list returns you"],
+    ["앱을 열면 고르기", "Choose what opens first"],
+    ["다이얼 ↔ 라인 목록부터, ⚙ 나에서 바꾸기", "Dial or line list first — change it under ⚙ Me"],
+    ["한국어 · English 단추", "Korean · English button"],
+    ["첫 화면 위쪽 단추로 언제든 언어 바꾸기, 휴대폰이 한국어가 아니면 처음부터 영어", "Switch language anytime with the button at the top of the first screen; English by default if the phone isn’t in Korean"],
+    ["2026년 11월 22일 기준 · 화면과 기능은 앱 업데이트에 따라 바뀔 수 있습니다.", "As of Nov 22, 2026 · screens and features may change with app updates."],
+    ["용량 추가 · 당겨 쓰기", "Add-ons · borrow ahead"]
   ];
   NX.sort(function(a, b){ return b[0].length - a[0].length; });
   function tr(s){
