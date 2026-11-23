@@ -7,12 +7,12 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>누름</title>
-<link rel="stylesheet" href="nureum.css?v=20261101a"><script src="nureum_i18n.js?v=20261123f"></script>
+<link rel="stylesheet" href="nureum.css?v=20261101a"><script src="nureum_i18n.js?v=20261123g"></script>
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="alias_common.js?v=20261123b"></script>
-<script src="nureum.js?v=20261123b"></script>
-<script src="nureum_greet.js?v=20261123c"></script>
+<script src="nureum.js?v=20261123c"></script>
+<script src="nureum_greet.js?v=20261123d"></script>
 <style>
 .big{flex:1;min-height:250px;border:none;border-radius:36px;background:#1F8A5B;color:#fff;font:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;cursor:pointer}
 .big span{font-size:40px;font-weight:900}
@@ -113,12 +113,19 @@ function menu(){
 
 function settings(){
   var c = L.color;
-  var photo = L.photo || null;
+  var own0 = (L.own_photo !== undefined ? L.own_photo : L.photo) || null, photo = own0;
+  var useFace0 = !!L.peer_face && !NU.noFace(L.id), useFace = useFace0, face = undefined;   // face: undefined = 그대로 · null = 안 보내기 · 사진 = 보내기
+  function shown(){ return photo || (useFace && L.peer_face) || null; }
   var sh = NU.sheet('<h2>이 라인 설정</h2>' +
     '<span class="nu-lbl">사진 (바탕화면 아이콘 · 이 화면 위쪽에 나와요)</span>' +
     '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px"><span id="sPv"></span>' +
     '<button class="nu-btn ghost" id="sPick" type="button" style="width:auto;height:46px;padding:0 16px;font-size:15px">사진 고르기</button>' +
     '<button class="nu-btn ghost" id="sNoPic" type="button" style="width:auto;height:46px;padding:0 14px;font-size:15px">사진 빼기</button></div>' +
+    (L.peer_face ? '<label style="display:flex;align-items:center;gap:10px;margin:0 0 12px;font-size:15px;font-weight:700"><input type="checkbox" id="sUseFace" style="width:22px;height:22px;flex:none"><span>🙂 ' + NU.esc(L.name) + '님이 보내 준 사진 쓰기<br><span class="nu-sub" style="margin:0;font-weight:600;font-size:13px">내가 사진을 안 넣었을 때 이 사진이 아이콘에 들어가요</span></span></label>' : '') +
+    '<div class="nu-card" style="gap:8px;margin-bottom:14px"><b style="font-size:15px">🙂 ' + NU.esc(L.name) + '님에게 보낼 내 사진 <span class="nu-sub" style="margin:0;font-weight:600">(선택)</span></b>' +
+      '<p class="nu-sub" id="sFaceTxt" style="margin:0"></p>' +
+      '<div style="display:flex;gap:10px"><button class="nu-btn line" id="sFacePick" type="button" style="flex:1;min-height:48px;font-size:15px"></button>' +
+      '<button class="nu-btn ghost" id="sFaceNo" type="button" style="width:auto;min-height:48px;padding:0 14px;font-size:15px">보내지 않기</button></div></div>' +
     '<label class="nu-lbl" for="sName">내 휴대폰에 보일 이름</label><input class="nu-in" id="sName" maxlength="20">' +
     '<label class="nu-lbl" for="sGlyph" style="margin-top:12px">아이콘 글자</label><input class="nu-in" id="sGlyph" maxlength="2" style="width:120px;text-align:center">' +
     '<span class="nu-lbl" style="margin-top:12px">색</span><div class="nu-colors" id="sColors"></div>' +
@@ -131,9 +138,17 @@ function settings(){
   sh.querySelector('#sGlyph').value = L.glyph || '';
   sh.querySelector('#sAuto').checked = !!L.auto_answer;
   function pv(){
-    sh.querySelector('#sPv').innerHTML = NU.icoHtml({ name: L.name, glyph: L.glyph, color: c, photo: photo }, 'width:64px;height:64px;border-radius:20px');
+    sh.querySelector('#sPv').innerHTML = NU.icoHtml({ name: L.name, glyph: L.glyph, color: c, photo: shown() }, 'width:64px;height:64px;border-radius:20px');
     sh.querySelector('#sNoPic').style.display = photo ? '' : 'none';
+    var sent = face === undefined ? !!L.face_sent : !!face;
+    sh.querySelector('#sFaceTxt').textContent = face ? '✅ 새 사진을 골랐어요. [저장]을 누르면 보내요.' : sent ? '✅ 보내 둔 사진이 있어요. ' + L.name + '님이 사진을 따로 안 넣었으면 ' + L.name + '님 휴대폰 아이콘에 이 사진이 들어가요.'
+      : '내 사진을 보내 두면, ' + L.name + '님이 사진을 따로 안 넣었을 때 ' + L.name + '님 휴대폰의 내 아이콘에 들어가요.';
+    sh.querySelector('#sFacePick').textContent = sent ? '🙂 다른 사진으로 바꾸기' : '🙂 내 사진 고르기';
+    sh.querySelector('#sFaceNo').style.display = sent ? '' : 'none';
   }
+  var uf = sh.querySelector('#sUseFace'); if (uf) { uf.checked = useFace; uf.onchange = function(){ useFace = uf.checked; pv(); }; }
+  sh.querySelector('#sFacePick').onclick = async function(){ var p = await NU.pickPhoto(); if (p) { face = p; pv(); } };
+  sh.querySelector('#sFaceNo').onclick = function(){ face = null; pv(); };
   NU.colorPicker(sh.querySelector('#sColors'), c, function(v){ c = v; pv(); });
   pv();
   sh.querySelector('#sPick').onclick = async function(){ var p = await NU.pickPhoto(); if (p) { photo = p; pv(); } };
@@ -143,8 +158,14 @@ function settings(){
     try {
       await NU.rpc('nureum_set_side', { p_line: L.id, p_name: sh.querySelector('#sName').value, p_color: c,
         p_glyph: sh.querySelector('#sGlyph').value, p_auto: sh.querySelector('#sAuto').checked });
-      var changedPic = (photo || null) !== (L.photo || null);
-      if (changedPic) {
+      var changedOwn = (photo || null) !== own0, changedPic = shown() !== ((own0 || (useFace0 && L.peer_face)) || null);
+      if (useFace !== useFace0) NU.noFace(L.id, !useFace);
+      if (face !== undefined) {
+        var fr = await NU.rpc('nureum_set_face', { p_line: L.id, p_face: face });
+        if (!fr || !fr.ok) throw new Error('보낼 사진을 저장하지 못했습니다. 다른 사진으로 해 보세요.');
+        NU._facesAt = 0;
+      }
+      if (changedOwn) {
         var r = await NU.rpc('nureum_set_photo', { p_line: L.id, p_photo: photo });
         if (!r.ok) throw new Error('사진을 저장하지 못했습니다. 다른 사진으로 해 보세요.');
       }

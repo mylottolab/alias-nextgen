@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#E4572E">
 <title>짝 맺기 · 누름</title>
-<link rel="stylesheet" href="nureum.css?v=20261101a"><script src="nureum_i18n.js?v=20261123f"></script>
+<link rel="stylesheet" href="nureum.css?v=20261101a"><script src="nureum_i18n.js?v=20261123g"></script>
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="alias_common.js?v=20261123b"></script>
 <script src="alias_qr.js?v=20261123a"></script>
-<script src="nureum.js?v=20261123b"></script>
-<script src="nureum_greet.js?v=20261123c"></script>
+<script src="nureum.js?v=20261123c"></script>
+<script src="nureum_greet.js?v=20261123d"></script>
 </head>
 <body>
 <!-- 받는 쪽: 코드(또는 QR 주소 ?c=)로 짝 맺기.
@@ -52,7 +52,7 @@
     <div id="mainBox" style="display:flex;flex-direction:column;gap:12px">
       <button class="nu-btn" id="go" type="button" style="min-height:64px;font-size:20px">연결하기</button>
       <details id="more" style="border:1px solid var(--nu-line);border-radius:14px;padding:10px 14px">
-        <summary style="font-weight:800;cursor:pointer;min-height:32px">이름 · 색 바꾸기 · 📷 사진 · 🎬 인사 영상 (선택)</summary>
+        <summary style="font-weight:800;cursor:pointer;min-height:32px">이름 · 색 바꾸기 · 📷 사진 · 🎬 인사 영상 · 🙂 내 사진 (선택)</summary>
         <div style="display:flex;flex-direction:column;gap:12px;margin-top:10px">
           <div>
             <label class="nu-lbl" for="name">이 분을 뭐라고 부를까요? (내 휴대폰에 보일 이름)</label>
@@ -150,7 +150,7 @@ async function join(){
     var out = await NU.rpc('nureum_attach', { p_code: code, p_name: name, p_color: color, p_glyph: null });
     if (!out.ok) throw new Error(NU.errText(out.error));
     var l = { id: out.line_id, name: name, color: color };
-    if (media && (media.photo || media.video)) { var ap = {}; try { ap = await media.apply(out.line_id, true); } catch (e) {} if (media.photo && ap.photo !== false) l.photo = media.photo; }
+    if (media && (media.photo || media.video || media.face)) { var ap = {}; try { ap = await media.apply(out.line_id, true); } catch (e) {} if (media.photo && ap.photo !== false) l.photo = media.photo; }
     var ico = document.getElementById('doneIco'); ico.style.background = color; ico.textContent = l.photo ? '' : NU.glyph(l);
     if (l.photo) { ico.style.backgroundImage = 'url(' + l.photo + ')'; ico.style.backgroundSize = 'cover'; ico.style.backgroundPosition = 'center'; }
     document.getElementById('doneTitle').textContent = name + '와(과) 연결됐어요!';

@@ -46,7 +46,40 @@ NU.q = function(k){ return new URLSearchParams(location.search).get(k); };
 
 /* 🔴 2026-10-30 — 휴대폰 망이 잠깐 끊겨 "Failed to fetch" 가 나면 두 번 더 해 봅니다(손님 제보) */
 NU.netErr = function(e){ var m = String((e && (e.message || e.details)) || e || ''); return /Failed to fetch|NetworkError|Load failed|network/i.test(m); };
+/* 🔴 2026-11-23 — 🙂 상대가 보내 준 사진: 내가 그 핫라인에 아이콘 사진을 따로 안 넣었으면 그 사진을 씁니다.
+   (이 휴대폰에서 "보낸 사진 안 쓰기"를 고르면 안 씀 · 서버: sql 16_nureum_face.sql · 안 돌린 서버면 조용히 그대로) */
+NU._faces = null; NU._facesAt = 0;
+NU.faces = async function(force){
+  if (!force && NU._faces && Date.now() - NU._facesAt < 60000) return NU._faces;
+  try { var r = await AL.sb.rpc('nureum_faces'); NU._faces = (!r.error && r.data) ? r.data : { peer: {}, mine: {} }; }
+  catch (e) { NU._faces = NU._faces || { peer: {}, mine: {} }; }
+  NU._facesAt = Date.now(); return NU._faces;
+};
+NU.noFace = function(id, v){
+  var k = 'nureum_noface_' + id;
+  try { if (v === undefined) return localStorage.getItem(k) === '1'; if (v) localStorage.setItem(k, '1'); else localStorage.removeItem(k); } catch (e) {}
+  return !!v;
+};
+NU._mergeFace = function(l, F){
+  if (!l || !l.id || l.own_photo !== undefined) return l;
+  l.own_photo = l.photo || null;
+  l.peer_face = (F.peer && F.peer[l.id]) || null;
+  l.face_sent = !!(F.mine && F.mine[l.id]);
+  if (!l.photo && l.peer_face && !NU.noFace(l.id)) l.photo = l.peer_face;
+  return l;
+};
 NU.rpc = async function(fn, args){
+  var out = await NU._rpc(fn, args);
+  if (fn === 'nureum_my_lines' || fn === 'nureum_line') {
+    try {
+      var F = await NU.faces();
+      if (Array.isArray(out)) out.forEach(function(l){ NU._mergeFace(l, F); });
+      else if (out && out.ok !== false) NU._mergeFace(out, F);
+    } catch (e) {}
+  }
+  return out;
+};
+NU._rpc = async function(fn, args){
   var last;
   for (var i = 0; i < 3; i++) {
     try {

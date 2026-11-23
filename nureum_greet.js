@@ -214,16 +214,19 @@
      el: 넣을 곳 / who(): 지금 적힌 상대 이름 / onPhoto(dataUrl|null): 미리 보기 아이콘 바꾸기
      돌려줌: { photo, video, secs } — 만들기(연결하기)가 끝난 뒤 apply(lineId, paired) 로 저장 */
   function picker(el, who, onPhoto){
-    var st = { photo: null, video: null, secs: 0 };
+    var st = { photo: null, video: null, secs: 0, face: null };
     el.innerHTML =
       '<div class="nu-card" style="gap:10px">' +
-        '<b style="font-size:16px">' + esc(T('📷 사진 · 🎬 인사 영상', '📷 Photo · 🎬 Greeting video')) + ' <span class="nu-sub" style="font-weight:600;margin:0">' + esc(T('(선택 · 나중에 설정에서도 넣을 수 있어요)', '(optional · you can add them later in settings)')) + '</span></b>' +
+        '<b style="font-size:16px">' + esc(T('📷 사진 · 🎬 인사 영상 · 🙂 내 사진', '📷 Photo · 🎬 Greeting video · 🙂 My photo')) + ' <span class="nu-sub" style="font-weight:600;margin:0">' + esc(T('(선택 · 나중에 설정에서도 넣을 수 있어요)', '(optional · you can add them later in settings)')) + '</span></b>' +
         '<div style="display:flex;gap:10px;align-items:center"><button class="nu-btn line" type="button" data-k="ph" style="flex:1;min-height:52px">' + esc(T('📷 아이콘 사진 넣기', '📷 Add icon photo')) + '</button>' +
           '<button class="nu-btn ghost" type="button" data-k="phx" style="width:auto;padding:0 14px;min-height:52px" hidden>' + esc(T('빼기', 'Remove')) + '</button></div>' +
         '<p class="nu-sub" data-k="phs" style="margin:0"></p>' +
         '<div style="display:flex;gap:10px;align-items:center"><button class="nu-btn line" type="button" data-k="vd" style="flex:1;min-height:52px">' + esc(T('🎬 인사 영상 넣기 (20초)', '🎬 Add greeting video (20s)')) + '</button>' +
           '<button class="nu-btn ghost" type="button" data-k="vdx" style="width:auto;padding:0 14px;min-height:52px" hidden>' + esc(T('빼기', 'Remove')) + '</button></div>' +
         '<p class="nu-sub" data-k="vds" style="margin:0"></p>' +
+        '<div style="display:flex;gap:10px;align-items:center"><button class="nu-btn line" type="button" data-k="fc" style="flex:1;min-height:52px">' + esc(T('🙂 상대에게 보낼 내 사진', '🙂 My photo for them')) + '</button>' +
+          '<button class="nu-btn ghost" type="button" data-k="fcx" style="width:auto;padding:0 14px;min-height:52px" hidden>' + esc(T('빼기', 'Remove')) + '</button></div>' +
+        '<p class="nu-sub" data-k="fcs" style="margin:0"></p>' +
         '<div class="nu-err" data-k="err" role="alert"></div>' +
       '</div>';
     var q = function(k){ return el.querySelector('[data-k="' + k + '"]'); };
@@ -233,11 +236,15 @@
         : T('내 휴대폰 바탕화면의 ' + n + ' 아이콘에 보일 사진이에요.', 'Shown on the ' + n + ' icon on my home screen.');
       q('vds').textContent = st.video ? T('✅ ' + Math.round(st.secs) + '초 영상을 골랐어요. ' + n + '님이 나를 열면 맨 위에 나와요.', '✅ ' + Math.round(st.secs) + ' s video chosen. It plays when ' + n + ' opens you.')
         : T(n + '님 화면 맨 위에 나올 내 영상이에요. 짧게, 화질 「보통」으로 찍어 주세요.', 'My video shown at the top of ' + n + '’s screen. Keep it short, normal quality.');
-      q('phx').hidden = !st.photo; q('vdx').hidden = !st.video;
+      q('fcs').textContent = st.face ? T('✅ 내 사진을 골랐어요. ' + n + '님이 사진을 따로 안 넣으면 ' + n + '님 휴대폰의 내 아이콘에 들어가요.', '✅ Photo chosen. If ' + n + ' doesn’t add one, it goes on my icon on ' + n + '’s phone.')
+        : T(n + '님이 사진을 따로 안 넣었을 때 ' + n + '님 휴대폰의 내 아이콘에 들어갈 사진이에요.', 'Used on my icon on ' + n + '’s phone if ' + n + ' doesn’t add a photo.');
+      q('phx').hidden = !st.photo; q('vdx').hidden = !st.video; q('fcx').hidden = !st.face;
     }
     q('ph').onclick = async function(){ var p = await NU.pickPhoto(); if (p) { st.photo = p; if (onPhoto) onPhoto(p); paint(); } };
     q('phx').onclick = function(){ st.photo = null; if (onPhoto) onPhoto(null); paint(); };
     q('vdx').onclick = function(){ st.video = null; st.secs = 0; paint(); };
+    q('fc').onclick = async function(){ var p = await NU.pickPhoto(); if (p) { st.face = p; paint(); } };
+    q('fcx').onclick = function(){ st.face = null; paint(); };
     q('vd').onclick = function(){
       var inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'video/*';
       inp.onchange = async function(){
@@ -251,7 +258,8 @@
     st.repaint = paint;
     /* 만들기 · 연결이 끝난 뒤: 사진은 바로 저장, 영상은 짝이 맺어졌으면 바로 · 아니면 맡겨 두기 */
     st.apply = async function(lineId, paired){
-      var out = { photo: true, video: true };
+      var out = { photo: true, video: true, face: true };
+      if (st.face) { try { var fr = await NU.rpc('nureum_set_face', { p_line: lineId, p_face: st.face }); out.face = !!(fr && fr.ok); NU._facesAt = 0; } catch (e) { out.face = false; } }
       if (st.photo) { try { var r = await NU.rpc('nureum_set_photo', { p_line: lineId, p_photo: st.photo }); out.photo = !!(r && r.ok); } catch (e) { out.photo = false; } }
       if (st.video) {
         if (paired) { try { await upload(lineId, st.video, st.secs); } catch (e) { out.video = await stash(lineId, st.video, st.secs); } }
