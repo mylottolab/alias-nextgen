@@ -254,7 +254,7 @@
   }
   var NX = [
     ["한 사람과만, 누르면 바로. 라인마다 바탕화면 아이콘이 하나씩 생겨요.", "One person, one tap. Each line gets its own home-screen icon."],
-    ["💬 부름도 사용하러 가기", "💬 Also use Burum"],
+    ["💬 부름도 사용하러 가기", "💬 Also use Burum"], ["💬 부름 사용하러 가기", "💬 Use Burum"], ["부름 사용하러 가기", "Use Burum"],
     ["부름도 사용하러 가기", "Also use Burum"],
     ["아직 라인이 없습니다.", "No lines yet."],
     ["아래 [새 라인 만들기]로 시작하세요.", "Start with [New line] below."],

@@ -4656,7 +4656,7 @@ AL.topBar = async function(){
 
     /* ☎ 2026-11-22 — 다이얼 첫 화면을 쓰는 폰: 어느 화면에서든 [☎ 다이얼] 로 첫 화면에 돌아가기 */
     try { if (!acctOnly && page !== 'burum_home_dial.html' && localStorage.getItem('burum_home_active') === '1')
-      bar.appendChild(mk(en ? '☎ Dial home' : '☎ 다이얼', function(){ location.href = 'burum_home_dial.html'; })); } catch (e) {}
+      bar.appendChild(mk(en ? '☎ Home (dial)' : '☎ 초기화면(다이얼)', function(){ var sp = false; try { sp = localStorage.getItem('burum_split') === '1'; } catch (e) {} location.href = sp ? 'burum_home_split.html' : 'burum_home_dial.html'; })); } catch (e) {}   /* 🔴 2026-11-24 이름: 다이얼 → 초기화면(다이얼) · 갈림길을 쓰는 폰은 갈림길로 */
 
     if (!acctOnly) {
     /* ☀️ / 🌙 — 지금 화면의 반대로 바꿉니다(설정의 "모드" 와 같은 곳에 저장) */
@@ -4710,11 +4710,20 @@ AL.topBar = async function(){
       }
       if (sess) bar.appendChild(mk('👤 MyPage', function(){ AL.openMyPage(); }));
       /* 🔴 2026-11-01 — 누름으로 돌아가기 (누름만 쓰다가 부름에 온 분도 길을 잃지 않게) */
-      if (sess) bar.appendChild(mk(en ? '📌 Nureum' : '📌 누름', function(){ location.href = 'nureum.html'; }));
-      bar.appendChild(mk(sess ? (en ? 'Log out' : '로그아웃') : (en ? 'Log in' : '로그인'), function(){
+      /* 🔴 2026-11-24 [📌 누름] → 주황 [누름 사용하러 가기], 로그아웃 바로 왼쪽에 붙여서(한 줄) */
+      var acct = document.createElement('div');
+      acct.style.cssText = 'display:flex;gap:8px;flex-wrap:nowrap;align-items:center';
+      if (sess) {
+        var nb = mk(en ? '📌 Use Nureum' : '📌 누름 사용하러 가기', function(){ var d = 'nureum.html'; try { if (localStorage.getItem('burum_home_active') === '1') d = 'nureum_home_dial.html'; } catch (e) {} location.href = d; });
+        nb.style.background = 'linear-gradient(180deg,#F06A35,#D2481B)'; nb.style.color = '#fff'; nb.style.border = '1px solid #E4572E'; nb.style.fontWeight = '800';
+        nb.style.boxShadow = '0 3px 10px rgba(210,72,27,.3)';
+        acct.appendChild(nb);
+      }
+      acct.appendChild(mk(sess ? (en ? 'Log out' : '로그아웃') : (en ? 'Log in' : '로그인'), function(){
         if (sess) { if (confirm(AL.t('outAsk'))) AL.signOut(); }
         else location.href = 'alias_auth.html?next=' + encodeURIComponent(page + location.search);
       }));
+      bar.appendChild(acct);
     }
     /* 🔴 2026-10-21 전화번호부: 계정 줄 위에 [‹ 연락처] (처음 화면으로) */
     if (page === 'alias_phone.html') {
