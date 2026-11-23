@@ -5030,8 +5030,8 @@ AL.explainNotify = function(already){
       '</ul>' +
       '<button id="nfGo" style="width:100%;padding:16px 0;border-radius:14px;' +
         'cursor:pointer;font-size:15.5px;font-weight:800;font-family:inherit;' +
-        'background:rgba(143,227,176,.2);color:#8FE3B0;' +
-        'border:1px solid rgba(143,227,176,.45)">' +
+        'background:#16A34A!important;color:#fff!important;-webkit-text-fill-color:#fff;' +   /* 🔴 2026-11-24 글씨가 안 보여 진한 초록 + 흰 글씨 */
+        'border:0;box-shadow:0 4px 14px rgba(22,163,74,.4)">' +
         AL.esc(AL.t(already ? 'nfOpen' : 'nfGo')) + '</button>' +
       '<button id="nfLater" style="width:100%;margin-top:9px;padding:13px 0;' +
         'border-radius:13px;cursor:pointer;font-size:14px;font-family:inherit;' +
