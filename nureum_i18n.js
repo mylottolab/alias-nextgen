@@ -197,7 +197,7 @@
     ['상대가 만든 핫라인에 연결합니다. 받는 분은 무료예요.', 'Connect to a hotline someone made for you. Free for you.'],
     ['받은 QR을 찍거나 코드를 넣으세요', 'Scan the QR or enter the code'],
     ['[연결하기]를 한 번 누르세요', 'Tap [Connect] once'],
-    ['부르는 이름 · 색을 바꿀 수 있어요', 'You can change the name and color'],
+    ['부르는 이름 · 색을 바꿀 수 있어요', 'You can change the name and color'], ['부르는 이름 · 색, 📷 사진 · 🎬 인사 영상도 넣을 수 있어요 (선택)', 'You can also set the name, color, 📷 photo and 🎬 greeting video (optional)'], ['📷 사진 · 🎬 인사 영상 · 🙂 내 사진도 같이 넣을 수 있어요 (선택)', 'You can add a 📷 photo, 🎬 greeting video and 🙂 my photo too (optional)'],
     ['QR 카드 찍기', 'Scan QR card'],
     ['냉장고 · 지갑 카드 → 그 사람', 'Fridge or wallet card → that person'],
     ['카메라 열기', 'Open camera'],
