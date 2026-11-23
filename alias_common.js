@@ -4655,8 +4655,8 @@ AL.topBar = async function(){
     var mk = function(text, fn){ var b = document.createElement('button'); b.type = 'button'; b.style.cssText = pill; b.textContent = text; b.addEventListener('click', fn); return b; };
 
     /* ☎ 2026-11-22 — 다이얼 첫 화면을 쓰는 폰: 어느 화면에서든 [☎ 다이얼] 로 첫 화면에 돌아가기 */
-    try { if (!acctOnly && page !== 'burum_home_dial.html' && localStorage.getItem('burum_home_active') === '1')
-      bar.appendChild(mk(en ? '☎ Home (dial)' : '☎ 초기화면(다이얼)', function(){ var sp = false; try { sp = localStorage.getItem('burum_split') === '1'; } catch (e) {} location.href = sp ? 'burum_home_split.html' : 'burum_home_dial.html'; })); } catch (e) {}   /* 🔴 2026-11-24 이름: 다이얼 → 초기화면(다이얼) · 갈림길을 쓰는 폰은 갈림길로 */
+    try { if (!acctOnly && page !== 'burum_home_dial.html' && page !== 'burum_home_split.html' && localStorage.getItem('burum_home_active') === '1')
+      bar.appendChild(mk(en ? '☎ Home (dial)' : '☎ 초기화면(다이얼)', function(){ var sp = false; try { sp = localStorage.getItem('burum_split_on') === '1' || localStorage.getItem('burum_split') === '1'; } catch (e) {} location.href = sp ? 'burum_home_split.html' : 'burum_home_dial.html'; })); } catch (e) {}   /* 🔴 2026-11-24 이름: 다이얼 → 초기화면(다이얼) · 갈림길을 쓰는 폰은 갈림길로 */
 
     if (!acctOnly) {
     /* ☀️ / 🌙 — 지금 화면의 반대로 바꿉니다(설정의 "모드" 와 같은 곳에 저장) */

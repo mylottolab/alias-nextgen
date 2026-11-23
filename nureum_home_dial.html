@@ -7,11 +7,11 @@
 <link rel="stylesheet" href="nureum.css?v=20261101a"><script src="nureum_i18n.js?v=20261124a"></script>
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20261124a"></script>
+<script src="alias_common.js?v=20261124c"></script>
 <script src="alias_qr.js?v=20261123a"></script>
 <script src="nureum.js?v=20261123c"></script>
 <script src="dialhome.js?v=20261123c"></script>
-<script src="burum_home_mode.js?v=20261124a"></script>
+<script src="burum_home_mode.js?v=20261124b"></script>
 <style>
 /* ☎ 누름 다이얼 첫 화면 (2026-11-22) — 다이얼 모양 · 돌리기는 dialhome.js(와파 · 부름 · 누름 · 바로너 공용)
    1~5번 = 내 라인(사람) — 돌리면 그 사람 화면(큰 [전화하기]) · 6 짝 맺기 · 7 QR 카드 찍기 · 8 안심 긴급 · 9 사용법 · 0 고객센터
@@ -143,7 +143,7 @@
     var tb = document.getElementById('trybar'); tb.hidden = false; tb.textContent = TR('시험 중 — 이 폰만 다이얼 첫 화면입니다'); } } catch (e) {}
 })();
 </script>
-<script src="whatsnew.js?v=20261123c" data-app="nureum" data-after=".nu-top" defer></script>
+<script src="whatsnew.js?v=20261124a" data-app="nureum" data-after=".nu-top" defer></script>
 <script>/* ⇆ 2026-11-24 갈림길 첫 화면이 켜져 있으면 위쪽에 [⇆ 부름 · 누름] — 다른 쪽으로 넘어가거나 처음 화면 바꾸기 */
 (function(){ if (!window.BURUM_SPLIT) return; var en = window.AL && AL.lang === 'en';
   var a = document.createElement('a'); a.href = 'burum_home_split.html'; a.id = 'splitPill';

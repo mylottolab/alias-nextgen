@@ -8,10 +8,10 @@
 <link rel="stylesheet" href="nureum.css?v=20261101a"><script src="nureum_i18n.js?v=20261124a"></script>
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20261124a"></script>
+<script src="alias_common.js?v=20261124c"></script>
 <script src="alias_qr.js?v=20261123a"></script>
 <script src="nureum.js?v=20261123c"></script>
-<script src="burum_home_mode.js?v=20261124a"></script>
+<script src="burum_home_mode.js?v=20261124b"></script>
 <script>
 /* ☎ 2026-11-22 — 누름만 쓰는 분 · 다이얼 첫 화면이면 다이얼로 ([전체 라인 보기]는 ?list=1 로 와서 그대로) */
 try { if (window.BURUM_HOME === 'dial' && localStorage.getItem('burum_first_screen') === 'nureum' && !/[?&]list=1/.test(location.search)) location.replace('nureum_home_dial.html'); } catch (e) {}
@@ -98,6 +98,6 @@ document.addEventListener('click', function(){ try { sessionStorage.setItem('bur
   }
 })();
 </script>
-<script src="whatsnew.js?v=20261123c" data-app="nureum" data-after=".nu-top" defer></script>
+<script src="whatsnew.js?v=20261124a" data-app="nureum" data-after=".nu-top" defer></script>
 </body>
 </html>

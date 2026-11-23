@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="alias_theme.css?v=20261021d">
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="alias_common.js?v=20261124a"></script>
+<script src="alias_common.js?v=20261124c"></script>
 <script src="dialhome.js?v=20261123c"></script>
 <style>
 /* ☎ 부름 다이얼 첫 화면 (2026-11-22) — 다이얼 모양 · 돌리기는 dialhome.js(와파 · 부름 · 누름 · 바로너 공용)
@@ -37,7 +37,7 @@
     <a href="features.html" id="fFeat"></a>
   </div>
 </div>
-<script src="burum_home_mode.js?v=20261124a"></script>
+<script src="burum_home_mode.js?v=20261124b"></script>
 <script>
 (async function(){
   'use strict';
@@ -115,7 +115,7 @@
     var tb = document.getElementById('trybar'); tb.hidden = false; tb.textContent = T('시험 중 — 이 폰만 다이얼 첫 화면입니다', 'Preview — dial home on this phone only'); } } catch (e) {}
 })();
 </script>
-<script src="whatsnew.js?v=20261123c" data-app="burum" data-after=".bhead" defer></script>
+<script src="whatsnew.js?v=20261124a" data-app="burum" data-after=".bhead" defer></script>
 <script>/* ⇆ 2026-11-24 갈림길 첫 화면이 켜져 있으면 위쪽에 [⇆ 부름 · 누름] — 다른 쪽으로 넘어가거나 처음 화면 바꾸기 */
 (function(){ if (!window.BURUM_SPLIT) return; var en = window.AL && AL.lang === 'en';
   var a = document.createElement('a'); a.href = 'burum_home_split.html'; a.id = 'splitPill';
