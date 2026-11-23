@@ -37,7 +37,7 @@
     <a href="features.html" id="fFeat"></a>
   </div>
 </div>
-<script src="burum_home_mode.js?v=20261122b"></script>
+<script src="burum_home_mode.js?v=20261124a"></script>
 <script>
 (async function(){
   'use strict';
@@ -116,5 +116,12 @@
 })();
 </script>
 <script src="whatsnew.js?v=20261123c" data-app="burum" data-after=".bhead" defer></script>
+<script>/* ⇆ 2026-11-24 갈림길 첫 화면이 켜져 있으면 위쪽에 [⇆ 부름 · 누름] — 다른 쪽으로 넘어가거나 처음 화면 바꾸기 */
+(function(){ if (!window.BURUM_SPLIT) return; var en = window.AL && AL.lang === 'en';
+  var a = document.createElement('a'); a.href = 'burum_home_split.html'; a.id = 'splitPill';
+  a.textContent = en ? '⇆ Burum · Nureum' : '⇆ 부름 · 누름';
+  a.style.cssText = 'flex:none;display:inline-flex;align-items:center;height:34px;padding:0 12px;border-radius:17px;background:#E4572E;color:#fff;font-weight:800;font-size:13.5px;text-decoration:none;white-space:nowrap';
+  var h = document.querySelector('.bhead'); if (!h) return; var ref = h.querySelector('#bWho'); a.style.marginLeft = 'auto'; h.appendChild(a); if (ref) { ref.style.marginLeft = '8px'; ref.style.flex = '1'; h.insertBefore(ref, a); }
+})();</script>
 </body>
 </html>

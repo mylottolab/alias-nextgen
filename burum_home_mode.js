@@ -11,6 +11,13 @@
   var m = ALL;
   try { var l = localStorage.getItem('burum_home_mode'); if (l === 'dial' || l === 'classic') m = l; } catch (e) {}
   window.BURUM_HOME = m;
+  /* ⇆ 2026-11-24 부름 · 누름 갈림길 첫 화면(burum_home_split.html) — 모든 분은 SPLIT_ALL=true, 이 폰만: 갈림길 화면 ?try=1 / ?try=0
+     앱을 열면 처음에: burum_start = 'split'(갈림길) | 'burum'(부름 다이얼) | 'nureum'(누름 다이얼) — 갈림길 화면 아래에서 고름 */
+  var SPLIT_ALL = false;   // ← 전체 전환 스위치
+  var sp = SPLIT_ALL;
+  try { var ls = localStorage.getItem('burum_split'); if (ls === '1') sp = true; if (ls === '0') sp = false; } catch (e) {}
+  window.BURUM_SPLIT = sp; window.BURUM_SPLIT_ALL = SPLIT_ALL;
+  window.BURUM_START = function(){ var v = 'split'; try { v = localStorage.getItem('burum_start') || 'split'; } catch (e) {} return /^(split|burum|nureum)$/.test(v) ? v : 'split'; };
   window.BURUM_HOME_ALL = ALL;
   try { localStorage.setItem('burum_home_active', m === 'dial' ? '1' : '0'); } catch (e) {}   // 다른 화면 위쪽 [☎ 다이얼] 단추용
 })();

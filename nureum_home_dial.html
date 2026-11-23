@@ -11,7 +11,7 @@
 <script src="alias_qr.js?v=20261123a"></script>
 <script src="nureum.js?v=20261123c"></script>
 <script src="dialhome.js?v=20261123c"></script>
-<script src="burum_home_mode.js?v=20261122b"></script>
+<script src="burum_home_mode.js?v=20261124a"></script>
 <style>
 /* ☎ 누름 다이얼 첫 화면 (2026-11-22) — 다이얼 모양 · 돌리기는 dialhome.js(와파 · 부름 · 누름 · 바로너 공용)
    1~5번 = 내 라인(사람) — 돌리면 그 사람 화면(큰 [전화하기]) · 6 짝 맺기 · 7 QR 카드 찍기 · 8 안심 긴급 · 9 사용법 · 0 고객센터
@@ -144,5 +144,12 @@
 })();
 </script>
 <script src="whatsnew.js?v=20261123c" data-app="nureum" data-after=".nu-top" defer></script>
+<script>/* ⇆ 2026-11-24 갈림길 첫 화면이 켜져 있으면 위쪽에 [⇆ 부름 · 누름] — 다른 쪽으로 넘어가거나 처음 화면 바꾸기 */
+(function(){ if (!window.BURUM_SPLIT) return; var en = window.AL && AL.lang === 'en';
+  var a = document.createElement('a'); a.href = 'burum_home_split.html'; a.id = 'splitPill';
+  a.textContent = en ? '⇆ Burum · Nureum' : '⇆ 부름 · 누름';
+  a.style.cssText = 'flex:none;display:inline-flex;align-items:center;height:34px;padding:0 12px;border-radius:17px;background:#1E7A4C;color:#fff;font-weight:800;font-size:13.5px;text-decoration:none;white-space:nowrap';
+  var h = document.querySelector('.nu-top'); if (!h) return; var ref = h.querySelector('#meBtn'); h.insertBefore(a, ref ? ref : null); a.style.marginLeft = 'auto'; if (ref) ref.style.marginLeft = '8px';
+})();</script>
 </body>
 </html>

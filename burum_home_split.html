@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>부름 · 누름</title>
+<link rel="stylesheet" href="alias_common.css?v=20260927a">
+<link rel="stylesheet" href="alias_theme.css?v=20261021d">
+<script src="alias_config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="alias_common.js?v=20261123b"></script>
+<script src="burum_home_mode.js?v=20261124a"></script>
+<!-- ⇆ 부름 · 누름 갈림길 첫 화면 (2026-11-24 회사 개편안)
+     왼쪽 = 부름(세상 모든 사람과 · 별칭으로) → burum_home_dial.html
+     오른쪽 = 누름(단 한 사람과 1:1 핫라인) → nureum_home_dial.html
+     켜고 끄기: burum_home_mode.js 의 SPLIT_ALL (이 폰만 시험: 이 화면을 ?try=1 로 한 번 열기 · ?try=0 이면 끔) -->
+<style>
+html,body{height:100%}
+body{margin:0;background:var(--bg,#0b1220)}
+.sp{min-height:100%;display:flex;flex-direction:column;gap:12px;padding:calc(10px + env(safe-area-inset-top,0px)) max(14px,env(safe-area-inset-right,0px)) calc(14px + env(safe-area-inset-bottom,0px)) max(14px,env(safe-area-inset-left,0px));max-width:720px;margin:0 auto;box-sizing:border-box}
+.sp-hd{display:flex;align-items:center;gap:10px;padding-top:44px}
+.sp-hd b{font-size:21px;font-weight:900;letter-spacing:-.3px}
+.sp-hd small{display:block;color:var(--dim);font-size:13px;font-weight:600;margin-top:2px}
+.halves{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:10px;min-height:400px}
+.half{position:relative;overflow:hidden;border:0;border-radius:24px;padding:18px 14px 16px;display:flex;flex-direction:column;align-items:flex-start;gap:8px;text-align:left;color:#fff;font:inherit;cursor:pointer;text-decoration:none;-webkit-tap-highlight-color:transparent;transition:transform .12s, box-shadow .12s}
+.half:active{transform:scale(.98)}
+.half.bu{background:linear-gradient(165deg,#1E7A4C 0%,#0F4A2E 60%,#0A3220 100%);box-shadow:0 12px 28px rgba(15,74,46,.45)}
+.half.nu{background:linear-gradient(165deg,#F06A35 0%,#D2481B 55%,#9E3210 100%);box-shadow:0 12px 28px rgba(210,72,27,.45)}
+.half .lg{width:52px;height:52px;border-radius:16px;background:rgba(255,255,255,.18);display:grid;place-items:center;font-size:27px;font-weight:900}
+.half h2{margin:4px 0 0;font-size:30px;font-weight:900;letter-spacing:-.5px;line-height:1.1}
+.half .tag{font-size:15.5px;font-weight:800;line-height:1.35;opacity:.98}
+.half ul{list-style:none;margin:4px 0 0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:13.5px;font-weight:600;line-height:1.35}
+.half li{display:flex;gap:6px}
+.half li::before{content:'';flex:none;width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.85);margin-top:7px}
+.half .dial{position:absolute;right:-34px;bottom:58px;width:150px;height:150px;opacity:.16;pointer-events:none}
+.half .who{margin-top:auto;font-size:12.5px;font-weight:700;opacity:.9;min-height:1.2em}
+.half .go{align-self:stretch;margin-top:6px;background:#fff;border-radius:14px;padding:11px 12px;font-size:16px;font-weight:900;text-align:center}
+.half.bu .go{color:#0F4A2E}.half.nu .go{color:#C2410C}
+.half .bd{position:absolute;top:14px;right:14px;min-width:24px;height:24px;padding:0 7px;border-radius:12px;background:#fff;color:#C2410C;font-size:13px;font-weight:900;display:grid;place-items:center;box-sizing:border-box}
+.half.bu .bd{color:#0F4A2E}
+.sp-ft{text-align:center;color:var(--dim);font-size:13px;line-height:1.6}
+.sp-ft a,.sp-ft button{color:var(--dim);background:none;border:0;font:inherit;text-decoration:underline;cursor:pointer;padding:4px 2px}
+.trybar{background:var(--raise2,#1b2433);border-radius:12px;padding:8px 12px;font-size:12.5px;color:var(--dim);text-align:center}
+@media (max-width:360px){ .half h2{font-size:26px} .half ul{font-size:12.5px} .half{padding:16px 11px 14px} }
+.pick{background:var(--raise,#141c2a);border:1px solid var(--line,#243044);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.pick.first{border:2px solid #F59E0B;box-shadow:0 0 0 4px rgba(245,158,11,.15)}
+.pick b{font-size:15.5px}
+.pick small{color:var(--dim);font-size:12.5px;line-height:1.45}
+.pick .opts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pick .opts button{border:1.5px solid var(--line,#243044);background:var(--raise2,#1b2433);color:var(--text,#e8eef7);border-radius:12px;padding:10px 6px;font:inherit;font-size:14px;font-weight:800;cursor:pointer;line-height:1.25}
+.pick .opts button small{display:block;font-size:11.5px;font-weight:600;margin-top:2px}
+.pick .opts button.on{border-color:#F59E0B;background:rgba(245,158,11,.16)}
+.pick .ok{color:#22C55E;font-size:13px;font-weight:800;min-height:1em}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="sp">
+  <div class="sp-hd"><div><b id="tTitle">부름 · 누름</b><small id="tSub">어떤 쪽으로 들어갈까요?</small></div></div>
+  <div class="trybar" id="trybar" hidden></div>
+  <div class="halves">
+    <button class="half bu" type="button" id="goBu">
+      <svg class="dial" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46" fill="none" stroke="#fff" stroke-width="6"/><g fill="#fff"><circle cx="50" cy="16" r="7"/><circle cx="74" cy="26" r="7"/><circle cx="84" cy="50" r="7"/><circle cx="74" cy="74" r="7"/><circle cx="26" cy="74" r="7"/><circle cx="16" cy="50" r="7"/><circle cx="26" cy="26" r="7"/></g></svg>
+      <span class="bd" id="bdBu" hidden></span>
+      <span class="lg">부</span>
+      <h2>부름</h2>
+      <span class="tag" id="buTag">세상 모든<br>사람과</span>
+      <ul id="buList"><li>번호 대신 별칭으로</li><li>메시지 · 전화 · 영상</li><li>연락처 · 단축다이얼</li></ul>
+      <span class="who" id="buWho"></span>
+      <span class="go" id="buGo">부름 열기 ›</span>
+    </button>
+    <button class="half nu" type="button" id="goNu">
+      <svg class="dial" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46" fill="none" stroke="#fff" stroke-width="6"/><g fill="#fff"><circle cx="50" cy="16" r="7"/><circle cx="74" cy="26" r="7"/><circle cx="84" cy="50" r="7"/><circle cx="74" cy="74" r="7"/><circle cx="26" cy="74" r="7"/><circle cx="16" cy="50" r="7"/><circle cx="26" cy="26" r="7"/></g></svg>
+      <span class="bd" id="bdNu" hidden></span>
+      <span class="lg">누</span>
+      <h2>누름</h2>
+      <span class="tag" id="nuTag">단 한 사람과<br>1:1 핫라인</span>
+      <ul id="nuList"><li>누르면 바로 그 사람</li><li>바탕화면 아이콘 하나</li><li>인사 영상 · QR 카드</li></ul>
+      <span class="who" id="nuWho"></span>
+      <span class="go" id="nuGo">누름 열기 ›</span>
+    </button>
+  </div>
+  <div class="pick" id="pick">
+    <b id="pkT">📱 앱을 열면 처음에</b>
+    <small id="pkS">처음 한 번만 정해 주세요. 언제든 이 화면에서 바꿀 수 있어요.</small>
+    <div class="opts" id="pkO">
+      <button type="button" data-v="split">⇆ 이 화면<small>둘 중 고르기</small></button>
+      <button type="button" data-v="burum">부름<small>다이얼로 바로</small></button>
+      <button type="button" data-v="nureum">누름<small>다이얼로 바로</small></button>
+    </div>
+    <div class="ok" id="pkOk"></div>
+  </div>
+  <div class="sp-ft" id="foot"></div>
+</div>
+<script>
+(function(){
+  var EN = (window.AL && AL.lang === 'en');
+  var T = function(k, e){ return EN ? e : k; };
+  var $ = function(id){ return document.getElementById(id); };
+  var Q = new URLSearchParams(location.search);
+  /* 이 폰만 시험 켜기 · 끄기 */
+  if (Q.get('try') === '1') { try { localStorage.setItem('burum_split', '1'); } catch (e) {} }
+  if (Q.get('try') === '0') { try { localStorage.setItem('burum_split', '0'); } catch (e) {} location.replace(window.BURUM_HOME === 'dial' ? 'burum_home_dial.html' : 'alias_contacts.html'); return; }
+  if (!window.BURUM_SPLIT_ALL) {
+    $('trybar').hidden = false;
+    $('trybar').innerHTML = T('🧪 이 휴대폰에서만 시험 중인 첫 화면이에요 · ', '🧪 Trying this first screen on this phone only · ') + '<a href="burum_home_split.html?try=0" style="color:inherit;font-weight:800">' + T('예전 첫 화면으로', 'Back to the old first screen') + '</a>';
+  }
+  if (EN) {
+    $('tTitle').textContent = 'Burum · Nureum'; $('tSub').textContent = 'Where would you like to go?';
+    $('buTag').textContent = 'Talk with anyone'; $('buList').innerHTML = '<li>Aliases, not numbers</li><li>Messages · calls · video</li><li>Contacts · speed dial</li>'; $('buGo').textContent = 'Open Burum ›';
+    $('nuTag').textContent = '1:1 hotline with one person'; $('nuList').innerHTML = '<li>Tap and reach them</li><li>One home-screen icon</li><li>Greeting video · QR card</li>'; $('nuGo').textContent = 'Open Nureum ›';
+  }
+  try { localStorage.setItem('burum_last_split', '1'); } catch (e) {}
+
+  var user = null, full = false;
+  async function who(){
+    try { var s = (await AL.sb.auth.getSession()).data.session; user = s && s.user; } catch (e) {}
+    full = !!(user && (user.email || user.phone));
+    var nick = '';
+    try { nick = (user && user.user_metadata && (user.user_metadata.nickname || user.user_metadata.name)) || ''; } catch (e) {}
+    $('buWho').textContent = full ? (nick ? T(nick + '님 로그인됨', 'Logged in as ' + nick) : T('로그인됨', 'Logged in')) : T('아이디 만들기 · 로그인', 'Create an ID or log in');
+    $('nuWho').textContent = user ? '' : T('가입 없이 바로 시작', 'Start without signing up');
+    if (user) {
+      /* 누름: 내 라인 수 · 할 일 */
+      try {
+        var r = await AL.sb.rpc('nureum_my_lines');
+        var L = (r && r.data) || [];
+        if (Array.isArray(L)) $('nuWho').textContent = L.length ? T('내 라인 ' + L.length + '개', L.length + (L.length > 1 ? ' lines' : ' line')) : T('첫 라인을 만들어 보세요', 'Make your first line');
+      } catch (e) {}
+    }
+    if (full) {
+      /* 부름: 안 읽은 대화 수 */
+      try {
+        var c = await AL.sb.rpc('my_contacts');
+        var n = ((c && c.data) || []).reduce(function(a, x){ return a + (+x.unread || 0); }, 0);
+        if (n) { $('bdBu').hidden = false; $('bdBu').textContent = n > 99 ? '99+' : n; }
+      } catch (e) {}
+    }
+  }
+
+  $('goBu').onclick = function(){
+    try { localStorage.setItem('burum_first_screen', 'burum'); } catch (e) {}
+    if (full) { location.href = 'burum_home_dial.html'; return; }
+    /* 가입 없이 쓰던 누름 계정 · 로그인 안 된 분 → 부름 아이디 만들기 · 로그인 */
+    location.href = 'alias_auth.html?login=1&next=' + encodeURIComponent('burum_home_dial.html');
+  };
+  $('goNu').onclick = async function(){
+    var b = this; b.disabled = true;
+    if (!user) {
+      try { localStorage.setItem('burum_first_screen', 'nureum'); localStorage.setItem('alias_seen_hello', '1'); } catch (e) {}
+      try { await AL.sb.auth.signInAnonymously({ options: { data: { app: 'nureum' } } }); } catch (e) { console.warn('[split] 누름 시작 실패', e); }
+    }
+    location.href = 'nureum_home_dial.html';
+  };
+
+  /* 📱 앱을 열면 처음에 — 이 폰에 기억(burum_start) · 언제든 바꾸기 */
+  var saved = null; try { saved = localStorage.getItem('burum_start'); } catch (e) {}
+  if (!saved) $('pick').classList.add('first');
+  else { $('pkS').textContent = T('지금 정해 둔 처음 화면이에요. 눌러서 바꿀 수 있어요.', 'Your current first screen. Tap to change it.'); }
+  if (EN) {
+    $('pkT').textContent = '📱 When the app opens'; if (!saved) $('pkS').textContent = 'Pick once — you can change it here any time.';
+    var lab = { split: ['⇆ This screen', 'choose each time'], burum: ['Burum', 'straight to dial'], nureum: ['Nureum', 'straight to dial'] };
+    [].forEach.call($('pkO').children, function(b){ var l = lab[b.dataset.v]; b.innerHTML = l[0] + '<small>' + l[1] + '</small>'; });
+  }
+  function paintPick(){ var cur = window.BURUM_START ? window.BURUM_START() : 'split'; [].forEach.call($('pkO').children, function(b){ b.classList.toggle('on', !!saved && b.dataset.v === cur || !saved && b.dataset.v === 'split'); }); }
+  paintPick();
+  $('pkO').onclick = function(e){
+    var b = e.target.closest('[data-v]'); if (!b) return;
+    try { localStorage.setItem('burum_start', b.dataset.v); } catch (er) {}
+    saved = b.dataset.v; $('pick').classList.remove('first'); paintPick();
+    var nm = { split: T('이 갈림길 화면으로', 'this screen'), burum: T('부름 다이얼로', 'the Burum dial'), nureum: T('누름 다이얼로', 'the Nureum dial') }[b.dataset.v];
+    $('pkOk').textContent = T('✓ 다음부터 앱을 열면 ' + nm + ' 열려요.', '✓ Next time the app opens to ' + nm + '.');
+  };
+  function foot(){ $('foot').innerHTML = full
+    ? '<a href="alias_me.html">' + T('나 · 설정', 'Me · settings') + '</a> · <a href="support.html">' + T('고객센터', 'Help') + '</a>'
+    : '<a href="support.html">' + T('고객센터', 'Help') + '</a>'; }
+  foot(); who().then(foot);
+})();
+</script>
+<script src="whatsnew.js?v=20261123c" data-app="burum" data-after=".sp-hd" defer></script>
+</body>
+</html>

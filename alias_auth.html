@@ -10,7 +10,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="alias_common.js?v=20261123b"></script>
 <script src="burum_partner_ref.js?v=20261029"></script>
-<script src="burum_home_mode.js?v=20261122b"></script>
+<script src="burum_home_mode.js?v=20261124a"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -195,6 +195,8 @@ const NEXT = new URLSearchParams(location.search).get('next');
 
 /* 🔴 2026-10-23 — 첫 화면을 부름 번호판으로 고른 분(이 폰)은 번호판으로 */
 function landing(){
+  /* ⇆ 2026-11-24 갈림길 첫 화면이 켜져 있으면: 이 폰에서 고른 처음 화면으로 */
+  try { if (window.BURUM_SPLIT) { var st = window.BURUM_START(); return st === 'burum' ? 'burum_home_dial.html' : st === 'nureum' ? 'nureum_home_dial.html' : 'burum_home_split.html'; } } catch (e) {}
   /* ☎ 2026-11-22 다이얼 첫 화면(burum_home_mode.js 스위치 · 이 폰의 선택) — 누름만 쓰는 분은 누름 다이얼 */
   try { if (window.BURUM_HOME === 'dial') return localStorage.getItem('burum_first_screen') === 'nureum' ? 'nureum_home_dial.html' : 'burum_home_dial.html'; } catch (e) {}
   try { if (localStorage.getItem('burum_first_screen') === 'dial') return 'alias_phone.html?mode=dial'; } catch (e) {}
@@ -357,6 +359,7 @@ if (AL.keyProblem) {
         if (/[?&]login=1/.test(location.search)) return;
         var nd = 'nureum.html';
         try { if (window.BURUM_HOME === 'dial') nd = 'nureum_home_dial.html'; } catch (e) {}
+        try { if (window.BURUM_SPLIT) nd = window.BURUM_START() === 'nureum' ? 'nureum_home_dial.html' : 'burum_home_split.html'; } catch (e) {}   /* ⇆ 갈림길 */
         location.href = (NEXT && /^nureum/.test(NEXT)) ? NEXT : nd; return;
       }
       goNext(landing()); return;
@@ -364,6 +367,8 @@ if (AL.keyProblem) {
     /* 🔴 2026-09-15 — 로그인 안 된 분이고 처음이면 소개부터.
        ⚠ 로그인된 분께는 절대 안 보입니다. 이미 쓰고 계신 분께
          광고를 보여주는 꼴이 됩니다. */
+    /* ⇆ 2026-11-24 갈림길 첫 화면: 로그인 안 된 분도 먼저 부름 · 누름 고르기 */
+    try { if (window.BURUM_SPLIT && !NEXT && !/[?&]login=1/.test(location.search)) { location.replace('burum_home_split.html'); return; } } catch (e) {}
     if (!seenHello()) show('stepHello');
   });
 }
