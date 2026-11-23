@@ -5,13 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#E4572E">
 <title>새 라인 · 누름</title>
-<link rel="stylesheet" href="nureum.css?v=20261101a"><script src="nureum_i18n.js?v=20261123e"></script>
+<link rel="stylesheet" href="nureum.css?v=20261101a"><script src="nureum_i18n.js?v=20261123f"></script>
 <script src="alias_qrlib.js"></script>
 <script src="alias_config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="alias_common.js?v=20261123b"></script>
 <script src="alias_qr.js?v=20261123a"></script>
 <script src="nureum.js?v=20261123b"></script>
+<script src="nureum_greet.js?v=20261123c"></script>
 </head>
 <body>
 <!-- 새 라인 만들기 → 짝 맺기 코드(QR) → 상대가 넣으면 연결 → 이용권 · 바탕화면 아이콘
@@ -41,6 +42,8 @@
       <span class="nu-lbl">색</span>
       <div class="nu-colors" id="colors"></div>
     </div>
+    <!-- 🔴 2026-11-23 — 사진 · 인사 영상도 처음에 같이(선택). 핫라인 설정 안의 것은 그대로 -->
+    <div id="media"></div>
     <div id="meBox" class="nu-hidden">
       <label class="nu-lbl" for="meName">상대에게 보일 내 이름</label>
       <input class="nu-in" id="meName" maxlength="20" placeholder="예: 큰아들" autocomplete="off">
@@ -85,7 +88,7 @@
 
 <script>
 var rawCode = '', color = NU.COLORS[0], lineId = NU.q('line'), line = null, pollT = null, tickT = null, codeUrl = '';
-var aliases = [];
+var aliases = [], media = null, pvPhoto = null;
 
 function show(id){
   ['stepForm', 'stepCode', 'stepDone'].forEach(function(s){
@@ -97,7 +100,9 @@ function paintPreview(){
   var g = document.getElementById('glyph').value.trim();
   var pv = document.getElementById('pv');
   pv.style.background = color;
-  pv.textContent = g || (n ? Array.from(n)[0] : '엄');
+  pv.textContent = pvPhoto ? '' : (g || (n ? Array.from(n)[0] : '엄'));
+  pv.style.backgroundImage = pvPhoto ? 'url(' + pvPhoto + ')' : ''; pv.style.backgroundSize = 'cover'; pv.style.backgroundPosition = 'center';
+  if (media && media.repaint) media.repaint();
 }
 
 async function makeLine(){
@@ -119,6 +124,7 @@ async function makeLine(){
     });
     if (!out.ok) { NU.showErr('err', NU.errText(out.error)); btn.disabled = false; return; }
     lineId = out.line_id;
+    if (media && (media.photo || media.video)) { try { await media.apply(lineId, false); } catch (e) {} }   // 사진은 바로, 영상은 짝 맺으면 올라가요
     history.replaceState(null, '', 'nureum_new.html?line=' + lineId);
     await loadLine();
   } catch (e) {
@@ -174,7 +180,9 @@ function done(){
   clearInterval(pollT); clearInterval(tickT);
   document.getElementById('ttl').textContent = line.name;
   var ico = document.getElementById('doneIco');
-  ico.style.background = line.color; ico.textContent = NU.glyph(line);
+  ico.style.background = line.color; ico.textContent = line.photo ? '' : NU.glyph(line);
+  if (line.photo) { ico.style.backgroundImage = 'url(' + line.photo + ')'; ico.style.backgroundSize = 'cover'; ico.style.backgroundPosition = 'center'; }
+  if (window.NUG) NUG.flush(line.id);   // 처음에 고른 인사 영상 → 짝이 맺어졌으니 이제 올리기
   document.getElementById('doneTitle').textContent = line.name + '와(과) 연결됐어요!';
   document.getElementById('goPlan').href = 'nureum_plan.html?line=' + line.id;
   document.getElementById('goLine').href = 'nureum_line.html?line=' + line.id;
@@ -230,6 +238,7 @@ document.getElementById('share').onclick = function(){
     } else {
       document.getElementById('meBox').classList.remove('nu-hidden');
     }
+    if (window.NUG && NUG.picker) media = NUG.picker(document.getElementById('media'), function(){ return document.getElementById('name').value.trim(); }, function(p){ pvPhoto = p; paintPreview(); });
     show('stepForm');
     paintPreview();
   } catch (e) { console.error(e); NU.showErr('err', e.message || String(e)); }

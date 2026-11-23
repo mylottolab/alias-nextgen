@@ -136,7 +136,7 @@
     ['연결해도 서로 전화번호는 보이지 않아요. 요금은 핫라인을 만든 분이 냅니다.', "No phone numbers are shared. The creator pays."],
     ['전화를 받으려면 바로너 앱이 있어야 해요.', 'You need the Baronu app to receive calls.'],
     ['바로너 앱 설치하고 연결', 'Install Baronu and connect'], ['이 화면에서 바로 연결 (컴퓨터 · 시험용)', 'Connect here (computer · testing)'],
-    ['연결하기', 'Connect'], ['이름 · 색 바꾸기', 'Name · color'], ['이 분을 뭐라고 부를까요? (내 휴대폰에 보일 이름)', 'What do you call them? (shown on my phone)'],
+    ['연결하기', 'Connect'], ['이름 · 색 바꾸기', 'Name · color'], ['🎬 인사 영상 · 📷 아이콘 사진', '🎬 Greeting video · 📷 icon photo'], ['처음 이름 넣을 때(또는 나중에 설정에서) 고르기 — 상대가 나를 열면 맨 위에 20초 인사 영상, 바탕화면 아이콘엔 사진', 'Pick them when you first enter the name (or later in settings): a 20-second greeting plays at the top when they open you, and the photo goes on the home-screen icon'], ['이름 · 색 바꾸기 · 📷 사진 · 🎬 인사 영상 (선택)', 'Name · color · 📷 photo · 🎬 greeting video (optional)'], ['이 분을 뭐라고 부를까요? (내 휴대폰에 보일 이름)', 'What do you call them? (shown on my phone)'],
     ['예: 아들, 우리 자기, 사장님', 'e.g. Son, Honey, Boss'], ['예: 엄마', 'e.g. Mom'], ['계정이 있으세요?', 'Have an account?'], ['로그인하고 연결', 'Sign in and connect'],
     ['바탕화면에 아이콘을 놓으면, 다음부터는 아이콘만 누르시면 됩니다.', 'Add the icon and just tap it next time.'],
     ['코드를 넣어 주세요.', 'Please enter the code.'], ['님과 연결하기', ' — connect'], ['이 분을 뭐라고 부를지 적어 주세요.', 'Please enter what you call them.'],
