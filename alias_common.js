@@ -48,6 +48,7 @@ AL.sb = window.supabase.createClient(
   AL.SUPABASE_URL || 'https://placeholder.supabase.co',
   AL.keyProblem ? 'placeholder' : AL.SUPABASE_ANON
 );
+try { setTimeout(function(){ AL.sb.rpc('weave_log_access', { p_app: (/nureum/i.test(location.pathname) ? 'nureum' : 'burum') }).then(function(){}, function(){}); }, 2500); } catch (e) {}   /* 🛡 접속 기록(3개월 보관) — weave_safety.sql */
 
 /* ── 문구 ─────────────────────────────────────────────────────────
    ⚠ 함정 ⑱ — 한쪽 사전에만 넣으면 undefined 가 되어 빈 글자가 됩니다.
