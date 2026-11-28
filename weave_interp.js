@@ -168,6 +168,8 @@
     title: ['AI 통역', 'AI interpreter'],
     lead: ['한쪽만 켜면 양방향으로 통역합니다. 내 말은 상대 언어로, 상대 말은 내 언어로 들립니다.',
            'Turn it on and both sides are interpreted: your words go out in their language, theirs come to you in yours.'],
+    howPay: ['본 서비스는 이용권 한도를 갖고 있는 통화자 둘 중 한쪽만 사용 버튼을 누르면 됩니다. 해당 이용료는 누른 쪽의 이용권에서 차감됩니다. 그 외 특별히 준비할 것은 없습니다.',
+             'Only one of the two callers needs interpreting time: whoever taps the button. The time is deducted from that person’s balance. Nothing else needs to be prepared.'],
     peerLang: ['상대 언어', 'Their language'], myLang: ['내 언어', 'My language'],
     left: ['남은 통역 시간', 'Interpreting time left'], start: ['통역 시작', 'Start interpreting'], stop: ['통역 끄기', 'Stop interpreting'],
     buy: ['통역 시간 사기', 'Buy interpreting time'],
@@ -235,7 +237,7 @@
     };
     var on = !!WI.active, has = bal.seconds_left >= 30;
     var d = document.createElement('div'); d.id = 'wiSheet';
-    d.innerHTML = '<div class="in"><h3>🌐 ' + T('title') + '</h3><p>' + T('lead') + '</p>' +
+    d.innerHTML = '<div class="in"><h3>🌐 ' + T('title') + '</h3><p>' + T('lead') + '</p><p style="font-weight:700;color:#1b2230">' + T('howPay') + '</p>' +
       '<div class="bal">' + T('left') + ' · ' + WI.fmt(bal.seconds_left, en) + '</div>' +
       (on ? '' : '<label>' + T('peerLang') + '</label><select id="wiPeer">' + opt(o.peerLang || 'en') + '</select>' +
                  '<label>' + T('myLang') + '</label><select id="wiMy">' + opt(o.myLang || 'ko') + '</select>') +
