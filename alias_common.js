@@ -1074,8 +1074,8 @@ AL.STR = {
 
   hlCall:    { kr:'전화도 영상통화도 됩니다. 영상통화는 카메라를 켜지 않고 받을 수도 있습니다.',
                en:'Voice and video calls included — and you can answer a video call without turning your camera on.' },
-  hlPrice:   { kr:'14일 무료 체험 · 이후 월 1,300원대',
-               en:'14-day free trial · about $1.3 a month after' },
+  hlPrice:   { kr:'7일 무료 체험 · 이후 월 1,300원대',
+               en:'7-day free trial · about $1.3 a month after' },
   hlStart:   { kr:'시작하기', en:'Get started' },
   hlAgain:   { kr:'소개 다시 보기', en:'About Burum' },
 
