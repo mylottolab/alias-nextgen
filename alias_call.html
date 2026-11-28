@@ -10,7 +10,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="alias_common.js?v=20261124d"></script>
 <script src="alias_media.js?v=20260927a"></script>
-<script src="alias_call.js?v=20261121a"></script>
+<script src="alias_call.js?v=20261128a"></script>
+<script src="weave_interp.js?v=20261128a"></script>
 <script>
 /* ⚠ alias_common.js 를 못 읽으면 화면이 텅 빕니다. 글씨를 채우는 것이
    그 파일이기 때문입니다. 빈 화면만 보면 원인을 알 수가 없어서,
@@ -507,6 +508,10 @@ function paintActs(){
 
   /* 🔴 2026-09-19 — 녹음. **통화 중 누구든** 누를 수 있습니다.
      ⚠ 담는 중이면 안 보여줍니다. 멈추기는 위 띠에 있습니다. */
+  /* 🔴 2026-11-28 AI 통역 — 통화가 이어진 뒤에만. 켜져 있으면 지구본이 파랗게 */
+  if (window.WI && AL.call.pc && AL.call.remote && (WI.active || WI.check(AL.sb, paintActs))) {
+    box.appendChild(btn('rbtn plain' + (WI.active ? ' on' : ''), '🌐', WI.t(WI.active ? 'on' : 'btn', AL.lang === 'en'), interpOpen));
+  }
   if (AL.recSupported && AL.recSupported() && !AL.recording()) {
     box.appendChild(btn('rbtn plain', '🔴',
       AL.t(callType === 'video' ? 'rcAskVid' : 'rcBtn'), rcAsk));
@@ -557,6 +562,29 @@ function paintActs(){
     }
     setTimeout(function(){ if (!leaving) bye(); }, 3000);   // ③
   }));
+}
+
+/* 🔴 2026-11-28 AI 통역 (weave_interp.js) */
+function interpOpen(){
+  const en = AL.lang === 'en';
+  if (!WI.active && WI.peerOn) { WI.toast(WI.t('peerOnBlock', en)); return; }
+  WI.openSheet({ en: en, sb: AL.sb, myLang: WI.lastMy(en ? 'en' : 'ko'), peerLang: WI.lastPeer(),
+    onStart: async function(peer, my){
+      const mic = AL.call.local && AL.call.local.getAudioTracks()[0];
+      const r = await WI.start({ sb: AL.sb, fnBase: AL.SUPABASE_URL + '/functions/v1', app: (location.hostname.split('.')[0] || 'burum'),
+        callRef: AL.call.callId || '', pc: AL.call.pc, micTrack: mic, remoteStream: AL.call.remote, remoteEl: el('remoteA'),
+        myLang: my, peerLang: peer, sendSig: function(k, d){ AL.sendRec(k, d); },
+        onCaption: function(side, o, t){ WI.caption(side, o, t, en); },
+        onState: function(s, i){
+          if (s === 'low') WI.toast(WI.t('low', en));
+          if (s === 'off' && i && (i.error === 'no_balance' || i.reason === 'no_balance')) WI.toast(WI.t(i.reason ? 'ended' : 'noBal', en), 7000);
+          else if (s === 'off' && i && i.error === 'not_ready') WI.toast(WI.t('notReady', en));
+          else if (s === 'off' && i && i.error && i.error !== 'no_balance') WI.toast(WI.t('fail', en));
+          if (s === 'off') WI.caption('clear');
+          if (s === 'on' || s === 'off') paintActs();
+        } });
+      if (r && r.error === 'peer_on') WI.toast(WI.t('peerOnBlock', en));
+    } });
 }
 
 function btn(cls, icon, label, onClick){
@@ -672,6 +700,12 @@ function onState(state, extra){
   }
   /* 🔴 2026-09-19 — 녹음 협의 신호 */
   if (state === 'rec') { onRecSignal(extra.kind, extra.days, extra.who, extra.vid); return; }
+  /* 🔴 2026-11-28 AI 통역 — 상대가 켰다 / 껐다 */
+  if (state === 'interp') {
+    const en = AL.lang === 'en';
+    if (window.WI) { WI.onPeer(extra); if (extra && extra.on) { if (WI.active) WI.stop('peer_on'); WI.toast(WI.t('peerOnMsg', en), 8000); } }
+    paintActs(); return;
+  }
 
   if (state === 'remote-stream') {
     /* 🔴🔴 2026-09-12 — 소리와 영상을 갈라 받습니다.
