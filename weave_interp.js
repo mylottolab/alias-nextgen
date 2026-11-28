@@ -66,6 +66,7 @@
     return { pc: pc, dc: dc };
   }
 
+  WI.connect = connect;   // 마주 보고 통역(interp_face.html)도 씁니다
   /* 자막: 원문(input) · 통역문(output) 조각을 모아 한 줄로 */
   function captioner(side, cb) {
     var cur = { orig: '', trans: '' }, timer = null;
@@ -81,6 +82,7 @@
     };
   }
 
+  WI.captioner = function (side, cb) { return captioner(side, cb); };
   WI.start = async function (o) {
     if (WI.active) return { ok: true, already: true };
     if (WI.peerOn) return { ok: false, error: 'peer_on' };
